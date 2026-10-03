@@ -15,19 +15,22 @@
 | スキル | 取得元 | 取得時のコミット | ライセンス |
 |---|---|---|---|
 | `remotion-best-practices` | [remotion-dev/skills](https://github.com/remotion-dev/skills)（他のRemotionスキルをすべて内包する入口スキル） | `0b5db9d` | Remotionのライセンスに従う（※） |
-| superpowers 一式（`brainstorming`、`writing-plans`、`executing-plans`、`test-driven-development`、`systematic-debugging`、`using-superpowers` など15個） | [obra/superpowers](https://github.com/obra/superpowers) | `8ca22db` | MIT（`using-superpowers/LICENSE-superpowers`） |
-| `playwright-cli` | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) | `b85c7a7` | Apache-2.0 |
-| `claude-automation-recommender`（claude-code-setup プラグインのスキル） | [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) | `ab024cd` | Apache-2.0 |
-| `frontend-design` | 同上 | `ab024cd` | Apache-2.0 |
-| `skill-creator` | 同上 | `ab024cd` | Apache-2.0 |
 
 ※ Remotion本体は、従業員4人以上の企業が使う場合に有料のCompany Licenseが必要です。詳しくは https://www.remotion.dev/license を確認してください。
 
-### 外部スキルを更新するには
+更新するときは取得元のリポジトリを clone し直して、該当フォルダを上書きコピーし、上の表の「取得時のコミット」も更新します。
 
-取得元のリポジトリを clone し直して、該当フォルダを上書きコピーしてください。上の表の「取得時のコミット」も更新します。
+## プラグイン（`.claude/settings.json` で有効化）
 
-### 補足
+以前はスキルをコピーして同梱していたもののうち、公式プラグインがあるものはプラグインに切り替えました（スキルが二重に読み込まれるのを避けるため）。プラグイン版は配布元の更新が自動で反映されます。
 
-- superpowers は本来プラグインとして配布されていて、プラグイン版ではセッション開始時に `using-superpowers` を自動で読み込むフックが付きます。ここではスキルだけを同梱しているので、必要なら最初に `/using-superpowers` を呼び出してください
-- `playwright-cli` は `playwright-cli` コマンド（または `npx playwright`）を使います。初回に `npm install -g @playwright/cli` などのインストールが必要になることがあります
+| プラグイン | 中身 |
+|---|---|
+| `superpowers` | `brainstorming`、`writing-plans`、`systematic-debugging` など15個のスキル。セッション開始時に `using-superpowers` を自動で読み込む |
+| `playwright` | ブラウザ操作の道具（旧 `playwright-cli` スキルの代わり） |
+| `claude-code-setup` | `claude-automation-recommender` |
+| `frontend-design` | `frontend-design` |
+| `skill-creator` | `skill-creator` |
+| `canva` | Canvaのデザイン作成・編集（Canvaアカウントとの接続が必要） |
+
+いずれも Anthropic 公式マーケットプレイス（`claude-plugins-official`）から読み込みます。
