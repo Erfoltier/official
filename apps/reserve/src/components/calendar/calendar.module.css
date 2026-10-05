@@ -866,3 +866,16 @@ button.treatChip[data-active] {
   color: #8a5300;
   font-size: 12px;
 }
+
+.cautionNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: -4px 0 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: #fdecec;
+  color: #9b1c1c;
+  font-size: 12px;
+  white-space: pre-wrap;
+}

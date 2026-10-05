@@ -1,4 +1,4 @@
-import type { DayBundle, Lane, Menu, Patient, Reservation } from "@/lib/domain/types";
+import type { DayBundle, Lane, Menu, Patient, PatientDetail, Reservation } from "@/lib/domain/types";
 
 export class ApiError extends Error {
   constructor(
@@ -89,4 +89,26 @@ export function saveMenu(id: string | null, body: Partial<Omit<Menu, "id" | "ord
 
 export async function reorder(kind: "lanes" | "menus", ids: string[]): Promise<void> {
   await call(`/api/v1/${kind}/reorder`, { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+export type PatientUpdate = Partial<
+  Pick<
+    Patient,
+    "name" | "kana" | "nameAlt" | "phone" | "email" | "chartNo" | "birthDate" | "caution" | "cautionNote" | "memo"
+  >
+>;
+
+export function fetchPatient(id: string): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}`);
+}
+
+export function updatePatient(id: string, body: PatientUpdate & { version: number }): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function unlinkLine(id: string, version: number): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}/unlink-line`, {
+    method: "POST",
+    body: JSON.stringify({ version }),
+  });
 }

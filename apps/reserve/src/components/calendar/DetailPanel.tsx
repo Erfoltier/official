@@ -23,9 +23,10 @@ interface Props {
   onClose: () => void;
   onStatus: (s: ReservationStatus) => void;
   onMemo: (memo: string) => void;
+  onEditPatient: () => void;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo, onEditPatient }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
@@ -52,6 +53,16 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           ×
         </button>
       </div>
+
+      {!maskNames && patient?.caution && patient.cautionNote && (
+        <div className={styles.cautionNote}>
+          <span className={styles.caution}>!</span>
+          {patient.cautionNote}
+        </div>
+      )}
+      <button type="button" className={styles.linkBtn} onClick={onEditPatient}>
+        患者情報を見る・編集する
+      </button>
 
       <dl className={styles.facts}>
         <dt>日時</dt>

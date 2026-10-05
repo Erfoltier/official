@@ -36,16 +36,25 @@ export const reservationIdParam = id;
 
 const shortText = (max: number) => z.string().max(max);
 
-export const createPatientSchema = z
-  .object({
-    name: shortText(120),
-    kana: shortText(120).optional(),
-    nameAlt: shortText(120).optional(),
-    phone: shortText(30).optional(),
-    email: shortText(200).optional(),
-    chartNo: shortText(30).optional(),
-  })
+const patientFieldsSchema = {
+  kana: shortText(120).optional(),
+  nameAlt: shortText(120).optional(),
+  phone: shortText(30).optional(),
+  email: shortText(200).optional(),
+  chartNo: shortText(30).optional(),
+  birthDate: shortText(10).optional(),
+  caution: z.boolean().optional(),
+  cautionNote: shortText(1000).optional(),
+  memo: shortText(4000).optional(),
+};
+
+export const createPatientSchema = z.object({ name: shortText(120), ...patientFieldsSchema }).strict();
+
+export const updatePatientSchema = z
+  .object({ version: z.number().int().positive(), name: shortText(120).optional(), ...patientFieldsSchema })
   .strict();
+
+export const versionOnlySchema = z.object({ version: z.number().int().positive() }).strict();
 
 export const laneSchema = z
   .object({

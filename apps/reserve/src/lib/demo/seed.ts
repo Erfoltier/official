@@ -63,7 +63,7 @@ export function buildDemoPatients(): Patient[] {
     const caution = rnd() < 0.08;
     if (i % 15 === 7) {
       const [name, kana, nameAlt] = MIXED_NAMES[Math.floor(i / 15) % MIXED_NAMES.length];
-      out.push({ id, chartNo, name, kana, nameAlt, phone, lineUserId, caution });
+      out.push({ id, chartNo, name, kana, nameAlt, phone, lineUserId, caution, version: 1 });
       continue;
     }
     const f = Math.floor(rnd() * FAMILY.length);
@@ -77,6 +77,8 @@ export function buildDemoPatients(): Patient[] {
       phone,
       lineUserId,
       caution,
+      ...(caution && { cautionNote: "リドカインで発赤の既往あり（デモ）" }),
+      version: 1,
     });
   }
   return out;

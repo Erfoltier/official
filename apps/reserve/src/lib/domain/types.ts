@@ -83,8 +83,31 @@ export interface Patient {
    * 電話番号や氏名の一致で自動的に入れてはいけない（誤送信防止）。
    */
   lineUserId?: string;
-  /** 注意事項（アレルギー等）がある患者 */
+  /** 生年月日（YYYY-MM-DD） */
+  birthDate?: string;
+  /** 注意事項（アレルギー等）がある患者。予約表に「!」を出す */
   caution?: boolean;
+  /** 注意事項の内容 */
+  cautionNote?: string;
+  /** 院内メモ（施術の好み・対応の注意など） */
+  memo?: string;
+  /** 楽観的排他制御用。更新のたびに増える */
+  version: number;
+  updatedAt?: string;
+}
+
+/** 患者情報の変更履歴。値そのものは残さず、いつ・どの項目を変えたかだけ記録する */
+export interface PatientChange {
+  at: string;
+  fields: string[];
+}
+
+/** 患者の編集画面に渡すデータ */
+export interface PatientDetail {
+  patient: Patient;
+  /** 予約履歴（新しい順、キャンセル含む） */
+  reservations: { id: string; startAt: string; endAt: string; status: ReservationStatus; menuNames: string[]; laneName: string }[];
+  history: PatientChange[];
 }
 
 export const RESERVATION_STATUSES = [

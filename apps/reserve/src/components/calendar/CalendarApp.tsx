@@ -9,6 +9,7 @@ import { ApiError, fetchDay, patchReservation } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
+import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
 import styles from "./calendar.module.css";
 
@@ -22,6 +23,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [toast, setToast] = useState<{ text: string; kind: "info" | "error" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createAt, setCreateAt] = useState<{ laneId: string; minute: number } | null>(null);
+  const [editPatientId, setEditPatientId] = useState<string | null>(null);
   const [now, setNow] = useState(() => nowInClinic());
 
   const [scale, setScale] = usePref("scale", DEFAULT_PX_PER_MIN, isNumber);
@@ -241,7 +243,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           >
             ⛶
           </button>
-          <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
+          <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
+            👤
+          </Link>
+                    <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
             ⚙
           </Link>
         </div>
@@ -275,6 +280,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onClose={() => setSelectedId(null)}
             onStatus={(s) => onStatus(selected, s)}
             onMemo={(m) => onMemo(selected, m)}
+            onEditPatient={() => setEditPatientId(selected.patientId)}
           />
         )}
       </main>
@@ -291,6 +297,14 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             showToast("予約を登録しました");
             load(date).then(() => setSelectedId(r.id));
           }}
+        />
+      )}
+
+      {editPatientId && (
+        <PatientDialog
+          patientId={editPatientId}
+          onClose={() => setEditPatientId(null)}
+          onSaved={() => load(date)}
         />
       )}
 

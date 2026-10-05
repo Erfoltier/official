@@ -5,12 +5,14 @@ import type {
   Lane,
   Menu,
   Patient,
+  PatientChange,
+  PatientDetail,
   Reservation,
   ReservationStatus,
   ReminderStatus,
 } from "@/lib/domain/types";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
-import { clinicDateOf, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
+import { clinicDateOf, isDateString, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
 import { DEMO_CLINIC, buildDemoPatients, buildDemoReservations } from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
@@ -24,6 +26,7 @@ interface StoreState {
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
   patients: Map<string, Patient>;
+  patientHistory: Map<string, PatientChange[]>;
   reservations: Map<string, Reservation>;
   seededDates: Set<string>;
   seq: number;
@@ -38,6 +41,7 @@ function state(): StoreState {
       lanes: new Map(AIR_LANES.map((l) => [l.id, { ...l }])),
       menus: new Map(AIR_MENUS.map((m) => [m.id, { ...m, laneIds: [...m.laneIds] }])),
       patients: new Map(patients.map((p) => [p.id, p])),
+      patientHistory: new Map(),
       reservations: new Map(),
       seededDates: new Set(),
       seq: 0,
@@ -117,7 +121,12 @@ export function getSettings() {
  */
 export function searchPatients(query: string, limit = 20): Patient[] {
   const q = searchKey(query);
-  if (!q) return [];
+  if (!q) {
+    // 検索語がなければ、最近登録・更新した患者
+    return [...state().patients.values()]
+      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "") || b.chartNo.localeCompare(a.chartNo))
+      .slice(0, limit);
+  }
   const digits = query.replace(/\D/g, "");
   const out: Patient[] = [];
   for (const p of state().patients.values()) {
@@ -258,16 +267,22 @@ function normalizeIso(iso: string): string {
   return toIso(clinicDateOf(iso), minutesOfDay(iso));
 }
 
-// ---- 患者の登録 ----
+// ---- 患者の登録・編集 ----
 
-export interface CreatePatientInput {
-  name: string;
+export interface PatientInput {
+  name?: string;
   kana?: string;
   nameAlt?: string;
   phone?: string;
   email?: string;
   chartNo?: string;
+  birthDate?: string;
+  caution?: boolean;
+  cautionNote?: string;
+  memo?: string;
 }
+
+export type CreatePatientInput = PatientInput & { name: string };
 
 function checkText(label: string, value: string, max: number, required: boolean): string {
   const v = cleanName(value);
@@ -277,37 +292,156 @@ function checkText(label: string, value: string, max: number, required: boolean)
   return v;
 }
 
+/** 改行を許す長文（メモ等）の検査 */
+function checkNote(label: string, value: string, max: number): string {
+  const v = value.normalize("NFC").replace(/\r\n?/g, "\n").trim();
+  if (v.length > max) throw new StoreError("invalid", `${label}は${max}文字以内にしてください`);
+  if (hasForbiddenChars(v.replace(/\n/g, ""))) throw new StoreError("invalid", `${label}に使えない文字が含まれています`);
+  return v;
+}
+
+/** 入力を検査して、保存する値にそろえる。空文字は「未入力」として undefined にする */
+function patientFields(input: PatientInput, selfId: string | null): Partial<Patient> {
+  const st = state();
+  const out: Partial<Patient> = {};
+  const opt = (v: string) => (v ? v : undefined);
+  if (input.name !== undefined) out.name = checkText("氏名", input.name, 60, true);
+  if (input.kana !== undefined) out.kana = checkText("フリガナ", input.kana, 60, false);
+  if (input.nameAlt !== undefined) out.nameAlt = opt(checkText("別の表記", input.nameAlt, 60, false));
+  if (input.phone !== undefined) {
+    const phone = input.phone.normalize("NFKC").trim();
+    if (phone && !/^[0-9+\-() ]{6,20}$/.test(phone)) throw new StoreError("invalid", "電話番号の形式が正しくありません");
+    out.phone = opt(phone);
+  }
+  if (input.email !== undefined) {
+    const email = input.email.normalize("NFKC").trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new StoreError("invalid", "メールアドレスの形式が正しくありません");
+    }
+    out.email = opt(email);
+  }
+  if (input.chartNo !== undefined) {
+    const chartNo = input.chartNo.normalize("NFKC").trim();
+    if (!/^[A-Za-z0-9-]{1,20}$/.test(chartNo)) throw new StoreError("invalid", "診察券番号は英数字で入力してください");
+    for (const p of st.patients.values()) {
+      if (p.chartNo === chartNo && p.id !== selfId) throw new StoreError("invalid", "この診察券番号は既に使われています");
+    }
+    out.chartNo = chartNo;
+  }
+  if (input.birthDate !== undefined) {
+    const b = input.birthDate.trim();
+    if (b && (!isDateString(b) || b < "1900-01-01" || b > nowInClinic().date)) {
+      throw new StoreError("invalid", "生年月日が正しくありません");
+    }
+    out.birthDate = opt(b);
+  }
+  if (input.caution !== undefined) out.caution = input.caution || undefined;
+  if (input.cautionNote !== undefined) out.cautionNote = opt(checkNote("注意事項", input.cautionNote, 500));
+  if (input.memo !== undefined) out.memo = opt(checkNote("メモ", input.memo, 2000));
+  return out;
+}
+
+function nextChartNo(): string {
+  const used = [...state().patients.values()].map((p) => Number(p.chartNo)).filter(Number.isFinite);
+  return String(Math.max(10000, ...used) + 1);
+}
+
 export function createPatient(input: CreatePatientInput): Patient {
   const st = state();
-  const name = checkText("氏名", input.name, 60, true);
-  const kana = checkText("フリガナ", input.kana ?? "", 60, false);
-  const nameAlt = checkText("別表記", input.nameAlt ?? "", 60, false);
-  const phone = (input.phone ?? "").trim();
-  if (phone && !/^[0-9+\-() ]{6,20}$/.test(phone)) throw new StoreError("invalid", "電話番号の形式が正しくありません");
-  const email = (input.email ?? "").trim();
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new StoreError("invalid", "メールアドレスの形式が正しくありません");
-  }
-  let chartNo = (input.chartNo ?? "").trim();
-  const used = new Set([...st.patients.values()].map((p) => p.chartNo));
-  if (chartNo) {
-    if (!/^[A-Za-z0-9-]{1,20}$/.test(chartNo)) throw new StoreError("invalid", "診察券番号は英数字で入力してください");
-    if (used.has(chartNo)) throw new StoreError("invalid", "この診察券番号は既に使われています");
-  } else {
-    const max = Math.max(10000, ...[...used].map(Number).filter(Number.isFinite));
-    chartNo = String(max + 1);
-  }
-  const p: Patient = {
+  const chartNoGiven = (input.chartNo ?? "").trim() !== "";
+  const fields = patientFields({ kana: "", ...input, chartNo: chartNoGiven ? input.chartNo : undefined }, null);
+  const now = new Date().toISOString();
+  const p = dropUndefined({
     id: `p-new-${Date.now().toString(36)}-${++st.seq}`,
-    chartNo,
-    name,
-    kana,
-    ...(nameAlt && { nameAlt }),
-    ...(phone && { phone }),
-    ...(email && { email }),
-  };
+    chartNo: fields.chartNo ?? nextChartNo(),
+    name: fields.name!,
+    kana: fields.kana ?? "",
+    ...fields,
+    version: 1,
+    updatedAt: now,
+  } as Patient);
   st.patients.set(p.id, p);
+  st.patientHistory.set(p.id, [{ at: now, fields: ["新規登録"] }]);
   return p;
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  name: "氏名",
+  kana: "フリガナ",
+  nameAlt: "別の表記",
+  phone: "電話",
+  email: "メール",
+  chartNo: "診察券番号",
+  birthDate: "生年月日",
+  caution: "注意事項あり",
+  cautionNote: "注意事項",
+  memo: "メモ",
+  lineUserId: "LINE紐付け",
+};
+
+export function updatePatient(id: string, input: PatientInput & { version: number }): Patient {
+  const st = state();
+  const cur = st.patients.get(id);
+  if (!cur) throw new StoreError("not_found", "患者が見つかりません");
+  if (cur.version !== input.version) {
+    throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  }
+  const { version: _v, ...rest } = input;
+  void _v;
+  const fields = patientFields(rest, id);
+  const changed = (Object.keys(fields) as (keyof Patient)[]).filter((k) => (cur[k] ?? "") !== (fields[k] ?? ""));
+  if (changed.length === 0) return cur;
+  const now = new Date().toISOString();
+  const next = dropUndefined({ ...cur, ...fields, version: cur.version + 1, updatedAt: now });
+  st.patients.set(id, next);
+  recordChange(id, changed.map((k) => FIELD_LABEL[k] ?? k), now);
+  return next;
+}
+
+/** LINEの紐付けを解除する（誤った紐付けの訂正・本人の希望） */
+export function unlinkPatientLine(id: string, version: number): Patient {
+  const st = state();
+  const cur = st.patients.get(id);
+  if (!cur) throw new StoreError("not_found", "患者が見つかりません");
+  if (cur.version !== version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  if (!cur.lineUserId) return cur;
+  const now = new Date().toISOString();
+  const next = dropUndefined({ ...cur, lineUserId: undefined, version: cur.version + 1, updatedAt: now });
+  st.patients.set(id, next);
+  recordChange(id, ["LINE紐付けの解除"], now);
+  return next;
+}
+
+function recordChange(id: string, fields: string[], at: string) {
+  const st = state();
+  const list = st.patientHistory.get(id) ?? [];
+  list.unshift({ at, fields });
+  st.patientHistory.set(id, list.slice(0, 100));
+}
+
+function dropUndefined<T extends object>(o: T): T {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+}
+
+export function getPatientDetail(id: string): PatientDetail {
+  const st = state();
+  const patient = st.patients.get(id);
+  if (!patient) throw new StoreError("not_found", "患者が見つかりません");
+  const laneName = (lid: string) => st.lanes.get(lid)?.name ?? "";
+  const menuName = (mid: string) => st.menus.get(mid)?.name ?? "";
+  const reservations = [...st.reservations.values()]
+    .filter((r) => r.patientId === id)
+    .sort((a, b) => b.startAt.localeCompare(a.startAt))
+    .slice(0, 50)
+    .map((r) => ({
+      id: r.id,
+      startAt: r.startAt,
+      endAt: r.endAt,
+      status: r.status,
+      menuNames: r.menuIds.map(menuName),
+      laneName: laneName(r.laneId),
+    }));
+  return { patient, reservations, history: st.patientHistory.get(id) ?? [] };
 }
 
 // ---- レーンの設定 ----
