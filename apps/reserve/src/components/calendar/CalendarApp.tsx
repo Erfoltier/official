@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DayBundle, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
+import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
 import { addDays, formatDateJa, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
-import { ApiError, fetchDay, fetchMe, logout, patchReservation } from "./api";
+import { ApiError, fetchDay, fetchMe, logout, patchReservation, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
@@ -154,10 +154,33 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   };
 
   /** 院で決めた状態を選ぶ。段階（status）と変えた時刻も合わせて変わる */
-  const onStage = (r: Reservation, stageId: string) => {
+  const onStage = (r: Reservation, stageId: string, min?: number) => {
     const st = bundle?.stages.find((s) => s.id === stageId);
     if (!st) return;
-    save(r, { version: r.version, stageId }, { ...r, stageId, status: st.phase, stageAt: new Date().toISOString() });
+    const stageAt = min !== undefined ? toIso(date, min) : new Date().toISOString();
+    save(r, { version: r.version, stageId, ...(min !== undefined && { stageMin: min }) }, { ...r, stageId, status: st.phase, stageAt });
+  };
+
+  /** 状態はそのままで、変えた時刻だけ直す */
+  const onStageTime = (r: Reservation, min: number) => {
+    save(r, { version: r.version, stageMin: min }, { ...r, stageAt: toIso(date, min) });
+  };
+
+  /** 患者情報のメモ（患者画面のメモと同じ）を受付一覧から保存する */
+  const onPatientMemo = async (p: Patient, memo: string) => {
+    busyRef.current = true;
+    try {
+      const d = await updatePatient(p.id, { version: p.version, memo });
+      setBundle((b) => (b ? { ...b, patients: b.patients.map((x) => (x.id === p.id ? d.patient : x)) } : b));
+      showToast("メモを保存しました");
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "メモを保存できませんでした", "error");
+      if (err instanceof ApiError && err.status === 409) load(date);
+      return false;
+    } finally {
+      busyRef.current = false;
+    }
   };
 
   /** 自由入力の一言（状態とは別に出す。空で消す） */
@@ -386,6 +409,9 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               if (window.matchMedia("(max-width: 760px)").matches) setReceptionOpen(false);
             }}
             onClose={() => setReceptionOpen(false)}
+            onStage={onStage}
+            onStageTime={onStageTime}
+            onPatientMemo={onPatientMemo}
           />
         )}
         {bundle && (
@@ -412,7 +438,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             maskNames={maskNames}
             onClose={() => setSelectedId(null)}
             onStatus={(s) => onStatus(selected, s)}
-            onStage={(id) => onStage(selected, id)}
+            onStage={(id, min) => onStage(selected, id, min)}
+            onStageTime={(min) => onStageTime(selected, min)}
             onFreeNote={(text) => onFreeNote(selected, text)}
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}

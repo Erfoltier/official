@@ -38,6 +38,20 @@ describe("状態（院ごとに増減できる）", () => {
     expect(() => s.updateReservation(r.id, { version: r4.version, stageId: "stage-none" })).toThrow(/状態が見つかりません/);
   });
 
+  it("状態を変えた時刻を指定できる（省略すると今の時刻）。時刻だけの修正もできる", async () => {
+    const s = await store();
+    const p = s.createPatient({ name: "時刻 テスト" });
+    const d = addDays(nowInClinic().date, 1);
+    const r = s.createReservation({ patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(d, 600), endAt: toIso(d, 610) });
+    const r1 = s.updateReservation(r.id, { version: r.version, stageId: "stage-arrived", stageMin: 595 });
+    expect(r1.stageAt).toBe(toIso(d, 595));
+    expect(r1.status).toBe("arrived");
+    const r2 = s.updateReservation(r.id, { version: r1.version, stageMin: 602 });
+    expect(r2).toMatchObject({ stageId: "stage-arrived", stageAt: toIso(d, 602) });
+    const r3 = s.updateReservation(r.id, { version: r2.version, stageId: "stage-treat" });
+    expect(r3.stageAt).not.toBe(toIso(d, 602));
+  });
+
   it("状態を追加・名前と色の変更・並べ替え・非表示にできる（最低1つは表示）", async () => {
     const s = await store();
     const a = s.createStage({ label: "パッチ待ち", color: "#123456", phase: "arrived" });

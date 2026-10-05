@@ -299,6 +299,7 @@ final class Schema
             'requestId?' => fn($x) => $x === '' ? '' : V::requestId($x),
             'stageId?' => [V::class, 'id'],
             'stageText?' => fn($x) => V::str($x, 40),
+            'stageMin?' => fn($x) => V::int($x, 0, 1439),
         ]);
     }
 

@@ -790,6 +790,8 @@ export interface UpdateReservationInput {
   stageId?: string;
   /** 自由入力の状態の文字 */
   stageText?: string;
+  /** 状態を変えた時刻（予約日の0時からの分）。省略すると今の時刻 */
+  stageMin?: number;
 }
 
 export function updateReservation(id: string, input: UpdateReservationInput, by?: Actor): Reservation {
@@ -847,6 +849,10 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
     delete next.stageId;
     next.stageAt = new Date().toISOString();
   }
+  if (input.stageMin !== undefined) {
+    // 後から入力するとき用（例：「10:05 来院済」を10:20に記録）
+    next.stageAt = toIso(clinicDateOf(startAt), input.stageMin);
+  }
   st.reservations.set(id, next);
   if (by) {
     const what = [
@@ -854,6 +860,7 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
       input.laneId !== undefined && input.laneId !== cur.laneId ? "レーン" : null,
       input.stageId !== undefined ? `状態→${stageLabelOf(next)}` : input.status !== undefined ? `状態→${STATUS_LABEL[input.status]}` : null,
       input.stageText !== undefined ? "自由入力" : null,
+      input.stageMin !== undefined && input.stageId === undefined ? "状態の時刻" : null,
       input.menuIds !== undefined ? "メニュー" : null,
       input.memo !== undefined ? "メモ" : null,
       input.requestId !== undefined ? "予約申請ID" : null,

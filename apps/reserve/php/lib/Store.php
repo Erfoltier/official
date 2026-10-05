@@ -867,6 +867,10 @@ final class Store
             unset($next['stageId']);
             $next['stageAt'] = now_iso();
         }
+        if (isset($input['stageMin'])) {
+            // 後から入力するとき用（例：「10:05 来院済」を10:20に記録）
+            $next['stageAt'] = to_iso(clinic_date_of($next['startAt']), $input['stageMin']);
+        }
         self::putReservation($next);
         if ($by) {
             $what = array_filter([
@@ -874,6 +878,7 @@ final class Store
                 isset($input['laneId']) && $input['laneId'] !== $cur['laneId'] ? 'レーン' : null,
                 isset($input['stageId']) ? '状態→' . self::stageLabelOf($next) : (isset($input['status']) ? '状態→' . self::STATUS_LABEL[$input['status']] : null),
                 isset($input['stageText']) ? '自由入力' : null,
+                isset($input['stageMin']) && !isset($input['stageId']) ? '状態の時刻' : null,
                 isset($input['menuIds']) ? 'メニュー' : null,
                 isset($input['memo']) ? 'メモ' : null,
                 isset($input['requestId']) ? '予約申請ID' : null,

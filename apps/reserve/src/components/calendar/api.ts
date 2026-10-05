@@ -46,6 +46,8 @@ export function patchReservation(
   id: string,
   body: Partial<Pick<Reservation, "laneId" | "startAt" | "endAt" | "status" | "memo" | "menuIds" | "requestId" | "stageId" | "stageText">> & {
     version: number;
+    /** 状態を変えた時刻（その日の0時からの分）。省略すると今の時刻 */
+    stageMin?: number;
   },
 ): Promise<Reservation> {
   return call(`/api/v1/reservations/${encodeURIComponent(id)}`, {

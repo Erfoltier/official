@@ -8,6 +8,7 @@ import { FileThumbs } from "@/components/files/FileThumbs";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { stageOf } from "./stages";
+import { StageTimeInput, parseHm } from "./StageTime";
 import { addDays, formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
 import { displayName } from "./names";
 import styles from "./calendar.module.css";
@@ -26,7 +27,9 @@ interface Props {
   onClose: () => void;
   onStatus: (s: ReservationStatus) => void;
   /** 院で決めた状態を選ぶ */
-  onStage: (stageId: string) => void;
+  onStage: (stageId: string, min?: number) => void;
+  /** 状態はそのままで、変えた時刻だけ直す */
+  onStageTime: (min: number) => void;
   /** 自由入力の一言（空で消す）。状態とは別に出す */
   onFreeNote: (text: string) => void;
   onMemo: (memo: string) => void;
@@ -38,7 +41,7 @@ interface Props {
   canManage?: boolean;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onFreeNote, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onStageTime, onFreeNote, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
@@ -48,6 +51,9 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const sv = stageOf(r, bundle.stages);
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
+  /** 状態を変えた時刻（空欄なら押した時刻） */
+  const [stageTime, setStageTime] = useState("");
+  const stageMin = parseHm(stageTime);
   const [files, setFiles] = useState<PatientFile[] | null>(null);
   useEffect(() => {
     let alive = true;
@@ -278,7 +284,22 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       )}
 
       <div className={styles.panelSection}>
-        <div className={styles.sectionLabel}>状態</div>
+        <div className={styles.stageHead}>
+          <div className={styles.sectionLabel}>状態</div>
+          <StageTimeInput className={styles.stageTime} value={stageTime} onChange={setStageTime} />
+          {stageMin !== undefined && sv.stage && r.stageAt && !INACTIVE_STATUSES.has(r.status) && (
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => {
+                onStageTime(stageMin);
+                setStageTime("");
+              }}
+            >
+              時刻だけ直す
+            </button>
+          )}
+        </div>
         <div className={styles.stageGrid}>
           {bundle.stages
             .filter((s) => !s.free && !s.deleted && (s.active || s.id === sv.stage?.id))
@@ -292,7 +313,10 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                   style={{ "--sc": s.color } as CSSProperties}
                   data-active={on || undefined}
                   aria-pressed={on}
-                  onClick={() => onStage(s.id)}
+                  onClick={() => {
+                    onStage(s.id, stageMin);
+                    setStageTime("");
+                  }}
                 >
                   {s.label}
                   {on && sv.at && <small className={styles.stageBtnAt}>{sv.at}〜</small>}
