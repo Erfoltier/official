@@ -247,9 +247,9 @@ try {
             $in = Http::readJson();
             Http::json($kind === 'lanes' ? Store::updateLane($id, Schema::lane($in), $actor($s)) : Store::updateMenu($id, Schema::menu($in), $actor($s)));
         }
-        if ($method === 'DELETE' && $n === 2 && $kind === 'lanes') {
+        if ($method === 'DELETE' && $n === 2) {
             $s = $me(STAFF_MANAGE);
-            Store::deleteLane(V::id($p[1]), $actor($s));
+            $kind === 'lanes' ? Store::deleteLane(V::id($p[1]), $actor($s)) : Store::deleteMenu(V::id($p[1]), $actor($s));
             Http::noContent();
         }
     }

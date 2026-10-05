@@ -1454,12 +1454,22 @@ export function createMenu(input: MenuInput, by?: Actor): Menu {
 export function updateMenu(id: string, input: MenuInput, by?: Actor): Menu {
   const st = state();
   const cur = st.menus.get(id);
-  if (!cur) throw new StoreError("not_found", "メニューが見つかりません");
+  if (!cur || cur.deleted) throw new StoreError("not_found", "メニューが見つかりません");
   const next = validateMenu({ ...cur, ...input, id: cur.id, order: cur.order });
   st.menus.set(id, next);
   if (by) audit(by, "メニューを変更", id);
   snapshotSettings();
   return next;
+}
+
+/** メニューの削除：予約の選択肢・設定の一覧から消す（過去の予約・見積の表示のため記録は残す） */
+export function deleteMenu(id: string, by?: Actor): void {
+  const st = state();
+  const cur = st.menus.get(id);
+  if (!cur || cur.deleted) throw new StoreError("not_found", "メニューが見つかりません");
+  st.menus.set(id, { ...cur, active: false, deleted: true });
+  if (by) audit(by, "メニューを削除", id);
+  snapshotSettings();
 }
 
 function reorderMenusImpl(ids: string[], by?: Actor): Menu[] {

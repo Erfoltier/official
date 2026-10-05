@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Lane, Menu } from "@/lib/domain/types";
 import { searchKey } from "@/lib/domain/text";
-import { ApiError, deleteLane, fetchMe, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
+import { ApiError, deleteLane, deleteMenu, fetchMe, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab } from "./ClinicTab";
@@ -333,24 +333,37 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
   const laneName = useMemo(() => new Map(data.lanes.map((l) => [l.id, l.shortName])), [data.lanes]);
 
   const q = searchKey(query);
-  const filtered = data.menus.filter(
-    (m) => (showInactive || m.active) && (!q || searchKey(`${m.name}${m.abbr}`).includes(q)),
-  );
+  /** 削除したメニューは出さない（過去の予約の表示のために記録だけ残っている） */
+  const live = data.menus.filter((m) => !m.deleted);
+  const filtered = live.filter((m) => (showInactive || m.active) && (!q || searchKey(`${m.name}${m.abbr}`).includes(q)));
 
   const doReorder = async (id: string, d: number) => {
-    const i = data.menus.findIndex((m) => m.id === id);
+    const i = live.findIndex((m) => m.id === id);
     try {
-      await reorder("menus", move(data.menus, i, d));
+      await reorder("menus", [...move(live, i, d), ...data.menus.filter((m) => m.deleted).map((m) => m.id)]);
       await onChanged();
     } catch (err) {
       fail(err);
     }
   };
 
+  const doDelete = async (m: Menu) => {
+    if (!window.confirm(`「${m.name}」を削除しますか？\n予約登録の選択肢から消えます（これまでの予約の表示はそのまま残ります）`)) return false;
+    try {
+      await deleteMenu(m.id);
+      await onChanged();
+      notify("メニューを削除しました");
+      return true;
+    } catch (err) {
+      fail(err);
+      return false;
+    }
+  };
+
   return (
     <section>
       <p className={styles.lead}>
-        予約登録で選ぶメニューです。Airリザーブのメニュー設定（35件）を取り込んであります。略称は予約表の短い枠に、色は枠の色に使います。
+        予約登録で選ぶメニューです。「＋ 新しいメニュー」で追加、行を押して変更、「削除」で消せます（削除しても、これまでの予約の表示はそのまま残ります）。略称は予約表の短い枠に、色は枠の色に使います。
       </p>
       <div className={styles.toolbar}>
         <input
@@ -380,6 +393,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
               <th>料金（税込）</th>
               <th>レーン</th>
               <th>予約の選択肢</th>
+              <th aria-label="削除" />
             </tr>
           </thead>
           <tbody>
@@ -389,7 +403,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
                   <button
                     className={styles.arrow}
                     onClick={() => doReorder(m.id, -1)}
-                    disabled={!!q || m.order === 0}
+                    disabled={!!q || live[0]?.id === m.id}
                     aria-label="上へ"
                   >
                     ▲
@@ -397,7 +411,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
                   <button
                     className={styles.arrow}
                     onClick={() => doReorder(m.id, 1)}
-                    disabled={!!q || m.order === data.menus.length - 1}
+                    disabled={!!q || live[live.length - 1]?.id === m.id}
                     aria-label="下へ"
                   >
                     ▼
@@ -417,6 +431,11 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
                   {m.laneIds.length === 0 ? "すべて" : m.laneIds.map((id) => laneName.get(id) ?? "?").join("・")}
                 </td>
                 <td>{m.active ? "出す" : "出さない"}</td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <button className={styles.btn} onClick={() => doDelete(m)} aria-label={`${m.name}を削除`}>
+                    削除
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -428,6 +447,13 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
           menu={editing === "new" ? null : editing}
           lanes={data.lanes}
           onClose={() => setEditing(null)}
+          onDelete={
+            editing === "new"
+              ? undefined
+              : async () => {
+                  if (await doDelete(editing)) setEditing(null);
+                }
+          }
           onSaved={async () => {
             setEditing(null);
             await onChanged();

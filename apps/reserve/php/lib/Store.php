@@ -1705,7 +1705,7 @@ final class Store
     public static function updateMenu(string $id, array $input, ?array $by = null): array
     {
         $cur = self::menus()[$id] ?? null;
-        if (!$cur) {
+        if (!$cur || !empty($cur['deleted'])) {
             throw new StoreError('not_found', 'メニューが見つかりません');
         }
         $next = self::validateMenu([...$cur, ...$input, 'id' => $cur['id'], 'order' => $cur['order']]);
@@ -1715,6 +1715,20 @@ final class Store
             Auth::audit($by, 'メニューを変更', $id);
         }
         return $next;
+    }
+
+    /** メニューの削除：予約の選択肢・設定の一覧から消す（過去の予約・見積の表示のため記録は残す） */
+    public static function deleteMenu(string $id, ?array $by = null): void
+    {
+        $cur = self::menus()[$id] ?? null;
+        if (!$cur || !empty($cur['deleted'])) {
+            throw new StoreError('not_found', 'メニューが見つかりません');
+        }
+        self::putMenu([...$cur, 'active' => false, 'deleted' => true]);
+        self::snapshotSettings();
+        if ($by) {
+            Auth::audit($by, 'メニューを削除', $id);
+        }
     }
 
     public static function reorderMenus(array $ids, ?array $by = null): array

@@ -199,6 +199,10 @@ export function mergePatients(body: { keepId: string; dupId: string; keepVersion
   return call(`/api/v1/patients/merge`, { method: "POST", body: JSON.stringify(body) });
 }
 
+export async function deleteMenu(id: string): Promise<void> {
+  await call(`/api/v1/menus/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export async function deleteLane(id: string): Promise<void> {
   await call(`/api/v1/lanes/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

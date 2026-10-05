@@ -53,6 +53,8 @@ export interface Menu {
   order: number;
   /** false なら予約登録の選択肢に出さない（過去の予約の表示には使う） */
   active: boolean;
+  /** 削除した（設定の一覧から消える。過去の予約の表示のため記録は残す） */
+  deleted?: boolean;
 }
 
 /** メニューの所要時間の候補（分） */

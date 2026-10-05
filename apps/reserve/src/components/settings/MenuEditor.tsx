@@ -13,10 +13,12 @@ interface Props {
   lanes: Lane[];
   onClose: () => void;
   onSaved: () => void;
+  /** 既存のメニューの削除（新しいメニューのときはなし） */
+  onDelete?: () => void;
   fail: (err: unknown) => void;
 }
 
-export function MenuEditor({ menu, lanes, onClose, onSaved, fail }: Props) {
+export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState(menu?.name ?? "");
   const [abbr, setAbbr] = useState(menu?.abbr ?? "");
@@ -198,6 +200,11 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, fail }: Props) {
         </div>
 
         <div className={styles.actions}>
+          {onDelete && (
+            <button type="button" className={styles.btn} onClick={onDelete} style={{ marginRight: "auto", color: "var(--danger)" }}>
+              このメニューを削除
+            </button>
+          )}
           <button type="button" className={styles.btn} onClick={onClose}>
             やめる
           </button>
