@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ConsentTemplate, Menu } from "@/lib/domain/types";
-import { fetchConsentSource, fetchConsentTemplates, saveConsentSource, saveConsentTemplateMenus } from "@/components/calendar/api";
+import type { Menu } from "@/lib/domain/types";
+import { fetchConsentSource, saveConsentSource, saveConsentTemplateMenus } from "@/components/calendar/api";
+import { useConsentTemplates } from "@/components/consents/consentCache";
 import styles from "./settings.module.css";
 
 const stamp = (iso?: string | null) =>
@@ -22,7 +23,8 @@ export function ConsentsTab({
   notify: (t: string) => void;
   fail: (e: unknown) => void;
 }) {
-  const [data, setData] = useState<{ items: ConsentTemplate[]; receivedAt: string | null; live: boolean; source: boolean } | null>(null);
+  // 前回の内容をすぐ出し、ドライブの最新はあとから確かめる
+  const { data, checking, error, reload } = useConsentTemplates();
   const [src, setSrc] = useState<{ url: string; hasKey: boolean } | null>(null);
   const [srcUrl, setSrcUrl] = useState("");
   const [srcKey, setSrcKey] = useState("");
@@ -30,9 +32,11 @@ export function ConsentsTab({
   const [sel, setSel] = useState<string[]>([]);
   const menuName = (id: string) => menus.find((m) => m.id === id)?.name ?? "（削除されたメニュー）";
 
+  useEffect(() => {
+    if (error) fail(error);
+  }, [error, fail]);
   const load = useCallback(async () => {
     try {
-      setData(await fetchConsentTemplates());
       if (isAdmin) {
         const s = await fetchConsentSource();
         setSrc(s);
@@ -55,10 +59,12 @@ export function ConsentsTab({
         同意書を開く・発行するたびに、ドライブから<b>その時の最新の文面</b>を読み込んで印刷します（ドライブで直せば次から反映。発行済みの控えは発行時の文面のまま）。
         患者の名前などは Google に送らず、このソフトの中で差し込みます。「令和　年　月　日　患者氏名」の行に日付と署名が入ります。
       </p>
-      <p className={styles.hint} data-invalid={(data.source && !data.live) || !data.source || undefined}>
+      <p className={styles.hint} data-invalid={(data.source && !data.live && !checking) || !data.source || undefined}>
         {!data.source
           ? "読み込み元（ドライブのウェブアプリ）がまだ設定されていません。下で設定するまでは、送られてきた文面を使います。"
-          : data.live
+          : checking
+            ? `前回読み込んだ内容です（${data.items.length}件）。ドライブの最新を確認しています…`
+            : data.live
             ? `✓ ドライブとつながっています（${data.items.length}件）`
             : "⚠ ドライブにつながりませんでした。前回読み込んだ文面を使っています。"}
       </p>
@@ -88,6 +94,7 @@ export function ConsentsTab({
                   await saveConsentSource({ url: srcUrl, ...(srcKey && { key: srcKey }) });
                   setSrcKey("");
                   await load();
+                  await reload();
                   notify("読み込み元を保存しました");
                 } catch (err) {
                   fail(err);
@@ -135,7 +142,7 @@ export function ConsentsTab({
                           try {
                             await saveConsentTemplateMenus(t.id, sel);
                             setEditing(null);
-                            await load();
+                            await reload();
                             notify("保存しました");
                           } catch (err) {
                             fail(err);

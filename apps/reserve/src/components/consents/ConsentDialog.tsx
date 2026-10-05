@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClinicSettings, ConsentRecord, ConsentTemplate, Patient } from "@/lib/domain/types";
 import { nowInClinic } from "@/lib/domain/time";
 import { searchKey } from "@/lib/domain/text";
-import { ApiError, consentPrintUrl, createConsent, fetchConsentTemplate, fetchConsentTemplates, fetchSettings } from "@/components/calendar/api";
+import { ApiError, consentPrintUrl, createConsent, fetchSettings } from "@/components/calendar/api";
+import { loadConsentDoc, useConsentTemplates } from "./consentCache";
 import { ConsentDocument } from "./ConsentDocument";
 import { SignaturePad } from "./SignaturePad";
 import styles from "./consents.module.css";
@@ -20,10 +21,12 @@ interface Props {
 /** 同意書を選ぶ → 患者情報を差し込んだ本文を確かめる → この端末で署名 or 紙に署名する用に印刷 */
 export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [templates, setTemplates] = useState<ConsentTemplate[] | null>(null);
+  // 一覧は前回の内容をすぐ出し、ドライブの最新はあとから確かめる
+  const { data: list } = useConsentTemplates();
+  const templates = list?.items ?? null;
   const [clinic, setClinic] = useState<ClinicSettings | null>(null);
   const [q, setQ] = useState("");
-  const [picked, setPicked] = useState<{ t: ConsentTemplate; html: string; stale?: boolean; modifiedTime: string } | null>(null);
+  const [picked, setPicked] = useState<{ t: ConsentTemplate; html: string; stale?: boolean; modifiedTime: string; checking?: boolean; updated?: boolean } | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [treatment, setTreatment] = useState(reservation?.menuNames.join("、") ?? "");
   const [signing, setSigning] = useState(false);
@@ -38,10 +41,6 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
   }, []);
 
   useEffect(() => {
-    fetchConsentTemplates().then(
-      (r) => setTemplates(r.items),
-      () => setTemplates([]),
-    );
     fetchSettings().then((s) => setClinic(s.clinic), () => {});
   }, []);
 
@@ -53,19 +52,27 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
     return { matched, rest: list.filter((t) => !matched.includes(t)) };
   }, [templates, q, reservation]);
 
-  /** 選んだときに、ドライブから最新の文面を読み込む */
+  /** 選んだときに、前回の文面をすぐ出し、ドライブから最新の文面を読み込んで違っていれば差し替える */
   const pick = async (t: ConsentTemplate) => {
     setError(null);
     setLoading(t.id);
+    let shown = false;
     try {
-      const full = await fetchConsentTemplate(t.id);
-      if (!full.html) {
+      const { doc, changed } = await loadConsentDoc(t.id, (quick) => {
+        shown = true;
+        setLoading(null);
+        setPicked({ t, html: quick.html, stale: quick.stale, modifiedTime: quick.modifiedTime, checking: true });
+      });
+      if (!doc.html) {
         setError("ドライブから同意書を読み込めませんでした。少し待ってからもう一度選んでください");
-        return;
+        if (!shown) return;
       }
-      setPicked({ t, html: full.html, stale: full.stale, modifiedTime: full.modifiedTime });
+      setPicked((cur) =>
+        cur && cur.t.id !== t.id ? cur : { t, html: doc.html, stale: doc.stale, modifiedTime: doc.modifiedTime, checking: false, updated: changed },
+      );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "同意書を読み込めませんでした");
+      if (shown) setPicked((cur) => (cur && cur.t.id === t.id ? { ...cur, checking: false, stale: true } : cur));
+      else setError(err instanceof ApiError ? err.message : "同意書を読み込めませんでした");
     } finally {
       setLoading(null);
     }
@@ -155,9 +162,11 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
             </label>
           </div>
           <p className={styles.version} data-stale={picked.stale || undefined}>
-            {picked.stale
-              ? `⚠ ドライブから最新を読み込めなかったため、前回読み込んだ文面（${picked.modifiedTime.slice(0, 10)} 更新）です`
-              : `Google ドライブの最新の文面です（${new Date(picked.modifiedTime).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} 更新）`}
+            {picked.checking
+              ? "前回読み込んだ文面です。ドライブの最新を確認しています…"
+              : picked.stale
+                ? `⚠ ドライブから最新を読み込めなかったため、前回読み込んだ文面（${picked.modifiedTime.slice(0, 10)} 更新）です`
+                : `${picked.updated ? "ドライブで直された最新の文面に差し替えました" : "Google ドライブの最新の文面です"}（${new Date(picked.modifiedTime).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} 更新）`}
           </p>
           <div className={styles.preview} data-signing={signing || undefined}>
             {clinic && <ConsentDocument html={picked.html} patient={patient} clinic={clinic} date={date} treatment={treatment || undefined} />}

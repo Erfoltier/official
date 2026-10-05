@@ -620,3 +620,29 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* タブ：文字は折り返さず、入りきらないときはボタンごと次の行へ */
+.tabs {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  margin-left: 0;
+  gap: 6px;
+}
+
+.tabs button {
+  flex: none;
+  height: auto;
+  min-height: 34px;
+  padding: 6px 14px;
+  white-space: nowrap;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .tabs button {
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+}

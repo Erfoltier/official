@@ -426,12 +426,15 @@ export async function deletePriceItem(id: string): Promise<void> {
 
 // ---- 同意書 ----
 
-export function fetchConsentTemplates(): Promise<{ items: ConsentTemplate[]; receivedAt: string | null; live: boolean; source: boolean }> {
-  return call(`/api/v1/consent-templates`);
+export type ConsentTemplateList = { items: ConsentTemplate[]; receivedAt: string | null; live: boolean; source: boolean };
+
+/** cached: ドライブを見に行かずに、前回の内容をすぐ受け取る */
+export function fetchConsentTemplates(opts: { cached?: boolean } = {}): Promise<ConsentTemplateList> {
+  return call(`/api/v1/consent-templates${opts.cached ? "?cached=1" : ""}`);
 }
 
-export function fetchConsentTemplate(id: string): Promise<ConsentTemplateWithHtml & { stale?: boolean }> {
-  return call(`/api/v1/consent-templates/${encodeURIComponent(id)}`);
+export function fetchConsentTemplate(id: string, opts: { cached?: boolean } = {}): Promise<ConsentTemplateWithHtml & { stale?: boolean }> {
+  return call(`/api/v1/consent-templates/${encodeURIComponent(id)}${opts.cached ? "?cached=1" : ""}`);
 }
 
 export function saveConsentTemplateMenus(id: string, menuIds: string[]): Promise<ConsentTemplate> {

@@ -14,6 +14,7 @@ import { decodeText, docxToHtml, parseCsv, parseXlsx, toCsv, type Table } from "
 import { MENU_TEMPLATE, PRICE_TEMPLATE, PRODUCT_TEMPLATE, menuRowsFromTable, priceRowsFromTable, type MenuImportRow, type PriceImportRow } from "@/lib/domain/importMap";
 import { IMPORT_SHEET_PREFIX } from "@/lib/domain/estimateDiscount";
 import { searchKey } from "@/lib/domain/text";
+import { invalidateConsentTemplates } from "@/components/consents/consentCache";
 import styles from "./settings.module.css";
 
 interface Props {
@@ -358,7 +359,7 @@ function ConsentImport({ notify, fail }: Props) {
   const [uploaded, setUploaded] = useState<ConsentTemplate[]>([]);
   const [busy, setBusy] = useState(false);
   const load = useCallback(() => {
-    fetchConsentTemplates().then((r) => setUploaded(r.items.filter((t) => t.driveId.startsWith("upload-"))), () => {});
+    fetchConsentTemplates({ cached: true }).then((r) => setUploaded(r.items.filter((t) => t.driveId.startsWith("upload-"))), () => {});
   }, []);
   useEffect(() => {
     load();
@@ -393,6 +394,7 @@ function ConsentImport({ notify, fail }: Props) {
               try {
                 const r = await importConsentTemplates(docs);
                 notify(`同意書を${r.count}件取り込みました`);
+                invalidateConsentTemplates();
                 setDocs(null);
                 load();
               } catch (e) {
@@ -421,6 +423,7 @@ function ConsentImport({ notify, fail }: Props) {
                       if (!window.confirm(`「${t.title}」を削除しますか？（発行済みの控えはそのまま残ります）`)) return;
                       try {
                         await deleteConsentTemplate(t.id);
+                        invalidateConsentTemplates();
                         notify("削除しました");
                         load();
                       } catch (e) {

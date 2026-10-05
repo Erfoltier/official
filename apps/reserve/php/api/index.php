@@ -288,12 +288,13 @@ try {
     if ($p[0] === 'consent-templates') {
         if ($method === 'GET' && $n === 1) {
             $me();
-            $live = Store::refreshConsentList();
+            // ?cached=1 なら、ドライブを見に行かずに前回の内容をすぐ返す
+            $live = $q('cached') === '1' ? false : Store::refreshConsentList();
             Http::json(['items' => Store::listConsentTemplates(), 'receivedAt' => Store::consentTemplatesReceivedAt(), 'live' => $live, 'source' => Store::consentSourceInfo()['url'] !== '']);
         }
         if ($method === 'GET' && $n === 2) {
             $me();
-            Http::json(Store::loadConsentTemplate(V::id($p[1])));
+            Http::json($q('cached') === '1' ? Store::getConsentTemplate(V::id($p[1])) : Store::loadConsentTemplate(V::id($p[1])));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'menus') {
             $s = $manager();
