@@ -65,8 +65,7 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
       data-conflict={props.conflict || undefined}
       data-faded={props.faded || undefined}
       data-ghost={props.ghost || undefined}
-      data-narrow={cols > 2 || undefined}
-      data-stack={(cols > 2 && h >= 26) || undefined}
+      data-stack={h >= 26 || undefined}
       onPointerDown={(e) => props.onPointerDown?.(e, "move")}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
