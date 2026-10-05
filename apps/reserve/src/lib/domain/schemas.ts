@@ -88,3 +88,11 @@ export const menuSchema = z
 
 export const reorderSchema = z.object({ ids: z.array(id).min(1).max(500) }).strict();
 export const idParam = id;
+
+export const visitNoteSchema = z
+  .object({
+    note: z.string().max(8000),
+    skincare: z.array(z.string().max(120)).max(30),
+    version: z.number().int().min(0),
+  })
+  .strict();

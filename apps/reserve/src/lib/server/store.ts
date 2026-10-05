@@ -8,13 +8,24 @@ import type {
   PatientChange,
   PatientDetail,
   Reservation,
+  VisitNote,
+  VisitRow,
   ReservationStatus,
   ReminderStatus,
 } from "@/lib/domain/types";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
-import { clinicDateOf, isDateString, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
+import { addDays, clinicDateOf, formatDateJa, isDateString, minutesOfDay, nowInClinic, toIso, weekdayOf } from "@/lib/domain/time";
 import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
-import { DEMO_CLINIC, buildDemoPatients, buildDemoReservations } from "@/lib/demo/seed";
+import {
+  DEFAULT_SKINCARE_CATALOG,
+  DEMO_CLINIC,
+  buildDemoPatients,
+  buildDemoReservations,
+  demoHash,
+  demoNextSkincare,
+  demoRandom,
+  demoVisitNote,
+} from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 
 /**
@@ -27,6 +38,9 @@ interface StoreState {
   menus: Map<string, Menu>;
   patients: Map<string, Patient>;
   patientHistory: Map<string, PatientChange[]>;
+  /** キー: `${patientId}|${date}` */
+  visitNotes: Map<string, VisitNote>;
+  historySeeded: boolean;
   reservations: Map<string, Reservation>;
   seededDates: Set<string>;
   seq: number;
@@ -42,6 +56,8 @@ function state(): StoreState {
       menus: new Map(AIR_MENUS.map((m) => [m.id, { ...m, laneIds: [...m.laneIds] }])),
       patients: new Map(patients.map((p) => [p.id, p])),
       patientHistory: new Map(),
+      visitNotes: new Map(),
+      historySeeded: false,
       reservations: new Map(),
       seededDates: new Set(),
       seq: 0,
@@ -423,25 +439,137 @@ function dropUndefined<T extends object>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 }
 
+const noteKey = (patientId: string, date: string) => `${patientId}|${date}`;
+
+/**
+ * デモ用：施術歴が見えるよう、過去26週と今後8週の水曜日（美容の診療日）の予約を作り、
+ * 過去の来院に架空のメモとスキンケアを付ける。
+ */
+function ensureHistorySeeded(): void {
+  const st = state();
+  if (st.historySeeded) return;
+  st.historySeeded = true;
+  const today = nowInClinic().date;
+  const dates: string[] = [];
+  for (let d = addDays(today, -182); d <= addDays(today, 56); d = addDays(d, 1)) {
+    if (weekdayOf(d) === 3) dates.push(d);
+  }
+  dates.forEach(ensureSeeded);
+
+  const menuName = (id: string) => st.menus.get(id)?.name ?? "";
+  const skincareNow = new Map<string, string[]>();
+  const byPatientDate = new Map<string, Reservation[]>();
+  for (const r of st.reservations.values()) {
+    const date = clinicDateOf(r.startAt);
+    if (date >= today || INACTIVE_STATUSES.has(r.status)) continue;
+    const k = noteKey(r.patientId, date);
+    byPatientDate.set(k, [...(byPatientDate.get(k) ?? []), r]);
+  }
+  const at = new Date().toISOString();
+  for (const k of [...byPatientDate.keys()].sort((a, b) => a.split("|")[1].localeCompare(b.split("|")[1]))) {
+    const [patientId, date] = k.split("|");
+    const rnd = demoRandom(demoHash(k));
+    if (rnd() < 0.3) continue; // 記録のない日もある
+    const prev = skincareNow.get(patientId) ?? [];
+    const skincare = rnd() < 0.6 ? demoNextSkincare(prev, rnd) : prev;
+    skincareNow.set(patientId, skincare);
+    const menus = byPatientDate.get(k)!.flatMap((r) => r.menuIds.map(menuName));
+    st.visitNotes.set(k, { patientId, date, note: demoVisitNote(menus, rnd), skincare, version: 1, updatedAt: at });
+  }
+}
+
+function reservationSummary(r: Reservation): VisitRow["reservations"][number] {
+  const st = state();
+  return {
+    id: r.id,
+    startAt: r.startAt,
+    endAt: r.endAt,
+    status: r.status,
+    menuNames: r.menuIds.map((mid) => st.menus.get(mid)?.name ?? ""),
+    laneName: st.lanes.get(r.laneId)?.name ?? "",
+    ...(r.memo && { memo: r.memo }),
+  };
+}
+
 export function getPatientDetail(id: string): PatientDetail {
+  ensureHistorySeeded();
   const st = state();
   const patient = st.patients.get(id);
   if (!patient) throw new StoreError("not_found", "患者が見つかりません");
-  const laneName = (lid: string) => st.lanes.get(lid)?.name ?? "";
-  const menuName = (mid: string) => st.menus.get(mid)?.name ?? "";
-  const reservations = [...st.reservations.values()]
+  const today = nowInClinic().date;
+
+  const mine = [...st.reservations.values()]
     .filter((r) => r.patientId === id)
-    .sort((a, b) => b.startAt.localeCompare(a.startAt))
-    .slice(0, 50)
-    .map((r) => ({
-      id: r.id,
-      startAt: r.startAt,
-      endAt: r.endAt,
-      status: r.status,
-      menuNames: r.menuIds.map(menuName),
-      laneName: laneName(r.laneId),
-    }));
-  return { patient, reservations, history: st.patientHistory.get(id) ?? [] };
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+
+  const rows = new Map<string, VisitRow>();
+  const row = (date: string) => {
+    let v = rows.get(date);
+    if (!v) {
+      v = { date, reservations: [], note: "", skincare: [], noteVersion: 0 };
+      rows.set(date, v);
+    }
+    return v;
+  };
+  for (const r of mine) {
+    const date = clinicDateOf(r.startAt);
+    if (date <= today) row(date).reservations.push(reservationSummary(r));
+  }
+  for (const n of st.visitNotes.values()) {
+    if (n.patientId !== id) continue;
+    Object.assign(row(n.date), {
+      note: n.note,
+      skincare: n.skincare,
+      noteVersion: n.version,
+      noteUpdatedAt: n.updatedAt,
+    });
+  }
+  const visits = [...rows.values()].sort((a, b) => b.date.localeCompare(a.date));
+  const upcoming = mine.filter((r) => clinicDateOf(r.startAt) > today).map(reservationSummary);
+
+  const used = new Set<string>();
+  for (const v of visits) v.skincare.forEach((x) => used.add(x));
+  const skincareSuggestions = [...used, ...DEFAULT_SKINCARE_CATALOG.filter((x) => !used.has(x))];
+
+  return { patient, visits, upcoming, skincareSuggestions, history: st.patientHistory.get(id) ?? [] };
+}
+
+export interface VisitNoteInput {
+  note: string;
+  skincare: string[];
+  /** 画面が持っている版。新しく書く日は 0 */
+  version: number;
+}
+
+/** 来院日ごとの記録（簡易カルテ・スキンケア）を保存する */
+export function saveVisitNote(patientId: string, date: string, input: VisitNoteInput): VisitNote | null {
+  ensureHistorySeeded();
+  const st = state();
+  if (!st.patients.has(patientId)) throw new StoreError("not_found", "患者が見つかりません");
+  if (!isDateString(date) || date > nowInClinic().date) {
+    throw new StoreError("invalid", "記録できるのは今日までの日付です");
+  }
+  const key = noteKey(patientId, date);
+  const cur = st.visitNotes.get(key);
+  if ((cur?.version ?? 0) !== input.version) {
+    throw new StoreError("version_conflict", "他の端末で先にこの日の記録が更新されました。画面を開き直してください");
+  }
+  const note = checkNote("メモ", input.note, 4000);
+  const skincare = [...new Set(input.skincare.map((x) => checkText("スキンケア", x, 60, false)).filter(Boolean))];
+  if (skincare.length > 20) throw new StoreError("invalid", "スキンケアは20件までです");
+  const at = new Date().toISOString();
+  const label = `施術メモ・スキンケア（${formatDateJa(date)}）`;
+  if (!note && skincare.length === 0) {
+    if (cur) {
+      st.visitNotes.delete(key);
+      recordChange(patientId, [`${label}の削除`], at);
+    }
+    return null;
+  }
+  const next: VisitNote = { patientId, date, note, skincare, version: (cur?.version ?? 0) + 1, updatedAt: at };
+  st.visitNotes.set(key, next);
+  recordChange(patientId, [label], at);
+  return next;
 }
 
 // ---- レーンの設定 ----

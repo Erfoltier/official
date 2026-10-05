@@ -112,3 +112,14 @@ export function unlinkLine(id: string, version: number): Promise<PatientDetail> 
     body: JSON.stringify({ version }),
   });
 }
+
+export function saveVisit(
+  patientId: string,
+  date: string,
+  body: { note: string; skincare: string[]; version: number },
+): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/visits/${encodeURIComponent(date)}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}

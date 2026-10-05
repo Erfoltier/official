@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PatientDetail } from "@/lib/domain/types";
-import { STATUS_LABEL } from "@/lib/domain/types";
-import { formatDateJa, formatHm, minutesOfDay, clinicDateOf, nowInClinic } from "@/lib/domain/time";
-import { ApiError, fetchPatient, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
+import { nowInClinic } from "@/lib/domain/time";
+import { ApiError, fetchPatient, saveVisit, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
+import { UpcomingTable, VisitTable, type VisitSave } from "./VisitTable";
 import styles from "./patients.module.css";
 
 interface Props {
@@ -117,6 +117,19 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
     }
   };
 
+  const saveVisitRow = async (date: string, body: VisitSave): Promise<boolean> => {
+    setError(null);
+    try {
+      setDetail(await saveVisit(patientId, date, body));
+      setNotice("施術歴の記録を保存しました");
+      window.setTimeout(() => setNotice(null), 3000);
+      return true;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "保存できませんでした");
+      return false;
+    }
+  };
+
   if (!detail || !form) {
     return <div className={styles.loading}>{error ?? "読み込み中…"}</div>;
   }
@@ -124,17 +137,9 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
   const p = detail.patient;
   const age = ageOf(form.birthDate);
   const today = nowInClinic().date;
-  const upcoming = detail.reservations.filter((r) => clinicDateOf(r.startAt) >= today).reverse();
-  const past = detail.reservations.filter((r) => clinicDateOf(r.startAt) < today);
 
   return (
-    <form
-      className={styles.editor}
-      onSubmit={(e) => {
-        e.preventDefault();
-        save();
-      }}
-    >
+    <div className={styles.editor}>
       <div className={styles.editorHead}>
         <div>
           <div className={styles.title}>
@@ -142,9 +147,18 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             {p.name}
           </div>
           <div className={styles.sub}>
-            診察券 {p.chartNo}
-            {p.updatedAt && `・最終更新 ${formatDateTime(p.updatedAt)}`}
+            {[
+              p.kana,
+              p.nameAlt,
+              `診察券 ${p.chartNo}`,
+              ageOf(p.birthDate ?? "") !== null ? `${ageOf(p.birthDate ?? "")}歳` : null,
+              p.phone,
+            ]
+              .filter(Boolean)
+              .join("・")}
+            {p.lineUserId && <span className={styles.lineBadge}>LINE</span>}
           </div>
+          {p.caution && p.cautionNote && <div className={styles.cautionBox}>注意：{p.cautionNote}</div>}
         </div>
         {onClose && (
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="閉じる">
@@ -165,7 +179,25 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       {error && !conflict && <div className={styles.alert}>{error}</div>}
       {notice && <div className={styles.notice} role="status">{notice}</div>}
 
-      <fieldset className={styles.section}>
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>施術歴・メモ・スキンケア</h2>
+        <VisitTable visits={detail.visits} suggestions={detail.skincareSuggestions} onSave={saveVisitRow} />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>今後の予約</h2>
+        <UpcomingTable items={detail.upcoming} />
+      </section>
+
+      <details className={styles.section} open={dirty || undefined}>
+        <summary className={styles.sectionTitle}>基本情報・注意事項を編集</summary>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+      <fieldset className={styles.subSection}>
         <legend>基本情報</legend>
         <div className={styles.grid2}>
           <Field label="氏名（必須）" hint="漢字・ひらがな・カタカナ・ローマ字を混ぜて入力できます" changed={changedKeys.includes("name")}>
@@ -198,7 +230,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         </div>
       </fieldset>
 
-      <fieldset className={styles.section}>
+      <fieldset className={styles.subSection}>
         <legend>注意事項・メモ</legend>
         <label className={styles.check}>
           <input type="checkbox" checked={form.caution} onChange={(e) => set("caution", e.target.checked)} />
@@ -212,7 +244,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         </Field>
       </fieldset>
 
-      <fieldset className={styles.section}>
+      <fieldset className={styles.subSection}>
         <legend>LINE</legend>
         {p.lineUserId ? (
           <div className={styles.lineRow}>
@@ -238,15 +270,11 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         </button>
       </div>
 
-      <fieldset className={styles.section}>
-        <legend>予約</legend>
-        {detail.reservations.length === 0 && <p className={styles.muted}>予約はありません</p>}
-        {upcoming.length > 0 && <ReservationList title="今後の予約" items={upcoming} />}
-        {past.length > 0 && <ReservationList title="これまでの予約" items={past.slice(0, 20)} />}
-      </fieldset>
+      </form>
+      </details>
 
-      <fieldset className={styles.section}>
-        <legend>変更履歴</legend>
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>変更履歴</h2>
         {detail.history.length === 0 ? (
           <p className={styles.muted}>この画面での変更はまだありません</p>
         ) : (
@@ -259,8 +287,8 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             ))}
           </ul>
         )}
-      </fieldset>
-    </form>
+      </section>
+    </div>
   );
 }
 
@@ -277,28 +305,5 @@ function Field(props: { label: string; hint?: string; changed?: boolean; childre
       {props.children}
       {props.hint && <span className={styles.hint}>{props.hint}</span>}
     </label>
-  );
-}
-
-function ReservationList({ title, items }: { title: string; items: PatientDetail["reservations"] }) {
-  return (
-    <div className={styles.resBlock}>
-      <div className={styles.label}>{title}</div>
-      <ul className={styles.resList}>
-        {items.map((r) => {
-          const date = clinicDateOf(r.startAt);
-          return (
-            <li key={r.id} data-status={r.status}>
-              <a href={`/?date=${date}`}>
-                {formatDateJa(date)} {formatHm(minutesOfDay(r.startAt))}
-              </a>
-              <span>{r.menuNames.join("、")}</span>
-              <span className={styles.muted}>{r.laneName}</span>
-              <span className={styles.status}>{STATUS_LABEL[r.status]}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }

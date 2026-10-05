@@ -147,3 +147,49 @@ export function buildDemoReservations(
   }
   return out;
 }
+
+/** スキンケア入力の候補（院でよく扱うもの）。将来は院ごとの設定にする */
+export const DEFAULT_SKINCARE_CATALOG = [
+  "ゼオスキン ミラミン",
+  "ゼオスキン ミラクトン",
+  "ゼオスキン デイリーPD",
+  "ゼオスキン バランサートナー",
+  "ゼオスキン エクスフォリエーティングクレンザー",
+  "トレチノイン 0.025%",
+  "ハイドロキノン 4%",
+  "ビタミンC美容液",
+  "保湿クリーム（セラミド）",
+  "日焼け止め SPF50+",
+  "トラネキサム酸 内服",
+];
+
+const NOTE_TEMPLATES: { match: RegExp; notes: string[] }[] = [
+  { match: /脱毛/, notes: ["出力前回同様。照射後の赤み軽度", "VIO含む。痛み強めのため出力1段階下げ", "毛量減ってきた。次回6〜8週後"] },
+  { match: /ボトックス|BTX/, notes: ["眉間・額 計20単位", "目尻のみ。前回効き弱めとのこと", "2週間後に効き具合を確認"] },
+  { match: /ヒアル/, notes: ["ほうれい線 0.5cc。内出血なし", "唇 0.3cc。腫れの説明済み"] },
+  { match: /ハイフ|HIFU/, notes: ["全顔 300ショット。頬下部やや痛み", "フェイスライン重点。次回3か月後"] },
+  { match: /ピール/, notes: ["ピーリング後の乾燥に注意と説明", "皮むけ軽度。ゼオ開始希望"] },
+  { match: /シミ|色素/, notes: ["頬のシミ3か所照射。テープ保護の説明", "前回照射部位の色素沈着なし"] },
+  { match: /ゼオ|初診/, notes: ["ゼオスキン導入の説明。反応期の説明済み", "カウンセリングのみ。次回施術予約"] },
+];
+
+/** デモ用の来院記録（架空の文章） */
+export function demoVisitNote(menuNames: string[], rnd: () => number): string {
+  const joined = menuNames.join(" ");
+  const t = NOTE_TEMPLATES.find((x) => x.match.test(joined));
+  const base = t ? t.notes[Math.floor(rnd() * t.notes.length)] : "経過良好";
+  return rnd() < 0.3 ? `${base}\n次回の予約を受付で取得済み` : base;
+}
+
+/** デモ用のスキンケアの変化：前回の内容を引き継ぎ、ときどき追加・中止する */
+export function demoNextSkincare(prev: string[], rnd: () => number): string[] {
+  let next = [...prev];
+  if (next.length === 0 || rnd() < 0.25) {
+    const add = DEFAULT_SKINCARE_CATALOG[Math.floor(rnd() * DEFAULT_SKINCARE_CATALOG.length)];
+    if (!next.includes(add)) next.push(add);
+  }
+  if (next.length > 2 && rnd() < 0.15) next = next.filter((_, i) => i !== Math.floor(rnd() * next.length));
+  return next.slice(0, 5);
+}
+
+export { mulberry32 as demoRandom, hashString as demoHash };

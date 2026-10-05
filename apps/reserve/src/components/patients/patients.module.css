@@ -350,3 +350,283 @@
     grid-template-columns: 1fr auto;
   }
 }
+
+/* ===== 患者画面：セクション ===== */
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+details.section > summary.sectionTitle {
+  cursor: pointer;
+  margin: 0;
+  padding: 2px 0;
+  color: var(--accent);
+}
+
+details.section[open] > summary.sectionTitle {
+  margin-bottom: 8px;
+}
+
+.subSection {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  margin: 6px 0;
+}
+
+.subSection legend {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.cautionBox {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: #fdecec;
+  color: #9b1c1c;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.sub .lineBadge {
+  margin-left: 6px;
+}
+
+/* ===== 施術歴・今後の予約の表 ===== */
+.tableTools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.visitTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.visitTable th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.visitTable td {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.visitTable tr[data-today] td {
+  background: #f3f8ff;
+}
+
+.visitTable tr[data-inactive] td {
+  color: var(--text-faint);
+}
+
+.colDate {
+  width: 8.6em;
+}
+
+.colMenu {
+  width: 24%;
+}
+
+.colSkin {
+  width: 24%;
+}
+
+.colAct {
+  width: 4.5em;
+  text-align: right;
+}
+
+.dateLink {
+  color: var(--accent);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.todayChip {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.resLine + .resLine {
+  margin-top: 4px;
+}
+
+.resLine[data-inactive] {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.resMemo {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.noteText {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #fdf2f8;
+  border: 1px solid #f5c2dc;
+  color: #831843;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.chip button {
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0 0 0 4px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.smallBtn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.smallBtn:disabled {
+  opacity: 0.45;
+}
+
+.moreBtn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  height: 34px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.inlineForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.inlineForm .input {
+  width: auto;
+  flex: 1 1 220px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.editRow td {
+  background: #fffbf2;
+  border-bottom: 2px solid #f2c48a;
+}
+
+.editHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.editActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.editActions .muted {
+  margin-right: auto;
+}
+
+/* スマホでは表を1日ずつのカードにする */
+@media (max-width: 640px) {
+  .visitTable,
+  .visitTable tbody,
+  .visitTable tr,
+  .visitTable td {
+    display: block;
+    width: 100%;
+  }
+  .visitTable thead {
+    display: none;
+  }
+  .visitTable tr {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 4px 0;
+  }
+  .visitTable td {
+    border-bottom: none;
+    padding: 4px 10px;
+  }
+  .visitTable td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .visitTable td.colDate::before {
+    display: none;
+  }
+  .visitTable td.colDate {
+    font-weight: 700;
+  }
+  .colAct {
+    text-align: left;
+  }
+}

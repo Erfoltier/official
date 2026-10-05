@@ -102,11 +102,51 @@ export interface PatientChange {
   fields: string[];
 }
 
-/** 患者の編集画面に渡すデータ */
+/**
+ * 来院日ごとの記録（簡易カルテ）。1患者・1日につき1件。
+ * 予約がない日にも自由に書ける。
+ */
+export interface VisitNote {
+  patientId: PatientId;
+  /** YYYY-MM-DD（日本時間） */
+  date: string;
+  /** 自由記載のメモ（施術の様子・出力・反応・次回の方針など） */
+  note: string;
+  /** その日の時点で使っているスキンケアアイテム */
+  skincare: string[];
+  version: number;
+  updatedAt: string;
+}
+
+/** 施術歴の1行（1日分） */
+export interface VisitRow {
+  date: string;
+  /** その日の予約（キャンセル含む） */
+  reservations: {
+    id: string;
+    startAt: string;
+    endAt: string;
+    status: ReservationStatus;
+    menuNames: string[];
+    laneName: string;
+    memo?: string;
+  }[];
+  note: string;
+  skincare: string[];
+  /** 記録がまだない日は 0 */
+  noteVersion: number;
+  noteUpdatedAt?: string;
+}
+
+/** 患者の画面に渡すデータ */
 export interface PatientDetail {
   patient: Patient;
-  /** 予約履歴（新しい順、キャンセル含む） */
-  reservations: { id: string; startAt: string; endAt: string; status: ReservationStatus; menuNames: string[]; laneName: string }[];
+  /** 今日までの施術歴（新しい順）。予約のある日と、記録だけある日 */
+  visits: VisitRow[];
+  /** 明日以降の予約（近い順） */
+  upcoming: VisitRow["reservations"];
+  /** スキンケア入力の候補（この患者が使ったことのあるもの → 院でよく使うもの） */
+  skincareSuggestions: string[];
   history: PatientChange[];
 }
 
