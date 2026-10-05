@@ -94,6 +94,8 @@ final class Store
                 $db->setMeta('productsSeeded', true);
             });
         }
+        // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
+        self::ensureBaseline();
     }
 
     /** 院の設定（院名・診療時間・刻み）。画面から変更したものがあればそれを使う */
@@ -121,6 +123,7 @@ final class Store
             throw new StoreError('invalid', '閉院時間は開院時間の1時間以上あとにしてください');
         }
         Db::i()->setMeta('clinic', $next);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, '院の設定（診療時間など）を変更');
         }
@@ -172,14 +175,28 @@ final class Store
 
     private static function sortedProducts(): array
     {
-        return self::byOrder(self::products());
+        return self::byOrder(array_filter(self::products(), fn($p) => empty($p['deleted'])));
+    }
+
+    /** プリセットを削除する（施術歴の記録は名前で残っているので、そのまま表示される） */
+    public static function deleteProduct(string $id, ?array $by = null): void
+    {
+        $cur = self::products()[$id] ?? null;
+        if (!$cur || !empty($cur['deleted'])) {
+            throw new StoreError('not_found', 'プリセットが見つかりません');
+        }
+        self::putProduct([...$cur, 'active' => false, 'deleted' => true]);
+        self::snapshotSettings();
+        if ($by) {
+            Auth::audit($by, 'スキンケア・内服のプリセットを削除', $id);
+        }
     }
 
     private static function validateProduct(array $p): array
     {
         $name = self::checkText('名前', $p['name'], 60, true);
         foreach (self::products() as $o) {
-            if ($o['id'] !== $p['id'] && search_key($o['name']) === search_key($name)) {
+            if ($o['id'] !== $p['id'] && empty($o['deleted']) && search_key($o['name']) === search_key($name)) {
                 throw new StoreError('invalid', '同じ名前のプリセットがあります');
             }
         }
@@ -191,7 +208,7 @@ final class Store
 
     public static function createProduct(array $input, ?array $by = null): array
     {
-        if (count(self::products()) >= 500) {
+        if (count(self::sortedProducts()) >= 500) {
             throw new StoreError('invalid', '登録できる数を超えています');
         }
         $p = self::validateProduct([
@@ -203,6 +220,7 @@ final class Store
             'active' => $input['active'] ?? true,
         ]);
         self::putProduct($p);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, 'スキンケア・内服のプリセットを追加', $p['id']);
         }
@@ -212,11 +230,12 @@ final class Store
     public static function updateProduct(string $id, array $input, ?array $by = null): array
     {
         $cur = self::products()[$id] ?? null;
-        if (!$cur) {
+        if (!$cur || !empty($cur['deleted'])) {
             throw new StoreError('not_found', 'プリセットが見つかりません');
         }
         $next = self::validateProduct([...$cur, ...$input, 'id' => $cur['id'], 'order' => $cur['order']]);
         self::putProduct($next);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, 'スキンケア・内服のプリセットを変更', $id);
         }
@@ -226,15 +245,193 @@ final class Store
     public static function reorderProducts(array $ids, ?array $by = null): array
     {
         return Db::i()->transaction(function () use ($ids, $by) {
-            $items = self::products();
+            $items = array_column(self::sortedProducts(), null, 'id');
             self::checkOrder($ids, $items);
             foreach ($ids as $i => $id) {
                 self::putProduct([...$items[$id], 'order' => $i]);
             }
+            self::snapshotSettings();
             if ($by) {
                 Auth::audit($by, 'スキンケア・内服のプリセットを並べ替え');
             }
             return self::sortedProducts();
+        });
+    }
+
+    // ---- 設定のバックアップ（自動）と復元 ----
+
+    public const RESTORE_POINTS = [
+        ['key' => '1d', 'label' => '1日前', 'days' => 1],
+        ['key' => '1w', 'label' => '1週間前', 'days' => 7],
+        ['key' => '1m', 'label' => '1か月前', 'days' => 30],
+        ['key' => '3m', 'label' => '3か月前', 'days' => 91],
+        ['key' => '6m', 'label' => '6か月前', 'days' => 182],
+        ['key' => '1y', 'label' => '1年前', 'days' => 365],
+    ];
+
+    private static function settingsData(): array
+    {
+        return [
+            'clinic' => self::clinic(),
+            'lanes' => array_values(self::lanes()),
+            'menus' => array_values(self::menus()),
+            'stages' => array_values(self::stages()),
+            'products' => array_values(self::products()),
+        ];
+    }
+
+    private static function snapshots(): array
+    {
+        $list = array_values(Db::i()->all('settingsSnapshot'));
+        usort($list, fn($a, $b) => strcmp($a['at'], $b['at']));
+        return $list;
+    }
+
+    /** 記録がなければ、今の設定を「記録を始めた時点」として残す */
+    private static function ensureBaseline(): void
+    {
+        if (Db::i()->count('settingsSnapshot') === 0) {
+            Db::i()->put('settingsSnapshot', 'snap-baseline', ['id' => 'snap-baseline', 'at' => now_iso(), 'baseline' => true, 'data' => self::settingsData()]);
+        }
+    }
+
+    /** 設定を変えたあとに、その時点の設定一式を保存する（1分以内は1つにまとめ、8日より前は1日1つ、400日より前は消す） */
+    private static function snapshotSettings(): void
+    {
+        $db = Db::i();
+        $now = (int) floor(microtime(true) * 1000);
+        $list = self::snapshots();
+        $last = end($list) ?: null;
+        if ($last && empty($last['baseline']) && $now - parse_ms($last['at']) < 60_000) {
+            $db->delete('settingsSnapshot', $last['id']);
+        }
+        $id = 'snap-' . base_convert((string) $now, 10, 36);
+        $db->put('settingsSnapshot', $id, ['id' => $id, 'at' => now_iso(), 'data' => self::settingsData()]);
+        $keepAll = $now - 8 * 86_400_000;
+        $drop = $now - 400 * 86_400_000;
+        $byDay = [];
+        foreach (self::snapshots() as $s) {
+            if (!empty($s['baseline'])) {
+                continue;
+            }
+            $t = parse_ms($s['at']);
+            if ($t < $drop) {
+                $db->delete('settingsSnapshot', $s['id']);
+            } elseif ($t < $keepAll) {
+                $day = clinic_date_of($s['at']);
+                if (isset($byDay[$day])) {
+                    $db->delete('settingsSnapshot', $byDay[$day]);
+                }
+                $byDay[$day] = $s['id'];
+            }
+        }
+    }
+
+    private static function snapshotAt(int $t): ?array
+    {
+        $found = null;
+        $list = self::snapshots();
+        foreach ($list as $s) {
+            if (!empty($s['baseline']) || parse_ms($s['at']) <= $t) {
+                $found = $s;
+            }
+        }
+        return $found ?? ($list[0] ?? null);
+    }
+
+    private static function summarize(array $d): array
+    {
+        $hm = fn(int $m) => intdiv($m, 60) . ':' . str_pad((string) ($m % 60), 2, '0', STR_PAD_LEFT);
+        return [
+            'clinic' => "{$d['clinic']['name']} " . $hm($d['clinic']['dayStartMin']) . '〜' . $hm($d['clinic']['dayEndMin']),
+            'lanes' => count(array_filter($d['lanes'], fn($x) => $x['active'])),
+            'menus' => count(array_filter($d['menus'], fn($x) => $x['active'])),
+            'stages' => count(array_filter($d['stages'], fn($x) => empty($x['deleted']) && $x['active'])),
+            'products' => count(array_filter($d['products'], fn($x) => empty($x['deleted']) && $x['active'])),
+        ];
+    }
+
+    public static function listRestorePoints(): array
+    {
+        self::ensureBaseline();
+        $now = (int) floor(microtime(true) * 1000);
+        $points = [];
+        foreach (self::RESTORE_POINTS as $p) {
+            $t = $now - $p['days'] * 86_400_000;
+            $snap = self::snapshotAt($t);
+            $points[] = [
+                'key' => $p['key'],
+                'label' => $p['label'],
+                'at' => $snap && empty($snap['baseline']) ? $snap['at'] : null,
+                'available' => (bool) $snap,
+                'oldest' => $snap && (!empty($snap['baseline']) || parse_ms($snap['at']) > $t),
+                'summary' => $snap ? self::summarize($snap['data']) : null,
+            ];
+        }
+        return ['current' => self::summarize(self::settingsData()), 'points' => $points];
+    }
+
+    /** 設定（診療時間・レーン・メニュー・状態・スキンケア＆内服）を、指定した時点の状態に戻す */
+    public static function restoreSettings(string $key, ?array $by = null): void
+    {
+        self::ensureBaseline();
+        Db::i()->transaction(function () use ($key, $by) {
+            $point = null;
+            foreach (self::RESTORE_POINTS as $p) {
+                if ($p['key'] === $key) {
+                    $point = $p;
+                }
+            }
+            if (!$point) {
+                throw new StoreError('invalid', '戻す時点の指定が正しくありません');
+            }
+            $snap = self::snapshotAt((int) floor(microtime(true) * 1000) - $point['days'] * 86_400_000);
+            if (!$snap) {
+                throw new StoreError('invalid', '戻せる設定の記録がありません');
+            }
+            $d = $snap['data'];
+            Db::i()->setMeta('clinic', $d['clinic']);
+            // その時点にあったものはその内容に戻す。あとから作ったものは消さずに隠す（予約・記録が参照しているため）
+            $ids = array_column($d['lanes'], 'id');
+            foreach ($d['lanes'] as $x) {
+                self::putLane($x);
+            }
+            foreach (self::lanes() as $x) {
+                if (!in_array($x['id'], $ids, true) && $x['active']) {
+                    self::putLane([...$x, 'active' => false]);
+                }
+            }
+            $ids = array_column($d['menus'], 'id');
+            foreach ($d['menus'] as $x) {
+                self::putMenu($x);
+            }
+            foreach (self::menus() as $x) {
+                if (!in_array($x['id'], $ids, true) && $x['active']) {
+                    self::putMenu([...$x, 'active' => false]);
+                }
+            }
+            $ids = array_column($d['stages'], 'id');
+            foreach ($d['stages'] as $x) {
+                self::putStage($x);
+            }
+            foreach (self::stages() as $x) {
+                if (!in_array($x['id'], $ids, true) && empty($x['deleted'])) {
+                    self::putStage([...$x, 'active' => false, 'deleted' => true]);
+                }
+            }
+            $ids = array_column($d['products'], 'id');
+            foreach ($d['products'] as $x) {
+                self::putProduct($x);
+            }
+            foreach (self::products() as $x) {
+                if (!in_array($x['id'], $ids, true) && empty($x['deleted'])) {
+                    self::putProduct([...$x, 'active' => false, 'deleted' => true]);
+                }
+            }
+            if ($by) {
+                Auth::audit($by, "設定を{$point['label']}の状態に戻した");
+            }
+            self::snapshotSettings();
         });
     }
 
@@ -261,6 +458,35 @@ final class Store
         return self::byOrder(self::stages());
     }
 
+    /** 設定画面に出す状態（削除したものを除く） */
+    private static function liveStages(): array
+    {
+        return array_values(array_filter(self::sortedStages(), fn($s) => empty($s['deleted'])));
+    }
+
+    /**
+     * 状態を削除する。過去にその状態を付けた予約の表示のため、記録は「削除済み」として残し、
+     * 設定画面と予約の詳細のボタンからは消える。「予約」は基本の状態なので削除できない
+     */
+    public static function deleteStage(string $id, ?array $by = null): void
+    {
+        $cur = self::stages()[$id] ?? null;
+        if (!$cur || !empty($cur['deleted'])) {
+            throw new StoreError('not_found', '状態が見つかりません');
+        }
+        if ($id === 'stage-booked') {
+            throw new StoreError('invalid', '「予約」は基本の状態なので削除できません（使わない場合は非表示にしてください）');
+        }
+        if ($cur['active'] && count(array_filter(self::liveStages(), fn($x) => $x['active'])) <= 1) {
+            throw new StoreError('invalid', '表示する状態は1つ以上必要です');
+        }
+        self::putStage([...$cur, 'active' => false, 'deleted' => true]);
+        self::snapshotSettings();
+        if ($by) {
+            Auth::audit($by, '状態を削除', $id);
+        }
+    }
+
     /** 予約の状態の表示名（自由入力ならその文字。キャンセルはそのまま） */
     public static function stageLabelOf(array $r): string
     {
@@ -280,7 +506,7 @@ final class Store
     {
         $label = self::checkText('状態の名前', $s['label'], 12, true);
         foreach (self::stages() as $o) {
-            if ($o['id'] !== $s['id'] && $o['label'] === $label) {
+            if ($o['id'] !== $s['id'] && empty($o['deleted']) && $o['label'] === $label) {
                 throw new StoreError('invalid', '同じ名前の状態があります');
             }
         }
@@ -292,7 +518,7 @@ final class Store
 
     public static function createStage(array $input, ?array $by = null): array
     {
-        if (count(self::stages()) >= 60) {
+        if (count(self::liveStages()) >= 60) {
             throw new StoreError('invalid', '登録できる数を超えています');
         }
         $s = self::validateStage([
@@ -305,6 +531,7 @@ final class Store
             'active' => $input['active'] ?? true,
         ]);
         self::putStage($s);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, '状態を追加', $s['id']);
         }
@@ -314,14 +541,15 @@ final class Store
     public static function updateStage(string $id, array $input, ?array $by = null): array
     {
         $cur = self::stages()[$id] ?? null;
-        if (!$cur) {
+        if (!$cur || !empty($cur['deleted'])) {
             throw new StoreError('not_found', '状態が見つかりません');
         }
         $next = self::validateStage([...$cur, ...$input, 'id' => $cur['id'], 'order' => $cur['order']]);
-        if ($cur['active'] && !$next['active'] && count(array_filter(self::stages(), fn($x) => $x['active'])) <= 1) {
+        if ($cur['active'] && !$next['active'] && count(array_filter(self::liveStages(), fn($x) => $x['active'])) <= 1) {
             throw new StoreError('invalid', '表示する状態は1つ以上必要です');
         }
         self::putStage($next);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, '状態を変更', $id);
         }
@@ -331,15 +559,16 @@ final class Store
     public static function reorderStages(array $ids, ?array $by = null): array
     {
         return Db::i()->transaction(function () use ($ids, $by) {
-            $items = self::stages();
+            $items = array_column(self::liveStages(), null, 'id');
             self::checkOrder($ids, $items);
             foreach ($ids as $i => $id) {
                 self::putStage([...$items[$id], 'order' => $i]);
             }
+            self::snapshotSettings();
             if ($by) {
                 Auth::audit($by, '状態を並べ替え');
             }
-            return self::sortedStages();
+            return self::liveStages();
         });
     }
 
@@ -372,7 +601,7 @@ final class Store
     private static function byOrder(array $items): array
     {
         $items = array_values($items);
-        usort($items, fn($a, $b) => $a['order'] <=> $b['order']);
+        usort($items, fn($a, $b) => ($a['order'] <=> $b['order']) ?: strcmp((string) $a['id'], (string) $b['id']));
         return $items;
     }
 
@@ -457,7 +686,7 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::sortedStages()];
+        return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
@@ -614,7 +843,7 @@ final class Store
         }
         if (isset($input['stageId'])) {
             $stage = self::stages()[$input['stageId']] ?? null;
-            if (!$stage || (!$stage['active'] && $stage['id'] !== ($cur['stageId'] ?? null))) {
+            if (!$stage || !empty($stage['deleted']) || (!$stage['active'] && $stage['id'] !== ($cur['stageId'] ?? null))) {
                 throw new StoreError('invalid', '状態が見つかりません');
             }
             if ($stage['free']) {
@@ -1239,6 +1468,7 @@ final class Store
             'active' => true,
         ];
         self::putLane($lane);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, 'レーンを追加', $lane['id']);
         }
@@ -1275,6 +1505,7 @@ final class Store
             $next['active'] = $input['active'];
         }
         self::putLane($next);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, 'レーンを変更', $id);
         }
@@ -1308,6 +1539,7 @@ final class Store
             foreach (self::sortedLanes() as $i => $l) {
                 self::putLane([...$l, 'order' => $i]);
             }
+            self::snapshotSettings();
             if ($by) {
                 Auth::audit($by, 'レーンを削除', $id);
             }
@@ -1322,6 +1554,7 @@ final class Store
             foreach ($ids as $i => $id) {
                 self::putLane([...$lanes[$id], 'order' => $i]);
             }
+            self::snapshotSettings();
             if ($by) {
                 Auth::audit($by, 'レーンを並べ替え');
             }
@@ -1396,6 +1629,7 @@ final class Store
             'active' => $input['active'] ?? true,
         ]);
         self::putMenu($menu);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, 'メニューを追加', $menu['id']);
         }
@@ -1410,6 +1644,7 @@ final class Store
         }
         $next = self::validateMenu([...$cur, ...$input, 'id' => $cur['id'], 'order' => $cur['order']]);
         self::putMenu($next);
+        self::snapshotSettings();
         if ($by) {
             Auth::audit($by, 'メニューを変更', $id);
         }
@@ -1424,6 +1659,7 @@ final class Store
             foreach ($ids as $i => $id) {
                 self::putMenu([...$menus[$id], 'order' => $i]);
             }
+            self::snapshotSettings();
             if ($by) {
                 Auth::audit($by, 'メニューを並べ替え');
             }

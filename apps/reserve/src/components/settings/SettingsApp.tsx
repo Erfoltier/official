@@ -10,11 +10,12 @@ import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab } from "./ClinicTab";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
+import { RestoreTab } from "./RestoreTab";
 import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-type Tab = "lanes" | "menus" | "stages" | "products" | "clinic" | "staff" | "audit";
+type Tab = "lanes" | "menus" | "stages" | "products" | "clinic" | "staff" | "audit" | "restore";
 
 const MIN_LANES = 1;
 const MAX_LANES = 30;
@@ -85,6 +86,9 @@ export function SettingsApp() {
               <button role="tab" aria-selected={tab === "audit"} onClick={() => setTab("audit")}>
                 操作ログ
               </button>
+              <button role="tab" aria-selected={tab === "restore"} onClick={() => setTab("restore")}>
+                設定の復元
+              </button>
             </>
           )}
         </nav>
@@ -103,6 +107,8 @@ export function SettingsApp() {
         <StaffTab notify={notify} fail={fail} />
       ) : tab === "audit" && isAdmin ? (
         <AuditTab fail={fail} />
+      ) : tab === "restore" && isAdmin ? (
+        <RestoreTab onChanged={load} notify={notify} fail={fail} />
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : tab === "stages" ? (

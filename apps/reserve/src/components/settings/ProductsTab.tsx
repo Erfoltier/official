@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Product, ProductCategory } from "@/lib/domain/types";
 import { PRODUCT_CATEGORY_LABEL } from "@/lib/domain/types";
-import { reorder, saveProduct } from "@/components/calendar/api";
+import { deleteProduct, reorder, saveProduct } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 const yen = (n: number | null) => (n === null ? "" : String(n));
@@ -55,7 +55,8 @@ export function ProductsTab({
     <section>
       <p className={styles.lead}>
         患者画面の施術歴で、タップするだけで追加できるスキンケア・内服の一覧です。価格（税込）も入れておけます。
-        使わなくなったものは「表示」を外すと候補から消えます（過去の記録は残ります）。
+        しばらく使わないものは「候補に出す」を外すと隠れ（あとで戻せます）、不要になったものは「削除」できます。
+        どちらも、施術歴に記録した内容はそのまま残ります。
       </p>
       <table className={styles.table}>
         <thead>
@@ -64,7 +65,8 @@ export function ProductsTab({
             <th>名前</th>
             <th>種類</th>
             <th>価格（円）</th>
-            <th>表示</th>
+            <th>候補に出す</th>
+            <th />
             <th />
           </tr>
         </thead>
@@ -79,6 +81,10 @@ export function ProductsTab({
               onUp={() => move(i, -1)}
               onDown={() => move(i, 1)}
               onSave={(body) => run(() => saveProduct(p.id, body), "保存しました")}
+              onDelete={() => {
+                if (!window.confirm(`「${p.name}」を削除しますか？\n（施術歴に記録した内容はそのまま残ります）`)) return;
+                run(() => deleteProduct(p.id), "削除しました");
+              }}
             />
           ))}
           {canEdit && (
@@ -96,6 +102,7 @@ export function ProductsTab({
               <td>
                 <input className={styles.input} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" placeholder="例：12100" aria-label="新しい価格" aria-invalid={priceVal === undefined || undefined} />
               </td>
+              <td />
               <td />
               <td>
                 <button
@@ -128,6 +135,7 @@ function ProductRow(props: {
   onUp: () => void;
   onDown: () => void;
   onSave: (body: Partial<Pick<Product, "name" | "category" | "priceYen" | "active">>) => void;
+  onDelete: () => void;
 }) {
   const { product: p, canEdit } = props;
   const [name, setName] = useState(p.name);
@@ -175,13 +183,20 @@ function ProductRow(props: {
       <td>
         <label className={styles.toggle}>
           <input type="checkbox" checked={p.active} disabled={!canEdit} onChange={(e) => props.onSave({ active: e.target.checked })} />
-          {p.active ? "表示" : "非表示"}
+          {p.active ? "出す" : "しばらく出さない"}
         </label>
       </td>
       <td>
         {canEdit && (
           <button className={styles.btn} disabled={!dirty || !name.trim() || priceVal === undefined} onClick={() => props.onSave({ name, category, priceYen: priceVal ?? null })}>
             保存
+          </button>
+        )}
+      </td>
+      <td>
+        {canEdit && (
+          <button className={styles.btn} onClick={props.onDelete}>
+            削除
           </button>
         )}
       </td>

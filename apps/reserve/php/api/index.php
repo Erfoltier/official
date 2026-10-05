@@ -96,6 +96,16 @@ try {
         $s = $me(STAFF_MANAGE);
         Http::json(Store::updateClinic(Schema::clinic(Http::readJson()), $actor($s)));
     }
+    if ($route === 'GET settings/restore') {
+        $me(STAFF_ADMIN);
+        Http::json(Store::listRestorePoints());
+    }
+    if ($route === 'POST settings/restore') {
+        $s = $me(STAFF_ADMIN);
+        $key = V::shape(Http::readJson(), ['key' => fn($x) => V::enum($x, ['1d', '1w', '1m', '3m', '6m', '1y'])])['key'];
+        Store::restoreSettings($key, $actor($s));
+        Http::json(Store::listRestorePoints());
+    }
     if ($route === 'GET settings') {
         $me();
         Http::json(Store::getSettings());
@@ -245,6 +255,12 @@ try {
             $id = V::id($p[1]);
             Http::json(Store::updateStage($id, Schema::stage(Http::readJson()), $actor($s)));
         }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Store::deleteStage($id, $actor($s));
+            Http::json(['id' => $id, 'deleted' => true]);
+        }
     }
 
     // ---- スキンケア・内服のプリセット（院長・管理者と受付） ----
@@ -261,6 +277,12 @@ try {
             $s = $me(STAFF_MANAGE);
             $id = V::id($p[1]);
             Http::json(Store::updateProduct($id, Schema::product(Http::readJson()), $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Store::deleteProduct($id, $actor($s));
+            Http::json(['id' => $id, 'deleted' => true]);
         }
     }
 

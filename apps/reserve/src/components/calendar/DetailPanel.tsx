@@ -46,7 +46,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
-  const freeStage = bundle.stages.find((s) => s.free && s.active);
+  const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
   const [files, setFiles] = useState<PatientFile[] | null>(null);
   useEffect(() => {
@@ -281,7 +281,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <div className={styles.sectionLabel}>状態</div>
         <div className={styles.stageGrid}>
           {bundle.stages
-            .filter((s) => !s.free && (s.active || s.id === sv.stage?.id))
+            .filter((s) => !s.free && !s.deleted && (s.active || s.id === sv.stage?.id))
             .map((s) => {
               const on = !INACTIVE_STATUSES.has(r.status) && sv.stage?.id === s.id;
               return (

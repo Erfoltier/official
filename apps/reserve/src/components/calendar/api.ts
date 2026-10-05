@@ -263,3 +263,32 @@ export function saveStage(
     ? call(`/api/v1/stages/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) })
     : call(`/api/v1/stages`, { method: "POST", body: JSON.stringify(body) });
 }
+
+export async function deleteStage(id: string): Promise<void> {
+  await call(`/api/v1/stages/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  await call(`/api/v1/products/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+export interface RestoreSummary {
+  clinic: string;
+  lanes: number;
+  menus: number;
+  stages: number;
+  products: number;
+}
+
+export interface RestorePoints {
+  current: RestoreSummary;
+  points: { key: string; label: string; at: string | null; available: boolean; oldest: boolean; summary: RestoreSummary | null }[];
+}
+
+export function fetchRestorePoints(): Promise<RestorePoints> {
+  return call(`/api/v1/settings/restore`);
+}
+
+export function restoreSettings(key: string): Promise<RestorePoints> {
+  return call(`/api/v1/settings/restore`, { method: "POST", body: JSON.stringify({ key }) });
+}

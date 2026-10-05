@@ -50,4 +50,24 @@ describe("状態（院ごとに増減できる）", () => {
     const last = s.getSettings().stages[0];
     expect(() => s.updateStage(last.id, { active: false })).toThrow(/1つ以上/);
   });
+
+  it("状態を削除すると設定と予約詳細から消えるが、その状態を付けた予約の表示は残る。「予約」は削除できない", async () => {
+    const s = await store();
+    const p = s.createPatient({ name: "削除 テスト" });
+    const d = addDays(nowInClinic().date, 1);
+    const r = s.createReservation({ patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(d, 600), endAt: toIso(d, 610) });
+    const r1 = s.updateReservation(r.id, { version: r.version, stageId: "stage-consider" });
+    s.deleteStage("stage-consider");
+    expect(s.getSettings().stages.map((x) => x.id)).not.toContain("stage-consider");
+    expect(s.getDayBundle(d).stages.find((x) => x.id === "stage-consider")).toMatchObject({ deleted: true, active: false });
+    expect(s.stageLabelOf(s.getDayBundle(d).reservations.find((x) => x.id === r1.id)!)).toBe("検討中");
+    expect(() => s.updateReservation(r.id, { version: r1.version, stageId: "stage-consider" })).toThrow(/見つかりません/);
+    expect(() => s.deleteStage("stage-booked")).toThrow(/削除できません/);
+    expect(() => s.deleteStage("stage-consider")).toThrow(/見つかりません/);
+    // 同じ名前でもう一度作れる
+    expect(s.createStage({ label: "検討中" }).label).toBe("検討中");
+    // 並べ替えは削除したものを除いた一覧で
+    const ids = s.getSettings().stages.map((x) => x.id).reverse();
+    expect(s.reorderStages(ids).map((x) => x.id)).toEqual(ids);
+  });
 });

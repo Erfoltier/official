@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Stage, StagePhase } from "@/lib/domain/types";
 import { STAGE_PHASES, STAGE_PHASE_LABEL } from "@/lib/domain/types";
-import { reorder, saveStage } from "@/components/calendar/api";
+import { deleteStage, reorder, saveStage } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 /** 状態（予約・来院済・医師待ち…）。院ごとに名前・色・並び順を変え、増やしたり非表示にしたりできる */
@@ -45,9 +45,11 @@ export function StagesTab({
   return (
     <section>
       <p className={styles.lead}>
-        予約の詳細に並ぶ「状態」のボタンです。押すと、カレンダーの予約枠の右端に色と文字で出ます。
+        予約の詳細（カルテ画面）に並ぶ「状態」のボタンです。押すと、カレンダーの予約枠の右端に色・文字・時刻で出ます。
         「段階」は大まかな進み具合で、前日リマインドの対象や施術の回数の数え方に使います。
-        「自由入力」にした状態は、押したときに文字を入れられます。使わない状態は「表示」を外してください。
+        「自由入力」にした状態は、ほかの状態と一緒に出せる一言になります。
+        しばらく使わない状態は「予約詳細に出す」を外すと隠れ（あとで戻せます）、不要になった状態は「削除」できます
+        （削除しても、その状態を付けた過去の予約の表示は残ります）。
       </p>
       <table className={styles.table}>
         <thead>
@@ -57,7 +59,8 @@ export function StagesTab({
             <th>色</th>
             <th>段階</th>
             <th>自由入力</th>
-            <th>表示</th>
+            <th>予約詳細に出す</th>
+            <th />
             <th />
           </tr>
         </thead>
@@ -72,6 +75,10 @@ export function StagesTab({
               onUp={() => move(i, -1)}
               onDown={() => move(i, 1)}
               onSave={(body) => run(() => saveStage(s.id, body), "保存しました")}
+              onDelete={() => {
+                if (!window.confirm(`状態「${s.label}」を削除しますか？\n（この状態を付けた過去の予約の表示は残ります）`)) return;
+                run(() => deleteStage(s.id), "削除しました");
+              }}
             />
           ))}
           {canEdit && (
@@ -86,6 +93,7 @@ export function StagesTab({
               <td>
                 <PhaseSelect value={phase} onChange={setPhase} />
               </td>
+              <td />
               <td />
               <td />
               <td>
@@ -130,6 +138,7 @@ function StageRow(props: {
   onUp: () => void;
   onDown: () => void;
   onSave: (body: Partial<Pick<Stage, "label" | "color" | "phase" | "free" | "active">>) => void;
+  onDelete: () => void;
 }) {
   const { stage: s, canEdit } = props;
   const [label, setLabel] = useState(s.label);
@@ -171,13 +180,20 @@ function StageRow(props: {
       <td>
         <label className={styles.toggle}>
           <input type="checkbox" checked={s.active} disabled={!canEdit} onChange={(e) => props.onSave({ active: e.target.checked })} />
-          {s.active ? "表示" : "非表示"}
+          {s.active ? "出す" : "しばらく出さない"}
         </label>
       </td>
       <td>
         {canEdit && (
           <button className={styles.btn} disabled={!dirty || !label.trim()} onClick={() => props.onSave({ label, color, phase })}>
             保存
+          </button>
+        )}
+      </td>
+      <td>
+        {canEdit && s.id !== "stage-booked" && (
+          <button className={styles.btn} onClick={props.onDelete} title="不要になった状態を削除します（過去の予約の表示は残ります）">
+            削除
           </button>
         )}
       </td>

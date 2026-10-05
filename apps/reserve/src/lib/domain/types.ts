@@ -118,6 +118,8 @@ export interface Product {
   priceYen: number | null;
   order: number;
   active: boolean;
+  /** 削除した（過去の記録の価格表示のため記録は残す） */
+  deleted?: boolean;
 }
 
 /** 患者のファイル（同意書のスキャン・写真・PDF・Word）。中身は暗号化して別に保存する */
@@ -159,7 +161,10 @@ export interface Stage {
   /** 押したときに文字を自由に入れる状態 */
   free: boolean;
   order: number;
+  /** 予約の詳細（カルテ画面）にボタンを出す。しばらく使わないときは false */
   active: boolean;
+  /** 削除した（過去の予約の表示のために記録は残す） */
+  deleted?: boolean;
 }
 
 export interface DuplicateCandidate {

@@ -21,6 +21,7 @@ export type Kind =
   | "menu"
   | "product"
   | "stage"
+  | "settingsSnapshot"
   | "file"
   | "patient"
   | "patientHistory"

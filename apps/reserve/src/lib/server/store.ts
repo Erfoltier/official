@@ -59,6 +59,7 @@ export function demoEnabled(): boolean {
 interface StoreState {
   products: Map<string, Product>;
   stages: Map<string, Stage>;
+  snapshots: Map<string, SettingsSnapshot>;
   files: Map<string, PatientFile>;
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
@@ -95,6 +96,7 @@ function state(): StoreState {
         setMeta("stagesSeeded", true);
       }
       return {
+        snapshots: new PersistentMap<SettingsSnapshot>("settingsSnapshot"),
         stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
@@ -109,6 +111,11 @@ function state(): StoreState {
         seq: count("patient") + count("reservation"),
       };
     });
+    // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
+    if (globalForStore.__reserveStore.snapshots.size === 0) {
+      const id = "snap-baseline";
+      globalForStore.__reserveStore.snapshots.set(id, { id, at: new Date().toISOString(), baseline: true, data: settingsData() });
+    }
   }
   return globalForStore.__reserveStore;
 }
@@ -160,12 +167,17 @@ function byStart(a: Reservation, b: Reservation): number {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
+/** 並び順。同じ順番ならID順（PHP版と同じ並びにする） */
+function byOrder(a: { order: number; id: string }, b: { order: number; id: string }): number {
+  return a.order - b.order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
 function sortedLanes(): Lane[] {
-  return [...state().lanes.values()].sort((a, b) => a.order - b.order);
+  return [...state().lanes.values()].sort(byOrder);
 }
 
 function sortedMenus(): Menu[] {
-  return [...state().menus.values()].sort((a, b) => a.order - b.order);
+  return [...state().menus.values()].sort(byOrder);
 }
 
 export function getDayBundle(date: string): DayBundle {
@@ -228,17 +240,168 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
   }
   setMeta("clinic", next);
   if (by) audit(by, "院の設定（診療時間など）を変更");
+  snapshotSettings();
   return next;
 }
 
 export function getSettings() {
-  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus(), products: sortedProducts(), stages: sortedStages() };
+  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus(), products: sortedProducts(), stages: liveStages() };
+}
+
+// ---- 設定のバックアップ（自動）と復元 ----
+
+export interface SettingsData {
+  clinic: ClinicSettings;
+  lanes: Lane[];
+  menus: Menu[];
+  stages: Stage[];
+  products: Product[];
+}
+
+export interface SettingsSnapshot {
+  id: string;
+  at: string;
+  /** 機能を入れた時点の状態（それより前の記録はない） */
+  baseline?: boolean;
+  data: SettingsData;
+}
+
+/** 戻せる時点 */
+export const RESTORE_POINTS = [
+  { key: "1d", label: "1日前", days: 1 },
+  { key: "1w", label: "1週間前", days: 7 },
+  { key: "1m", label: "1か月前", days: 30 },
+  { key: "3m", label: "3か月前", days: 91 },
+  { key: "6m", label: "6か月前", days: 182 },
+  { key: "1y", label: "1年前", days: 365 },
+] as const;
+
+function settingsData(): SettingsData {
+  const st = state();
+  return {
+    clinic: getClinic(),
+    lanes: [...st.lanes.values()],
+    menus: [...st.menus.values()],
+    stages: [...st.stages.values()],
+    products: [...st.products.values()],
+  };
+}
+
+function snapshots(): SettingsSnapshot[] {
+  return [...state().snapshots.values()].sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * 設定を変えたあとに、その時点の設定一式を保存する。
+ * 1分以内の続けての変更は1つにまとめ、8日より前は1日1つ、400日より前は消す
+ */
+function snapshotSettings(): void {
+  const st = state();
+  const now = new Date();
+  const list = snapshots();
+  const last = list[list.length - 1];
+  if (last && !last.baseline && now.getTime() - Date.parse(last.at) < 60_000) st.snapshots.delete(last.id);
+  const id = `snap-${now.getTime().toString(36)}`;
+  st.snapshots.set(id, { id, at: now.toISOString(), data: settingsData() });
+  // 古いものを間引く
+  const keepAll = now.getTime() - 8 * 86_400_000;
+  const drop = now.getTime() - 400 * 86_400_000;
+  const byDay = new Map<string, SettingsSnapshot>();
+  for (const s of snapshots()) {
+    if (s.baseline) continue;
+    const t = Date.parse(s.at);
+    if (t < drop) st.snapshots.delete(s.id);
+    else if (t < keepAll) {
+      const day = clinicDateOf(s.at);
+      const prev = byDay.get(day);
+      if (prev) st.snapshots.delete(prev.id);
+      byDay.set(day, s);
+    }
+  }
+}
+
+/** その時点に有効だった設定（その時刻より前の最後の保存。なければ一番古いもの） */
+function snapshotAt(t: number): SettingsSnapshot | undefined {
+  const list = snapshots();
+  let found: SettingsSnapshot | undefined;
+  for (const s of list) if (s.baseline || Date.parse(s.at) <= t) found = s;
+  return found ?? list[0];
+}
+
+function summarize(d: SettingsData) {
+  return {
+    clinic: `${d.clinic.name} ${formatHmLocal(d.clinic.dayStartMin)}〜${formatHmLocal(d.clinic.dayEndMin)}`,
+    lanes: d.lanes.filter((l) => l.active).length,
+    menus: d.menus.filter((m) => m.active).length,
+    stages: d.stages.filter((s) => !s.deleted && s.active).length,
+    products: d.products.filter((p) => !p.deleted && p.active).length,
+  };
+}
+
+function formatHmLocal(m: number): string {
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+}
+
+/** 戻せる時点の一覧（どの時点の設定に戻るか・中身の概要） */
+export function listRestorePoints() {
+  const now = Date.now();
+  return {
+    current: summarize(settingsData()),
+    points: RESTORE_POINTS.map((p) => {
+      const snap = snapshotAt(now - p.days * 86_400_000);
+      return {
+        key: p.key,
+        label: p.label,
+        at: snap?.baseline ? null : (snap?.at ?? null),
+        available: !!snap,
+        /** その時点より前の記録がなく、記録を始めた時点の設定になる */
+        oldest: !!snap && (snap.baseline || Date.parse(snap.at) > now - p.days * 86_400_000),
+        summary: snap ? summarize(snap.data) : null,
+      };
+    }),
+  };
+}
+
+function restoreSettingsImpl(key: string, by?: Actor): SettingsData {
+  const st = state();
+  const point = RESTORE_POINTS.find((p) => p.key === key);
+  if (!point) throw new StoreError("invalid", "戻す時点の指定が正しくありません");
+  const snap = snapshotAt(Date.now() - point.days * 86_400_000);
+  if (!snap) throw new StoreError("invalid", "戻せる設定の記録がありません");
+  const d = snap.data;
+  setMeta("clinic", d.clinic);
+  // その時点にあったものは、その時点の内容に戻す。あとから作ったものは消さずに隠す（予約・記録が参照しているため）
+  const lanes = new Set(d.lanes.map((x) => x.id));
+  for (const x of d.lanes) st.lanes.set(x.id, x);
+  for (const x of [...st.lanes.values()]) if (!lanes.has(x.id) && x.active) st.lanes.set(x.id, { ...x, active: false });
+  const menus = new Set(d.menus.map((x) => x.id));
+  for (const x of d.menus) st.menus.set(x.id, x);
+  for (const x of [...st.menus.values()]) if (!menus.has(x.id) && x.active) st.menus.set(x.id, { ...x, active: false });
+  const stages = new Set(d.stages.map((x) => x.id));
+  for (const x of d.stages) st.stages.set(x.id, x);
+  for (const x of [...st.stages.values()]) if (!stages.has(x.id) && !x.deleted) st.stages.set(x.id, { ...x, active: false, deleted: true });
+  const products = new Set(d.products.map((x) => x.id));
+  for (const x of d.products) st.products.set(x.id, x);
+  for (const x of [...st.products.values()]) if (!products.has(x.id) && !x.deleted) st.products.set(x.id, { ...x, active: false, deleted: true });
+  if (by) audit(by, `設定を${point.label}の状態に戻した`);
+  snapshotSettings();
+  return settingsData();
+}
+
+/** 設定（診療時間・レーン・メニュー・状態・スキンケア＆内服）を、指定した時点の状態に戻す */
+export function restoreSettings(...args: Parameters<typeof restoreSettingsImpl>): ReturnType<typeof restoreSettingsImpl> {
+  return transaction(() => restoreSettingsImpl(...args));
 }
 
 // ---- 状態（予約・来院済・医師待ち…。院ごとに増減できる） ----
 
 function sortedStages(): Stage[] {
-  return [...state().stages.values()].sort((a, b) => a.order - b.order);
+  return [...state().stages.values()].sort(byOrder);
+}
+
+/** 設定画面に出す状態（削除したものを除く） */
+function liveStages(): Stage[] {
+  return sortedStages().filter((s) => !s.deleted);
 }
 
 /** 予約の状態の表示名（自由入力ならその文字。キャンセルはそのまま） */
@@ -256,7 +419,7 @@ export type StageInput = Partial<Pick<Stage, "label" | "color" | "phase" | "free
 function validateStage(s: Stage): Stage {
   const label = checkText("状態の名前", s.label, 12, true);
   for (const o of state().stages.values()) {
-    if (o.id !== s.id && o.label === label) throw new StoreError("invalid", "同じ名前の状態があります");
+    if (o.id !== s.id && !o.deleted && o.label === label) throw new StoreError("invalid", "同じ名前の状態があります");
   }
   if (!/^#[0-9a-fA-F]{6}$/.test(s.color)) throw new StoreError("invalid", "色の指定が正しくありません");
   return { ...s, label };
@@ -264,7 +427,7 @@ function validateStage(s: Stage): Stage {
 
 export function createStage(input: StageInput, by?: Actor): Stage {
   const st = state();
-  if (st.stages.size >= 60) throw new StoreError("invalid", "登録できる数を超えています");
+  if (liveStages().length >= 60) throw new StoreError("invalid", "登録できる数を超えています");
   const s = validateStage({
     id: `stage-${Date.now().toString(36)}-${++st.seq}`,
     label: input.label ?? "",
@@ -276,30 +439,51 @@ export function createStage(input: StageInput, by?: Actor): Stage {
   });
   st.stages.set(s.id, s);
   if (by) audit(by, "状態を追加", s.id);
+  snapshotSettings();
   return s;
 }
 
 export function updateStage(id: string, input: StageInput, by?: Actor): Stage {
   const st = state();
   const cur = st.stages.get(id);
-  if (!cur) throw new StoreError("not_found", "状態が見つかりません");
+  if (!cur || cur.deleted) throw new StoreError("not_found", "状態が見つかりません");
   const next = validateStage({ ...cur, ...input, id: cur.id, order: cur.order });
-  if (cur.active && !next.active && [...st.stages.values()].filter((x) => x.active).length <= 1) {
+  if (cur.active && !next.active && liveStages().filter((x) => x.active).length <= 1) {
     throw new StoreError("invalid", "表示する状態は1つ以上必要です");
   }
   st.stages.set(id, next);
   if (by) audit(by, "状態を変更", id);
+  snapshotSettings();
   return next;
 }
 
 function reorderStagesImpl(ids: string[], by?: Actor): Stage[] {
   const st = state();
-  if (ids.length !== st.stages.size || !ids.every((id) => st.stages.has(id))) {
+  const live = liveStages();
+  if (ids.length !== live.length || !ids.every((id) => live.some((s) => s.id === id))) {
     throw new StoreError("invalid", "並び順の指定が正しくありません");
   }
   ids.forEach((id, i) => st.stages.set(id, { ...st.stages.get(id)!, order: i }));
   if (by) audit(by, "状態を並べ替え");
-  return sortedStages();
+  snapshotSettings();
+  return liveStages();
+}
+
+/**
+ * 状態を削除する。過去にその状態を付けた予約の表示のため、記録は「削除済み」として残し、
+ * 設定画面と予約の詳細のボタンからは消える。「予約」は基本の状態なので削除できない
+ */
+export function deleteStage(id: string, by?: Actor): void {
+  const st = state();
+  const cur = st.stages.get(id);
+  if (!cur || cur.deleted) throw new StoreError("not_found", "状態が見つかりません");
+  if (id === "stage-booked") throw new StoreError("invalid", "「予約」は基本の状態なので削除できません（使わない場合は非表示にしてください）");
+  if (cur.active && liveStages().filter((x) => x.active).length <= 1) {
+    throw new StoreError("invalid", "表示する状態は1つ以上必要です");
+  }
+  st.stages.set(id, { ...cur, active: false, deleted: true });
+  if (by) audit(by, "状態を削除", id);
+  snapshotSettings();
 }
 
 export function reorderStages(...args: Parameters<typeof reorderStagesImpl>): ReturnType<typeof reorderStagesImpl> {
@@ -415,7 +599,7 @@ function randomId(): string {
 // ---- スキンケア・内服のプリセット ----
 
 function sortedProducts(): Product[] {
-  return [...state().products.values()].sort((a, b) => a.order - b.order);
+  return [...state().products.values()].filter((p) => !p.deleted).sort(byOrder);
 }
 
 export type ProductInput = Partial<Pick<Product, "name" | "category" | "priceYen" | "active">>;
@@ -423,7 +607,7 @@ export type ProductInput = Partial<Pick<Product, "name" | "category" | "priceYen
 function validateProduct(p: Product): Product {
   const name = checkText("名前", p.name, 60, true);
   for (const o of state().products.values()) {
-    if (o.id !== p.id && searchKey(o.name) === searchKey(name)) throw new StoreError("invalid", "同じ名前のプリセットがあります");
+    if (o.id !== p.id && !o.deleted && searchKey(o.name) === searchKey(name)) throw new StoreError("invalid", "同じ名前のプリセットがあります");
   }
   if (p.priceYen !== null && !(Number.isInteger(p.priceYen) && p.priceYen >= 0 && p.priceYen <= 10_000_000)) {
     throw new StoreError("invalid", "価格の指定が正しくありません");
@@ -433,7 +617,7 @@ function validateProduct(p: Product): Product {
 
 export function createProduct(input: ProductInput, by?: Actor): Product {
   const st = state();
-  if (st.products.size >= 500) throw new StoreError("invalid", "登録できる数を超えています");
+  if (sortedProducts().length >= 500) throw new StoreError("invalid", "登録できる数を超えています");
   const p = validateProduct({
     id: `prod-${Date.now().toString(36)}-${++st.seq}`,
     name: input.name ?? "",
@@ -444,27 +628,41 @@ export function createProduct(input: ProductInput, by?: Actor): Product {
   });
   st.products.set(p.id, p);
   if (by) audit(by, "スキンケア・内服のプリセットを追加", p.id);
+  snapshotSettings();
   return p;
 }
 
 export function updateProduct(id: string, input: ProductInput, by?: Actor): Product {
   const st = state();
   const cur = st.products.get(id);
-  if (!cur) throw new StoreError("not_found", "プリセットが見つかりません");
+  if (!cur || cur.deleted) throw new StoreError("not_found", "プリセットが見つかりません");
   const next = validateProduct({ ...cur, ...input, id: cur.id, order: cur.order });
   st.products.set(id, next);
   if (by) audit(by, "スキンケア・内服のプリセットを変更", id);
+  snapshotSettings();
   return next;
 }
 
 function reorderProductsImpl(ids: string[], by?: Actor): Product[] {
   const st = state();
-  if (ids.length !== st.products.size || !ids.every((id) => st.products.has(id))) {
+  const live = sortedProducts();
+  if (ids.length !== live.length || !ids.every((id) => live.some((p) => p.id === id))) {
     throw new StoreError("invalid", "並び順の指定が正しくありません");
   }
   ids.forEach((id, i) => st.products.set(id, { ...st.products.get(id)!, order: i }));
   if (by) audit(by, "スキンケア・内服のプリセットを並べ替え");
+  snapshotSettings();
   return sortedProducts();
+}
+
+/** プリセットを削除する（施術歴の記録は名前で残っているので、そのまま表示される） */
+export function deleteProduct(id: string, by?: Actor): void {
+  const st = state();
+  const cur = st.products.get(id);
+  if (!cur || cur.deleted) throw new StoreError("not_found", "プリセットが見つかりません");
+  st.products.set(id, { ...cur, active: false, deleted: true });
+  if (by) audit(by, "スキンケア・内服のプリセットを削除", id);
+  snapshotSettings();
 }
 
 export function reorderProducts(...args: Parameters<typeof reorderProductsImpl>): ReturnType<typeof reorderProductsImpl> {
@@ -632,7 +830,7 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
   }
   if (input.stageId !== undefined) {
     const stage = st.stages.get(input.stageId);
-    if (!stage || (!stage.active && stage.id !== cur.stageId)) throw new StoreError("invalid", "状態が見つかりません");
+    if (!stage || stage.deleted || (!stage.active && stage.id !== cur.stageId)) throw new StoreError("invalid", "状態が見つかりません");
     if (stage.free) throw new StoreError("invalid", "自由入力は文字（stageText）で指定してください");
     next.stageId = stage.id;
     next.status = stage.phase;
@@ -1086,6 +1284,7 @@ export function createLane(input: LaneInput, by?: Actor): Lane {
   };
   st.lanes.set(lane.id, lane);
   if (by) audit(by, "レーンを追加", lane.id);
+  snapshotSettings();
   return lane;
 }
 
@@ -1111,6 +1310,7 @@ export function updateLane(id: string, input: LaneInput, by?: Actor): Lane {
   if (input.active !== undefined) next.active = input.active;
   st.lanes.set(id, next);
   if (by) audit(by, "レーンを変更", id);
+  snapshotSettings();
   return next;
 }
 
@@ -1133,6 +1333,7 @@ function deleteLaneImpl(id: string, by?: Actor): void {
   }
   sortedLanes().forEach((l, i) => st.lanes.set(l.id, { ...l, order: i }));
   if (by) audit(by, "レーンを削除", id);
+  snapshotSettings();
 }
 
 /** 並び順をまとめて変更（ids の順に並べる） */
@@ -1143,6 +1344,7 @@ function reorderLanesImpl(ids: string[], by?: Actor): Lane[] {
   }
   ids.forEach((id, i) => st.lanes.set(id, { ...st.lanes.get(id)!, order: i }));
   if (by) audit(by, "レーンを並べ替え");
+  snapshotSettings();
   return sortedLanes();
 }
 
@@ -1193,6 +1395,7 @@ export function createMenu(input: MenuInput, by?: Actor): Menu {
   });
   st.menus.set(menu.id, menu);
   if (by) audit(by, "メニューを追加", menu.id);
+  snapshotSettings();
   return menu;
 }
 
@@ -1203,6 +1406,7 @@ export function updateMenu(id: string, input: MenuInput, by?: Actor): Menu {
   const next = validateMenu({ ...cur, ...input, id: cur.id, order: cur.order });
   st.menus.set(id, next);
   if (by) audit(by, "メニューを変更", id);
+  snapshotSettings();
   return next;
 }
 
@@ -1213,6 +1417,7 @@ function reorderMenusImpl(ids: string[], by?: Actor): Menu[] {
   }
   ids.forEach((id, i) => st.menus.set(id, { ...st.menus.get(id)!, order: i }));
   if (by) audit(by, "メニューを並べ替え");
+  snapshotSettings();
   return sortedMenus();
 }
 
