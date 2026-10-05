@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { ChartEntry, PatientDetail, PatientFile, PriceItem, VisitRow } from "@/lib/domain/types";
+import type { ChartEntry, PatientDetail, PriceItem, VisitRow } from "@/lib/domain/types";
 import { INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
 import { formatHm, minutesOfDay, nowInClinic, clinicDateOf } from "@/lib/domain/time";
 import { FileThumbs } from "@/components/files/FileThumbs";
@@ -302,7 +302,6 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
           <th className={styles.colMenu}>施術内容</th>
           <th className={styles.colNote}>メモ</th>
           <th className={styles.colSkin}>スキンケア＆内服</th>
-          <th className={styles.colFiles}>ファイル</th>
         </tr>
       </thead>
       <tbody>
@@ -325,7 +324,7 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
   );
 }
 
-function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onEdit, onFilesChanged, onChange, chartsOf, onChart }: RowProps & { v: VisitRow }) {
+function Row({ v, detail, nth, today, readOnly, priceOf, editing, onEdit, onFilesChanged, onChange, chartsOf, onChart }: RowProps & { v: VisitRow }) {
   const dayCharts = chartsOf(v.date);
   return (
     <tr data-today={v.date === today || undefined}>
@@ -334,20 +333,21 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
           {formatDateFull(v.date)}
         </a>
         {v.date === today && <span className={styles.todayChip}>今日</span>}
-        {!readOnly && (
-          <div>
-            <button type="button" className={styles.smallBtn} onClick={() => onEdit(v.date)} disabled={editing !== null}>
-              {v.noteVersion > 0 ? "編集" : "記入"}
+        {/* メモ・カルテ・撮影・ファイルの4つのボタン（2×2）と、その日の写真 */}
+        <div className={styles.actGrid}>
+          {!readOnly && (
+            <button type="button" className={styles.actBtn} onClick={() => onEdit(v.date)} disabled={editing !== null}>
+              📝 メモ
             </button>
-          </div>
-        )}
-        {(!readOnly || dayCharts.length > 0) && (
-          <div>
-            <button type="button" className={styles.smallBtn} onClick={() => onChart(v.date)} title="カルテ（施術記録）">
+          )}
+          {(!readOnly || dayCharts.length > 0) && (
+            <button type="button" className={styles.actBtn} onClick={() => onChart(v.date)} title="カルテ（施術記録）">
               🩺 カルテ{dayCharts.length > 0 && `（${dayCharts.length}）`}
             </button>
-          </div>
-        )}
+          )}
+          {!readOnly && <FileUploader compact patientId={detail.patient.id} date={v.date} onUploaded={onFilesChanged} />}
+        </div>
+        <FileThumbs files={v.files} canDelete={!readOnly} onDeleted={onFilesChanged} />
       </td>
       <td className={styles.colMenu} data-label="施術内容">
         {v.reservations.length === 0 && <span className={styles.muted}>（予約なしの記録）</span>}
@@ -387,45 +387,52 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
       <td className={styles.colSkin} data-label="スキンケア＆内服">
         <SkincareCell items={v.skincare} priceOf={priceOf} />
       </td>
-      <td className={styles.colFiles} data-label="ファイル">
-        <FilesCell files={v.files} patientId={detail.patient.id} date={v.date} readOnly={readOnly} canManage={canManage} onChanged={onFilesChanged} />
-      </td>
     </tr>
   );
 }
 
 /** スキンケア＆内服：普段は2件まで。押すと全項目と価格を出す */
+/** スキンケア＆内服：2つまで出し、ほかは「すべて表示」で開く。開いたときは高さを抑えて中で動かせるようにする */
 function SkincareCell({ items, priceOf }: { items: string[]; priceOf: Map<string, number | null> }) {
   const [open, setOpen] = useState(false);
   if (items.length === 0) return <span className={styles.muted}>—</span>;
-  const shown = open ? items : items.slice(0, 2);
-  const prices = items.map((x) => priceOf.get(x) ?? null);
-  const total = prices.reduce<number>((s, n) => s + (n ?? 0), 0);
+  const total = items.reduce<number>((sum, x) => sum + (priceOf.get(x) ?? 0), 0);
+  if (!open) {
+    return (
+      <div className={styles.skinCell}>
+        <span className={styles.chips}>
+          {items.slice(0, 2).map((x) => (
+            <span key={x} className={styles.chip}>
+              {x}
+            </span>
+          ))}
+        </span>
+        {items.length > 2 && (
+          <button type="button" className={styles.skinToggle} onClick={() => setOpen(true)} aria-expanded={false}>
+            ▼ ほか{items.length - 2}件を表示
+          </button>
+        )}
+      </div>
+    );
+  }
   return (
-    <button type="button" className={styles.skinCell} onClick={() => setOpen((o) => !o)} aria-expanded={open} title={open ? "たたむ" : "すべて表示"}>
-      <span className={styles.chips}>
-        {shown.map((x) => (
-          <span key={x} className={styles.chip}>
-            {x}
-            {open && priceOf.get(x) != null && <small className={styles.price}>{yen(priceOf.get(x)!)}</small>}
-          </span>
+    <div className={styles.skinCell}>
+      <ul className={styles.skinList}>
+        {items.map((x) => (
+          <li key={x}>
+            <span>{x}</span>
+            {priceOf.get(x) != null && <small className={styles.price}>{yen(priceOf.get(x)!)}</small>}
+          </li>
         ))}
-      </span>
-      {!open && items.length > 2 && <span className={styles.more}>＋{items.length - 2}件（すべて表示）</span>}
-      {open && total > 0 && <span className={styles.total}>合計 {yen(total)}</span>}
-    </button>
-  );
-}
-
-function FilesCell(props: { files: PatientFile[]; patientId: string; date: string; readOnly?: boolean; canManage?: boolean; onChanged: () => void }) {
-  return (
-    <div className={styles.filesCell}>
-      <FileThumbs files={props.files} canDelete={!props.readOnly} onDeleted={props.onChanged} />
-      {props.files.length === 0 && props.readOnly && <span className={styles.muted}>—</span>}
-      {!props.readOnly && <FileUploader compact patientId={props.patientId} date={props.date} onUploaded={props.onChanged} />}
+      </ul>
+      {total > 0 && <span className={styles.total}>合計 {yen(total)}（{items.length}点）</span>}
+      <button type="button" className={styles.skinToggle} onClick={() => setOpen(false)} aria-expanded>
+        ▲ たたむ
+      </button>
     </div>
   );
 }
+
 
 function AddRecord({ today, onPick }: { today: string; onPick: (date: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -466,19 +473,19 @@ function EditRow(props: { visit: VisitRow; options: SkincareOption[]; previous: 
 
   return (
     <tr className={styles.editRow}>
-      <td colSpan={5}>
+      <td colSpan={4}>
         <div className={styles.editHead}>
           <strong>{formatDateFull(visit.date)}</strong>
           {visit.reservations.length > 0 && <span className={styles.muted}>{visit.reservations.flatMap((r) => r.menuNames).join("、")}</span>}
         </div>
         <div className={styles.field}>
-          <span className={styles.label}>メモ（簡易カルテ・自由記載）</span>
+          <span className={styles.label}>メモ（自由記載）</span>
           <RichTextEditor
             value={note}
             onChange={setNote}
             rows={4}
             maxLength={4000}
-            ariaLabel="メモ（簡易カルテ・自由記載）"
+            ariaLabel="メモ（自由記載）"
             placeholder="例：全顔HIFU 300ショット。頬下部に痛み。次回3か月後"
             autoFocus
           />

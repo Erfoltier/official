@@ -1145,3 +1145,133 @@ details:not([open]) > summary.histTitle {
   color: inherit;
   cursor: pointer;
 }
+
+/* ===== 施術歴：左の列にメモ・カルテ・撮影・ファイル（2×2）。ファイルの列はなくし、メモとスキンケアを広く ===== */
+@media (min-width: 641px) {
+  .visitTable .colDate {
+    width: 184px;
+  }
+
+  .visitTable .colMenu {
+    width: 21%;
+  }
+
+  .visitTable .colSkin {
+    width: 28%;
+  }
+}
+
+.actGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 6px 0 4px;
+}
+
+.actBtn {
+  min-height: 30px;
+  padding: 2px 4px;
+  border: 1px solid #cdbfee;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.actBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 撮影・ファイルのボタン（ファイルの部品）を2つ目の行に並べる */
+.actGrid > [data-compact] {
+  grid-column: 1 / -1;
+}
+
+.actGrid > [data-compact] button {
+  flex: 1 1 0;
+  min-height: 30px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* スキンケア＆内服 */
+.skinCell {
+  display: grid;
+  gap: 4px;
+  cursor: default;
+}
+
+.skinToggle {
+  justify-self: start;
+  padding: 2px 10px;
+  border: 1px solid #cdbfee;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 開いたときは高さを抑え、多いときは中で上下に動かす */
+.skinList {
+  margin: 0;
+  padding: 4px 6px;
+  list-style: none;
+  max-height: 11.5em;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.skinList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+}
+
+.skinList li:last-child {
+  border-bottom: none;
+}
+
+.skinList .price {
+  flex: none;
+}
+
+/* 撮影・ファイルは折り返さずに横に2つ（ファイルの部品の小さいボタンの決まりより強くする） */
+.actGrid.actGrid > [data-compact] > div {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.actGrid.actGrid > [data-compact] > div > button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* スマホ：縦に並べるときは幅を決めない */
+@media (max-width: 640px) {
+  .visitTable td.colDate,
+  .visitTable td.colMenu,
+  .visitTable td.colSkin,
+  .visitTable td.colNote {
+    width: auto;
+  }
+  .actGrid {
+    max-width: 320px;
+  }
+}
