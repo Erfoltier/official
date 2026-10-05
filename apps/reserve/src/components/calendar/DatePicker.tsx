@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { addDays, formatDateJa, weekdayOf } from "@/lib/domain/time";
 import { holidayName } from "@/lib/domain/holidays";
 import { fetchMonthCounts } from "./api";
+import { ChevronDown } from "./Chevron";
 import styles from "./datePicker.module.css";
 
 /**
@@ -96,7 +97,8 @@ export function DatePicker({
           aria-expanded={chooseMonth}
           title="年月を選ぶ"
         >
-          {chooseMonth ? `${year}年` : `${y}年${m}月`} <span className={styles.caret}>▾</span>
+          {chooseMonth ? `${year}年` : `${y}年${m}月`}
+          <ChevronDown className={styles.caret} />
         </button>
         <button type="button" className={styles.nav} onClick={() => (chooseMonth ? setYear((v) => v + 1) : setMonth(shiftMonth(month, 1)))} aria-label={chooseMonth ? "次の年" : "次の月"}>
           ›

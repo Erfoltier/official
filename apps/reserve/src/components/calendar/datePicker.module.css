@@ -53,8 +53,16 @@
 }
 
 .caret {
-  font-size: 10px;
-  color: var(--text-muted);
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  margin-left: 2px;
+  color: var(--accent);
+  transition: transform 0.15s;
+}
+
+.title[aria-expanded="true"] .caret {
+  transform: rotate(180deg);
 }
 
 .today {

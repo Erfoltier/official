@@ -105,8 +105,15 @@
 }
 
 .dateCaret {
-  font-size: 10px;
-  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--accent);
+  transition: transform 0.15s;
+}
+
+.dateBtn[data-open] .dateCaret {
+  transform: rotate(180deg);
 }
 
 .count {

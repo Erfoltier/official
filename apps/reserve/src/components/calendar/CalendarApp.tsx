@@ -10,6 +10,7 @@ import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
 import { DatePicker } from "./DatePicker";
+import { ChevronDown } from "./Chevron";
 import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
 import styles from "./calendar.module.css";
@@ -159,7 +160,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               aria-expanded={pickerOpen}
               title="カレンダーから日付を選ぶ"
             >
-              {formatDateJa(date)} <span className={styles.dateCaret}>▾</span>
+              {formatDateJa(date)}
+              <ChevronDown className={styles.dateCaret} />
             </button>
             {pickerOpen && (
               <DatePicker
