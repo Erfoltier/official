@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 async function store() {
-  (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+  resetStores();
   return import("@/lib/server/store");
 }
 
 describe("患者情報の編集", () => {
   beforeEach(() => {
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
   });
 
   it("氏名をローマ字混じりに直せて、版が上がり、変更履歴に項目名だけ残る", async () => {

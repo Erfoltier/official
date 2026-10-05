@@ -54,7 +54,7 @@ describe("Airリザーブから移した設定", () => {
 
 describe("患者・レーン・メニューの登録", () => {
   beforeEach(() => {
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
   });
 
   it("混在した氏名で患者を登録し、かな・ローマ字で検索できる", async () => {
@@ -96,7 +96,7 @@ describe("患者・レーン・メニューの登録", () => {
 
 describe("レーンの数の制限", () => {
   beforeEach(() => {
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
   });
 
   it("表示できるレーンは最大30、最小1。予約の記録がないレーンは削除できる", async () => {
@@ -111,7 +111,7 @@ describe("レーンの数の制限", () => {
     s.getDayBundle("2026-10-07");
     expect(() => s.deleteLane("lane-main")).toThrow(/予約の記録/);
     // 最後の1本は非表示にも削除にもできない（新しく作ったレーンだけの状態で確かめる）
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
     const t = await import("@/lib/server/store");
     const only = t.createLane({ name: "単独" });
     for (const l of t.getSettings().lanes) if (l.id !== only.id) t.updateLane(l.id, { active: false });

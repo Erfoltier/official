@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { addDays, nowInClinic } from "@/lib/domain/time";
 
 async function store() {
-  (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+  resetStores();
   return import("@/lib/server/store");
 }
 
 describe("施術歴・日付ごとの記録", () => {
   beforeEach(() => {
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
   });
 
   it("過去の来院が新しい順に並び、今後の予約は別に近い順で並ぶ", async () => {

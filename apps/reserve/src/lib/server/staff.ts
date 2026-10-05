@@ -3,6 +3,7 @@ import "server-only";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { Actor, AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { cleanName, hasForbiddenChars } from "@/lib/domain/text";
+import { PersistentMap, appendAudit, count, loadAudit, put, transaction } from "@/lib/server/db";
 
 /**
  * スタッフとPINログイン（試作）。
@@ -44,21 +45,45 @@ export const DEMO_PIN = "1234";
 
 interface StaffState {
   staff: Map<string, StaffRecord>;
-  audit: AuditEntry[];
   seq: number;
 }
 
 const g = globalThis as unknown as { __reserveStaff?: StaffState };
 
+/**
+ * 最初のスタッフを用意する（スタッフが1人もいないときだけ）。
+ * - デモ時：デモ用の5人（PINはすべて 1234）
+ * - 本番：環境変数 INITIAL_ADMIN_PIN があれば「院長」を1人作る。なければ誰も作らない
+ */
+function bootstrapStaff(): void {
+  if (count("staff") > 0) return;
+  const demo = process.env.RESERVE_DEMO === "1" || (process.env.RESERVE_DEMO !== "0" && process.env.NODE_ENV !== "production");
+  const make = (s: { id: string; name: string; role: StaffRole }, pin: string): StaffRecord => ({
+    ...s,
+    active: true,
+    ...hashPin(pin),
+    sessionVersion: 1,
+    failedCount: 0,
+    lockedUntil: 0,
+  });
+  if (demo) {
+    for (const s of DEMO_STAFF) put("staff", s.id, make(s, DEMO_PIN));
+    return;
+  }
+  const pin = process.env.INITIAL_ADMIN_PIN;
+  if (pin && /^\d{4,8}$/.test(pin)) {
+    put("staff", "staff-admin", make({ id: "staff-admin", name: "院長", role: "admin" }, pin));
+  } else {
+    console.warn("スタッフが登録されていません。INITIAL_ADMIN_PIN（4〜8桁）を設定して再起動すると、院長アカウントが作られます");
+  }
+}
+
 function st(): StaffState {
   if (!g.__reserveStaff) {
-    g.__reserveStaff = {
-      staff: new Map(
-        DEMO_STAFF.map((s) => [s.id, { ...s, active: true, ...hashPin(DEMO_PIN), sessionVersion: 1, failedCount: 0, lockedUntil: 0 }]),
-      ),
-      audit: [],
-      seq: 0,
-    };
+    g.__reserveStaff = transaction(() => {
+      bootstrapStaff();
+      return { staff: new PersistentMap<StaffRecord>("staff"), seq: count("staff") };
+    });
   }
   return g.__reserveStaff;
 }
@@ -93,18 +118,18 @@ export function verifyPin(staffId: string, pin: string, now = Date.now()): { sta
   }
   const given = scryptSync(String(pin), s.pinSalt, 32);
   const ok = timingSafeEqual(given, Buffer.from(s.pinHash, "hex"));
+  const save = (patch: Partial<StaffRecord>) => st().staff.set(s.id, { ...s, ...patch });
   if (!ok) {
-    s.failedCount += 1;
-    if (s.failedCount >= MAX_FAILS) {
-      s.failedCount = 0;
-      s.lockedUntil = now + LOCK_MS;
+    const fails = s.failedCount + 1;
+    if (fails >= MAX_FAILS) {
+      save({ failedCount: 0, lockedUntil: now + LOCK_MS });
       audit({ id: s.id, name: s.name }, "PIN入力の失敗が続いたためロック");
       throw new AuthError("locked", "PINを続けて間違えたため、5分間ログインできません");
     }
+    save({ failedCount: fails });
     throw new AuthError("invalid_pin", "スタッフまたはPINが違います");
   }
-  s.failedCount = 0;
-  s.lockedUntil = 0;
+  if (s.failedCount !== 0 || s.lockedUntil !== 0) save({ failedCount: 0, lockedUntil: 0 });
   return { staff: toPublic(s), sessionVersion: s.sessionVersion };
 }
 
@@ -167,12 +192,11 @@ export function updateStaff(
 
 // ---- 操作ログ ----
 
+/** 操作ログはデータベースに追記していく（消さない） */
 export function audit(actor: Actor, action: string, target?: string): void {
-  const s = st();
-  s.audit.unshift({ at: new Date().toISOString(), actor, action, ...(target && { target }) });
-  if (s.audit.length > 5000) s.audit.length = 5000;
+  appendAudit({ at: new Date().toISOString(), actor, action, ...(target && { target }) });
 }
 
 export function listAudit(limit = 200): AuditEntry[] {
-  return st().audit.slice(0, limit);
+  return loadAudit<AuditEntry>(limit);
 }

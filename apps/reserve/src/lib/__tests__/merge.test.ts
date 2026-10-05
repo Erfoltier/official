@@ -2,9 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { addDays, nowInClinic, toIso } from "@/lib/domain/time";
 
 const reset = () => {
-  const g = globalThis as { __reserveStore?: unknown; __reserveStaff?: unknown };
-  g.__reserveStore = undefined;
-  g.__reserveStaff = undefined;
+  resetStores();
 };
 const rc = { id: "staff-rc1", name: "受付A（デモ）" };
 

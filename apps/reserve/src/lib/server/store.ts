@@ -31,11 +31,22 @@ import {
 } from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 import { audit } from "@/lib/server/staff";
+import { PersistentMap, PersistentSet, count, getMeta, put, setMeta, transaction } from "@/lib/server/db";
 
 /**
- * 試作用のメモリ上の予約ストア。サーバーを再起動すると変更は消える。
- * 本番ではPostgreSQL（院ごとの行分離あり）に置き換える。関数の形はそのまま使える想定。
+ * 予約・患者・記録のストア。読み込みはメモリ上で行い、変更は1件ずつデータベース（db.ts）へ保存する。
+ * サーバーを再起動しても消えない。将来 PostgreSQL（院ごとの行分離）に置き換えても関数の形は変えない想定。
  */
+
+/**
+ * デモデータ（架空の患者・予約・施術歴）を入れるか。
+ * 環境変数 RESERVE_DEMO=1/0。未設定なら開発時は入れ、本番（NODE_ENV=production）では入れない
+ */
+export function demoEnabled(): boolean {
+  const v = process.env.RESERVE_DEMO;
+  if (v === "1" || v === "0") return v === "1";
+  return process.env.NODE_ENV !== "production";
+}
 
 interface StoreState {
   lanes: Map<string, Lane>;
@@ -54,18 +65,26 @@ const globalForStore = globalThis as unknown as { __reserveStore?: StoreState };
 
 function state(): StoreState {
   if (!globalForStore.__reserveStore) {
-    const patients = buildDemoPatients();
-    globalForStore.__reserveStore = {
-      lanes: new Map(AIR_LANES.map((l) => [l.id, { ...l }])),
-      menus: new Map(AIR_MENUS.map((m) => [m.id, { ...m, laneIds: [...m.laneIds] }])),
-      patients: new Map(patients.map((p) => [p.id, p])),
-      patientHistory: new Map(),
-      visitNotes: new Map(),
-      historySeeded: false,
-      reservations: new Map(),
-      seededDates: new Set(),
-      seq: 0,
-    };
+    globalForStore.__reserveStore = transaction(() => {
+      // 初回起動時だけ、Airリザーブから移したレーン・メニュー（とデモの患者）を入れる
+      if (!getMeta<boolean>("initialized")) {
+        for (const l of AIR_LANES) put("lane", l.id, l);
+        for (const m of AIR_MENUS) put("menu", m.id, m);
+        if (demoEnabled()) for (const p of buildDemoPatients()) put("patient", p.id, p);
+        setMeta("initialized", true);
+      }
+      return {
+        lanes: new PersistentMap<Lane>("lane"),
+        menus: new PersistentMap<Menu>("menu"),
+        patients: new PersistentMap<Patient>("patient"),
+        patientHistory: new PersistentMap<PatientChange[]>("patientHistory"),
+        visitNotes: new PersistentMap<VisitNote>("visitNote"),
+        historySeeded: getMeta<boolean>("historySeeded") ?? false,
+        reservations: new PersistentMap<Reservation>("reservation"),
+        seededDates: new PersistentSet("seededDate"),
+        seq: count("patient") + count("reservation"),
+      };
+    });
   }
   return globalForStore.__reserveStore;
 }
@@ -86,8 +105,14 @@ function demoStatus(r: Reservation, now: { date: string; minutes: number }): Res
 }
 
 function ensureSeeded(date: string): void {
+  if (!demoEnabled()) return;
   const st = state();
   if (st.seededDates.has(date)) return;
+  transaction(() => seedDemoDay(date));
+}
+
+function seedDemoDay(date: string): void {
+  const st = state();
   st.seededDates.add(date);
   const nowIso = new Date().toISOString();
   const now = nowInClinic();
@@ -474,9 +499,16 @@ const noteKey = (patientId: string, date: string) => `${patientId}|${date}`;
  * 過去の来院に架空のメモとスキンケアを付ける。
  */
 function ensureHistorySeeded(): void {
+  if (!demoEnabled()) return;
   const st = state();
   if (st.historySeeded) return;
+  transaction(() => seedDemoHistory());
+}
+
+function seedDemoHistory(): void {
+  const st = state();
   st.historySeeded = true;
+  setMeta("historySeeded", true);
   const today = nowInClinic().date;
   const dates: string[] = [];
   for (let d = addDays(today, -182); d <= addDays(today, 56); d = addDays(d, 1)) {
@@ -693,7 +725,7 @@ export function updateLane(id: string, input: LaneInput, by?: Actor): Lane {
  * レーンを完全に削除する。予約の記録が1件でもあるレーンは、過去の予約の表示のために削除できない
  * （その場合は非表示にする）。メニューの「行えるレーン」からも外す
  */
-export function deleteLane(id: string, by?: Actor): void {
+function deleteLaneImpl(id: string, by?: Actor): void {
   const st = state();
   const cur = st.lanes.get(id);
   if (!cur) throw new StoreError("not_found", "レーンが見つかりません");
@@ -711,7 +743,7 @@ export function deleteLane(id: string, by?: Actor): void {
 }
 
 /** 並び順をまとめて変更（ids の順に並べる） */
-export function reorderLanes(ids: string[], by?: Actor): Lane[] {
+function reorderLanesImpl(ids: string[], by?: Actor): Lane[] {
   const st = state();
   if (ids.length !== st.lanes.size || !ids.every((id) => st.lanes.has(id))) {
     throw new StoreError("invalid", "並び順の指定が正しくありません");
@@ -781,7 +813,7 @@ export function updateMenu(id: string, input: MenuInput, by?: Actor): Menu {
   return next;
 }
 
-export function reorderMenus(ids: string[], by?: Actor): Menu[] {
+function reorderMenusImpl(ids: string[], by?: Actor): Menu[] {
   const st = state();
   if (ids.length !== st.menus.size || !ids.every((id) => st.menus.has(id))) {
     throw new StoreError("invalid", "並び順の指定が正しくありません");
@@ -895,7 +927,7 @@ export function previewMerge(keepId: string, dupId: string): MergePreview {
  * - keep の空欄は dup の値で埋める。注意事項とメモはつなげる
  * - dup は削除扱い（mergedInto に keep）にして残す
  */
-export function mergePatients(
+function mergePatientsImpl(
   input: { keepId: string; dupId: string; keepVersion: number; dupVersion: number },
   by?: Actor,
 ): Patient {
@@ -962,4 +994,24 @@ export function mergePatients(
   recordChange(keep.id, [`診察券${dup.chartNo}（${dup.name}）を統合：${detail.join("、")}`], at, by, `重複患者を統合（統合元 ${dup.id}）`);
   recordChange(dup.id, [`診察券${keep.chartNo}（${keep.name}）へ統合`], at, by, `統合先へまとめた（統合先 ${keep.id}）`);
   return st.patients.get(keep.id)!;
+}
+
+/** 複数の記録をまとめて変更するため、途中で失敗したら全部取り消す */
+export function mergePatients(...args: Parameters<typeof mergePatientsImpl>): ReturnType<typeof mergePatientsImpl> {
+  return transaction(() => mergePatientsImpl(...args));
+}
+
+/** 複数の記録をまとめて変更するため、途中で失敗したら全部取り消す */
+export function reorderLanes(...args: Parameters<typeof reorderLanesImpl>): ReturnType<typeof reorderLanesImpl> {
+  return transaction(() => reorderLanesImpl(...args));
+}
+
+/** 複数の記録をまとめて変更するため、途中で失敗したら全部取り消す */
+export function reorderMenus(...args: Parameters<typeof reorderMenusImpl>): ReturnType<typeof reorderMenusImpl> {
+  return transaction(() => reorderMenusImpl(...args));
+}
+
+/** 複数の記録をまとめて変更するため、途中で失敗したら全部取り消す */
+export function deleteLane(...args: Parameters<typeof deleteLaneImpl>): ReturnType<typeof deleteLaneImpl> {
+  return transaction(() => deleteLaneImpl(...args));
 }

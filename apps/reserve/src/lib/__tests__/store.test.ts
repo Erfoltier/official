@@ -1,13 +1,13 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
 async function freshStore() {
-  (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+  resetStores();
   return import("@/lib/server/store");
 }
 
 describe("store", () => {
   beforeEach(() => {
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
   });
 
   it("同じ日付は同じダミー予約を返す", async () => {
@@ -67,7 +67,7 @@ describe("store", () => {
 
 describe("reminder feed", () => {
   it("キャンセルを除き、送信に必要な項目だけを返す", async () => {
-    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    resetStores();
     const { buildReminderFeed } = await import("@/lib/server/reminders");
     const feed = buildReminderFeed("2026-10-07");
     expect(feed.schemaVersion).toBe(1);

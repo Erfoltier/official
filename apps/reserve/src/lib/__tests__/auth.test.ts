@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 const reset = () => {
-  const g = globalThis as { __reserveStore?: unknown; __reserveStaff?: unknown };
-  g.__reserveStore = undefined;
-  g.__reserveStaff = undefined;
+  resetStores();
 };
 
 describe("スタッフのログイン", () => {
