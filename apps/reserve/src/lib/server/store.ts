@@ -52,6 +52,7 @@ import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 import { DEFAULT_PRODUCTS } from "@/lib/seed/products";
 import { SLOT_MENUS } from "@/lib/seed/slot-menus";
 import { DEFAULT_STAGES, STAGE_FOR_STATUS } from "@/lib/seed/stages";
+import { SHEET_PRICES, SHEET_PRICES_LABEL } from "@/lib/seed/sheet-prices";
 import { AuthError, audit } from "@/lib/server/staff";
 import { PersistentMap, PersistentSet, count, getBlob, getMeta, loadAll, put, putBlob, setMeta, transaction } from "@/lib/server/db";
 
@@ -152,6 +153,14 @@ function state(): StoreState {
         seq: count("patient") + count("reservation"),
       };
     });
+    // 自費商品の料金（スプレッドシート）：Apps Script がまだ送っていなければ、作った時点の内容を1回だけ入れる
+    if (!getMeta<boolean>("sheetPricesSeeded")) {
+      const url = `sheet:${SHEET_PRICES_LABEL}`;
+      transaction(() => {
+        if (![...globalForStore.__reserveStore!.prices.values()].some((p) => p.url === url)) receiveSheetPricesImpl(SHEET_PRICES_LABEL, SHEET_PRICES);
+        setMeta("sheetPricesSeeded", true);
+      });
+    }
     // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
     if (globalForStore.__reserveStore.snapshots.size === 0) {
       const id = "snap-baseline";

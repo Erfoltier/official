@@ -3065,5 +3065,431 @@
    "order": 202,
    "active": true
   }
- ]
+ ],
+ "sheetPrices": {
+  "sheet": "自費商品、メニュー外値段表",
+  "items": [
+   {
+    "category": "内服・外用など",
+    "name": "イソトレチノイン30T",
+    "priceYen": 16500
+   },
+   {
+    "category": "内服・外用など",
+    "name": "イソトレ採血",
+    "priceYen": 3300
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ファボワ―ル28",
+    "priceYen": 2090
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ソルプロ 30T",
+    "priceYen": 5000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "VC粉30日",
+    "priceYen": 4000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "VCカプセル30日",
+    "priceYen": 4800
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ソルプロVC粉セット",
+    "priceYen": 8000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ソルプロVCカプセル",
+    "priceYen": 8800
+   },
+   {
+    "category": "内服・外用など",
+    "name": "V C+D 粉30日",
+    "priceYen": 5200
+   },
+   {
+    "category": "内服・外用など",
+    "name": "デュタステリド",
+    "priceYen": 5500
+   },
+   {
+    "category": "内服・外用など",
+    "name": "デュアルゲン(ミノ15%)",
+    "priceYen": 9900
+   },
+   {
+    "category": "内服・外用など",
+    "name": "リポゲイン",
+    "priceYen": 8800
+   },
+   {
+    "category": "内服・外用など",
+    "name": "パントガール",
+    "priceYen": 8800
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ファーミングマスク1枚",
+    "priceYen": 1500
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ファーミングマスク5枚",
+    "priceYen": 7150
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ペンレス1枚",
+    "priceYen": 100
+   },
+   {
+    "category": "内服・外用など",
+    "name": "デュオミニ",
+    "priceYen": 200
+   },
+   {
+    "category": "内服・外用など",
+    "name": "アプローラドリンク15袋",
+    "priceYen": 3000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "アプローラD-GEL",
+    "priceYen": 2860
+   },
+   {
+    "category": "内服・外用など",
+    "name": "トラネクリーム5g",
+    "priceYen": 1000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "Tcrゼオ美白やっている人",
+    "priceYen": 1000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "Tcr単品",
+    "priceYen": 1500
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ピンクTHQTA",
+    "priceYen": 2000
+   },
+   {
+    "category": "内服・外用など",
+    "name": "ヘリオケア360 30cap",
+    "priceYen": 7700
+   },
+   {
+    "category": "内服・外用など",
+    "name": "30％サリチル酸約3g(約3回分)",
+    "priceYen": 15400
+   },
+   {
+    "category": "内服・外用など",
+    "name": "30％サリチル酸約5g(約5回分)",
+    "priceYen": 19800
+   },
+   {
+    "category": "その他",
+    "name": "オゼンピック2mg",
+    "priceYen": 22000
+   },
+   {
+    "category": "その他",
+    "name": "オゼ針・消毒綿(８回分)",
+    "priceYen": 550
+   },
+   {
+    "category": "その他",
+    "name": "マンジャロ2.5*4本",
+    "priceYen": 23100,
+    "priceText": "23,100円（1本なら6600円）"
+   },
+   {
+    "category": "その他",
+    "name": "マンジャロ5*4本",
+    "priceYen": 41800,
+    "priceText": "41,800円（1本なら11000円）"
+   },
+   {
+    "category": "その他",
+    "name": "マンジャロ7.5*4本",
+    "priceYen": 56980,
+    "priceText": "56,980円（1本なら15400円）"
+   },
+   {
+    "category": "その他",
+    "name": "リベルサス3mg",
+    "priceYen": 7700
+   },
+   {
+    "category": "その他",
+    "name": "リベルサス7mg",
+    "priceYen": 19800
+   },
+   {
+    "category": "その他",
+    "name": "リベルサス14mg",
+    "priceYen": 26400
+   },
+   {
+    "category": "その他",
+    "name": "BBX30T",
+    "priceYen": 8800
+   },
+   {
+    "category": "その他",
+    "name": "Vゾーン汗とめ50",
+    "priceYen": 27500
+   },
+   {
+    "category": "その他",
+    "name": "汗とめワキ30-30",
+    "priceYen": 33000
+   },
+   {
+    "category": "その他",
+    "name": "汗とめワキ40-40",
+    "priceYen": 41800
+   },
+   {
+    "category": "その他",
+    "name": "汗とめワキ50-50",
+    "priceYen": 49500
+   },
+   {
+    "category": "その他",
+    "name": "頭皮50",
+    "priceYen": 39600
+   },
+   {
+    "category": "その他",
+    "name": "ビマトプロスト１本 2.5mL",
+    "priceYen": 3300
+   },
+   {
+    "category": "その他",
+    "name": "アップニーク",
+    "priceYen": 4620
+   },
+   {
+    "category": "その他",
+    "name": "スキンメタリア日焼け止めスプレー",
+    "priceYen": 2530
+   },
+   {
+    "category": "その他",
+    "name": "セベリアI.C.Eバーム",
+    "priceYen": 6490
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "クレンザー(ハイドレ エクス エマル)",
+    "priceYen": 6600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "エクスフォリエーティングポリッシュ",
+    "priceYen": 9600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "バランサートナー",
+    "priceYen": 7500
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ARナイトリペア",
+    "priceYen": 26700
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "Wテクスチャーリペア",
+    "priceYen": 23900
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ミラミン",
+    "priceYen": 13900
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ミラミックス",
+    "priceYen": 13900
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "デイリーPD",
+    "priceYen": 23500
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "RCクリーム",
+    "priceYen": 19200
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "RNクリーム",
+    "priceYen": 18000
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "サンスクリーンプラスプライマーSPF30",
+    "priceYen": 8600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "シアーフルイドサンスクリーン SPF50",
+    "priceYen": 9600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "BSサンスクリーンSPF50",
+    "priceYen": 12000
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "パウダーサンスクリーンSPF30",
+    "priceYen": 8600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "スキンブライセラム0.25",
+    "priceYen": 14500
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "スキンブライセラム0.5",
+    "priceYen": 17100
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "スキンブライセラム1.0",
+    "priceYen": 19200
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "シーセラム",
+    "priceYen": 17100
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ブライタライブ",
+    "priceYen": 22800
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "Gファクターセラム",
+    "priceYen": 25600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "Gファクターアイセラム",
+    "priceYen": 21400
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "イルミネーションAOXセラム",
+    "priceYen": 23500
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ハイドラファーム",
+    "priceYen": 21400
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "PSリファイナー",
+    "priceYen": 9600
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "クラリファイングセラム",
+    "priceYen": 17300
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ロザトロール",
+    "priceYen": 16000
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ファーミングセラム",
+    "priceYen": 35000
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ハイドロミスト",
+    "priceYen": 11800
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ボディエマルジョン",
+    "priceYen": 17100
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "コンプレックスＡ＋",
+    "priceYen": 15000
+   },
+   {
+    "category": "ゼオスキンヘルス（限定入荷品）",
+    "name": "ミニファーミング",
+    "priceYen": 20000
+   },
+   {
+    "category": "ゼオスキンヘルス",
+    "name": "ネックコンプレックス",
+    "priceYen": 25200
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "うなじ脱毛",
+    "priceYen": 8800
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "フラモニター10回",
+    "priceYen": 398000,
+    "priceText": "398,000円（522500の三割引き。マスク10枚付き）"
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "スネ5回目以降",
+    "priceYen": 38500
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "ＴＡ＋ピンクモニター 5回",
+    "priceYen": 145000,
+    "priceText": "145,000円（注入針代込み）"
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "眉下＋眉上＋眉間",
+    "priceYen": 8250,
+    "priceText": "8,250円（目のギリまでは照射できないので、それは針脱毛で。）"
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "成長因子パック",
+    "priceYen": 1500
+   },
+   {
+    "category": "特殊メニュー",
+    "name": "成長因子パック５枚セット",
+    "priceYen": 7150
+   }
+  ]
+ }
 }

@@ -150,6 +150,21 @@ final class Store
                 $db->setMeta('docInfoSeeded', true);
             });
         }
+        // 自費商品の料金（スプレッドシート）：Apps Script がまだ送っていなければ、作った時点の内容を1回だけ入れる
+        if (!$db->meta('sheetPricesSeeded')) {
+            $sp = self::seed()['sheetPrices'] ?? null;
+            $has = false;
+            foreach ($sp ? $db->all('price') : [] as $p) {
+                if (($p['url'] ?? null) === "sheet:{$sp['sheet']}") {
+                    $has = true;
+                    break;
+                }
+            }
+            if ($sp && !$has) {
+                self::receiveSheetPrices($sp['sheet'], $sp['items']);
+            }
+            $db->setMeta('sheetPricesSeeded', true);
+        }
         // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
         self::ensureBaseline();
     }

@@ -1275,3 +1275,15 @@ details:not([open]) > summary.histTitle {
     max-width: 320px;
   }
 }
+
+/* 縦に並べる表示でも幅に余裕があれば、メモ・カルテ・撮影・ファイルを1段に4つ（スマホは窮屈なので2×2のまま） */
+@media (min-width: 480px) and (max-width: 640px) {
+  .actGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: 480px;
+  }
+  .actGrid > [data-compact] {
+    grid-column: span 2;
+  }
+}
+
