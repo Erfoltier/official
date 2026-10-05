@@ -105,6 +105,14 @@ function state(): StoreState {
         if (count("product") === 0) for (const p of DEFAULT_PRODUCTS) put("product", p.id, p);
         setMeta("productsSeeded", true);
       }
+      // 最初に入れた見本のスキンケア・内服（値段なし）は、料金表を候補に使うようになったので片付ける（手を加えたものは残す）
+      if (!getMeta<boolean>("demoProductsRetired")) {
+        const demo = new Map(DEFAULT_PRODUCTS.map((p) => [p.id, p.name]));
+        for (const [id, p] of loadAll<Product>("product")) {
+          if (!p.deleted && demo.get(id) === p.name && p.priceYen === null) put("product", id, { ...p, active: false, deleted: true });
+        }
+        setMeta("demoProductsRetired", true);
+      }
       // 予約枠時間一覧・ホームページから足したメニュー（既存のデータにも1回だけ。同じIDや同じ名前があれば足さない）
       if (!getMeta<boolean>("slotMenusSeeded")) {
         const have = loadAll<Menu>("menu");

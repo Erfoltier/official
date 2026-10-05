@@ -356,6 +356,14 @@ export interface StaffPublic {
   name: string;
   role: StaffRole;
   active: boolean;
+  /** 設定の変更・削除などの管理操作ができるか（役割の既定に、院長がスタッフごとに上書きできる） */
+  canManage: boolean;
+}
+
+/** 管理操作の既定：院長・管理者と受付。院長・管理者は常にできる */
+export function staffCanManage(role: StaffRole, manage?: boolean): boolean {
+  if (role === "admin") return true;
+  return manage ?? role === "reception";
 }
 
 /** 操作したスタッフ。名前は操作時点のものを残す */

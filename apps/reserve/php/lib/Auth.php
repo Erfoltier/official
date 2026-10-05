@@ -86,7 +86,16 @@ final class Auth
 
     public static function toPublic(array $s): array
     {
-        return ['id' => $s['id'], 'name' => $s['name'], 'role' => $s['role'], 'active' => $s['active']];
+        return ['id' => $s['id'], 'name' => $s['name'], 'role' => $s['role'], 'active' => $s['active'], 'canManage' => self::canManage($s)];
+    }
+
+    /** 設定の変更・削除などの管理操作：院長・管理者は常に、ほかは院長の上書き（なければ受付だけ） */
+    public static function canManage(array $s): bool
+    {
+        if ($s['role'] === 'admin') {
+            return true;
+        }
+        return isset($s['manage']) ? (bool) $s['manage'] : $s['role'] === 'reception';
     }
 
     public static function listStaff(bool $includeInactive = false): array
@@ -172,6 +181,9 @@ final class Auth
         if (array_key_exists('active', $input)) {
             $next['active'] = $input['active'];
         }
+        if (array_key_exists('canManage', $input)) {
+            $next['manage'] = $input['canManage'];
+        }
         // 管理者がいなくなる変更は止める
         $admins = 0;
         foreach ($all as $x) {
@@ -196,6 +208,7 @@ final class Auth
             array_key_exists('role', $input) ? '役割' : null,
             array_key_exists('active', $input) ? ($input['active'] ? '利用再開' : '利用停止') : null,
             array_key_exists('pin', $input) ? 'PIN' : null,
+            array_key_exists('canManage', $input) ? ($input['canManage'] ? '管理操作を許可' : '管理操作を不可') : null,
         ]);
         self::audit($by, 'スタッフ情報を変更（' . implode('・', $what) . '）', $id);
         return self::toPublic($next);
@@ -295,6 +308,16 @@ final class Auth
             throw new AuthError('login_required', 'ログインしてください');
         }
         if ($roles !== null && !in_array($s['role'], $roles, true)) {
+            throw new AuthError('forbidden', 'この操作の権限がありません');
+        }
+        return $s;
+    }
+
+    /** 設定の変更・削除などの管理操作（院長・管理者と受付、または院長が許可したスタッフ） */
+    public static function requireManager(): array
+    {
+        $s = self::requireStaff();
+        if (!$s['canManage']) {
             throw new AuthError('forbidden', 'この操作の権限がありません');
         }
         return $s;

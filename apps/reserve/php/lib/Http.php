@@ -591,6 +591,7 @@ final class Schema
             'role?' => fn($x) => V::enum($x, Auth::ROLES),
             'active?' => [V::class, 'bool'],
             'pin?' => fn($x) => V::str($x, 16),
+            'canManage?' => [V::class, 'bool'],
         ]);
     }
 

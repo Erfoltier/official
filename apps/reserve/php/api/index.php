@@ -8,7 +8,6 @@ declare(strict_types=1);
 require __DIR__ . '/../lib/bootstrap.php';
 
 const STAFF_ADMIN = ['admin'];
-const STAFF_MANAGE = ['admin', 'reception'];
 
 try {
     $uri = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
@@ -20,6 +19,7 @@ try {
     $method = Http::method();
     $q = fn(string $k) => isset($_GET[$k]) && is_string($_GET[$k]) ? $_GET[$k] : null;
     $me = fn(?array $roles = null) => Auth::requireStaff($roles);
+    $manager = fn() => Auth::requireManager();
     $actor = fn(array $s) => Auth::actorOf($s);
 
     $route = $method . ' ' . implode('/', array_map(fn($p) => preg_match('/^[A-Za-z0-9_-]{1,64}$/', $p) ? $p : '?', $path));
@@ -102,7 +102,7 @@ try {
         Http::json(['month' => $month, 'days' => $days ?: new stdClass()]);
     }
     if ($route === 'PATCH clinic') {
-        $s = $me(STAFF_MANAGE);
+        $s = $manager();
         Http::json(Store::updateClinic(Schema::clinic(Http::readJson()), $actor($s)));
     }
     if ($route === 'GET settings/restore') {
@@ -141,11 +141,11 @@ try {
         Http::json(Store::createPatient(Schema::createPatient(Http::readJson(65_536)), $actor($s)), 201);
     }
     if ($route === 'GET patients/merge') {
-        $me(STAFF_MANAGE);
+        $manager();
         Http::json(Store::previewMerge(V::id($q('keep')), V::id($q('dup'))));
     }
     if ($route === 'POST patients/merge') {
-        $s = $me(STAFF_MANAGE);
+        $s = $manager();
         $keep = Store::mergePatients(Schema::mergePatients(Http::readJson()), $actor($s));
         Http::json(Store::getPatientDetail($keep['id']));
     }
@@ -167,13 +167,13 @@ try {
             Http::json(Store::getPatientDetail($id));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Store::deletePatient($id, Schema::deletePatient(Http::readJson()), $actor($s));
             Http::json(Store::getPatientDetail($id));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'restore') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Store::restorePatient($id, Schema::versionOnly(Http::readJson()), $actor($s));
             Http::json(Store::getPatientDetail($id));
@@ -232,23 +232,23 @@ try {
             continue;
         }
         if ($method === 'POST' && $n === 1) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $in = Http::readJson();
             Http::json($kind === 'lanes' ? Store::createLane(Schema::lane($in), $actor($s)) : Store::createMenu(Schema::menu($in), $actor($s)), 201);
         }
         if ($method === 'POST' && $n === 2 && $p[1] === 'reorder') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $ids = Schema::reorder(Http::readJson());
             Http::json(['items' => $kind === 'lanes' ? Store::reorderLanes($ids, $actor($s)) : Store::reorderMenus($ids, $actor($s))]);
         }
         if ($method === 'PATCH' && $n === 2) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             $in = Http::readJson();
             Http::json($kind === 'lanes' ? Store::updateLane($id, Schema::lane($in), $actor($s)) : Store::updateMenu($id, Schema::menu($in), $actor($s)));
         }
         if ($method === 'DELETE' && $n === 2) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $kind === 'lanes' ? Store::deleteLane(V::id($p[1]), $actor($s)) : Store::deleteMenu(V::id($p[1]), $actor($s));
             Http::noContent();
         }
@@ -280,7 +280,7 @@ try {
             Http::json(Store::loadConsentTemplate(V::id($p[1])));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'menus') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(Store::setConsentTemplateMenus(V::id($p[1]), Schema::consentTemplateMenus(Http::readJson()), $actor($s)));
         }
     }
@@ -300,7 +300,7 @@ try {
             Http::json(Store::getConsentView(V::id($p[1])));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Store::deleteConsent($id, $actor($s));
             Http::json(['id' => $id, 'deleted' => true]);
@@ -315,11 +315,11 @@ try {
             Http::json(Store::getPriceList());
         }
         if ($method === 'POST' && $n === 1) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(Store::createPriceItem(Schema::priceItem(Http::readJson()), $actor($s)), 201);
         }
         if ($method === 'POST' && $n === 2 && $p[1] === 'sync') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(Store::syncPrices($actor($s)));
         }
         if ($method === 'POST' && $n === 2 && $p[1] === 'urls') {
@@ -328,11 +328,11 @@ try {
             Http::json(Store::syncPrices($actor($s)));
         }
         if ($method === 'PATCH' && $n === 2) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(Store::updatePriceItem(V::id($p[1]), Schema::priceItem(Http::readJson()), $actor($s)));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Store::deletePriceItem($id, $actor($s));
             Http::json(['id' => $id, 'deleted' => true]);
@@ -350,7 +350,7 @@ try {
             Http::json(Store::updateEstimate(V::id($p[1]), Schema::updateEstimate(Http::readJson(65_536)), $actor($s)));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $e = Store::deleteEstimate(V::id($p[1]), ['version' => Schema::versionOnly(Http::readJson())], $actor($s));
             Http::json(['id' => $e['id'], 'deleted' => true]);
         }
@@ -359,20 +359,20 @@ try {
     // ---- 状態（院長・管理者と受付） ----
     if ($p[0] === 'stages') {
         if ($method === 'POST' && $n === 1) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(Store::createStage(Schema::stage(Http::readJson()), $actor($s)), 201);
         }
         if ($method === 'POST' && $n === 2 && $p[1] === 'reorder') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(['items' => Store::reorderStages(Schema::reorder(Http::readJson()), $actor($s))]);
         }
         if ($method === 'PATCH' && $n === 2) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Http::json(Store::updateStage($id, Schema::stage(Http::readJson()), $actor($s)));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Store::deleteStage($id, $actor($s));
             Http::json(['id' => $id, 'deleted' => true]);
@@ -382,20 +382,20 @@ try {
     // ---- スキンケア・内服のプリセット（院長・管理者と受付） ----
     if ($p[0] === 'products') {
         if ($method === 'POST' && $n === 1) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(Store::createProduct(Schema::product(Http::readJson()), $actor($s)), 201);
         }
         if ($method === 'POST' && $n === 2 && $p[1] === 'reorder') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             Http::json(['items' => Store::reorderProducts(Schema::reorder(Http::readJson()), $actor($s))]);
         }
         if ($method === 'PATCH' && $n === 2) {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Http::json(Store::updateProduct($id, Schema::product(Http::readJson()), $actor($s)));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $manager();
             $id = V::id($p[1]);
             Store::deleteProduct($id, $actor($s));
             Http::json(['id' => $id, 'deleted' => true]);

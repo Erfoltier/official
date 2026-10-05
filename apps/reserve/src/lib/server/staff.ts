@@ -2,6 +2,7 @@ import "server-only";
 
 import { pbkdf2Sync, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { Actor, AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
+import { staffCanManage } from "@/lib/domain/types";
 import { cleanName, hasForbiddenChars } from "@/lib/domain/text";
 import { PersistentMap, appendAudit, count, loadAudit, put, transaction } from "@/lib/server/db";
 
@@ -12,7 +13,9 @@ import { PersistentMap, appendAudit, count, loadAudit, put, transaction } from "
  * - PIN変更・利用停止で、そのスタッフの既存のログインはすべて無効になる
  */
 
-interface StaffRecord extends StaffPublic {
+interface StaffRecord extends Omit<StaffPublic, "canManage"> {
+  /** 管理操作の上書き（未設定は役割の既定） */
+  manage?: boolean;
   /**
    * PINのハッシュ方式。"pbkdf2-sha256"（Node・PHP共通）。
    * 未設定の古い記録は scrypt（Node版のみ対応）
@@ -119,7 +122,7 @@ function checkPinFormat(pin: string): void {
   if (!/^\d{4,8}$/.test(pin)) throw new AuthError("invalid", "PINは4〜8桁の数字にしてください");
 }
 
-const toPublic = ({ id, name, role, active }: StaffRecord): StaffPublic => ({ id, name, role, active });
+const toPublic = ({ id, name, role, active, manage }: StaffRecord): StaffPublic => ({ id, name, role, active, canManage: staffCanManage(role, manage) });
 
 export function listStaff(includeInactive = false): StaffPublic[] {
   return [...st().staff.values()].filter((s) => includeInactive || s.active).map(toPublic);
@@ -183,7 +186,7 @@ export function createStaff(by: Actor, input: { name: string; role: StaffRole; p
 export function updateStaff(
   by: Actor,
   id: string,
-  input: { name?: string; role?: StaffRole; active?: boolean; pin?: string },
+  input: { name?: string; role?: StaffRole; active?: boolean; pin?: string; canManage?: boolean },
 ): StaffPublic {
   const s = st();
   const cur = s.staff.get(id);
@@ -192,6 +195,7 @@ export function updateStaff(
   if (input.name !== undefined) next.name = checkName(input.name);
   if (input.role !== undefined) next.role = input.role;
   if (input.active !== undefined) next.active = input.active;
+  if (input.canManage !== undefined) next.manage = input.canManage;
   // 管理者がいなくなる変更は止める
   const admins = [...s.staff.values()].map((x) => (x.id === id ? next : x)).filter((x) => x.active && x.role === "admin");
   if (admins.length === 0) throw new AuthError("invalid", "院長・管理者が1人以上必要です");
@@ -206,6 +210,7 @@ export function updateStaff(
     input.role !== undefined && "役割",
     input.active !== undefined && (input.active ? "利用再開" : "利用停止"),
     input.pin !== undefined && "PIN",
+    input.canManage !== undefined && (input.canManage ? "管理操作を許可" : "管理操作を不可"),
   ].filter(Boolean);
   audit(by, `スタッフ情報を変更（${what.join("・")}）`, id);
   return toPublic(next);

@@ -10,11 +10,11 @@ describe("スキンケア・内服のプリセット", () => {
     resetStores();
   });
 
-  it("初期のプリセットが入っていて、価格付きで追加・変更・並べ替え・非表示にできる", async () => {
+  it("見本の商品は片付けてあり、価格付きで追加・変更・並べ替え・非表示にできる", async () => {
     const s = await store();
-    const initial = s.getSettings().products;
-    expect(initial.length).toBeGreaterThan(5);
-    expect(initial.some((p) => p.category === "oral")).toBe(true);
+    // 候補の本体は料金表。見本の12品（値段なし）は最初に片付ける
+    expect(s.getSettings().products).toEqual([]);
+    s.createProduct({ name: "院の美容液", category: "skincare", priceYen: 3300 });
 
     const p = s.createProduct({ name: "ハイドロキノン 5%", category: "skincare", priceYen: 4400 });
     expect(p).toMatchObject({ priceYen: 4400, active: true });

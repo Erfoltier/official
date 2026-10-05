@@ -47,7 +47,9 @@ export function StaffTab({ notify, fail }: Props) {
     <section>
       <p className={styles.lead}>
         スタッフごとにPINでログインし、予約や患者情報の変更は「誰が」行ったかが記録されます。
-        PINの変更・利用停止・役割の変更をすると、その人のログインは切れます。レーン・メニューの変更は院長・管理者と受付だけができます。
+        PINの変更・利用停止・役割の変更をすると、その人のログインは切れます。
+        「管理操作」にチェックがある人は、レーン・メニュー・スキンケア＆内服・料金表などの設定の変更や、予約の取り消し・見積書や同意書の控えの削除ができます
+        （最初は院長・管理者と受付だけ。院長・管理者は常にできます）。
       </p>
       <table className={styles.table}>
         <thead>
@@ -55,6 +57,7 @@ export function StaffTab({ notify, fail }: Props) {
             <th>名前</th>
             <th>役割</th>
             <th>状態</th>
+            <th>管理操作</th>
             <th>PIN</th>
           </tr>
         </thead>
@@ -95,6 +98,18 @@ export function StaffTab({ notify, fail }: Props) {
                 </label>
               </td>
               <td>
+                <label className={styles.toggle} title="設定の変更・削除などができるか">
+                  <input
+                    type="checkbox"
+                    checked={s.canManage}
+                    disabled={s.role === "admin"}
+                    aria-label={`${s.name}の管理操作`}
+                    onChange={(e) => update(s.id, { canManage: e.target.checked }, e.target.checked ? "管理操作を許可しました" : "管理操作をできないようにしました")}
+                  />
+                  {s.role === "admin" ? "常に可" : s.canManage ? "できる" : "見るだけ"}
+                </label>
+              </td>
+              <td>
                 <button
                   className={styles.btn}
                   onClick={() => {
@@ -130,6 +145,7 @@ export function StaffTab({ notify, fail }: Props) {
                 aria-label="初期PIN"
               />
             </td>
+            <td />
             <td>
               <button
                 className={styles.primary}

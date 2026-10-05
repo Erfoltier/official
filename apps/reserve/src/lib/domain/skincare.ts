@@ -12,8 +12,6 @@ export interface SkincareOption {
   priceYen: number | null;
 }
 
-/** 最初から入っていた見本の商品（料金表を使うようになったので候補に出さない） */
-const isDemoProduct = (p: Product) => /^prod-0\d\d$/.test(p.id);
 /** ホームページの料金表のうち、スキンケア＆内服として選ぶ分類 */
 const HP_CATEGORY = /外用|内服|スキンケア|サプリ/;
 
@@ -42,7 +40,7 @@ export function skincareOptions(prices: PriceItem[], products: Product[]): Skinc
     push({ name, group: p.category, priceYen: p.priceYen });
   }
   for (const p of [...products].sort((a, b) => a.order - b.order)) {
-    if (!p.active || p.deleted || isDemoProduct(p)) continue;
+    if (!p.active || p.deleted) continue;
     push({ name: p.name, group: "院で追加した商品", priceYen: p.priceYen });
   }
   return out;

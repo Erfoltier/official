@@ -124,7 +124,13 @@ const role = z.enum(["admin", "doctor", "nurse", "reception"]);
 export const createStaffSchema = z.object({ name: z.string().max(60), role, pin: z.string().max(16) }).strict();
 
 export const updateStaffSchema = z
-  .object({ name: z.string().max(60).optional(), role: role.optional(), active: z.boolean().optional(), pin: z.string().max(16).optional() })
+  .object({
+    name: z.string().max(60).optional(),
+    role: role.optional(),
+    active: z.boolean().optional(),
+    pin: z.string().max(16).optional(),
+    canManage: z.boolean().optional(),
+  })
   .strict();
 
 export const deletePatientSchema = z.object({ version: z.number().int().positive(), reason: z.string().max(200) }).strict();

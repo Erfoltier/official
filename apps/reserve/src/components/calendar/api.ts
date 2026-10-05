@@ -170,7 +170,7 @@ export async function fetchStaff(): Promise<StaffPublic[]> {
 
 export function saveStaff(
   id: string | null,
-  body: { name?: string; role?: StaffRole; active?: boolean; pin?: string },
+  body: { name?: string; role?: StaffRole; active?: boolean; pin?: string; canManage?: boolean },
 ): Promise<StaffPublic> {
   return id
     ? call(`/api/v1/staff/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) })

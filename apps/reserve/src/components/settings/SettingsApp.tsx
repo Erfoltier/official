@@ -60,7 +60,7 @@ export function SettingsApp() {
     [notify],
   );
   const isAdmin = me?.role === "admin";
-  const canEdit = me?.role === "admin" || me?.role === "reception";
+  const canEdit = !!me?.canManage;
 
   return (
     <div className={styles.page}>
@@ -114,7 +114,7 @@ export function SettingsApp() {
       )}
 
       {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic") && (
-        <p className={styles.lead}>レーン・メニュー・状態・スキンケア・診療時間の変更は、院長・管理者と受付のみができます（閲覧のみ）。</p>
+        <p className={styles.lead}>このログインでは見るだけです。変更・削除は、院長・管理者と受付、または院長が「設定 → スタッフ」で許可したスタッフができます。</p>
       )}
       {tab === "staff" && isAdmin ? (
         <StaffTab notify={notify} fail={fail} />

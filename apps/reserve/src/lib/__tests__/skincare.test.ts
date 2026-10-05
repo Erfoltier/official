@@ -15,7 +15,7 @@ const price = (source: PriceItem["source"], category: string, name: string, pric
 const product = (id: string, name: string): Product => ({ id, name, category: "skincare", priceYen: null, order: 0, active: true });
 
 describe("skincareOptions", () => {
-  it("料金表のゼオ・内服外用・ホームページの外用剤を候補にし、特殊メニューや見本の商品は出さない", () => {
+  it("料金表のゼオ・内服外用・ホームページの外用剤を候補にし、特殊メニューは出さない", () => {
     const opts = skincareOptions(
       [
         price("homepage", "シミ取り", "Qスイッチ"),
@@ -24,7 +24,7 @@ describe("skincareOptions", () => {
         price("sheet", "内服・外用など", "トラネキサム酸"),
         price("sheet", "ゼオスキンヘルス", "ミラミン", 12000),
       ],
-      [product("prod-001", "ゼオスキン ミラミン"), product("prod-xyz", "院の美容液")],
+      [product("prod-xyz", "院の美容液")],
     );
     expect(opts.map((o) => o.name)).toEqual(["ゼオスキン ミラミン", "トラネキサム酸", "トレチノインクリーム", "院の美容液"]);
     expect(opts[0].priceYen).toBe(12000);

@@ -45,7 +45,7 @@ export function readSessionToken(token: string | undefined, now = Date.now()): S
     if (typeof exp !== "number" || exp < now) return null;
     const staff = getStaff(String(sid));
     if (!staff || !staff.active || staff.sessionVersion !== v) return null;
-    return { id: staff.id, name: staff.name, role: staff.role, active: staff.active };
+    return { id: staff.id, name: staff.name, role: staff.role, active: staff.active, canManage: staff.canManage };
   } catch {
     return null;
   }
@@ -78,6 +78,13 @@ export function requireStaff(request: Request, roles?: StaffRole[]): StaffPublic
   const s = currentStaff(request);
   if (!s) throw new AuthError("login_required", "ログインしてください");
   if (roles && !roles.includes(s.role)) throw new AuthError("forbidden", "この操作の権限がありません");
+  return s;
+}
+
+/** 設定の変更・削除などの管理操作（院長・管理者と受付、または院長が許可したスタッフ） */
+export function requireManager(request: Request): StaffPublic {
+  const s = requireStaff(request);
+  if (!s.canManage) throw new AuthError("forbidden", "この操作の権限がありません");
   return s;
 }
 

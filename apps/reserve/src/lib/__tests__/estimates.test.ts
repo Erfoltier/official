@@ -14,7 +14,7 @@ describe("見積書", () => {
     const s = await store();
     const p = s.createPatient({ name: "見積 テスト" });
     const menu = s.getSettings().menus[0];
-    const prod = s.getSettings().products[0];
+    const prod = s.createProduct({ name: "院の美容液", category: "skincare", priceYen: 3300 });
     const e = s.createEstimate(
       p.id,
       {

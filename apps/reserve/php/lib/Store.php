@@ -113,6 +113,24 @@ final class Store
                 $db->setMeta('productsSeeded', true);
             });
         }
+        // 最初に入れた見本のスキンケア・内服（値段なし）は、料金表を候補に使うようになったので片付ける（手を加えたものは残す）
+        if (!$db->meta('demoProductsRetired')) {
+            $db->transaction(function () use ($db) {
+                if ($db->meta('demoProductsRetired')) {
+                    return;
+                }
+                $demo = [];
+                foreach (self::seed()['products'] ?? [] as $p) {
+                    $demo[$p['id']] = $p['name'];
+                }
+                foreach ($db->all('product') as $id => $p) {
+                    if (empty($p['deleted']) && ($demo[$id] ?? null) === $p['name'] && $p['priceYen'] === null) {
+                        $db->put('product', $id, [...$p, 'active' => false, 'deleted' => true]);
+                    }
+                }
+                $db->setMeta('demoProductsRetired', true);
+            });
+        }
         // 書類に載せる院名・住所（あとから追加した項目なので、既存の院の設定にも1回だけ入れる）
         if (!$db->meta('docInfoSeeded')) {
             $db->transaction(function () use ($db) {

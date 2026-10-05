@@ -455,7 +455,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}
             onChanged={onChanged}
-            canManage={me?.role === "admin" || me?.role === "reception"}
+            canManage={!!me?.canManage}
             onEditPatient={() => setEditPatientId(selected.patientId)}
           />
         )}
@@ -468,7 +468,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           laneId={createAt.laneId}
           minute={createAt.minute}
           onClose={() => setCreateAt(null)}
-          onMenusChanged={me?.role === "admin" || me?.role === "reception" ? () => load(date) : undefined}
+          onMenusChanged={me?.canManage ? () => load(date) : undefined}
           onCreated={(r) => {
             setCreateAt(null);
             showToast("予約を登録しました");

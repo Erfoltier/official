@@ -159,7 +159,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
   }
 
   const p = detail.patient;
-  const canManage = me?.role === "admin" || me?.role === "reception";
+  const canManage = !!me?.canManage;
   const readOnly = !!p.deleted;
   const afterManage = (d: PatientDetail, done = "") => {
     setMergeWith(undefined);
