@@ -1745,3 +1745,82 @@ button.stagePill[data-clickable]:disabled {
   font-size: 12px;
   cursor: pointer;
 }
+
+/* ===== 右の予約詳細・左の受付一覧のスライドイン ===== */
+.panel {
+  --w: 340px;
+}
+
+.reception {
+  --w: 340px;
+}
+
+@media (max-width: 1099px) {
+  .reception {
+    --w: 300px;
+  }
+}
+
+@keyframes panelSlideIn {
+  from {
+    margin-right: calc(-1 * var(--w));
+    opacity: 0.4;
+  }
+  to {
+    margin-right: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes receptionSlideIn {
+  from {
+    margin-left: calc(-1 * var(--w));
+    opacity: 0.4;
+  }
+  to {
+    margin-left: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawerIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.panel[data-enter] {
+  animation: panelSlideIn 0.24s ease-out;
+}
+
+.reception[data-enter] {
+  animation: receptionSlideIn 0.24s ease-out;
+}
+
+@media (max-width: 760px) {
+  .panel[data-enter] {
+    animation: sheetUp 0.26s ease-out;
+  }
+  .reception[data-enter] {
+    animation: drawerIn 0.24s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel[data-enter],
+  .reception[data-enter] {
+    animation: none;
+  }
+}

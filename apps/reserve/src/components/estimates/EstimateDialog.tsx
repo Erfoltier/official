@@ -7,6 +7,7 @@ import { addDays, nowInClinic } from "@/lib/domain/time";
 import { ApiError, createEstimate, estimatePrintUrl, fetchPrices, fetchSettings, updateEstimate } from "@/components/calendar/api";
 import { searchKey } from "@/lib/domain/text";
 import { usePref } from "@/components/calendar/usePref";
+import { SCOPE_LABEL, discountName, discountYen, parseRate, priceCat, relatedPrices, type DiscountScope, type LineCat } from "@/lib/domain/estimateDiscount";
 import styles from "./estimates.module.css";
 
 interface Props {
@@ -29,6 +30,18 @@ interface Row {
   name: string;
   unit: string;
   qty: number;
+  /** 施術か商品か（割引をどれに掛けるかに使う） */
+  cat: LineCat;
+  /** 「チェックした項目のみ」の割引の対象か */
+  picked: boolean;
+}
+
+/** 掛け率の割引（保存するときに金額の行にする） */
+interface Discount {
+  key: number;
+  label: string;
+  rate: string;
+  scope: DiscountScope;
 }
 
 type DocKind = "estimate" | "bill";
@@ -68,9 +81,20 @@ export function EstimateDialog(props: Props) {
   const [note, setNote] = useState(props.estimate?.note ?? "");
   const [rows, setRows] = useState<Row[]>(
     () =>
-      props.estimate?.lines.map((l) => ({ key: nextKey(), kind: l.kind, refId: l.refId, name: l.name, unit: String(l.unitYen), qty: l.qty })) ?? [],
+      props.estimate?.lines.map((l) => ({
+        key: nextKey(),
+        kind: l.kind,
+        refId: l.refId,
+        name: l.name,
+        unit: String(l.unitYen),
+        qty: l.qty,
+        cat: l.kind === "product" ? "product" : "treatment",
+        picked: true,
+      })) ?? [],
   );
-  const [tab, setTab] = useState<"price" | "menu" | "product">("price");
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
+  // 予約メニュー（予約表の区別のための名前）は見積に出さず、料金表から選ぶ
+  const [tab, setTab] = useState<"price" | "product">("price");
   /** 料金表（ホームページ・スプレッドシート・自由入力） */
   const [prices, setPrices] = useState<PriceItem[] | null>(null);
   const [q, setQ] = useState("");
@@ -87,7 +111,12 @@ export function EstimateDialog(props: Props) {
 
   useEffect(() => {
     fetchPrices().then(
-      (l) => setPrices(l.items),
+      (l) => {
+        setPrices(l.items);
+        // 直すときは、料金表と同じ名前の行を施術／商品に見分ける
+        const catOf = new Map(l.items.map((p) => [lineName(p), priceCat(p)]));
+        setRows((rs) => rs.map((r) => (r.kind === "custom" && catOf.has(r.name) ? { ...r, cat: catOf.get(r.name)! } : r)));
+      },
       () => setPrices([]),
     );
   }, []);
@@ -98,47 +127,58 @@ export function EstimateDialog(props: Props) {
         setMenus(s.menus);
         setProducts(s.products.filter((p) => p.active && !p.deleted));
         setValidDays(s.clinic.estimateValidDays ?? DEFAULT_ESTIMATE_VALID_DAYS);
-        // 予約から作るときは、その予約のメニューを最初に入れておく
-        if (!props.estimate && props.initialMenuIds?.length) {
-          setRows(
-            props.initialMenuIds
-              .map((id) => s.menus.find((m) => m.id === id))
-              .filter((m): m is Menu => !!m)
-              .map((m) => ({ key: nextKey(), kind: "menu", refId: m.id, name: m.name, unit: m.priceYen === null ? "" : String(m.priceYen), qty: 1 })),
-          );
-        }
       },
       () => setError("メニューを読み込めませんでした"),
     );
     // 開いたときに1回だけ
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const effectiveValidUntil = validUntil || addDays(date, validDays);
   const parsed = rows.map((r) => parseYen(r.unit));
-  const total = rows.reduce((sum, r, i) => sum + (parsed[i] ?? 0) * r.qty, 0);
-  const invalid = rows.length === 0 || parsed.some((v) => v === null) || rows.some((r) => !r.name.trim()) || total < 0;
+  const rowsTotal = rows.reduce((sum, r, i) => sum + (parsed[i] ?? 0) * r.qty, 0);
+  /** 掛け率の割引：対象の行（値段がプラスのもの）の合計に掛ける */
+  const discountLines = discounts.map((d) => {
+    const rate = parseRate(d.rate);
+    const target = rows.reduce((sum, r, i) => {
+      const v = parsed[i] ?? 0;
+      if (v <= 0) return sum;
+      const hit = d.scope === "all" || (d.scope === "checked" ? r.picked : r.cat === d.scope);
+      return hit ? sum + v * r.qty : sum;
+    }, 0);
+    return { d, rate, target, amount: rate === null ? 0 : discountYen(target, rate) };
+  });
+  const total = rowsTotal + discountLines.reduce((sum, x) => sum + x.amount, 0);
+  const showPick = discounts.some((d) => d.scope === "checked");
+  const invalid =
+    rows.length === 0 || parsed.some((v) => v === null) || rows.some((r) => !r.name.trim()) || discountLines.some((x) => x.rate === null) || total < 0;
+  /** 予約から開いたとき：その予約のメニューに合う料金表の項目 */
+  const related = useMemo(() => {
+    if (!props.initialMenuIds?.length || !menus || !prices) return [];
+    const names = props.initialMenuIds.map((id) => menus.find((m) => m.id === id)?.name ?? "");
+    return relatedPrices(names, prices);
+  }, [props.initialMenuIds, menus, prices]);
 
   const candidates = useMemo(() => {
     const key = searchKey(q);
     const list: { id: string; name: string; price: number | null; sub?: string; text?: string }[] =
       tab === "price"
         ? (prices ?? []).map((p) => ({ id: p.id, name: lineName(p), price: p.priceYen, sub: p.category, text: p.priceText }))
-        : tab === "menu"
-          ? (menus ?? []).filter((m) => m.active).map((m) => ({ id: m.id, name: m.name, price: m.priceYen }))
-          : products.map((p) => ({ id: p.id, name: p.name, price: p.priceYen, sub: PRODUCT_CATEGORY_LABEL[p.category] }));
+        : products.map((p) => ({ id: p.id, name: p.name, price: p.priceYen, sub: PRODUCT_CATEGORY_LABEL[p.category] }));
     return key ? list.filter((x) => searchKey(`${x.sub ?? ""} ${x.name}`).includes(key)) : list;
-  }, [tab, q, menus, products, prices]);
+  }, [tab, q, products, prices]);
 
   /** 料金表の項目は「自由入力の行」として入れる（見積書には名前と値段を写して残す） */
-  const add = (tab0: "price" | "menu" | "product", id: string, name: string, price: number | null) => {
+  const add = (tab0: "price" | "product", id: string, name: string, price: number | null) => {
     const kind = tab0 === "price" ? "custom" : tab0;
+    const p = tab0 === "price" ? prices?.find((x) => x.id === id) : undefined;
+    const cat: LineCat = tab0 === "product" ? "product" : p ? priceCat(p) : "treatment";
     setRows((rs) => {
       const same = rs.find((r) => (kind === "custom" ? r.kind === "custom" && r.name === name : r.kind === kind && r.refId === id));
       if (same) return rs.map((r) => (r === same ? { ...r, qty: Math.min(99, r.qty + 1) } : r));
-      return [...rs, { key: nextKey(), kind, ...(kind !== "custom" && { refId: id }), name, unit: price === null ? "" : String(price), qty: 1 }];
+      return [...rs, { key: nextKey(), kind, ...(kind !== "custom" && { refId: id }), name, unit: price === null ? "" : String(price), qty: 1, cat, picked: true }];
     });
   };
+  const patchDiscount = (key: number, p: Partial<Discount>) => setDiscounts((ds) => ds.map((d) => (d.key === key ? { ...d, ...p } : d)));
 
   const patch = (key: number, p: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...p } : r)));
 
@@ -146,13 +186,19 @@ export function EstimateDialog(props: Props) {
     if (invalid || saving) return;
     setSaving(true);
     setError(null);
-    const lines: EstimateLine[] = rows.map((r, i) => ({
-      kind: r.kind,
-      ...(r.kind !== "custom" && { refId: r.refId }),
-      name: r.name,
-      unitYen: parsed[i]!,
-      qty: r.qty,
-    }));
+    const lines: EstimateLine[] = [
+      ...rows.map((r, i) => ({
+        kind: r.kind,
+        ...(r.kind !== "custom" && { refId: r.refId }),
+        name: r.name,
+        unitYen: parsed[i]!,
+        qty: r.qty,
+      })),
+      // 掛け率の割引は、計算した金額の行として残す
+      ...discountLines
+        .filter((x) => x.amount !== 0)
+        .map((x) => ({ kind: "custom" as const, name: discountName(x.d.label, x.d.scope, x.rate!), unitYen: x.amount, qty: 1 })),
+    ];
     try {
       const e = props.estimate
         ? await updateEstimate(props.estimate.id, { version: props.estimate.version, date, validUntil: effectiveValidUntil, lines, note })
@@ -212,17 +258,28 @@ export function EstimateDialog(props: Props) {
               <button type="button" role="tab" aria-selected={tab === "price"} data-active={tab === "price" || undefined} onClick={() => setTab("price")}>
                 料金表
               </button>
-              <button type="button" role="tab" aria-selected={tab === "menu"} data-active={tab === "menu" || undefined} onClick={() => setTab("menu")}>
-                予約メニュー
-              </button>
               <button type="button" role="tab" aria-selected={tab === "product"} data-active={tab === "product" || undefined} onClick={() => setTab("product")}>
                 スキンケア＆内服
               </button>
               <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="さがす" aria-label="項目をさがす" />
             </div>
+            {related.length > 0 && tab === "price" && !q && (
+              <div className={styles.related}>
+                <span className={styles.relatedLabel}>この予約のメニューに合う料金</span>
+                <div className={styles.chips}>
+                  {related.map((p) => (
+                    <button key={p.id} type="button" className={styles.chip} data-related onClick={() => add("price", p.id, lineName(p), p.priceYen)} title={p.priceText}>
+                      <small>{p.category}</small>
+                      <span>{p.name}</span>
+                      <b>{p.priceYen === null ? p.priceText || "値段未設定" : yen(p.priceYen)}</b>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className={styles.chips}>
-              {(tab === "price" ? prices === null : menus === null) && <span className={styles.muted}>読み込み中…</span>}
-              {(tab === "price" ? prices !== null : menus !== null) && candidates.length === 0 && (
+              {tab === "price" && prices === null && <span className={styles.muted}>読み込み中…</span>}
+              {(tab !== "price" || prices !== null) && candidates.length === 0 && (
                 <span className={styles.muted}>{tab === "price" && !q ? "料金表が空です（設定 → 料金表）" : "見つかりません"}</span>
               )}
               {candidates.map((c) => (
@@ -249,14 +306,36 @@ export function EstimateDialog(props: Props) {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    上のメニュー・スキンケア＆内服を押すと追加されます
+                    上の料金表・スキンケア＆内服を押すと追加されます
                   </td>
                 </tr>
               )}
               {rows.map((r, i) => (
                 <tr key={r.key} data-discount={(parsed[i] ?? 0) < 0 || undefined}>
                   <td>
-                    <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} aria-label="項目名" maxLength={120} />
+                    <span className={styles.nameCell}>
+                      {showPick && (
+                        <input
+                          type="checkbox"
+                          className={styles.pick}
+                          checked={r.picked}
+                          onChange={(e) => patch(r.key, { picked: e.target.checked })}
+                          aria-label={`${r.name || "この行"}を割引の対象にする`}
+                        />
+                      )}
+                      {(parsed[i] ?? 0) >= 0 && (
+                        <button
+                          type="button"
+                          className={styles.catBtn}
+                          data-cat={r.cat}
+                          onClick={() => patch(r.key, { cat: r.cat === "treatment" ? "product" : "treatment" })}
+                          title="押すと施術／商品を切り替え（割引の対象を決めるのに使います）"
+                        >
+                          {r.cat === "treatment" ? "施術" : "商品"}
+                        </button>
+                      )}
+                      <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} aria-label="項目名" maxLength={120} />
+                    </span>
                   </td>
                   <td className={styles.num}>
                     <input
@@ -287,20 +366,73 @@ export function EstimateDialog(props: Props) {
                   </td>
                 </tr>
               ))}
+              {discountLines.map(({ d, rate, target, amount }) => (
+                <tr key={`d${d.key}`} data-discount className={styles.discountRow}>
+                  <td colSpan={3}>
+                    <div className={styles.discountEdit}>
+                      <input value={d.label} onChange={(e) => patchDiscount(d.key, { label: e.target.value })} aria-label="割引の名前" maxLength={30} className={styles.discountLabel} />
+                      <label className={styles.rateField}>
+                        掛け率
+                        <input
+                          value={d.rate}
+                          onChange={(e) => patchDiscount(d.key, { rate: e.target.value })}
+                          aria-label="掛け率"
+                          aria-invalid={rate === null}
+                          placeholder="0.9"
+                          inputMode="decimal"
+                        />
+                      </label>
+                      {["0.95", "0.9", "0.8", "0.7"].map((v) => (
+                        <button key={v} type="button" className={styles.rateChip} data-on={d.rate === v || undefined} onClick={() => patchDiscount(d.key, { rate: v })}>
+                          ×{v}
+                        </button>
+                      ))}
+                      <select value={d.scope} onChange={(e) => patchDiscount(d.key, { scope: e.target.value as DiscountScope })} aria-label="割引の対象">
+                        {(Object.keys(SCOPE_LABEL) as DiscountScope[]).map((k) => (
+                          <option key={k} value={k}>
+                            {SCOPE_LABEL[k]}
+                          </option>
+                        ))}
+                      </select>
+                      <small className={styles.muted}>
+                        対象 {yen(target)}
+                        {rate === null && "（掛け率は 0.9 や 10%引き のように）"}
+                      </small>
+                    </div>
+                  </td>
+                  <td className={styles.num}>{yen(amount)}</td>
+                  <td>
+                    <button type="button" className={styles.remove} onClick={() => setDiscounts((ds) => ds.filter((x) => x.key !== d.key))} aria-label="この割引を消す">
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
             <tfoot>
               <tr>
                 <td colSpan={5}>
                   <div className={styles.addRow}>
-                    <button type="button" className={styles.btn} onClick={() => setRows((rs) => [...rs, { key: nextKey(), kind: "custom", name: "", unit: "", qty: 1 }])}>
+                    <button
+                      type="button"
+                      className={styles.btn}
+                      onClick={() => setRows((rs) => [...rs, { key: nextKey(), kind: "custom", name: "", unit: "", qty: 1, cat: "treatment", picked: true }])}
+                    >
                       ＋自由入力の行
                     </button>
                     <button
                       type="button"
                       className={styles.btn}
-                      onClick={() => setRows((rs) => [...rs, { key: nextKey(), kind: "custom", name: "割引", unit: "-", qty: 1 }])}
+                      onClick={() => setDiscounts((ds) => [...ds, { key: nextKey(), label: "割引", rate: "0.9", scope: "treatment" }])}
                     >
-                      ＋割引
+                      ＋割引（掛け率）
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btn}
+                      onClick={() => setRows((rs) => [...rs, { key: nextKey(), kind: "custom", name: "割引", unit: "-", qty: 1, cat: "treatment", picked: false }])}
+                    >
+                      ＋割引（金額）
                     </button>
                     <span className={styles.total}>
                       合計（税込）<b>{yen(total)}</b>

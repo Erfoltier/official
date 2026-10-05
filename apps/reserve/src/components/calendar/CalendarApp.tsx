@@ -55,7 +55,12 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     return () => mq.removeEventListener("change", on);
   }, []);
   const receptionOpen = receptionPref === "auto" ? wideScreen : receptionPref === "open";
-  const setReceptionOpen = (open: boolean) => setReceptionPref(open ? "open" : "closed");
+  /** 受付一覧をボタンで開いたときだけスライドインする（ページを開いたときは動かさない） */
+  const [receptionSlide, setReceptionSlide] = useState(false);
+  const setReceptionOpen = (open: boolean) => {
+    setReceptionSlide(open);
+    setReceptionPref(open ? "open" : "closed");
+  };
 
   const gridRef = useRef<DayGridHandle>(null);
   const busyRef = useRef(false);
@@ -405,6 +410,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
         {!bundle && !loadError && <div className={styles.empty}>読み込み中…</div>}
         {bundle && receptionOpen && (
           <ReceptionList
+            animate={receptionSlide}
             bundle={bundle}
             laneFilter={receptionLane}
             onLaneFilter={setReceptionLane}

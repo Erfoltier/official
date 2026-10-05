@@ -467,3 +467,122 @@
   color: #fff;
   font-weight: 700;
 }
+
+/* 予約のメニューに合う料金 */
+.related {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line-strong);
+}
+
+.relatedLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.chip[data-related] {
+  border-color: var(--accent);
+}
+
+/* 行の施術／商品と、割引の対象のチェック */
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.catBtn {
+  flex: none;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid #c4b5fd;
+  border-radius: 6px;
+  background: #f5f3ff;
+  color: #5b21b6;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.catBtn[data-cat="product"] {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.pick {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* 掛け率の割引 */
+.discountEdit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.discountEdit select,
+.discountEdit .discountLabel {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+
+.lines .discountEdit .discountLabel {
+  width: 7em;
+}
+
+.rateField {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.lines .rateField input {
+  width: 5em;
+}
+
+.rateChip {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rateChip[data-on] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .lines tbody tr.discountRow {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "edit del" "edit sum";
+  }
+  .lines tbody tr.discountRow td:nth-child(1) {
+    grid-area: edit;
+  }
+  .lines tbody tr.discountRow td:nth-child(2) {
+    grid-area: sum;
+  }
+  .lines tbody tr.discountRow td:nth-child(3) {
+    grid-area: del;
+  }
+}

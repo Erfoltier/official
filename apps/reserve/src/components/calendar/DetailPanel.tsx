@@ -58,6 +58,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
   const [estimateOpen, setEstimateOpen] = useState(false);
+  // 閉じた状態から開いたときだけスライドインする（別の予約に切り替えたときは動かさない）。
+  // 描画の時点で前のパネルがまだ画面にあれば「切り替え」
+  const [entering] = useState(() => typeof document !== "undefined" && !document.querySelector("[data-detail-panel]"));
+  // 開いた直後は押せないようにする（予約を押した指の動きが、出てきたボタンを押したことにならないように）
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setArmed(true), 400);
+    return () => window.clearTimeout(t);
+  }, []);
   const [chartOpen, setChartOpen] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
   /** 状態を変えた時刻（空欄なら押した時刻） */
@@ -87,7 +96,13 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   };
 
   return (
-    <aside className={styles.panel} aria-label="予約の詳細">
+    <aside
+      className={styles.panel}
+      aria-label="予約の詳細"
+      data-detail-panel
+      data-enter={entering || undefined}
+      style={armed ? undefined : { pointerEvents: "none" }}
+    >
       <div className={styles.panelHead}>
         <div>
           <div className={styles.panelName}>

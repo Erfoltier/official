@@ -15,6 +15,8 @@ import styles from "./calendar.module.css";
 export const ALL_LANES = "all";
 
 interface Props {
+  /** 開くときにスライドインする */
+  animate?: boolean;
   bundle: DayBundle;
   laneFilter: string;
   onLaneFilter(id: string): void;
@@ -35,7 +37,7 @@ interface Props {
 
 /** M3の受付画面のような、その日の予約を時刻順に並べた一覧（現在の状態つき） */
 export function ReceptionList(props: Props) {
-  const { bundle, laneFilter, maskNames, showCancelled, selectedId, nowMinutes } = props;
+  const { bundle, laneFilter, maskNames, showCancelled, selectedId, nowMinutes, animate } = props;
   const lanes = useMemo(() => [...bundle.lanes].sort((a, b) => a.order - b.order), [bundle.lanes]);
   const laneOf = useMemo(() => new Map(lanes.map((l) => [l.id, l])), [lanes]);
   const patients = useMemo(() => new Map<string, Patient>(bundle.patients.map((p) => [p.id, p])), [bundle.patients]);
@@ -61,7 +63,7 @@ export function ReceptionList(props: Props) {
     <>
       {/* スマホで一覧の外を押したら閉じる */}
       <div className={styles.receptionBackdrop} onClick={props.onClose} aria-hidden />
-      <aside className={styles.reception} aria-label="受付一覧">
+      <aside className={styles.reception} aria-label="受付一覧" data-enter={animate || undefined}>
         <div className={styles.receptionHead}>
           <b>受付一覧</b>
           <span className={styles.receptionCount}>{rows.length}件</span>
