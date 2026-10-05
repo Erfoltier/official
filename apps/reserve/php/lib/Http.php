@@ -445,6 +445,11 @@ final class Schema
         }])['templates'];
     }
 
+    public static function consentSource(mixed $v): array
+    {
+        return V::shape($v, ['url' => fn($x) => V::str($x, 500), 'key?' => fn($x) => V::str($x, 200)]);
+    }
+
     public static function consentTemplateMenus(mixed $v): array
     {
         return V::shape($v, ['menuIds' => fn($x) => V::ids($x, 0, 100)])['menuIds'];

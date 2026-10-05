@@ -2365,6 +2365,150 @@ final class Store
         }
     }
 
+    // ---- 同意書の読み込み元（その時々にドライブから最新を読む） ----
+
+    public static function consentSource(): ?array
+    {
+        self::init();
+        $s = Db::i()->meta('consentSource');
+        return $s && !empty($s['url']) ? $s : null;
+    }
+
+    public static function consentSourceInfo(): array
+    {
+        $s = self::consentSource();
+        return ['url' => $s['url'] ?? '', 'hasKey' => !empty($s['key'])];
+    }
+
+    public static function setConsentSource(array $input, ?array $by = null): array
+    {
+        $url = js_trim($input['url']);
+        // https のみ（動作確認用に手元の 127.0.0.1 だけ http を許す）
+        if ($url !== '' && !preg_match('#^(https://[^\s/]+|http://127\.0\.0\.1(:\d+)?)(/\S*)?$#', $url)) {
+            throw new StoreError('invalid', '読み込み元のアドレスは https:// で始まるものにしてください');
+        }
+        $cur = self::consentSource();
+        $key = isset($input['key']) ? js_trim($input['key']) : ($cur['key'] ?? '');
+        if ($url !== '' && $key === '') {
+            throw new StoreError('invalid', '合言葉（キー）を入れてください');
+        }
+        Db::i()->setMeta('consentSource', $url !== '' ? ['url' => $url, 'key' => $key] : null);
+        if ($by) {
+            Auth::audit($by, '同意書の読み込み元を変更');
+        }
+        return self::consentSourceInfo();
+    }
+
+    private static function callConsentSource(array $params): mixed
+    {
+        $src = self::consentSource();
+        if (!$src) {
+            throw new RuntimeException('no source');
+        }
+        $sep = str_contains($src['url'], '?') ? '&' : '?';
+        $url = $src['url'] . $sep . http_build_query(['key' => $src['key']] + $params);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_TIMEOUT => $params['action'] === 'list' ? 10 : 20,
+        ]);
+        $body = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        if (!is_string($body) || $status < 200 || $status >= 300 || strlen($body) > 4_000_000) {
+            throw new RuntimeException('fetch failed');
+        }
+        return json_decode($body, true, 32, JSON_THROW_ON_ERROR);
+    }
+
+    private static function validConsentHead(mixed $t): bool
+    {
+        return is_array($t) && is_string($t['driveId'] ?? null) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $t['driveId'])
+            && is_string($t['title'] ?? null) && $t['title'] !== '' && js_length($t['title']) <= 200
+            && is_string($t['modifiedTime'] ?? null) && strlen($t['modifiedTime']) <= 40;
+    }
+
+    /** 一覧をドライブとそろえる。読めなければ前回のまま。読めたら true */
+    public static function refreshConsentList(): bool
+    {
+        if (!self::consentSource()) {
+            return false;
+        }
+        try {
+            $list = self::callConsentSource(['action' => 'list']);
+            if (!is_array($list) || !array_is_list($list)) {
+                return false;
+            }
+            foreach ($list as $t) {
+                if (!self::validConsentHead($t)) {
+                    return false;
+                }
+            }
+            Db::i()->transaction(function () use ($list) {
+                $db = Db::i();
+                $all = $db->all('consentTemplate');
+                $at = now_iso();
+                $seen = [];
+                foreach ($list as $t) {
+                    $id = "ct-{$t['driveId']}";
+                    if (isset($seen[$id])) {
+                        continue;
+                    }
+                    $seen[$id] = true;
+                    $title = self::checkText('同意書の名前', $t['title'], 120, true);
+                    $cur = $all[$id] ?? null;
+                    if ($cur && empty($cur['removed']) && $cur['title'] === $title) {
+                        continue;
+                    }
+                    $db->put('consentTemplate', $id, [
+                        'id' => $id, 'driveId' => $t['driveId'], 'title' => $title, 'modifiedTime' => $cur['modifiedTime'] ?? $t['modifiedTime'],
+                        'menuIds' => $cur['menuIds'] ?? [], 'receivedAt' => $cur['receivedAt'] ?? $at, 'html' => $cur['html'] ?? '',
+                    ]);
+                }
+                foreach ($all as $t) {
+                    if (!isset($seen[$t['id']]) && empty($t['removed'])) {
+                        $db->put('consentTemplate', $t['id'], [...$t, 'removed' => true]);
+                    }
+                }
+                $db->setMeta('consentTemplatesAt', $at);
+            });
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /** 本文をドライブから読む。読めなければ前回読めた本文（stale: true） */
+    public static function loadConsentTemplate(string $id): array
+    {
+        $cached = self::getConsentTemplate($id);
+        if (!self::consentSource()) {
+            return $cached;
+        }
+        try {
+            $doc = self::callConsentSource(['action' => 'doc', 'id' => $cached['driveId']]);
+            if (!self::validConsentHead($doc) || !is_string($doc['html'] ?? null) || js_length($doc['html']) > 400_000 || $doc['driveId'] !== $cached['driveId']) {
+                throw new RuntimeException('bad doc');
+            }
+            $title = self::checkText('同意書の名前', $doc['title'], 120, true);
+            $next = [
+                'id' => $id, 'driveId' => $doc['driveId'], 'title' => $title, 'modifiedTime' => $doc['modifiedTime'],
+                'menuIds' => $cached['menuIds'] ?? [], 'receivedAt' => now_iso(), 'html' => $doc['html'],
+            ];
+            if ($cached['title'] !== $title || $cached['modifiedTime'] !== $doc['modifiedTime'] || $cached['html'] !== $doc['html']) {
+                Db::i()->put('consentTemplate', $id, $next);
+                return $next;
+            }
+            return $cached;
+        } catch (Throwable) {
+            return [...$cached, 'stale' => true];
+        }
+    }
+
     // ---- 見積書 ----
 
     private const MAX_ESTIMATE_YEN = 100_000_000;

@@ -392,3 +392,19 @@
     zoom: 1;
   }
 }
+
+.version {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #15803d;
+}
+
+.version[data-stale] {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.tpl:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

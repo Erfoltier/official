@@ -205,7 +205,10 @@ try {
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'consents') {
             $s = $me();
-            Http::json(Store::createConsent(V::id($p[1]), Schema::createConsent(Http::readJson(500_000)), $actor($s)), 201);
+            $in = Schema::createConsent(Http::readJson(500_000));
+            // 発行する直前にドライブの最新を読み、その文面を控えに残す
+            Store::loadConsentTemplate($in['templateId']);
+            Http::json(Store::createConsent(V::id($p[1]), $in, $actor($s)), 201);
         }
         if ($method === 'GET' && $n === 3 && $p[2] === 'estimates') {
             $me();
@@ -269,15 +272,26 @@ try {
     if ($p[0] === 'consent-templates') {
         if ($method === 'GET' && $n === 1) {
             $me();
-            Http::json(['items' => Store::listConsentTemplates(), 'receivedAt' => Store::consentTemplatesReceivedAt()]);
+            $live = Store::refreshConsentList();
+            Http::json(['items' => Store::listConsentTemplates(), 'receivedAt' => Store::consentTemplatesReceivedAt(), 'live' => $live, 'source' => Store::consentSourceInfo()['url'] !== '']);
         }
         if ($method === 'GET' && $n === 2) {
             $me();
-            Http::json(Store::getConsentTemplate(V::id($p[1])));
+            Http::json(Store::loadConsentTemplate(V::id($p[1])));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'menus') {
             $s = $me(STAFF_MANAGE);
             Http::json(Store::setConsentTemplateMenus(V::id($p[1]), Schema::consentTemplateMenus(Http::readJson()), $actor($s)));
+        }
+    }
+    if ($p[0] === 'consent-source' && $n === 1) {
+        if ($method === 'GET') {
+            $me(STAFF_ADMIN);
+            Http::json(Store::consentSourceInfo());
+        }
+        if ($method === 'POST') {
+            $s = $me(STAFF_ADMIN);
+            Http::json(Store::setConsentSource(Schema::consentSource(Http::readJson()), $actor($s)));
         }
     }
     if ($p[0] === 'consents' && $n >= 2) {

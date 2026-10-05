@@ -23,7 +23,8 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
   const [templates, setTemplates] = useState<ConsentTemplate[] | null>(null);
   const [clinic, setClinic] = useState<ClinicSettings | null>(null);
   const [q, setQ] = useState("");
-  const [picked, setPicked] = useState<{ t: ConsentTemplate; html: string } | null>(null);
+  const [picked, setPicked] = useState<{ t: ConsentTemplate; html: string; stale?: boolean; modifiedTime: string } | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
   const [treatment, setTreatment] = useState(reservation?.menuNames.join("、") ?? "");
   const [signing, setSigning] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -52,13 +53,21 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
     return { matched, rest: list.filter((t) => !matched.includes(t)) };
   }, [templates, q, reservation]);
 
+  /** 選んだときに、ドライブから最新の文面を読み込む */
   const pick = async (t: ConsentTemplate) => {
     setError(null);
+    setLoading(t.id);
     try {
       const full = await fetchConsentTemplate(t.id);
-      setPicked({ t, html: full.html });
+      if (!full.html) {
+        setError("ドライブから同意書を読み込めませんでした。少し待ってからもう一度選んでください");
+        return;
+      }
+      setPicked({ t, html: full.html, stale: full.stale, modifiedTime: full.modifiedTime });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "同意書を読み込めませんでした");
+    } finally {
+      setLoading(null);
     }
   };
 
@@ -120,16 +129,16 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
           {ordered.matched.length > 0 && <h3 className={styles.groupTitle}>この予約のメニューの同意書</h3>}
           <div className={styles.tplList}>
             {ordered.matched.map((t) => (
-              <button key={t.id} type="button" className={styles.tpl} data-match onClick={() => pick(t)}>
-                {t.title}
+              <button key={t.id} type="button" className={styles.tpl} data-match onClick={() => pick(t)} disabled={loading !== null}>
+                {loading === t.id ? "ドライブから読み込み中…" : t.title}
               </button>
             ))}
           </div>
           {ordered.matched.length > 0 && ordered.rest.length > 0 && <h3 className={styles.groupTitle}>そのほか</h3>}
           <div className={styles.tplList}>
             {ordered.rest.map((t) => (
-              <button key={t.id} type="button" className={styles.tpl} onClick={() => pick(t)}>
-                {t.title}
+              <button key={t.id} type="button" className={styles.tpl} onClick={() => pick(t)} disabled={loading !== null}>
+                {loading === t.id ? "ドライブから読み込み中…" : t.title}
               </button>
             ))}
           </div>
@@ -145,6 +154,11 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
               <input value={treatment} onChange={(e) => setTreatment(e.target.value)} maxLength={120} />
             </label>
           </div>
+          <p className={styles.version} data-stale={picked.stale || undefined}>
+            {picked.stale
+              ? `⚠ ドライブから最新を読み込めなかったため、前回読み込んだ文面（${picked.modifiedTime.slice(0, 10)} 更新）です`
+              : `Google ドライブの最新の文面です（${new Date(picked.modifiedTime).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} 更新）`}
+          </p>
           <div className={styles.preview} data-signing={signing || undefined}>
             {clinic && <ConsentDocument html={picked.html} patient={patient} clinic={clinic} date={date} treatment={treatment || undefined} />}
           </div>

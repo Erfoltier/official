@@ -363,11 +363,11 @@ export async function deletePriceItem(id: string): Promise<void> {
 
 // ---- 同意書 ----
 
-export function fetchConsentTemplates(): Promise<{ items: ConsentTemplate[]; receivedAt: string | null }> {
+export function fetchConsentTemplates(): Promise<{ items: ConsentTemplate[]; receivedAt: string | null; live: boolean; source: boolean }> {
   return call(`/api/v1/consent-templates`);
 }
 
-export function fetchConsentTemplate(id: string): Promise<ConsentTemplateWithHtml> {
+export function fetchConsentTemplate(id: string): Promise<ConsentTemplateWithHtml & { stale?: boolean }> {
   return call(`/api/v1/consent-templates/${encodeURIComponent(id)}`);
 }
 
@@ -397,4 +397,12 @@ export async function deleteConsent(id: string): Promise<void> {
 
 export function consentPrintUrl(id: string): string {
   return withBase(`/consents/print/?id=${encodeURIComponent(id)}`);
+}
+
+export function fetchConsentSource(): Promise<{ url: string; hasKey: boolean }> {
+  return call(`/api/v1/consent-source`);
+}
+
+export function saveConsentSource(body: { url: string; key?: string }): Promise<{ url: string; hasKey: boolean }> {
+  return call(`/api/v1/consent-source`, { method: "POST", body: JSON.stringify(body) });
 }

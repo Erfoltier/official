@@ -122,7 +122,7 @@ export function SettingsApp() {
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : tab === "consents" ? (
-        <ConsentsTab menus={data.menus} canEdit={canEdit} notify={notify} fail={fail} />
+        <ConsentsTab menus={data.menus} canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : tab === "stages" ? (
         <StagesTab stages={data.stages} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "products" ? (

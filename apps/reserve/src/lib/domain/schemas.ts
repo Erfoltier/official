@@ -195,6 +195,14 @@ export const integrationConsentTemplatesSchema = z
   })
   .strict();
 
+/** 同意書の読み込み元（同意書フォルダの Apps Script ウェブアプリ）。key を省くと今のまま */
+export const consentSourceSchema = z
+  .object({
+    url: z.string().max(500),
+    key: z.string().max(200).optional(),
+  })
+  .strict();
+
 export const consentTemplateMenusSchema = z.object({ menuIds: z.array(id).max(100) }).strict();
 
 /** 署名画像（PNG の data URL、300KB まで） */

@@ -2185,3 +2185,85 @@ export function deleteConsent(id: string, by?: Actor): void {
   st.consents.set(id, { ...c, deleted: { at: new Date().toISOString(), ...(by && { by }) } });
   if (by) audit(by, `同意書「${c.title}」を削除`, c.patientId);
 }
+
+// ---- 同意書の読み込み元（その時々にドライブから最新を読む） ----
+
+interface ConsentSource {
+  url: string;
+  key: string;
+}
+
+export function consentSource(): ConsentSource | null {
+  state();
+  const s = getMeta<ConsentSource>("consentSource");
+  return s && s.url ? s : null;
+}
+
+/** 画面に出す読み込み元の情報（キーは出さない） */
+export function consentSourceInfo(): { url: string; hasKey: boolean } {
+  const s = consentSource();
+  return { url: s?.url ?? "", hasKey: !!s?.key };
+}
+
+export function setConsentSource(input: { url: string; key?: string }, by?: Actor): { url: string; hasKey: boolean } {
+  const url = input.url.trim();
+  // https のみ（動作確認用に手元の 127.0.0.1 だけ http を許す）
+  if (url && !/^(https:\/\/[^\s/]+|http:\/\/127\.0\.0\.1(:\d+)?)(\/\S*)?$/.test(url)) throw new StoreError("invalid", "読み込み元のアドレスは https:// で始まるものにしてください");
+  const cur = consentSource();
+  const key = input.key !== undefined ? input.key.trim() : (cur?.key ?? "");
+  if (url && !key) throw new StoreError("invalid", "合言葉（キー）を入れてください");
+  setMeta("consentSource", url ? { url, key } : null);
+  if (by) audit(by, "同意書の読み込み元を変更");
+  return consentSourceInfo();
+}
+
+/** ドライブの一覧で、ひな形の名前・増減をそろえる（本文は読み込んだときに入れる） */
+function applyConsentListImpl(list: { driveId: string; title: string; modifiedTime: string }[]): void {
+  const st = state();
+  const at = new Date().toISOString();
+  const seen = new Set<string>();
+  for (const t of list) {
+    const id = `ct-${t.driveId}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const title = checkText("同意書の名前", t.title, 120, true);
+    const cur = st.consentTemplates.get(id);
+    if (cur && !cur.removed && cur.title === title) continue;
+    st.consentTemplates.set(id, {
+      id,
+      driveId: t.driveId,
+      title,
+      modifiedTime: cur?.modifiedTime ?? t.modifiedTime,
+      menuIds: cur?.menuIds ?? [],
+      receivedAt: cur?.receivedAt ?? at,
+      html: cur?.html ?? "",
+    });
+  }
+  for (const t of [...st.consentTemplates.values()]) {
+    if (!seen.has(t.id) && !t.removed) st.consentTemplates.set(t.id, { ...t, removed: true });
+  }
+  setMeta("consentTemplatesAt", at);
+}
+
+export function applyConsentList(...args: Parameters<typeof applyConsentListImpl>): void {
+  transaction(() => applyConsentListImpl(...args));
+}
+
+/** ドライブから読み込んだ最新の本文を入れる */
+export function applyConsentDoc(doc: { driveId: string; title: string; modifiedTime: string; html: string }): ConsentTemplateWithHtml {
+  const st = state();
+  const id = `ct-${doc.driveId}`;
+  const cur = st.consentTemplates.get(id);
+  const title = checkText("同意書の名前", doc.title, 120, true);
+  const next: ConsentTemplateWithHtml = {
+    id,
+    driveId: doc.driveId,
+    title,
+    modifiedTime: doc.modifiedTime,
+    menuIds: cur?.menuIds ?? [],
+    receivedAt: new Date().toISOString(),
+    html: doc.html,
+  };
+  if (!cur || cur.removed || cur.title !== title || cur.modifiedTime !== doc.modifiedTime || cur.html !== doc.html) st.consentTemplates.set(id, next);
+  return st.consentTemplates.get(id)!;
+}
