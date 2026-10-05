@@ -140,6 +140,41 @@ export const clinicSchema = z
     dayStartMin: z.number().int().min(0).max(1440).optional(),
     dayEndMin: z.number().int().min(0).max(1440).optional(),
     slotMin: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(30)]).optional(),
+    address: z.string().max(200).optional(),
+    phone: z.string().max(40).optional(),
+    issuer: z.string().max(80).optional(),
+    estimateNote: z.string().max(3000).optional(),
+    estimateValidDays: z.number().int().min(1).max(365).optional(),
+  })
+  .strict();
+
+const estimateLine = z
+  .object({
+    kind: z.enum(["menu", "product", "custom"]),
+    refId: id.optional(),
+    name: z.string().max(200),
+    unitYen: z.number().int().min(-10_000_000).max(10_000_000),
+    qty: z.number().int().min(1).max(99),
+  })
+  .strict();
+
+export const createEstimateSchema = z
+  .object({
+    reservationId: id.optional(),
+    date: dateParam.optional(),
+    validUntil: dateParam.optional(),
+    lines: z.array(estimateLine).min(1).max(40),
+    note: z.string().max(2000).optional(),
+  })
+  .strict();
+
+export const updateEstimateSchema = z
+  .object({
+    version: z.number().int().positive(),
+    date: dateParam.optional(),
+    validUntil: dateParam.optional(),
+    lines: z.array(estimateLine).min(1).max(40).optional(),
+    note: z.string().max(2000).optional(),
   })
   .strict();
 

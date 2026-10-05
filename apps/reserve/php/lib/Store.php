@@ -116,6 +116,24 @@ final class Store
                 $next[$k] = $input[$k];
             }
         }
+        // 書類に載せる院の情報（空で消す）
+        foreach ([['address', '住所', 120], ['phone', '電話番号', 30], ['issuer', '発行者', 60]] as [$k, $label, $max]) {
+            if (!isset($input[$k])) {
+                continue;
+            }
+            $v = self::checkText($label, $input[$k], $max, false);
+            if ($v !== '') {
+                $next[$k] = $v;
+            } else {
+                unset($next[$k]);
+            }
+        }
+        if (isset($input['estimateNote'])) {
+            $next['estimateNote'] = self::checkNote('見積書の注意書き', $input['estimateNote'], 2000);
+        }
+        if (isset($input['estimateValidDays'])) {
+            $next['estimateValidDays'] = $input['estimateValidDays'];
+        }
         if ($next['dayStartMin'] % 5 !== 0 || $next['dayEndMin'] % 5 !== 0) {
             throw new StoreError('invalid', '時刻は5分単位で指定してください');
         }
@@ -1829,6 +1847,195 @@ final class Store
      * 重複して登録した患者 dup を keep にまとめる（途中で失敗したら全部取り消す）。
      * 予約・日付ごとの記録を移し、空欄を補い、dup は削除扱い（mergedInto）で残す
      */
+    // ---- 見積書 ----
+
+    private const MAX_ESTIMATE_YEN = 100_000_000;
+    private const DEFAULT_ESTIMATE_VALID_DAYS = 30;
+
+    /** 見積の行を確かめて整える（メニュー・スキンケアは登録にあるものだけ） */
+    private static function checkEstimateLines(array $lines): array
+    {
+        $out = [];
+        foreach ($lines as $l) {
+            if ($l['kind'] === 'menu' && (empty($l['refId']) || !isset(self::menus()[$l['refId']]))) {
+                throw new StoreError('invalid', 'メニューが見つかりません');
+            }
+            if ($l['kind'] === 'product' && (empty($l['refId']) || !isset(self::products()[$l['refId']]))) {
+                throw new StoreError('invalid', 'スキンケア＆内服が見つかりません');
+            }
+            $name = self::checkText('項目名', $l['name'], 120, true);
+            $row = ['kind' => $l['kind']];
+            if ($l['kind'] !== 'custom') {
+                $row['refId'] = $l['refId'];
+            }
+            $out[] = $row + ['name' => $name, 'unitYen' => $l['unitYen'], 'qty' => $l['qty']];
+        }
+        return $out;
+    }
+
+    private static function estimateTotal(array $lines): int
+    {
+        $total = 0;
+        foreach ($lines as $l) {
+            $total += $l['unitYen'] * $l['qty'];
+        }
+        if ($total < 0) {
+            throw new StoreError('invalid', '合計がマイナスになっています（割引が大きすぎます）');
+        }
+        if ($total > self::MAX_ESTIMATE_YEN) {
+            throw new StoreError('invalid', '合計が大きすぎます');
+        }
+        return $total;
+    }
+
+    private static function checkEstimateDates(string $date, string $validUntil): void
+    {
+        if (strcmp($validUntil, $date) < 0) {
+            throw new StoreError('invalid', '有効期限は発行日より後にしてください');
+        }
+    }
+
+    public static function listEstimates(string $patientId): array
+    {
+        self::init();
+        $out = array_values(array_filter(
+            Db::i()->where('estimate', 'k2', $patientId),
+            fn($e) => $e['patientId'] === $patientId && empty($e['deleted']),
+        ));
+        usort($out, fn($a, $b) => strcmp($b['date'], $a['date']) ?: strcmp($b['no'], $a['no']));
+        return $out;
+    }
+
+    private static function liveEstimate(string $id): array
+    {
+        $e = Db::i()->get('estimate', $id);
+        if (!$e || !empty($e['deleted'])) {
+            throw new StoreError('not_found', '見積書が見つかりません');
+        }
+        return $e;
+    }
+
+    public static function getEstimateView(string $id): array
+    {
+        self::init();
+        $e = self::liveEstimate($id);
+        $p = self::patient($e['patientId']);
+        return [
+            'estimate' => $e,
+            'patient' => drop_null(['id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'], 'chartNo' => $p['chartNo'], 'birthDate' => $p['birthDate'] ?? null]),
+            'clinic' => self::clinic(),
+        ];
+    }
+
+    public static function createEstimate(string $patientId, array $input, ?array $by = null): array
+    {
+        self::init();
+        $e = Db::i()->transaction(function () use ($patientId, $input, $by) {
+            $p = self::patient($patientId);
+            if (!empty($p['deleted'])) {
+                throw new StoreError('invalid', '削除された患者には見積書を作れません');
+            }
+            if (!empty($input['reservationId'])) {
+                $r = Db::i()->get('reservation', $input['reservationId']);
+                if (!$r || $r['patientId'] !== $patientId) {
+                    throw new StoreError('invalid', '予約が見つかりません');
+                }
+            }
+            $date = $input['date'] ?? now_in_clinic()['date'];
+            $validUntil = $input['validUntil'] ?? add_days($date, self::clinic()['estimateValidDays'] ?? self::DEFAULT_ESTIMATE_VALID_DAYS);
+            self::checkEstimateDates($date, $validUntil);
+            $lines = self::checkEstimateLines($input['lines']);
+            $note = isset($input['note']) ? self::checkNote('備考', $input['note'], 1000) : '';
+            // 見積番号は発行年ごとの通し番号
+            $year = substr($date, 0, 4);
+            $seqs = Db::i()->meta('estimateSeq') ?? [];
+            $n = ($seqs[$year] ?? 0) + 1;
+            $seqs[$year] = $n;
+            Db::i()->setMeta('estimateSeq', $seqs);
+            $e = [
+                'id' => 'est-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4)),
+                'no' => $year . '-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT),
+                'patientId' => $patientId,
+            ];
+            if (!empty($input['reservationId'])) {
+                $e['reservationId'] = $input['reservationId'];
+            }
+            $e += ['date' => $date, 'validUntil' => $validUntil, 'lines' => $lines, 'totalYen' => self::estimateTotal($lines)];
+            if ($note !== '') {
+                $e['note'] = $note;
+            }
+            $e['createdAt'] = now_iso();
+            if ($by) {
+                $e['createdBy'] = $by;
+            }
+            $e['version'] = 1;
+            Db::i()->put('estimate', $e['id'], $e);
+            return $e;
+        });
+        if ($by) {
+            Auth::audit($by, "見積書を作成（No.{$e['no']}）", $patientId);
+        }
+        return $e;
+    }
+
+    public static function updateEstimate(string $id, array $input, ?array $by = null): array
+    {
+        self::init();
+        $cur = self::liveEstimate($id);
+        if ($cur['version'] !== $input['version']) {
+            throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+        }
+        $next = $cur;
+        if (isset($input['date'])) {
+            $next['date'] = $input['date'];
+        }
+        if (isset($input['validUntil'])) {
+            $next['validUntil'] = $input['validUntil'];
+        }
+        self::checkEstimateDates($next['date'], $next['validUntil']);
+        if (isset($input['lines'])) {
+            $next['lines'] = self::checkEstimateLines($input['lines']);
+            $next['totalYen'] = self::estimateTotal($next['lines']);
+        }
+        if (isset($input['note'])) {
+            $note = self::checkNote('備考', $input['note'], 1000);
+            if ($note !== '') {
+                $next['note'] = $note;
+            } else {
+                unset($next['note']);
+            }
+        }
+        $next['version'] = $cur['version'] + 1;
+        $next['updatedAt'] = now_iso();
+        if ($by) {
+            $next['updatedBy'] = $by;
+        }
+        Db::i()->put('estimate', $id, $next);
+        if ($by) {
+            Auth::audit($by, "見積書を変更（No.{$next['no']}）", $next['patientId']);
+        }
+        return $next;
+    }
+
+    public static function deleteEstimate(string $id, array $input, ?array $by = null): array
+    {
+        self::init();
+        $cur = self::liveEstimate($id);
+        if ($cur['version'] !== $input['version']) {
+            throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+        }
+        $deleted = ['at' => now_iso()];
+        if ($by) {
+            $deleted['by'] = $by;
+        }
+        $next = [...$cur, 'deleted' => $deleted, 'version' => $cur['version'] + 1];
+        Db::i()->put('estimate', $id, $next);
+        if ($by) {
+            Auth::audit($by, "見積書を削除（No.{$cur['no']}）", $cur['patientId']);
+        }
+        return $next;
+    }
+
     public static function mergePatients(array $input, ?array $by = null): array
     {
         return Db::i()->transaction(function () use ($input, $by) {
@@ -1870,6 +2077,22 @@ final class Store
                     $merged = [...$n, 'patientId' => $keep['id'], 'version' => $n['version'] + 1, 'updatedAt' => $at];
                 }
                 $db->put('visitNote', $k, $merged);
+            }
+
+            // 写真・同意書などのファイルと見積書を移す
+            foreach ($db->where('file', 'k2', $dup['id']) as $f) {
+                if ($f['patientId'] === $dup['id']) {
+                    $db->put('file', $f['id'], [...$f, 'patientId' => $keep['id']]);
+                }
+            }
+            foreach ($db->where('estimate', 'k2', $dup['id']) as $e) {
+                if ($e['patientId'] === $dup['id']) {
+                    $ne = [...$e, 'patientId' => $keep['id'], 'version' => $e['version'] + 1, 'updatedAt' => $at];
+                    if ($by) {
+                        $ne['updatedBy'] = $by;
+                    }
+                    $db->put('estimate', $e['id'], $ne);
+                }
             }
 
             $next = $keep;

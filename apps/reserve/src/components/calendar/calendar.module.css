@@ -1696,3 +1696,26 @@ button.stagePill[data-clickable]:disabled {
     background: #f5f0fb;
   }
 }
+
+.panelLinks {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.estimateBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d9c9f2;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.estimateBtn:hover {
+  background: var(--accent-soft);
+}

@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
+import { EstimateDialog } from "@/components/estimates/EstimateDialog";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
@@ -51,6 +52,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const sv = stageOf(r, bundle.stages);
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
+  const [estimateOpen, setEstimateOpen] = useState(false);
   /** 状態を変えた時刻（空欄なら押した時刻） */
   const [stageTime, setStageTime] = useState("");
   const stageMin = parseHm(stageTime);
@@ -143,9 +145,26 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           {patient.cautionNote}
         </div>
       )}
-      <button type="button" className={styles.linkBtn} onClick={onEditPatient}>
-        患者情報を見る・編集する
-      </button>
+      <div className={styles.panelLinks}>
+        <button type="button" className={styles.linkBtn} onClick={onEditPatient}>
+          患者情報を見る・編集する
+        </button>
+        {patient && !patient.deleted && (
+          <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
+            📝 見積書
+          </button>
+        )}
+      </div>
+      {estimateOpen && patient && (
+        <EstimateDialog
+          patientId={patient.id}
+          patientName={patient.name}
+          reservationId={r.id}
+          initialMenuIds={r.menuIds}
+          onClose={() => setEstimateOpen(false)}
+          onSaved={() => {}}
+        />
+      )}
 
       <dl className={styles.facts}>
         <dt>日時</dt>

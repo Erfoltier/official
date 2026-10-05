@@ -122,6 +122,51 @@ export interface Product {
   deleted?: boolean;
 }
 
+/** 見積書の1行。値段は税込。割引はマイナスの値段の行で表す */
+export type EstimateLineKind = "menu" | "product" | "custom";
+
+export interface EstimateLine {
+  kind: EstimateLineKind;
+  /** メニュー・スキンケア＆内服のID（自由入力の行はなし） */
+  refId?: string;
+  name: string;
+  unitYen: number;
+  qty: number;
+}
+
+export interface Estimate {
+  id: string;
+  /** 見積番号（例: 2026-0012）。年ごとの通し番号 */
+  no: string;
+  patientId: PatientId;
+  reservationId?: ReservationId;
+  /** 発行日（YYYY-MM-DD） */
+  date: string;
+  validUntil: string;
+  lines: EstimateLine[];
+  /** 合計（税込） */
+  totalYen: number;
+  note?: string;
+  createdAt: string;
+  createdBy?: Actor;
+  updatedAt?: string;
+  updatedBy?: Actor;
+  version: number;
+  deleted?: { at: string; by?: Actor };
+}
+
+/** 見積書の印刷用（患者は書類に載せる項目だけ） */
+export interface EstimateView {
+  estimate: Estimate;
+  patient: Pick<Patient, "id" | "name" | "kana" | "chartNo" | "birthDate">;
+  clinic: ClinicSettings;
+}
+
+/** 税込の金額に含まれる消費税（10%） */
+export function taxIncluded(totalYen: number): number {
+  return Math.floor((totalYen * 10) / 110);
+}
+
 /** 患者のファイル（同意書のスキャン・写真・PDF・Word）。中身は暗号化して別に保存する */
 export type FileKind = "image" | "pdf" | "doc";
 
@@ -371,7 +416,26 @@ export interface ClinicSettings {
   dayEndMin: number;
   /** ドラッグ・入力時の刻み（分） */
   slotMin: number;
+  /** 書類（見積書・同意書）に載せる院の住所・電話・発行者（院長名など） */
+  address?: string;
+  phone?: string;
+  issuer?: string;
+  /** 見積書の下に入れる説明（リスク・副作用・個人差など） */
+  estimateNote?: string;
+  /** 見積書の有効期限（発行日から何日） */
+  estimateValidDays?: number;
 }
+
+/** 見積書の有効期限の既定（日） */
+export const DEFAULT_ESTIMATE_VALID_DAYS = 30;
+
+/** 見積書の注意書きの既定（設定で院ごとに書き換える） */
+export const DEFAULT_ESTIMATE_NOTE = [
+  "・表示の金額はすべて税込です。自由診療のため健康保険は適用されません。",
+  "・施術の効果には個人差があり、効果を保証するものではありません。",
+  "・赤み・腫れ・内出血・色素沈着などの副作用が生じることがあります。詳しくは医師の説明・同意書をご確認ください。",
+  "・回数・内容は診察の結果により変わることがあります。",
+].join("\n");
 
 /** 画面に渡す1日分のデータ */
 export interface DayBundle {

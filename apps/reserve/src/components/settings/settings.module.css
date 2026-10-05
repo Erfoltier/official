@@ -389,3 +389,23 @@
   line-height: 1.7;
   vertical-align: middle;
 }
+
+.clinic {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clinicCard textarea.input {
+  height: auto;
+  min-height: 7em;
+  padding: 8px 10px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}

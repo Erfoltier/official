@@ -76,7 +76,7 @@ export function SettingsApp() {
             スキンケア・内服
           </button>
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
-            診療時間
+            院の情報・診療時間
           </button>
           {isAdmin && (
             <>

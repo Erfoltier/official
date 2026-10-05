@@ -7,6 +7,7 @@ import { ApiError, fetchMe, fetchPatient, saveVisit, unlinkLine, updatePatient, 
 import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
 import { TreatmentHistory, type VisitSave } from "./VisitTable";
+import { EstimateList } from "@/components/estimates/EstimateList";
 import styles from "./patients.module.css";
 import { patientPath, withBase } from "@/lib/paths";
 
@@ -226,6 +227,11 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           readOnly={readOnly}
           canManage={canManage}
         />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>見積書</h2>
+        <EstimateList patientId={patientId} patientName={detail.patient.name} readOnly={readOnly} canManage={canManage} />
       </section>
 
       {!readOnly && (

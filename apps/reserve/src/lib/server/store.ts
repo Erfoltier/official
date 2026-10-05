@@ -3,6 +3,9 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type {
   Actor,
+  Estimate,
+  EstimateLine,
+  EstimateView,
   ClinicSettings,
   Product,
   Stage,
@@ -22,7 +25,7 @@ import type {
   ReservationStatus,
   ReminderStatus,
 } from "@/lib/domain/types";
-import { INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
+import { DEFAULT_ESTIMATE_VALID_DAYS, INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, isDateString, minutesOfDay, nowInClinic, toIso, weekdayOf } from "@/lib/domain/time";
 import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
 import {
@@ -61,6 +64,7 @@ interface StoreState {
   stages: Map<string, Stage>;
   snapshots: Map<string, SettingsSnapshot>;
   files: Map<string, PatientFile>;
+  estimates: Map<string, Estimate>;
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
   patients: Map<string, Patient>;
@@ -100,6 +104,7 @@ function state(): StoreState {
         stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
+        estimates: new PersistentMap<Estimate>("estimate"),
         lanes: new PersistentMap<Lane>("lane"),
         menus: new PersistentMap<Menu>("menu"),
         patients: new PersistentMap<Patient>("patient"),
@@ -222,7 +227,9 @@ export function getClinic(): ClinicSettings {
   return getMeta<ClinicSettings>("clinic") ?? DEFAULT_CLINIC;
 }
 
-export type ClinicInput = Partial<Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin">>;
+export type ClinicInput = Partial<
+  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays">
+>;
 
 /** 院名・診療時間（カレンダーに出す時間帯）・刻みを変更する */
 export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
@@ -232,6 +239,19 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
   if (input.slotMin !== undefined) next.slotMin = input.slotMin;
   if (input.dayStartMin !== undefined) next.dayStartMin = input.dayStartMin;
   if (input.dayEndMin !== undefined) next.dayEndMin = input.dayEndMin;
+  // 書類に載せる院の情報（空で消す）
+  for (const [k, label, max] of [
+    ["address", "住所", 120],
+    ["phone", "電話番号", 30],
+    ["issuer", "発行者", 60],
+  ] as const) {
+    if (input[k] === undefined) continue;
+    const v = checkText(label, input[k], max, false);
+    if (v) next[k] = v;
+    else delete next[k];
+  }
+  if (input.estimateNote !== undefined) next.estimateNote = checkNote("見積書の注意書き", input.estimateNote, 2000);
+  if (input.estimateValidDays !== undefined) next.estimateValidDays = input.estimateValidDays;
   if (next.dayStartMin % 5 !== 0 || next.dayEndMin % 5 !== 0) {
     throw new StoreError("invalid", "時刻は5分単位で指定してください");
   }
@@ -1593,6 +1613,13 @@ function mergePatientsImpl(
       : { ...n, patientId: keep.id, version: n.version + 1, updatedAt: at };
     st.visitNotes.set(k, merged);
   }
+  // 写真・同意書などのファイルと見積書を移す
+  for (const f of [...st.files.values()]) {
+    if (f.patientId === dup.id) st.files.set(f.id, { ...f, patientId: keep.id });
+  }
+  for (const e of [...st.estimates.values()]) {
+    if (e.patientId === dup.id) st.estimates.set(e.id, { ...e, patientId: keep.id, version: e.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
+  }
   // 患者情報：空欄を埋め、注意事項・メモはつなげる
   const next: Patient = { ...keep };
   for (const f of FILLABLE) if (!next[f] && dup[f]) (next as unknown as Record<string, unknown>)[f] = dup[f];
@@ -1644,4 +1671,143 @@ export function reorderMenus(...args: Parameters<typeof reorderMenusImpl>): Retu
 /** 複数の記録をまとめて変更するため、途中で失敗したら全部取り消す */
 export function deleteLane(...args: Parameters<typeof deleteLaneImpl>): ReturnType<typeof deleteLaneImpl> {
   return transaction(() => deleteLaneImpl(...args));
+}
+
+// ---- 見積書 ----
+
+const MAX_ESTIMATE_YEN = 100_000_000;
+
+/** 見積の行を確かめて整える（メニュー・スキンケアは登録にあるものだけ） */
+function checkEstimateLines(lines: EstimateLine[]): EstimateLine[] {
+  const st = state();
+  return lines.map((l) => {
+    if (l.kind === "menu" && (!l.refId || !st.menus.has(l.refId))) throw new StoreError("invalid", "メニューが見つかりません");
+    if (l.kind === "product" && (!l.refId || !st.products.has(l.refId))) throw new StoreError("invalid", "スキンケア＆内服が見つかりません");
+    const name = checkText("項目名", l.name, 120, true);
+    return { kind: l.kind, ...(l.kind !== "custom" && { refId: l.refId }), name, unitYen: l.unitYen, qty: l.qty };
+  });
+}
+
+function estimateTotal(lines: EstimateLine[]): number {
+  const total = lines.reduce((sum, l) => sum + l.unitYen * l.qty, 0);
+  if (total < 0) throw new StoreError("invalid", "合計がマイナスになっています（割引が大きすぎます）");
+  if (total > MAX_ESTIMATE_YEN) throw new StoreError("invalid", "合計が大きすぎます");
+  return total;
+}
+
+function checkEstimateDates(date: string, validUntil: string): void {
+  if (validUntil < date) throw new StoreError("invalid", "有効期限は発行日より後にしてください");
+}
+
+export function listEstimates(patientId: string): Estimate[] {
+  return [...state().estimates.values()]
+    .filter((e) => e.patientId === patientId && !e.deleted)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.no.localeCompare(a.no));
+}
+
+function liveEstimate(id: string): Estimate {
+  const e = state().estimates.get(id);
+  if (!e || e.deleted) throw new StoreError("not_found", "見積書が見つかりません");
+  return e;
+}
+
+/** 印刷用：見積書と、書類に載せる患者・院の情報 */
+export function getEstimateView(id: string): EstimateView {
+  const e = liveEstimate(id);
+  const p = state().patients.get(e.patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  return {
+    estimate: e,
+    patient: dropUndefined({ id: p.id, name: p.name, kana: p.kana, chartNo: p.chartNo, birthDate: p.birthDate }),
+    clinic: getClinic(),
+  };
+}
+
+export interface EstimateInput {
+  reservationId?: string;
+  date?: string;
+  validUntil?: string;
+  lines: EstimateLine[];
+  note?: string;
+}
+
+function createEstimateImpl(patientId: string, input: EstimateInput, by?: Actor): Estimate {
+  const st = state();
+  const p = st.patients.get(patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  if (p.deleted) throw new StoreError("invalid", "削除された患者には見積書を作れません");
+  if (input.reservationId) {
+    const r = st.reservations.get(input.reservationId);
+    if (!r || r.patientId !== patientId) throw new StoreError("invalid", "予約が見つかりません");
+  }
+  const date = input.date ?? nowInClinic().date;
+  const validUntil = input.validUntil ?? addDays(date, getClinic().estimateValidDays ?? DEFAULT_ESTIMATE_VALID_DAYS);
+  checkEstimateDates(date, validUntil);
+  const lines = checkEstimateLines(input.lines);
+  const note = input.note !== undefined ? checkNote("備考", input.note, 1000) : "";
+  // 見積番号は発行年ごとの通し番号
+  const year = date.slice(0, 4);
+  const seqs = getMeta<Record<string, number>>("estimateSeq") ?? {};
+  const n = (seqs[year] ?? 0) + 1;
+  setMeta("estimateSeq", { ...seqs, [year]: n });
+  const e: Estimate = {
+    id: `est-${Date.now().toString(36)}-${randomId()}`,
+    no: `${year}-${String(n).padStart(4, "0")}`,
+    patientId,
+    ...(input.reservationId && { reservationId: input.reservationId }),
+    date,
+    validUntil,
+    lines,
+    totalYen: estimateTotal(lines),
+    ...(note && { note }),
+    createdAt: new Date().toISOString(),
+    ...(by && { createdBy: by }),
+    version: 1,
+  };
+  st.estimates.set(e.id, e);
+  if (by) audit(by, `見積書を作成（No.${e.no}）`, patientId);
+  return e;
+}
+
+export function createEstimate(...args: Parameters<typeof createEstimateImpl>): Estimate {
+  return transaction(() => createEstimateImpl(...args));
+}
+
+export function updateEstimate(
+  id: string,
+  input: { version: number; date?: string; validUntil?: string; lines?: EstimateLine[]; note?: string },
+  by?: Actor,
+): Estimate {
+  const st = state();
+  const cur = liveEstimate(id);
+  if (cur.version !== input.version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  const next: Estimate = { ...cur };
+  if (input.date !== undefined) next.date = input.date;
+  if (input.validUntil !== undefined) next.validUntil = input.validUntil;
+  checkEstimateDates(next.date, next.validUntil);
+  if (input.lines !== undefined) {
+    next.lines = checkEstimateLines(input.lines);
+    next.totalYen = estimateTotal(next.lines);
+  }
+  if (input.note !== undefined) {
+    const note = checkNote("備考", input.note, 1000);
+    if (note) next.note = note;
+    else delete next.note;
+  }
+  next.version = cur.version + 1;
+  next.updatedAt = new Date().toISOString();
+  if (by) next.updatedBy = by;
+  st.estimates.set(id, next);
+  if (by) audit(by, `見積書を変更（No.${next.no}）`, next.patientId);
+  return next;
+}
+
+export function deleteEstimate(id: string, input: { version: number }, by?: Actor): Estimate {
+  const st = state();
+  const cur = liveEstimate(id);
+  if (cur.version !== input.version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  const next: Estimate = { ...cur, deleted: { at: new Date().toISOString(), ...(by && { by }) }, version: cur.version + 1 };
+  st.estimates.set(id, next);
+  if (by) audit(by, `見積書を削除（No.${cur.no}）`, cur.patientId);
+  return next;
 }

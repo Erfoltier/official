@@ -190,6 +190,14 @@ try {
                 'bytes' => $bytes,
             ], $actor($s)), 201);
         }
+        if ($method === 'GET' && $n === 3 && $p[2] === 'estimates') {
+            $me();
+            Http::json(['items' => Store::listEstimates(V::id($p[1]))]);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'estimates') {
+            $s = $me();
+            Http::json(Store::createEstimate(V::id($p[1]), Schema::createEstimate(Http::readJson(65_536)), $actor($s)), 201);
+        }
         if ($method === 'PUT' && $n === 4 && $p[2] === 'visits') {
             $s = $me();
             $id = V::id($p[1]);
@@ -237,6 +245,23 @@ try {
             $s = $me(STAFF_MANAGE);
             $f = Store::deleteFile(V::id($p[1]), $actor($s));
             Http::json(['id' => $f['id'], 'deleted' => true]);
+        }
+    }
+
+    // ---- 見積書 ----
+    if ($p[0] === 'estimates' && $n >= 2) {
+        if ($method === 'GET' && $n === 2) {
+            $me();
+            Http::json(Store::getEstimateView(V::id($p[1])));
+        }
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me();
+            Http::json(Store::updateEstimate(V::id($p[1]), Schema::updateEstimate(Http::readJson(65_536)), $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $e = Store::deleteEstimate(V::id($p[1]), ['version' => Schema::versionOnly(Http::readJson())], $actor($s));
+            Http::json(['id' => $e['id'], 'deleted' => true]);
         }
     }
 

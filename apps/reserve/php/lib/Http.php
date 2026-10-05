@@ -381,6 +381,11 @@ final class Schema
         $min = fn($x) => V::int($x, 0, 1440);
         return V::shape($v, [
             'name?' => fn($x) => V::str($x, 80),
+            'address?' => fn($x) => V::str($x, 200),
+            'phone?' => fn($x) => V::str($x, 40),
+            'issuer?' => fn($x) => V::str($x, 80),
+            'estimateNote?' => fn($x) => V::str($x, 3000),
+            'estimateValidDays?' => fn($x) => V::int($x, 1, 365),
             'dayStartMin?' => $min,
             'dayEndMin?' => $min,
             'slotMin?' => function ($x) {
@@ -390,6 +395,43 @@ final class Schema
                 }
                 return $x;
             },
+        ]);
+    }
+
+    /** @return array<int, array> */
+    public static function estimateLines(mixed $v): array
+    {
+        if (!is_array($v) || !array_is_list($v) || count($v) < 1 || count($v) > 40) {
+            throw new InputError();
+        }
+        return array_map(fn($l) => V::shape($l, [
+            'kind' => fn($x) => V::enum($x, ['menu', 'product', 'custom']),
+            'refId?' => [V::class, 'id'],
+            'name' => fn($x) => V::str($x, 200),
+            'unitYen' => fn($x) => V::int($x, -10_000_000, 10_000_000),
+            'qty' => fn($x) => V::int($x, 1, 99),
+        ]), $v);
+    }
+
+    public static function createEstimate(mixed $v): array
+    {
+        return V::shape($v, [
+            'reservationId?' => [V::class, 'id'],
+            'date?' => [V::class, 'date'],
+            'validUntil?' => [V::class, 'date'],
+            'lines' => [self::class, 'estimateLines'],
+            'note?' => fn($x) => V::str($x, 2000),
+        ]);
+    }
+
+    public static function updateEstimate(mixed $v): array
+    {
+        return V::shape($v, [
+            'version' => fn($x) => V::int($x, 1),
+            'date?' => [V::class, 'date'],
+            'validUntil?' => [V::class, 'date'],
+            'lines?' => [self::class, 'estimateLines'],
+            'note?' => fn($x) => V::str($x, 2000),
         ]);
     }
 

@@ -72,3 +72,9 @@ function format_date_ja(string $date): string
     $w = ['日', '月', '火', '水', '木', '金', '土'][(int) $d->format('w')];
     return (int) $d->format('n') . '/' . (int) $d->format('j') . "({$w})";
 }
+
+/** "YYYY-MM-DD" に日数を足す */
+function add_days(string $date, int $days): string
+{
+    return (new DateTimeImmutable($date . 'T00:00:00Z'))->modify(($days >= 0 ? '+' : '') . $days . ' days')->format('Y-m-d');
+}

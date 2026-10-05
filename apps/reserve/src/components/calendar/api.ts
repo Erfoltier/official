@@ -1,4 +1,4 @@
-import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, DayBundle, Estimate, EstimateLine, EstimateView, Lane, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -209,7 +209,14 @@ export async function fetchMonthCounts(month: string, signal?: AbortSignal): Pro
   return r.days;
 }
 
-export function saveClinic(body: Partial<Pick<DayBundle["clinic"], "name" | "dayStartMin" | "dayEndMin" | "slotMin">>): Promise<DayBundle["clinic"]> {
+export function saveClinic(
+  body: Partial<
+    Pick<
+      DayBundle["clinic"],
+      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays"
+    >
+  >,
+): Promise<DayBundle["clinic"]> {
   return call(`/api/v1/clinic`, { method: "PATCH", body: JSON.stringify(body) });
 }
 
@@ -293,4 +300,39 @@ export function fetchRestorePoints(): Promise<RestorePoints> {
 
 export function restoreSettings(key: string): Promise<RestorePoints> {
   return call(`/api/v1/settings/restore`, { method: "POST", body: JSON.stringify({ key }) });
+}
+
+// ---- 見積書 ----
+
+export async function fetchEstimates(patientId: string): Promise<Estimate[]> {
+  const r = await call<{ items: Estimate[] }>(`/api/v1/patients/${encodeURIComponent(patientId)}/estimates`);
+  return r.items;
+}
+
+export interface EstimateBody {
+  date?: string;
+  validUntil?: string;
+  lines: EstimateLine[];
+  note?: string;
+}
+
+export function createEstimate(patientId: string, body: EstimateBody & { reservationId?: string }): Promise<Estimate> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/estimates`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function updateEstimate(id: string, body: Partial<EstimateBody> & { version: number }): Promise<Estimate> {
+  return call(`/api/v1/estimates/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function fetchEstimate(id: string): Promise<EstimateView> {
+  return call(`/api/v1/estimates/${encodeURIComponent(id)}`);
+}
+
+export async function deleteEstimate(id: string, version: number): Promise<void> {
+  await call(`/api/v1/estimates/${encodeURIComponent(id)}/delete`, { method: "POST", body: JSON.stringify({ version }) });
+}
+
+/** 印刷用ページのURL */
+export function estimatePrintUrl(id: string): string {
+  return withBase(`/estimates/print/?id=${encodeURIComponent(id)}`);
 }

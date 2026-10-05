@@ -1,0 +1,13 @@
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/estimates/undefined Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:16:50+09:00 PHP8.3.6 /reserve/api/v1/patients/p-…/estimates Error Http.php:266 Call to private method Schema::estimateLines() from scope V
+2026-10-05T22:17:35+09:00 PHP8.3.6 /reserve/api/v1/estimates/est-muv9ygi2-f3a64024/delete TypeError Store.php:2020 Store::deleteEstimate(): Argument #2 ($input) must be of type array, int given, called in /home/user/official/apps/reserve/php/api/index.php on line 263

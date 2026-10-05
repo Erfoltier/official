@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ClinicSettings } from "@/lib/domain/types";
+import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS } from "@/lib/domain/types";
 import { formatHm } from "@/lib/domain/time";
 import { saveClinic } from "@/components/calendar/api";
 import styles from "./settings.module.css";
@@ -95,6 +96,89 @@ export function ClinicTab({
           </div>
         )}
       </div>
+
+      <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
     </section>
+  );
+}
+
+/** 見積書・同意書に載せる院の情報と、見積書の注意書き */
+function DocumentCard({
+  clinic,
+  canEdit,
+  onChanged,
+  notify,
+  fail,
+}: {
+  clinic: ClinicSettings;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  notify: (text: string) => void;
+  fail: (err: unknown) => void;
+}) {
+  const [address, setAddress] = useState(clinic.address ?? "");
+  const [phone, setPhone] = useState(clinic.phone ?? "");
+  const [issuer, setIssuer] = useState(clinic.issuer ?? "");
+  const [days, setDays] = useState(String(clinic.estimateValidDays ?? DEFAULT_ESTIMATE_VALID_DAYS));
+  const [note, setNote] = useState(clinic.estimateNote ?? DEFAULT_ESTIMATE_NOTE);
+  const [busy, setBusy] = useState(false);
+  const daysNum = Number(days.normalize("NFKC"));
+  const valid = Number.isInteger(daysNum) && daysNum >= 1 && daysNum <= 365;
+  const changed =
+    address !== (clinic.address ?? "") ||
+    phone !== (clinic.phone ?? "") ||
+    issuer !== (clinic.issuer ?? "") ||
+    daysNum !== (clinic.estimateValidDays ?? DEFAULT_ESTIMATE_VALID_DAYS) ||
+    note !== (clinic.estimateNote ?? DEFAULT_ESTIMATE_NOTE);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await saveClinic({ address, phone, issuer, estimateValidDays: daysNum, estimateNote: note });
+      await onChanged();
+      notify("書類に載せる院の情報を保存しました");
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>見積書・同意書に載せる院の情報</h3>
+      <label className={styles.field}>
+        <span>住所</span>
+        <input className={styles.input} value={address} maxLength={120} onChange={(ev) => setAddress(ev.target.value)} disabled={!canEdit} placeholder="例：東京都○○区○○1-2-3 ○○ビル2F" />
+      </label>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>電話番号</span>
+          <input className={styles.input} value={phone} maxLength={30} onChange={(ev) => setPhone(ev.target.value)} disabled={!canEdit} inputMode="tel" />
+        </label>
+        <label className={styles.field}>
+          <span>発行者（院長名など）</span>
+          <input className={styles.input} value={issuer} maxLength={60} onChange={(ev) => setIssuer(ev.target.value)} disabled={!canEdit} placeholder="例：院長 石田 ○○" />
+        </label>
+      </div>
+      <label className={styles.field}>
+        <span>見積書の有効期限（発行日から何日）</span>
+        <input className={styles.input} value={days} inputMode="numeric" onChange={(ev) => setDays(ev.target.value)} disabled={!canEdit} style={{ maxWidth: "8em" }} />
+      </label>
+      <label className={styles.field}>
+        <span>見積書の注意書き（リスク・副作用・個人差など。すべての見積書の下に入ります）</span>
+        <textarea className={styles.input} value={note} rows={6} maxLength={2000} onChange={(ev) => setNote(ev.target.value)} disabled={!canEdit} />
+      </label>
+      <p className={styles.hint} data-invalid={!valid || undefined}>
+        {valid ? "自由診療の見積書には、費用のほかリスク・副作用の説明を添えるのが一般的です。院の言葉に書き換えてください。" : "有効期限は1〜365日で入れてください"}
+      </p>
+      {canEdit && (
+        <div className={styles.actions}>
+          <button className={styles.primary} onClick={save} disabled={!valid || !changed || busy}>
+            保存
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
