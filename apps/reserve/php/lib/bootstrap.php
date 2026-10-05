@@ -28,6 +28,10 @@ function config(): array
         if (!is_file($file)) {
             throw new RuntimeException('config.php がありません（config.sample.php をコピーして設定してください）');
         }
+        // 暗号鍵が入っているので、サーバー上の持ち主だけが読めるようにする
+        if ((fileperms($file) & 0077) !== 0) {
+            @chmod($file, 0600);
+        }
         $cfg = require $file;
     }
     return $cfg;
