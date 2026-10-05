@@ -189,6 +189,23 @@ final class Store
         ];
     }
 
+    /** 月の日ごとの予約数（キャンセル・無断キャンセルを除く）。$month は "2026-10" */
+    public static function monthCounts(string $month): array
+    {
+        $out = [];
+        foreach (Db::i()->between('reservation', 'k1', "{$month}-01", "{$month}-31") as $r) {
+            if (self::inactive($r)) {
+                continue;
+            }
+            $d = clinic_date_of($r['startAt']);
+            if (str_starts_with($d, "{$month}-")) {
+                $out[$d] = ($out[$d] ?? 0) + 1;
+            }
+        }
+        ksort($out);
+        return $out;
+    }
+
     public static function getSettings(): array
     {
         return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus()];

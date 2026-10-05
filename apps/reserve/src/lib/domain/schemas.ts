@@ -7,6 +7,9 @@ const isoDateTime = z.iso.datetime({ offset: true });
 
 export const dateParam = z.string().refine(isDateString, "日付の形式が正しくありません");
 
+/** "2026-10" の形の月 */
+export const monthParam = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+
 export const createReservationSchema = z.object({
   patientId: id,
   laneId: id,

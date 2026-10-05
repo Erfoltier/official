@@ -9,6 +9,7 @@ import { ApiError, fetchDay, fetchMe, logout, patchReservation } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
+import { DatePicker } from "./DatePicker";
 import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
 import styles from "./calendar.module.css";
@@ -26,6 +27,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [createAt, setCreateAt] = useState<{ laneId: string; minute: number } | null>(null);
   const [editPatientId, setEditPatientId] = useState<string | null>(null);
   const [me, setMe] = useState<StaffPublic | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
 
   useEffect(() => {
     fetchMe().then(setMe, () => {});
@@ -145,15 +148,32 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, -1))} aria-label="前の日">
             ‹
           </button>
-          <label className={styles.dateBtn}>
-            <span>{formatDateJa(date)}</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => e.target.value && setDate(e.target.value)}
-              aria-label="日付を選ぶ"
-            />
-          </label>
+          <span className={styles.dateWrap}>
+            <button
+              type="button"
+              className={styles.dateBtn}
+              data-datepicker-toggle
+              data-open={pickerOpen || undefined}
+              onClick={() => setPickerOpen((v) => !v)}
+              aria-haspopup="dialog"
+              aria-expanded={pickerOpen}
+              title="カレンダーから日付を選ぶ"
+            >
+              {formatDateJa(date)} <span className={styles.dateCaret}>▾</span>
+            </button>
+            {pickerOpen && (
+              <DatePicker
+                value={date}
+                today={now.date}
+                onPick={(d) => {
+                  setDate(d);
+                  setPickerOpen(false);
+                  if (d === now.date) didInitialScroll.current = null;
+                }}
+                onClose={closePicker}
+              />
+            )}
+          </span>
           <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, 1))} aria-label="次の日">
             ›
           </button>

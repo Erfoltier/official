@@ -163,6 +163,20 @@ export function getDayBundle(date: string): DayBundle {
   };
 }
 
+/**
+ * 月の日ごとの予約数（キャンセル・無断キャンセルを除く）。日付ジャンプ用のカレンダーに出す。
+ * month は "2026-10"。予約のない日は含めない
+ */
+export function getMonthCounts(month: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of state().reservations.values()) {
+    if (INACTIVE_STATUSES.has(r.status)) continue;
+    const date = clinicDateOf(r.startAt);
+    if (date.startsWith(`${month}-`)) out[date] = (out[date] ?? 0) + 1;
+  }
+  return out;
+}
+
 export function getSettings() {
   return { clinic: DEMO_CLINIC, lanes: sortedLanes(), menus: sortedMenus() };
 }

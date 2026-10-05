@@ -72,6 +72,15 @@ try {
         $me();
         Http::json(Store::getDayBundle(V::date($q('date'))));
     }
+    if ($route === 'GET month') {
+        $me();
+        $month = $q('month');
+        if (!is_string($month) || !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
+            throw new InputError();
+        }
+        $days = Store::monthCounts($month);
+        Http::json(['month' => $month, 'days' => $days ?: new stdClass()]);
+    }
     if ($route === 'GET settings') {
         $me();
         Http::json(Store::getSettings());

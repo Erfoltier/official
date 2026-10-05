@@ -158,6 +158,21 @@ final class Db
         return ' ORDER BY id';
     }
 
+    /** @return array<string, mixed> 索引列が $from 以上 $to 以下のもの */
+    public function between(string $kind, string $col, string $from, string $to): array
+    {
+        if ($col !== 'k1' && $col !== 'k2') {
+            throw new InvalidArgumentException('bad column');
+        }
+        $st = $this->pdo->prepare("SELECT id, data FROM docs WHERE kind = ? AND {$col} >= ? AND {$col} <= ?" . $this->order());
+        $st->execute([$kind, $from, $to]);
+        $out = [];
+        foreach ($st->fetchAll() as $r) {
+            $out[$r['id']] = $this->decrypt($r['data']);
+        }
+        return $out;
+    }
+
     public function count(string $kind, ?string $col = null, ?string $value = null): int
     {
         $sql = 'SELECT COUNT(*) AS n FROM docs WHERE kind = ?';

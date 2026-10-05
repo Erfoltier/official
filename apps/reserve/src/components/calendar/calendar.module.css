@@ -76,27 +76,37 @@
   opacity: 0.6;
 }
 
-.dateBtn {
+.dateWrap {
   position: relative;
+  display: inline-flex;
+}
+
+.dateBtn {
   height: 32px;
   min-width: 96px;
   padding: 0 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
 }
 
-.dateBtn input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
+.dateBtn:hover,
+.dateBtn[data-open] {
+  background: var(--bg-subtle);
+}
+
+.dateCaret {
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .count {

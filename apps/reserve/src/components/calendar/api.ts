@@ -195,3 +195,9 @@ export function mergePatients(body: { keepId: string; dupId: string; keepVersion
 export async function deleteLane(id: string): Promise<void> {
   await call(`/api/v1/lanes/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+/** 日付ジャンプ用：月の日ごとの予約数（"2026-10-07": 12） */
+export async function fetchMonthCounts(month: string, signal?: AbortSignal): Promise<Record<string, number>> {
+  const r = await call<{ month: string; days: Record<string, number> }>(`/api/v1/month?month=${encodeURIComponent(month)}`, { signal });
+  return r.days;
+}
