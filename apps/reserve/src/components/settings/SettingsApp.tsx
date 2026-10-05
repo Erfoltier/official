@@ -17,7 +17,8 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-type Tab = "lanes" | "menus" | "stages" | "products" | "prices" | "consents" | "clinic" | "staff" | "audit" | "restore";
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "clinic", "staff", "audit", "restore"] as const;
+type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
 const MAX_LANES = 30;
@@ -30,6 +31,10 @@ export function SettingsApp() {
 
   useEffect(() => {
     fetchMe().then(setMe, () => {});
+    // 「?tab=menus」などで開いたときはそのタブから
+    const t = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (t && TABS.includes(t as Tab)) setTab(t as Tab);
   }, []);
 
   const load = useCallback(async () => {

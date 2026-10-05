@@ -12,7 +12,7 @@ interface Props {
   menu: Menu | null;
   lanes: Lane[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (m: Menu) => void;
   /** 既存のメニューの削除（新しいメニューのときはなし） */
   onDelete?: () => void;
   fail: (err: unknown) => void;
@@ -47,7 +47,7 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
   const save = async () => {
     setSaving(true);
     try {
-      await saveMenu(menu?.id ?? null, {
+      const saved = await saveMenu(menu?.id ?? null, {
         name,
         abbr,
         color,
@@ -59,7 +59,7 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
         laneIds,
         active,
       });
-      onSaved();
+      onSaved(saved);
     } catch (err) {
       fail(err);
       setSaving(false);
@@ -77,10 +77,21 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
   );
 
   return (
-    <dialog ref={ref} className={styles.dialog} onClose={onClose} onCancel={onClose}>
+    <dialog
+      ref={ref}
+      className={styles.dialog}
+      // 予約登録などの画面の上に開いたとき、外側のダイアログまで閉じないようにここで止める
+      onClose={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      onCancel={(e) => e.stopPropagation()}
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          // 予約登録の画面の上に開いたとき、外側の予約の登録まで動かないように止める
+          e.stopPropagation();
           save();
         }}
       >
@@ -88,7 +99,7 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
 
         <div className={styles.grid}>
           <label>メニュー名</label>
-          <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required />
+          <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required aria-label="メニュー名" />
 
           <label>略称（短い枠用）</label>
           <div className={styles.inline}>

@@ -262,7 +262,7 @@ try {
             Http::file($meta, $bytes);
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_MANAGE);
+            $s = $me();
             $f = Store::deleteFile(V::id($p[1]), $actor($s));
             Http::json(['id' => $f['id'], 'deleted' => true]);
         }

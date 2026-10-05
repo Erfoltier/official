@@ -1732,3 +1732,16 @@ button.stagePill[data-clickable]:disabled {
 .panelLinks {
   flex-wrap: wrap;
 }
+
+.menuManageBtn {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}

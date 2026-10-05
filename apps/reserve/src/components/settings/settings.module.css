@@ -528,3 +528,43 @@
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+
+/* 予約登録から開くメニューの追加・削除 */
+.managerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.managerHead h2 {
+  margin: 0;
+}
+
+.managerList {
+  max-height: 55dvh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.managerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.managerRow:last-child {
+  border-bottom: none;
+}
+
+.managerRow .nameBtn {
+  flex: 1;
+  text-align: left;
+}
+
+.managerRow[data-inactive] .nameBtn {
+  opacity: 0.55;
+}

@@ -468,6 +468,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           laneId={createAt.laneId}
           minute={createAt.minute}
           onClose={() => setCreateAt(null)}
+          onMenusChanged={me?.role === "admin" || me?.role === "reception" ? () => load(date) : undefined}
           onCreated={(r) => {
             setCreateAt(null);
             showToast("予約を登録しました");

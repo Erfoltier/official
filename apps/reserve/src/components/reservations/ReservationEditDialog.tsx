@@ -5,6 +5,7 @@ import type { ClinicSettings, Lane, Menu, Reservation } from "@/lib/domain/types
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, toIso } from "@/lib/domain/time";
 import { searchKey } from "@/lib/domain/text";
 import { ApiError, fetchSettings, patchReservation } from "@/components/calendar/api";
+import { MenuManagerDialog } from "@/components/settings/MenuManagerDialog";
 import styles from "./reservations.module.css";
 
 /** 変更に必要な予約の情報（カレンダーの予約・患者画面の予約のどちらからでも作れる） */
@@ -54,7 +55,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
     if (d && !d.open) d.showModal();
   }, []);
 
-  useEffect(() => {
+  const loadSettings = () =>
     fetchSettings().then(
       (s) => {
         setLanes([...s.lanes].sort((a, b) => a.order - b.order));
@@ -63,7 +64,10 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
       },
       () => setError("設定を読み込めませんでした"),
     );
+  useEffect(() => {
+    loadSettings();
   }, []);
+  const [manageMenus, setManageMenus] = useState(false);
 
   const menuOf = useMemo(() => new Map(menus.map((m) => [m.id, m])), [menus]);
   const slot = clinic?.slotMin ?? 5;
@@ -241,6 +245,24 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
               ))}
             </div>
           </>
+        )}
+        {canCancel && (
+          <button type="button" className={styles.menuManageBtn} onClick={() => setManageMenus(true)}>
+            ⚙ メニューの追加・削除
+          </button>
+        )}
+        {manageMenus && (
+          <MenuManagerDialog
+            onClose={() => setManageMenus(false)}
+            onChanged={async (created) => {
+              await loadSettings();
+              // 新しく作ったメニューはこの予約に入れる（時間もそのメニューの分だけ足す）
+              if (created?.active && menuIds.length < MAX_MENUS && !menuIds.includes(created.id)) {
+                if (!durTouched) setDur((d) => Math.min(240, d + created.defaultMinutes));
+                setMenuIds([...menuIds, created.id]);
+              }
+            }}
+          />
         )}
       </section>
 

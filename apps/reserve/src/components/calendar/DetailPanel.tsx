@@ -229,7 +229,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           </div>
           {files && files.length > 0 && (
             <div className={styles.panelFiles}>
-              <FileThumbs files={files} size="m" canDelete={canManage} onDeleted={(id) => setFiles((fs) => fs?.filter((f) => f.id !== id) ?? null)} />
+              <FileThumbs files={files} size="m" canDelete onDeleted={(id) => setFiles((fs) => fs?.filter((f) => f.id !== id) ?? null)} />
             </div>
           )}
           <FileUploader

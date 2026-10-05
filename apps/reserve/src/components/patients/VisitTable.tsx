@@ -371,7 +371,7 @@ function SkincareCell({ items, priceOf }: { items: string[]; priceOf: Map<string
 function FilesCell(props: { files: PatientFile[]; patientId: string; date: string; readOnly?: boolean; canManage?: boolean; onChanged: () => void }) {
   return (
     <div className={styles.filesCell}>
-      <FileThumbs files={props.files} canDelete={props.canManage} onDeleted={props.onChanged} />
+      <FileThumbs files={props.files} canDelete={!props.readOnly} onDeleted={props.onChanged} />
       {props.files.length === 0 && props.readOnly && <span className={styles.muted}>—</span>}
       {!props.readOnly && <FileUploader compact patientId={props.patientId} date={props.date} onUploaded={props.onChanged} />}
     </div>

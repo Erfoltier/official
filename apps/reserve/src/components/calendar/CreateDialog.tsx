@@ -8,6 +8,7 @@ import { REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/d
 import { ApiError, createPatient, postReservation, searchPatients } from "./api";
 import { durationLabel } from "./menuFormat";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
+import { MenuManagerDialog } from "@/components/settings/MenuManagerDialog";
 import styles from "./calendar.module.css";
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   minute: number;
   onClose: () => void;
   onCreated: (r: Reservation) => void;
+  /** メニューの追加・削除ができる人（院長・管理者と受付）だけ。変更のあと予約表を読み直す */
+  onMenusChanged?: () => Promise<void>;
 }
 
 interface NewPatientForm {
@@ -28,7 +31,8 @@ interface NewPatientForm {
   birthDate: string;
 }
 
-export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClose, onCreated }: Props) {
+export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClose, onCreated, onMenusChanged }: Props) {
+  const [manageMenus, setManageMenus] = useState(false);
   const { clinic } = bundle;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Patient[]>([]);
@@ -69,7 +73,8 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   }, [query, patient, newPatient]);
 
   const menuById = useMemo(() => new Map(bundle.menus.map((m) => [m.id, m])), [bundle.menus]);
-  const selectedMenus = menuIds.map((id) => menuById.get(id)).filter((m): m is Menu => !!m);
+  /** 削除したメニューは選択に出さない */
+  const selectedMenus = menuIds.map((id) => menuById.get(id)).filter((m): m is Menu => !!m && !m.deleted);
 
   const visibleMenus = useMemo(() => {
     const q = searchKey(menuQuery);
@@ -150,7 +155,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
     setError(null);
     if (requestId && !REQUEST_ID_RE.test(requestId)) return setError("予約申請IDは英数字・ハイフンで入力してください");
     if (!patient && !newPatient) return setError("患者を選ぶか、新しい患者として登録してください");
-    if (menuIds.length === 0) return setError("メニューを選んでください");
+    if (selectedMenus.length === 0) return setError("メニューを選んでください");
     if (start + dur > clinic.dayEndMin) return setError("診療時間を超えています");
     setSaving(true);
     try {
@@ -170,7 +175,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
       const r = await postReservation({
         patientId: p!.id,
         laneId,
-        menuIds,
+        menuIds: selectedMenus.map((m) => m.id),
         startAt: toIso(date, start),
         endAt: toIso(date, start + dur),
         memo: memo || undefined,
@@ -419,6 +424,24 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
             ))}
             {visibleMenus.length === 0 && <span className={styles.hint}>該当するメニューがありません</span>}
           </div>
+          {onMenusChanged && (
+            <button type="button" className={styles.menuManageBtn} onClick={() => setManageMenus(true)}>
+              ⚙ メニューの追加・削除
+            </button>
+          )}
+          {manageMenus && onMenusChanged && (
+            <MenuManagerDialog
+              onClose={() => setManageMenus(false)}
+              onChanged={async (created) => {
+                await onMenusChanged();
+                // 新しく作ったメニューはこの予約に入れる
+                if (created?.active) {
+                  setMenuIds((ids) => (ids.includes(created.id) ? ids : [...ids, created.id]));
+                  setDuration(null);
+                }
+              }}
+            />
+          )}
         </div>
 
         <div className={styles.fieldRow}>
