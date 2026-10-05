@@ -128,7 +128,7 @@ export interface Product {
  */
 export interface PriceItem {
   id: string;
-  source: "homepage" | "manual";
+  source: "homepage" | "sheet" | "manual";
   category: string;
   name: string;
   /** 1つに決まらない値段（「〜」付き・ASK など）は null */
@@ -156,6 +156,8 @@ export interface PriceList {
   urls: string[];
   syncedAt?: string;
   results: PriceSyncResult[];
+  /** スプレッドシートから送られてきた料金（シート名・受け取った日時・件数） */
+  sheets: { name: string; at: string; count: number }[];
 }
 
 /** 見積書の1行。値段は税込。割引はマイナスの値段の行で表す */
@@ -455,7 +457,8 @@ export interface ClinicSettings {
   dayEndMin: number;
   /** ドラッグ・入力時の刻み（分） */
   slotMin: number;
-  /** 書類（見積書・同意書）に載せる院の住所・電話・発行者（院長名など） */
+  /** 書類（見積書・同意書）に載せる院名（なければ院名）・住所・電話・発行者（院長名など） */
+  docName?: string;
   address?: string;
   phone?: string;
   issuer?: string;

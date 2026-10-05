@@ -116,6 +116,7 @@ function DocumentCard({
   notify: (text: string) => void;
   fail: (err: unknown) => void;
 }) {
+  const [docName, setDocName] = useState(clinic.docName ?? "");
   const [address, setAddress] = useState(clinic.address ?? "");
   const [phone, setPhone] = useState(clinic.phone ?? "");
   const [issuer, setIssuer] = useState(clinic.issuer ?? "");
@@ -126,6 +127,7 @@ function DocumentCard({
   const daysNum = Number(days.normalize("NFKC"));
   const valid = Number.isInteger(daysNum) && daysNum >= 1 && daysNum <= 365;
   const changed =
+    docName !== (clinic.docName ?? "") ||
     address !== (clinic.address ?? "") ||
     phone !== (clinic.phone ?? "") ||
     issuer !== (clinic.issuer ?? "") ||
@@ -136,7 +138,7 @@ function DocumentCard({
   const save = async () => {
     setBusy(true);
     try {
-      await saveClinic({ address, phone, issuer, estimateValidDays: daysNum, estimateNote: note, estimatePaper: paper });
+      await saveClinic({ docName, address, phone, issuer, estimateValidDays: daysNum, estimateNote: note, estimatePaper: paper });
       await onChanged();
       notify("書類に載せる院の情報を保存しました");
     } catch (err) {
@@ -150,16 +152,20 @@ function DocumentCard({
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>見積書・同意書に載せる院の情報</h3>
       <label className={styles.field}>
+        <span>書類に載せる院名（空欄なら院名「{clinic.name}」）</span>
+        <input className={styles.input} value={docName} maxLength={60} onChange={(ev) => setDocName(ev.target.value)} disabled={!canEdit} placeholder="例：いしだ美容皮膚科" />
+      </label>
+      <label className={styles.field}>
         <span>住所</span>
         <input className={styles.input} value={address} maxLength={120} onChange={(ev) => setAddress(ev.target.value)} disabled={!canEdit} placeholder="例：東京都○○区○○1-2-3 ○○ビル2F" />
       </label>
       <div className={styles.timeRow}>
         <label className={styles.field}>
-          <span>電話番号</span>
+          <span>電話番号（空欄なら載せない）</span>
           <input className={styles.input} value={phone} maxLength={30} onChange={(ev) => setPhone(ev.target.value)} disabled={!canEdit} inputMode="tel" />
         </label>
         <label className={styles.field}>
-          <span>発行者（院長名など）</span>
+          <span>発行者・医師名（空欄なら載せない）</span>
           <input className={styles.input} value={issuer} maxLength={60} onChange={(ev) => setIssuer(ev.target.value)} disabled={!canEdit} placeholder="例：院長 石田 ○○" />
         </label>
       </div>

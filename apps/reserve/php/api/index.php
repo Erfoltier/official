@@ -72,6 +72,11 @@ try {
         $r = Store::setReservationRequestId(V::id($p[2]), Schema::integrationRequestId(Http::readJson()));
         Http::json(['reservationId' => $r['id'], 'requestId' => $r['requestId'] ?? null, 'version' => $r['version']]);
     }
+    if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
+        Http::checkIntegrationAuth();
+        $in = Schema::integrationPrices(Http::readJson(262_144));
+        Http::json(Store::receiveSheetPrices($in['sheet'], $in['items']));
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 4 && $p[1] === 'patients' && $p[3] === 'm3-chart-no') {
         Http::checkIntegrationAuth();
         $pt = Store::setPatientM3ChartNo(V::id($p[2]), Schema::integrationM3(Http::readJson()));

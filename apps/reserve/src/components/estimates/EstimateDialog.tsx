@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Estimate, EstimateLine, Menu, Product } from "@/lib/domain/types";
+import type { Estimate, EstimateLine, Menu, PriceItem, Product } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_VALID_DAYS, PRODUCT_CATEGORY_LABEL, taxIncluded } from "@/lib/domain/types";
 import { addDays, nowInClinic } from "@/lib/domain/time";
-import { ApiError, createEstimate, estimatePrintUrl, fetchSettings, updateEstimate } from "@/components/calendar/api";
+import { ApiError, createEstimate, estimatePrintUrl, fetchPrices, fetchSettings, updateEstimate } from "@/components/calendar/api";
 import { searchKey } from "@/lib/domain/text";
 import styles from "./estimates.module.css";
 
@@ -42,6 +42,13 @@ function parseYen(s: string): number | null {
   return Number(t);
 }
 
+/** 見積書の行の名前：分類を前に付ける（「その他」などの大まかな分類は付けない） */
+const PLAIN_CATEGORIES = new Set(["その他", "内服・外用など", "特殊メニュー", "施術料金一覧"]);
+function lineName(p: PriceItem): string {
+  if (PLAIN_CATEGORIES.has(p.category) || p.name.includes(p.category)) return p.name;
+  return `${p.category} ${p.name}`;
+}
+
 let seq = 0;
 const nextKey = () => ++seq;
 
@@ -58,7 +65,9 @@ export function EstimateDialog(props: Props) {
     () =>
       props.estimate?.lines.map((l) => ({ key: nextKey(), kind: l.kind, refId: l.refId, name: l.name, unit: String(l.unitYen), qty: l.qty })) ?? [],
   );
-  const [tab, setTab] = useState<"menu" | "product">("menu");
+  const [tab, setTab] = useState<"price" | "menu" | "product">("price");
+  /** 料金表（ホームページ・スプレッドシート・自由入力） */
+  const [prices, setPrices] = useState<PriceItem[] | null>(null);
   const [q, setQ] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -67,6 +76,13 @@ export function EstimateDialog(props: Props) {
   useEffect(() => {
     const d = ref.current;
     if (d && !d.open) d.showModal();
+  }, []);
+
+  useEffect(() => {
+    fetchPrices().then(
+      (l) => setPrices(l.items),
+      () => setPrices([]),
+    );
   }, []);
 
   useEffect(() => {
@@ -98,18 +114,22 @@ export function EstimateDialog(props: Props) {
 
   const candidates = useMemo(() => {
     const key = searchKey(q);
-    const list: { id: string; name: string; price: number | null; sub?: string }[] =
-      tab === "menu"
-        ? (menus ?? []).filter((m) => m.active).map((m) => ({ id: m.id, name: m.name, price: m.priceYen }))
-        : products.map((p) => ({ id: p.id, name: p.name, price: p.priceYen, sub: PRODUCT_CATEGORY_LABEL[p.category] }));
-    return key ? list.filter((x) => searchKey(x.name).includes(key)) : list;
-  }, [tab, q, menus, products]);
+    const list: { id: string; name: string; price: number | null; sub?: string; text?: string }[] =
+      tab === "price"
+        ? (prices ?? []).map((p) => ({ id: p.id, name: lineName(p), price: p.priceYen, sub: p.category, text: p.priceText }))
+        : tab === "menu"
+          ? (menus ?? []).filter((m) => m.active).map((m) => ({ id: m.id, name: m.name, price: m.priceYen }))
+          : products.map((p) => ({ id: p.id, name: p.name, price: p.priceYen, sub: PRODUCT_CATEGORY_LABEL[p.category] }));
+    return key ? list.filter((x) => searchKey(`${x.sub ?? ""} ${x.name}`).includes(key)) : list;
+  }, [tab, q, menus, products, prices]);
 
-  const add = (kind: "menu" | "product", id: string, name: string, price: number | null) => {
+  /** 料金表の項目は「自由入力の行」として入れる（見積書には名前と値段を写して残す） */
+  const add = (tab0: "price" | "menu" | "product", id: string, name: string, price: number | null) => {
+    const kind = tab0 === "price" ? "custom" : tab0;
     setRows((rs) => {
-      const same = rs.find((r) => r.kind === kind && r.refId === id);
+      const same = rs.find((r) => (kind === "custom" ? r.kind === "custom" && r.name === name : r.kind === kind && r.refId === id));
       if (same) return rs.map((r) => (r === same ? { ...r, qty: Math.min(99, r.qty + 1) } : r));
-      return [...rs, { key: nextKey(), kind, refId: id, name, unit: price === null ? "" : String(price), qty: 1 }];
+      return [...rs, { key: nextKey(), kind, ...(kind !== "custom" && { refId: id }), name, unit: price === null ? "" : String(price), qty: 1 }];
     });
   };
 
@@ -166,8 +186,11 @@ export function EstimateDialog(props: Props) {
             <button type="button" className={styles.btn} onClick={props.onClose}>
               閉じる
             </button>
+            <a className={styles.btn} href={estimatePrintUrl(saved.id, "bill")} target="_blank" rel="noopener">
+              🧾 御会計書を印刷
+            </a>
             <a className={styles.primaryBtn} href={estimatePrintUrl(saved.id)} target="_blank" rel="noopener">
-              🖨 印刷する
+              🖨 御見積書を印刷
             </a>
           </div>
         </div>
@@ -175,8 +198,11 @@ export function EstimateDialog(props: Props) {
         <>
           <div className={styles.picker}>
             <div className={styles.tabs} role="tablist">
+              <button type="button" role="tab" aria-selected={tab === "price"} data-active={tab === "price" || undefined} onClick={() => setTab("price")}>
+                料金表
+              </button>
               <button type="button" role="tab" aria-selected={tab === "menu"} data-active={tab === "menu" || undefined} onClick={() => setTab("menu")}>
-                メニュー
+                予約メニュー
               </button>
               <button type="button" role="tab" aria-selected={tab === "product"} data-active={tab === "product" || undefined} onClick={() => setTab("product")}>
                 スキンケア＆内服
@@ -184,12 +210,15 @@ export function EstimateDialog(props: Props) {
               <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="さがす" aria-label="項目をさがす" />
             </div>
             <div className={styles.chips}>
-              {menus === null && <span className={styles.muted}>読み込み中…</span>}
-              {menus !== null && candidates.length === 0 && <span className={styles.muted}>見つかりません</span>}
+              {(tab === "price" ? prices === null : menus === null) && <span className={styles.muted}>読み込み中…</span>}
+              {(tab === "price" ? prices !== null : menus !== null) && candidates.length === 0 && (
+                <span className={styles.muted}>{tab === "price" && !q ? "料金表が空です（設定 → 料金表）" : "見つかりません"}</span>
+              )}
               {candidates.map((c) => (
-                <button key={c.id} type="button" className={styles.chip} onClick={() => add(tab, c.id, c.name, c.price)} title="押すと見積に追加">
+                <button key={c.id} type="button" className={styles.chip} onClick={() => add(tab, c.id, c.name, c.price)} title={c.text ? `${c.name}：${c.text}` : "押すと見積に追加"}>
+                  {tab === "price" && c.sub && <small>{c.sub}</small>}
                   <span>{c.name}</span>
-                  <b>{c.price === null ? "値段未設定" : yen(c.price)}</b>
+                  <b>{c.price === null ? c.text || "値段未設定" : yen(c.price)}</b>
                 </button>
               ))}
             </div>

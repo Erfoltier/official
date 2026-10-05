@@ -409,3 +409,97 @@
   resize: vertical;
   font-family: inherit;
 }
+
+/* ===== 料金表 ===== */
+.priceStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  font-size: 13px;
+}
+
+.priceStatus > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.priceSource {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.priceSource[data-ok] {
+  color: #15803d;
+}
+
+.priceUrls {
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.priceUrls textarea {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  margin: 6px 0;
+  padding: 6px 8px;
+  font-family: inherit;
+}
+
+.priceGroup {
+  margin: 14px 0;
+}
+
+.priceGroup h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--accent-strong);
+}
+
+.priceCol {
+  width: 9em;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.priceCol input {
+  text-align: right;
+}
+
+.priceAdd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 720px;
+}
+
+.priceAdd input:nth-child(1) {
+  flex: 1 1 8em;
+}
+
+.priceAdd input:nth-child(2) {
+  flex: 3 1 14em;
+}
+
+.priceAdd input:nth-child(3) {
+  flex: 1 1 7em;
+}
+
+.priceGroup table {
+  table-layout: fixed;
+  width: 100%;
+  max-width: 900px;
+}
+
+.priceGroup td:last-child:not(.priceCol) {
+  width: 18em;
+}

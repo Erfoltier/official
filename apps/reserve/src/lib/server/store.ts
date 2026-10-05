@@ -233,7 +233,7 @@ export function getClinic(): ClinicSettings {
 }
 
 export type ClinicInput = Partial<
-  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper">
+  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper">
 >;
 
 /** 院名・診療時間（カレンダーに出す時間帯）・刻みを変更する */
@@ -246,6 +246,7 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
   if (input.dayEndMin !== undefined) next.dayEndMin = input.dayEndMin;
   // 書類に載せる院の情報（空で消す）
   for (const [k, label, max] of [
+    ["docName", "書類に載せる院名", 60],
     ["address", "住所", 120],
     ["phone", "電話番号", 30],
     ["issuer", "発行者", 60],
@@ -1840,13 +1841,16 @@ export function priceUrls(): string[] {
 }
 
 function sortedPrices(): PriceItem[] {
-  const rank = (p: PriceItem) => (p.source === "homepage" ? 0 : 1);
+  const rank = (p: PriceItem) => (p.source === "homepage" ? 0 : p.source === "sheet" ? 1 : 2);
   return [...state().prices.values()].filter((p) => !p.removed).sort((a, b) => rank(a) - rank(b) || byOrder(a, b));
 }
 
 export function getPriceList(): PriceList {
   const sync = getMeta<PriceSyncMeta>("priceSync");
-  return { items: sortedPrices(), urls: priceUrls(), ...(sync && { syncedAt: sync.at }), results: sync?.results ?? [] };
+  const sheets = Object.entries(getMeta<Record<string, { at: string; count: number }>>("priceSheets") ?? {})
+    .map(([name, v]) => ({ name, at: v.at, count: v.count }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { items: sortedPrices(), urls: priceUrls(), ...(sync && { syncedAt: sync.at }), results: sync?.results ?? [], sheets };
 }
 
 /** 料金表を開いたときに取り込み直すか（1日1回。失敗していたら1時間後） */
@@ -1868,8 +1872,8 @@ export function setPriceUrls(urls: string[], by?: Actor): string[] {
   return clean;
 }
 
-function priceId(url: string, category: string, name: string): string {
-  return "hp-" + createHash("sha1").update(`${url}\n${category}\n${name}`).digest("hex").slice(0, 12);
+function priceId(url: string, category: string, name: string, prefix = "hp-"): string {
+  return prefix + createHash("sha1").update(`${url}\n${category}\n${name}`).digest("hex").slice(0, 12);
 }
 
 export interface FetchedPricePage {
@@ -1986,4 +1990,47 @@ export function deletePriceItem(id: string, by?: Actor): void {
   manualPrice(id);
   state().prices.delete(id);
   if (by) audit(by, "料金表の項目を削除");
+}
+
+export interface SheetPriceInput {
+  category: string;
+  name: string;
+  priceYen: number | null;
+  priceText?: string;
+}
+
+/**
+ * スプレッドシート（Apps Script）から送られてきた料金で、そのシートの分を入れ替える。
+ * 送られてこなかった項目は候補に出さない
+ */
+function receiveSheetPricesImpl(sheet: string, items: SheetPriceInput[]): { sheet: string; count: number; at: string } {
+  const st = state();
+  const name0 = checkText("シート名", sheet, 60, true);
+  const url = `sheet:${name0}`;
+  const at = new Date().toISOString();
+  const seen = new Set<string>();
+  let order = 0;
+  for (const it of items) {
+    const name = checkText("項目名", it.name, 120, false);
+    if (!name) continue;
+    const category = checkText("分類", it.category, 60, false) || "その他";
+    let id = priceId(url, category, name, "sh-");
+    for (let n = 2; seen.has(id); n++) id = priceId(url, category, `${name}#${n}`, "sh-");
+    seen.add(id);
+    const priceText = (it.priceText ?? "").trim() || (it.priceYen === null ? "" : `${it.priceYen.toLocaleString("ja-JP")}円`);
+    const cur = st.prices.get(id);
+    const same = cur && cur.priceYen === it.priceYen && cur.priceText === priceText && !cur.removed;
+    const next: PriceItem = { id, source: "sheet", category, name, priceYen: it.priceYen, priceText, url, order: order++, updatedAt: same ? cur.updatedAt : at };
+    if (!cur || JSON.stringify(cur) !== JSON.stringify(next)) st.prices.set(id, next);
+  }
+  for (const p of [...st.prices.values()]) {
+    if (p.source === "sheet" && p.url === url && !seen.has(p.id) && !p.removed) st.prices.set(p.id, { ...p, removed: true, updatedAt: at });
+  }
+  const sheets = getMeta<Record<string, { at: string; count: number }>>("priceSheets") ?? {};
+  setMeta("priceSheets", { ...sheets, [name0]: { at, count: seen.size } });
+  return { sheet: name0, count: seen.size, at };
+}
+
+export function receiveSheetPrices(...args: Parameters<typeof receiveSheetPricesImpl>): ReturnType<typeof receiveSheetPricesImpl> {
+  return transaction(() => receiveSheetPricesImpl(...args));
 }

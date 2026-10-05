@@ -140,6 +140,7 @@ export const clinicSchema = z
     dayStartMin: z.number().int().min(0).max(1440).optional(),
     dayEndMin: z.number().int().min(0).max(1440).optional(),
     slotMin: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(30)]).optional(),
+    docName: z.string().max(100).optional(),
     address: z.string().max(200).optional(),
     phone: z.string().max(40).optional(),
     issuer: z.string().max(80).optional(),
@@ -154,6 +155,25 @@ export const priceItemSchema = z
     category: z.string().max(100).optional(),
     name: z.string().max(200).optional(),
     priceYen: z.number().int().min(-10_000_000).max(10_000_000).nullable().optional(),
+  })
+  .strict();
+
+/** 外部連携：スプレッドシート（Apps Script）から料金表を送る */
+export const integrationPricesSchema = z
+  .object({
+    sheet: z.string().min(1).max(100),
+    items: z
+      .array(
+        z
+          .object({
+            category: z.string().max(100),
+            name: z.string().max(200),
+            priceYen: z.number().int().min(-10_000_000).max(10_000_000).nullable(),
+            priceText: z.string().max(100).optional(),
+          })
+          .strict(),
+      )
+      .max(1000),
   })
   .strict();
 

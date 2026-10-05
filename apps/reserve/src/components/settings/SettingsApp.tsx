@@ -8,6 +8,7 @@ import { ApiError, deleteLane, fetchMe, fetchSettings, reorder, saveLane, type S
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab } from "./ClinicTab";
+import { PricesTab } from "./PricesTab";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -15,7 +16,7 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-type Tab = "lanes" | "menus" | "stages" | "products" | "clinic" | "staff" | "audit" | "restore";
+type Tab = "lanes" | "menus" | "stages" | "products" | "prices" | "clinic" | "staff" | "audit" | "restore";
 
 const MIN_LANES = 1;
 const MAX_LANES = 30;
@@ -75,6 +76,9 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>
             スキンケア・内服
           </button>
+          <button role="tab" aria-selected={tab === "prices"} onClick={() => setTab("prices")}>
+            料金表
+          </button>
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
@@ -109,6 +113,8 @@ export function SettingsApp() {
         <AuditTab fail={fail} />
       ) : tab === "restore" && isAdmin ? (
         <RestoreTab onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "prices" ? (
+        <PricesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : tab === "stages" ? (

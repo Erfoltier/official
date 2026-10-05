@@ -94,6 +94,25 @@ final class Store
                 $db->setMeta('productsSeeded', true);
             });
         }
+        // 書類に載せる院名・住所（あとから追加した項目なので、既存の院の設定にも1回だけ入れる）
+        if (!$db->meta('docInfoSeeded')) {
+            $db->transaction(function () use ($db) {
+                if ($db->meta('docInfoSeeded')) {
+                    return;
+                }
+                $seed = self::seed()['clinic'] ?? [];
+                $cur = $db->meta('clinic');
+                if ($cur !== null) {
+                    foreach (['docName', 'address'] as $k) {
+                        if (!isset($cur[$k]) && !empty($seed[$k])) {
+                            $cur[$k] = $seed[$k];
+                        }
+                    }
+                    $db->setMeta('clinic', $cur);
+                }
+                $db->setMeta('docInfoSeeded', true);
+            });
+        }
         // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
         self::ensureBaseline();
     }
@@ -117,7 +136,7 @@ final class Store
             }
         }
         // 書類に載せる院の情報（空で消す）
-        foreach ([['address', '住所', 120], ['phone', '電話番号', 30], ['issuer', '発行者', 60]] as [$k, $label, $max]) {
+        foreach ([['docName', '書類に載せる院名', 60], ['address', '住所', 120], ['phone', '電話番号', 30], ['issuer', '発行者', 60]] as [$k, $label, $max]) {
             if (!isset($input[$k])) {
                 continue;
             }
@@ -1866,7 +1885,7 @@ final class Store
     private static function sortedPrices(): array
     {
         $items = array_values(array_filter(Db::i()->all('price'), fn($p) => empty($p['removed'])));
-        $rank = fn($p) => $p['source'] === 'homepage' ? 0 : 1;
+        $rank = fn($p) => $p['source'] === 'homepage' ? 0 : ($p['source'] === 'sheet' ? 1 : 2);
         usort($items, fn($a, $b) => ($rank($a) <=> $rank($b)) ?: ($a['order'] <=> $b['order']) ?: strcmp($a['id'], $b['id']));
         return $items;
     }
@@ -1880,6 +1899,12 @@ final class Store
             $out['syncedAt'] = $sync['at'];
         }
         $out['results'] = $sync['results'] ?? [];
+        $sheets = [];
+        foreach (Db::i()->meta('priceSheets') ?? [] as $name => $v) {
+            $sheets[] = ['name' => (string) $name, 'at' => $v['at'], 'count' => $v['count']];
+        }
+        usort($sheets, fn($a, $b) => strcmp($a['name'], $b['name']));
+        $out['sheets'] = $sheets;
         return $out;
     }
 
@@ -1921,9 +1946,65 @@ final class Store
         return $clean;
     }
 
-    private static function priceId(string $url, string $category, string $name): string
+    private static function priceId(string $url, string $category, string $name, string $prefix = 'hp-'): string
     {
-        return 'hp-' . substr(sha1("{$url}\n{$category}\n{$name}"), 0, 12);
+        return $prefix . substr(sha1("{$url}\n{$category}\n{$name}"), 0, 12);
+    }
+
+    /**
+     * スプレッドシート（Apps Script）から送られてきた料金で、そのシートの分を入れ替える。
+     * 送られてこなかった項目は候補に出さない
+     */
+    public static function receiveSheetPrices(string $sheet, array $items): array
+    {
+        self::init();
+        return Db::i()->transaction(function () use ($sheet, $items) {
+            $db = Db::i();
+            $name0 = self::checkText('シート名', $sheet, 60, true);
+            $url = "sheet:{$name0}";
+            $at = now_iso();
+            $all = $db->all('price');
+            $seen = [];
+            $order = 0;
+            foreach ($items as $it) {
+                $name = self::checkText('項目名', $it['name'], 120, false);
+                if ($name === '') {
+                    continue;
+                }
+                $category = self::checkText('分類', $it['category'], 60, false);
+                if ($category === '') {
+                    $category = 'その他';
+                }
+                $id = self::priceId($url, $category, $name, 'sh-');
+                for ($n = 2; isset($seen[$id]); $n++) {
+                    $id = self::priceId($url, $category, "{$name}#{$n}", 'sh-');
+                }
+                $seen[$id] = true;
+                $text = js_trim($it['priceText'] ?? '');
+                if ($text === '') {
+                    $text = self::priceTextOf($it['priceYen']);
+                }
+                $cur = $all[$id] ?? null;
+                $same = $cur && $cur['priceYen'] === $it['priceYen'] && $cur['priceText'] === $text && empty($cur['removed']);
+                $next = [
+                    'id' => $id, 'source' => 'sheet', 'category' => $category, 'name' => $name,
+                    'priceYen' => $it['priceYen'], 'priceText' => $text, 'url' => $url,
+                    'order' => $order++, 'updatedAt' => $same ? $cur['updatedAt'] : $at,
+                ];
+                if ($cur !== $next) {
+                    $db->put('price', $id, $next);
+                }
+            }
+            foreach ($all as $p) {
+                if ($p['source'] === 'sheet' && ($p['url'] ?? null) === $url && !isset($seen[$p['id']]) && empty($p['removed'])) {
+                    $db->put('price', $p['id'], [...$p, 'removed' => true, 'updatedAt' => $at]);
+                }
+            }
+            $sheets = $db->meta('priceSheets') ?? [];
+            $sheets[$name0] = ['at' => $at, 'count' => count($seen)];
+            $db->setMeta('priceSheets', $sheets);
+            return ['sheet' => $name0, 'count' => count($seen), 'at' => $at];
+        });
     }
 
     private static function fetchPricePage(string $url): array

@@ -15,7 +15,17 @@ function dateLong(d: string): string {
 }
 
 /** A4 1枚の見積書。画面の上のボタンは印刷されない */
-export function EstimatePrint({ id }: { id: string }) {
+/** 書類の種類：御見積書（施術前）／御会計書（お支払い時） */
+export type DocKind = "estimate" | "bill";
+
+const DOC = {
+  estimate: { title: "御 見 積 書", no: "見積番号", lead: "下記のとおりお見積り申し上げます。", amount: "御見積金額", tab: "御見積書" },
+  bill: { title: "御 会 計 書", no: "番号", lead: "下記のとおりお会計いたします。", amount: "お会計金額", tab: "御会計書" },
+} as const;
+
+export function EstimatePrint({ id, kind: kind0 = "estimate" }: { id: string; kind?: DocKind }) {
+  const [kind, setKind] = useState<DocKind>(kind0);
+  const doc = DOC[kind];
   const [view, setView] = useState<EstimateView | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** 用紙。最初は院の既定、印刷画面で切り替えられる */
@@ -25,7 +35,7 @@ export function EstimatePrint({ id }: { id: string }) {
     fetchEstimate(id).then(
       (v) => {
         setView(v);
-        document.title = `見積書 No.${v.estimate.no}｜${v.patient.name} 様`;
+        document.title = `No.${v.estimate.no}｜${v.patient.name} 様`;
       },
       (err) => setError(err instanceof ApiError ? err.message : "見積書を読み込めませんでした"),
     );
@@ -42,6 +52,13 @@ export function EstimatePrint({ id }: { id: string }) {
       {/* 印刷する用紙の大きさ（A5 は A4 の版面をそのまま縮める） */}
       <style>{`@page { size: ${size} portrait; margin: 0; }`}</style>
       <div className={styles.bar}>
+        <span className={styles.paper} role="group" aria-label="書類の種類">
+          {(["estimate", "bill"] as const).map((k) => (
+            <button key={k} type="button" data-active={kind === k || undefined} aria-pressed={kind === k} onClick={() => setKind(k)}>
+              {DOC[k].tab}
+            </button>
+          ))}
+        </span>
         <span className={styles.paper} role="group" aria-label="用紙">
           {(["A4", "A5"] as const).map((p) => (
             <button key={p} type="button" data-active={size === p || undefined} aria-pressed={size === p} onClick={() => setPaper(p)}>
@@ -58,22 +75,24 @@ export function EstimatePrint({ id }: { id: string }) {
         <span>印刷画面で「PDFに保存」を選ぶとPDFにもできます</span>
       </div>
 
-      <article className={styles.sheet} aria-label="見積書">
+      <article className={styles.sheet} aria-label={doc.tab}>
         <header className={styles.top}>
-          <h1>御 見 積 書</h1>
+          <h1>{doc.title}</h1>
           <dl className={styles.meta}>
             <div>
-              <dt>見積番号</dt>
+              <dt>{doc.no}</dt>
               <dd>No.{e.no}</dd>
             </div>
             <div>
               <dt>発行日</dt>
               <dd>{dateLong(e.date)}</dd>
             </div>
-            <div>
-              <dt>有効期限</dt>
-              <dd>{dateLong(e.validUntil)}</dd>
-            </div>
+            {kind === "estimate" && (
+              <div>
+                <dt>有効期限</dt>
+                <dd>{dateLong(e.validUntil)}</dd>
+              </div>
+            )}
           </dl>
         </header>
 
@@ -84,15 +103,15 @@ export function EstimatePrint({ id }: { id: string }) {
               <span>様</span>
             </p>
             {p.chartNo && <p className={styles.small}>診察券番号 {p.chartNo}</p>}
-            <p className={styles.lead}>下記のとおりお見積り申し上げます。</p>
+            <p className={styles.lead}>{doc.lead}</p>
             <div className={styles.amount}>
-              <span>御見積金額</span>
+              <span>{doc.amount}</span>
               <b>{yen(e.totalYen)}</b>
               <small>（税込）</small>
             </div>
           </div>
           <div className={styles.from}>
-            <p className={styles.clinicName}>{c.name}</p>
+            <p className={styles.clinicName}>{c.docName || c.name}</p>
             {c.address && <p>{c.address}</p>}
             {c.phone && <p>TEL {c.phone}</p>}
             {c.issuer && <p className={styles.issuer}>{c.issuer}</p>}
@@ -140,7 +159,7 @@ export function EstimatePrint({ id }: { id: string }) {
             <p>{e.note}</p>
           </section>
         )}
-        {note && (
+        {note && kind === "estimate" && (
           <section className={styles.notice}>
             <h2>ご確認ください</h2>
             <p>{note}</p>

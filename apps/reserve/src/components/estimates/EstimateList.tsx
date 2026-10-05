@@ -67,7 +67,10 @@ export function EstimateList(props: { patientId: string; patientName: string; re
                 <td>
                   <div className={styles.listBtns}>
                     <a className={styles.primaryBtn} href={estimatePrintUrl(e.id)} target="_blank" rel="noopener">
-                      🖨 印刷
+                      🖨 見積書
+                    </a>
+                    <a className={styles.btn} href={estimatePrintUrl(e.id, "bill")} target="_blank" rel="noopener">
+                      🧾 会計書
                     </a>
                     {!props.readOnly && (
                       <button type="button" className={styles.btn} onClick={() => setEditing(e)}>

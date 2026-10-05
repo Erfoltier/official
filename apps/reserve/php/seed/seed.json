@@ -4,7 +4,9 @@
   "timeZone": "Asia/Tokyo",
   "dayStartMin": 540,
   "dayEndMin": 1200,
-  "slotMin": 5
+  "slotMin": 5,
+  "docName": "いしだ美容皮膚科",
+  "address": "〒337-0051 埼玉県さいたま市見沼区東大宮5-41-1"
  },
  "lanes": [
   {

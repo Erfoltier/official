@@ -1,4 +1,4 @@
-import type { AuditEntry, DayBundle, Estimate, EstimateLine, EstimateView, Lane, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -213,7 +213,7 @@ export function saveClinic(
   body: Partial<
     Pick<
       DayBundle["clinic"],
-      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper"
+      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper"
     >
   >,
 ): Promise<DayBundle["clinic"]> {
@@ -333,6 +333,30 @@ export async function deleteEstimate(id: string, version: number): Promise<void>
 }
 
 /** 印刷用ページのURL */
-export function estimatePrintUrl(id: string): string {
-  return withBase(`/estimates/print/?id=${encodeURIComponent(id)}`);
+export function estimatePrintUrl(id: string, kind: "estimate" | "bill" = "estimate"): string {
+  return withBase(`/estimates/print/?id=${encodeURIComponent(id)}${kind === "bill" ? "&type=bill" : ""}`);
+}
+
+// ---- 料金表 ----
+
+export function fetchPrices(): Promise<PriceList> {
+  return call(`/api/v1/prices`);
+}
+
+export function syncPricesNow(): Promise<PriceList> {
+  return call(`/api/v1/prices/sync`, { method: "POST" });
+}
+
+export function savePriceUrls(urls: string[]): Promise<PriceList> {
+  return call(`/api/v1/prices/urls`, { method: "POST", body: JSON.stringify({ urls }) });
+}
+
+export function savePriceItem(id: string | null, body: { category?: string; name?: string; priceYen?: number | null }): Promise<PriceItem> {
+  return id
+    ? call(`/api/v1/prices/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) })
+    : call(`/api/v1/prices`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function deletePriceItem(id: string): Promise<void> {
+  await call(`/api/v1/prices/${encodeURIComponent(id)}/delete`, { method: "POST" });
 }

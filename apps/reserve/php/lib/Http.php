@@ -381,6 +381,7 @@ final class Schema
         $min = fn($x) => V::int($x, 0, 1440);
         return V::shape($v, [
             'name?' => fn($x) => V::str($x, 80),
+            'docName?' => fn($x) => V::str($x, 100),
             'address?' => fn($x) => V::str($x, 200),
             'phone?' => fn($x) => V::str($x, 40),
             'issuer?' => fn($x) => V::str($x, 80),
@@ -420,6 +421,30 @@ final class Schema
             'category?' => fn($x) => V::str($x, 100),
             'name?' => fn($x) => V::str($x, 200),
             'priceYen?' => fn($x) => $x === null ? null : V::int($x, -10_000_000, 10_000_000),
+        ]);
+    }
+
+    public static function integrationPrices(mixed $v): array
+    {
+        return V::shape($v, [
+            'sheet' => function ($x) {
+                $x = V::str($x, 100);
+                if ($x === '') {
+                    throw new InputError();
+                }
+                return $x;
+            },
+            'items' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 1000) {
+                    throw new InputError();
+                }
+                return array_map(fn($it) => V::shape($it, [
+                    'category' => fn($y) => V::str($y, 100),
+                    'name' => fn($y) => V::str($y, 200),
+                    'priceYen' => fn($y) => $y === null ? null : V::int($y, -10_000_000, 10_000_000),
+                    'priceText?' => fn($y) => V::str($y, 100),
+                ]), $x);
+            },
         ]);
     }
 
