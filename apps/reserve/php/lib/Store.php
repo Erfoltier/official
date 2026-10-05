@@ -1086,7 +1086,7 @@ final class Store
             $out['cautionNote'] = $opt(self::checkNote('注意事項', $input['cautionNote'], 500));
         }
         if (isset($input['memo'])) {
-            $out['memo'] = $opt(self::checkNote('メモ', $input['memo'], 2000));
+            $out['memo'] = $opt(self::checkNote('メモ', $input['memo'], 12000));
         }
         return $out;
     }
@@ -1447,7 +1447,7 @@ final class Store
         if (($cur['version'] ?? 0) !== $input['version']) {
             throw new StoreError('version_conflict', '他の端末で先にこの日の記録が更新されました。画面を開き直してください');
         }
-        $note = self::checkNote('メモ', $input['note'], 4000);
+        $note = self::checkNote('メモ', $input['note'], 16000);
         $skincare = [];
         foreach ($input['skincare'] as $x) {
             $v = self::checkText('スキンケア', $x, 60, false);

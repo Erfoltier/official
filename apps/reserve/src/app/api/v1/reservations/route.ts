@@ -6,7 +6,7 @@ import { createReservation } from "@/lib/server/store";
 export async function POST(request: Request) {
   try {
     const staff = requireStaff(request);
-    const input = createReservationSchema.parse(await readJson(request));
+    const input = createReservationSchema.parse(await readJson(request, 65_536));
     return json(createReservation(input, actorOf(staff)), 201);
   } catch (err) {
     return errorResponse(err);

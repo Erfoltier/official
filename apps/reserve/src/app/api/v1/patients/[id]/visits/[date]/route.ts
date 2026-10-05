@@ -9,7 +9,7 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string;
     const staff = requireStaff(request);
     const { id, date } = await ctx.params;
     const patientId = idParam.parse(id);
-    saveVisitNote(patientId, dateParam.parse(date), visitNoteSchema.parse(await readJson(request, 32_768)), actorOf(staff));
+    saveVisitNote(patientId, dateParam.parse(date), visitNoteSchema.parse(await readJson(request, 65_536)), actorOf(staff));
     return json(getPatientDetail(patientId));
   } catch (err) {
     return errorResponse(err);

@@ -281,7 +281,7 @@ final class Schema
             'menuIds' => fn($x) => V::ids($x, 1, 5),
             'startAt' => [V::class, 'iso'],
             'endAt' => [V::class, 'iso'],
-            'memo?' => fn($x) => V::str($x, 500),
+            'memo?' => fn($x) => V::str($x, 3000),
             'requestId?' => [V::class, 'requestId'],
         ], false);
     }
@@ -295,7 +295,7 @@ final class Schema
             'endAt?' => [V::class, 'iso'],
             'status?' => fn($x) => V::enum($x, Store::STATUSES),
             'menuIds?' => fn($x) => V::ids($x, 1, 5),
-            'memo?' => fn($x) => V::str($x, 500),
+            'memo?' => fn($x) => V::str($x, 3000),
             'requestId?' => fn($x) => $x === '' ? '' : V::requestId($x),
             'stageId?' => [V::class, 'id'],
             'stageText?' => fn($x) => V::str($x, 40),
@@ -323,7 +323,7 @@ final class Schema
         $s = fn(int $max) => fn($x) => V::str($x, $max);
         return [
             'kana?' => $s(120), 'nameAlt?' => $s(120), 'phone?' => $s(30), 'email?' => $s(200), 'chartNo?' => $s(30), 'm3ChartNo?' => $s(30),
-            'birthDate?' => $s(10), 'caution?' => [V::class, 'bool'], 'cautionNote?' => $s(1000), 'memo?' => $s(4000),
+            'birthDate?' => $s(10), 'caution?' => [V::class, 'bool'], 'cautionNote?' => $s(1000), 'memo?' => $s(12000),
         ];
     }
 
@@ -511,7 +511,7 @@ final class Schema
     public static function visitNote(mixed $v): array
     {
         return V::shape($v, [
-            'note' => fn($x) => V::str($x, 8000),
+            'note' => fn($x) => V::str($x, 16000),
             'skincare' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 30) {
                     throw new InputError();

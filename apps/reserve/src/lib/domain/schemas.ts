@@ -19,7 +19,7 @@ export const createReservationSchema = z.object({
   menuIds: z.array(id).min(1).max(5),
   startAt: isoDateTime,
   endAt: isoDateTime,
-  memo: z.string().max(500).optional(),
+  memo: z.string().max(3000).optional(),
   requestId: requestId.optional(),
 });
 
@@ -31,7 +31,7 @@ export const updateReservationSchema = z
     endAt: isoDateTime.optional(),
     status: z.enum(RESERVATION_STATUSES).optional(),
     menuIds: z.array(id).min(1).max(5).optional(),
-    memo: z.string().max(500).optional(),
+    memo: z.string().max(3000).optional(),
     /** 空文字で削除 */
     requestId: z.union([requestId, z.literal("")]).optional(),
     stageId: id.optional(),
@@ -65,7 +65,7 @@ const patientFieldsSchema = {
   birthDate: shortText(10).optional(),
   caution: z.boolean().optional(),
   cautionNote: shortText(1000).optional(),
-  memo: shortText(4000).optional(),
+  memo: shortText(12000).optional(),
 };
 
 export const createPatientSchema = z.object({ name: shortText(120), ...patientFieldsSchema }).strict();
@@ -111,7 +111,7 @@ export const idParam = id;
 
 export const visitNoteSchema = z
   .object({
-    note: z.string().max(8000),
+    note: z.string().max(16000),
     skincare: z.array(z.string().max(120)).max(30),
     version: z.number().int().min(0),
   })

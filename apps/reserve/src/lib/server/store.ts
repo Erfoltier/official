@@ -1017,7 +1017,7 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
   }
   if (input.caution !== undefined) out.caution = input.caution || undefined;
   if (input.cautionNote !== undefined) out.cautionNote = opt(checkNote("注意事項", input.cautionNote, 500));
-  if (input.memo !== undefined) out.memo = opt(checkNote("メモ", input.memo, 2000));
+  if (input.memo !== undefined) out.memo = opt(checkNote("メモ", input.memo, 12000));
   return out;
 }
 
@@ -1251,7 +1251,7 @@ export function saveVisitNote(patientId: string, date: string, input: VisitNoteI
   if ((cur?.version ?? 0) !== input.version) {
     throw new StoreError("version_conflict", "他の端末で先にこの日の記録が更新されました。画面を開き直してください");
   }
-  const note = checkNote("メモ", input.note, 4000);
+  const note = checkNote("メモ", input.note, 16000);
   const skincare = [...new Set(input.skincare.map((x) => checkText("スキンケア", x, 60, false)).filter(Boolean))];
   if (skincare.length > 20) throw new StoreError("invalid", "スキンケアは20件までです");
   const at = new Date().toISOString();

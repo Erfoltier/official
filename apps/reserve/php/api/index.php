@@ -119,12 +119,12 @@ try {
     // ---- 予約 ----
     if ($route === 'POST reservations') {
         $s = $me();
-        Http::json(Store::createReservation(Schema::createReservation(Http::readJson()), $actor($s)), 201);
+        Http::json(Store::createReservation(Schema::createReservation(Http::readJson(65_536)), $actor($s)), 201);
     }
     if ($method === 'PATCH' && $n === 2 && $p[0] === 'reservations') {
         $s = $me();
         $id = V::id($p[1]);
-        Http::json(Store::updateReservation($id, Schema::updateReservation(Http::readJson()), $actor($s)));
+        Http::json(Store::updateReservation($id, Schema::updateReservation(Http::readJson(65_536)), $actor($s)));
     }
 
     // ---- 患者 ----
@@ -134,7 +134,7 @@ try {
     }
     if ($route === 'POST patients') {
         $s = $me();
-        Http::json(Store::createPatient(Schema::createPatient(Http::readJson()), $actor($s)), 201);
+        Http::json(Store::createPatient(Schema::createPatient(Http::readJson(65_536)), $actor($s)), 201);
     }
     if ($route === 'GET patients/merge') {
         $me(STAFF_MANAGE);
@@ -153,7 +153,7 @@ try {
         if ($method === 'PATCH' && $n === 2) {
             $s = $me();
             $id = V::id($p[1]);
-            Store::updatePatient($id, Schema::updatePatient(Http::readJson()), $actor($s));
+            Store::updatePatient($id, Schema::updatePatient(Http::readJson(65_536)), $actor($s));
             Http::json(Store::getPatientDetail($id));
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'unlink-line') {
@@ -206,7 +206,7 @@ try {
         if ($method === 'PUT' && $n === 4 && $p[2] === 'visits') {
             $s = $me();
             $id = V::id($p[1]);
-            Store::saveVisitNote($id, V::date($p[3]), Schema::visitNote(Http::readJson(32_768)), $actor($s));
+            Store::saveVisitNote($id, V::date($p[3]), Schema::visitNote(Http::readJson(65_536)), $actor($s));
             Http::json(Store::getPatientDetail($id));
         }
     }

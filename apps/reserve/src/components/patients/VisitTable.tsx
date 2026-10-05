@@ -7,6 +7,8 @@ import { formatHm, minutesOfDay, nowInClinic, clinicDateOf } from "@/lib/domain/
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { FileUploader } from "@/components/files/FileUploader";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
+import { RichText } from "@/components/richtext/RichText";
+import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import styles from "./patients.module.css";
 import { calendarPath, withBase } from "@/lib/paths";
 
@@ -283,13 +285,17 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
                 変更
               </button>
             )}
-            {r.memo && <div className={styles.resMemo}>予約メモ：{r.memo}</div>}
+            {r.memo && (
+              <div className={styles.resMemo}>
+                予約メモ：<RichText value={r.memo} inline />
+              </div>
+            )}
             {r.requestId && <div className={styles.resMemo}>申請ID：{r.requestId}</div>}
           </div>
         ))}
       </td>
       <td className={styles.colNote} data-label="メモ">
-        {v.note ? <div className={styles.noteText}>{v.note}</div> : <span className={styles.muted}>—</span>}
+        {v.note ? <RichText value={v.note} className={styles.noteText} /> : <span className={styles.muted}>—</span>}
         {v.noteUpdatedBy && (
           <div className={styles.writer}>
             記入：{v.noteUpdatedBy.name}
@@ -393,18 +399,18 @@ function EditRow(props: { visit: VisitRow; products: Product[]; previous: string
           <strong>{formatDateFull(visit.date)}</strong>
           {visit.reservations.length > 0 && <span className={styles.muted}>{visit.reservations.flatMap((r) => r.menuNames).join("、")}</span>}
         </div>
-        <label className={styles.field}>
+        <div className={styles.field}>
           <span className={styles.label}>メモ（簡易カルテ・自由記載）</span>
-          <textarea
-            className={styles.textarea}
+          <RichTextEditor
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={setNote}
             rows={4}
             maxLength={4000}
+            ariaLabel="メモ（簡易カルテ・自由記載）"
             placeholder="例：全顔HIFU 300ショット。頬下部に痛み。次回3か月後"
             autoFocus
           />
-        </label>
+        </div>
         <div className={styles.field}>
           <span className={styles.label}>スキンケア＆内服（タップで追加・もう一度で外す）</span>
           {(["skincare", "oral"] as const).map((cat) => {
@@ -548,7 +554,7 @@ function UpcomingTable({
               <td data-label="レーン">{r.laneName}</td>
               <td data-label="状態">{r.stageLabel ?? STATUS_LABEL[r.status]}</td>
               <td data-label="予約メモ・申請ID">
-                {r.memo ?? (r.requestId ? null : <span className={styles.muted}>—</span>)}
+                {r.memo ? <RichText value={r.memo} inline /> : r.requestId ? null : <span className={styles.muted}>—</span>}
                 {r.requestId && <div className={styles.reqId}>申請ID：{r.requestId}</div>}
               </td>
               {onChange && (

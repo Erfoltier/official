@@ -7,7 +7,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   try {
     const staff = requireStaff(request);
     const id = reservationIdParam.parse((await ctx.params).id);
-    const input = updateReservationSchema.parse(await readJson(request));
+    const input = updateReservationSchema.parse(await readJson(request, 65_536));
     return json(updateReservation(id, input, actorOf(staff)));
   } catch (err) {
     return errorResponse(err);

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const staff = requireStaff(request);
-    return json(createPatient(createPatientSchema.parse(await readJson(request)), actorOf(staff)), 201);
+    return json(createPatient(createPatientSchema.parse(await readJson(request, 65_536)), actorOf(staff)), 201);
   } catch (err) {
     return errorResponse(err);
   }

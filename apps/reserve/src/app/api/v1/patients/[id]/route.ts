@@ -18,7 +18,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   try {
     const staff = requireStaff(request);
     const id = idParam.parse((await ctx.params).id);
-    updatePatient(id, updatePatientSchema.parse(await readJson(request)), actorOf(staff));
+    updatePatient(id, updatePatientSchema.parse(await readJson(request, 65_536)), actorOf(staff));
     return json(getPatientDetail(id));
   } catch (err) {
     return errorResponse(err);

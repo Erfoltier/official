@@ -6,6 +6,7 @@ import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
+import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
@@ -364,18 +365,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       </div>
 
       <div className={styles.panelSection}>
-        <label className={styles.sectionLabel} htmlFor="memo">
-          メモ
-        </label>
-        <textarea
-          id="memo"
-          className={styles.memo}
+        <div className={styles.sectionLabel}>メモ</div>
+        <RichTextEditor
           value={memo}
+          onChange={setMemo}
           maxLength={500}
           rows={3}
-          onChange={(e) => setMemo(e.target.value)}
           onBlur={() => memo !== (r.memo ?? "") && onMemo(memo)}
           placeholder="施術の注意点など"
+          ariaLabel="予約メモ"
         />
       </div>
 

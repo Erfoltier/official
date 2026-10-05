@@ -7,6 +7,7 @@ import { searchKey } from "@/lib/domain/text";
 import { REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/domain/bookingRequest";
 import { ApiError, createPatient, postReservation, searchPatients } from "./api";
 import { durationLabel } from "./menuFormat";
+import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import styles from "./calendar.module.css";
 
 interface Props {
@@ -462,8 +463,8 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
         )}
 
         <div className={styles.field}>
-          <label htmlFor="pm">メモ</label>
-          <textarea id="pm" className={styles.memo} rows={memo.includes("\n") ? 4 : 1} value={memo} maxLength={500} onChange={(e) => setMemo(e.target.value)} />
+          <span>メモ</span>
+          <RichTextEditor value={memo} onChange={setMemo} rows={memo.includes("\n") ? 4 : 2} maxLength={500} ariaLabel="予約メモ" />
         </div>
 
         <div className={styles.field}>

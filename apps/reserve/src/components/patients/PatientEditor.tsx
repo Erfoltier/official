@@ -8,6 +8,7 @@ import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
 import { TreatmentHistory, type VisitSave } from "./VisitTable";
 import { EstimateList } from "@/components/estimates/EstimateList";
+import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import styles from "./patients.module.css";
 import { patientPath, withBase } from "@/lib/paths";
 
@@ -301,7 +302,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           <textarea className={styles.textarea} value={form.cautionNote} onChange={(e) => set("cautionNote", e.target.value)} maxLength={500} rows={2} />
         </Field>
         <Field label="院内メモ" changed={changedKeys.includes("memo")}>
-          <textarea className={styles.textarea} value={form.memo} onChange={(e) => set("memo", e.target.value)} maxLength={2000} rows={3} />
+          <RichTextEditor value={form.memo} onChange={(v) => set("memo", v)} maxLength={4000} rows={3} ariaLabel="院内メモ" />
         </Field>
       </fieldset>
 

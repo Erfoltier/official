@@ -7,6 +7,9 @@ import { formatHm, minutesOfDay } from "@/lib/domain/time";
 import { displayName } from "./names";
 import { stageOf } from "./stages";
 import { StageTimeInput, parseHm } from "./StageTime";
+import { RichText } from "@/components/richtext/RichText";
+import { RichTextEditor } from "@/components/richtext/RichTextEditor";
+import { richToPlain } from "@/lib/domain/richtext";
 import styles from "./calendar.module.css";
 
 export const ALL_LANES = "all";
@@ -229,19 +232,18 @@ function MemoCell({ patient, masked, onSave }: { patient: Patient; masked: boole
   if (draft !== null) {
     return (
       <div className={styles.receptionMemo} data-editing>
-        <textarea
-          className={styles.receptionMemoInput}
+        <RichTextEditor
           value={draft}
+          onChange={setDraft}
           autoFocus
           rows={3}
           maxLength={4000}
           disabled={busy}
-          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setDraft(null);
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) save();
           }}
-          aria-label="患者メモ"
+          ariaLabel="患者メモ"
           placeholder="患者メモ（患者情報のメモと同じ）"
         />
         <div className={styles.receptionMemoBtns}>
@@ -261,9 +263,9 @@ function MemoCell({ patient, masked, onSave }: { patient: Patient; masked: boole
       className={styles.receptionMemo}
       data-empty={!memo || undefined}
       onClick={() => setDraft(memo)}
-      title={masked ? "患者メモ（押すと書けます）" : memo || "押すと患者メモを書けます"}
+      title={masked ? "患者メモ（押すと書けます）" : richToPlain(memo) || "押すと患者メモを書けます"}
     >
-      {masked ? (memo ? "（メモあり）" : "") : memo || "メモ"}
+      {masked ? (memo ? "（メモあり）" : "") : memo ? <RichText value={memo} inline /> : "メモ"}
     </button>
   );
 }
