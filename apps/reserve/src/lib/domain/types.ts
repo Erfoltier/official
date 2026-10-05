@@ -94,6 +94,32 @@ export interface Patient {
   /** 楽観的排他制御用。更新のたびに増える */
   version: number;
   updatedAt?: string;
+  /**
+   * 削除（論理削除）。診療の記録は保存義務があるため消さずに残し、検索や一覧から外す。
+   * 復元できる。統合された側は mergedInto に統合先が入る
+   */
+  deleted?: { at: string; by?: Actor; reason: string };
+  mergedInto?: PatientId;
+}
+
+/** 重複の可能性がある患者 */
+export interface DuplicateCandidate {
+  patient: Patient;
+  reasons: string[];
+}
+
+/** 統合した場合に何が起きるかの事前確認 */
+export interface MergePreview {
+  keep: Patient;
+  dup: Patient;
+  reservations: number;
+  visitNotes: number;
+  /** 両方に記録がある日（メモをつなげ、スキンケアを合わせる） */
+  sameDayNotes: string[];
+  /** 統合先が空欄で、統合元の値で埋める項目 */
+  filledFields: string[];
+  /** 両方がLINEと紐付いている（統合先の紐付けを残す） */
+  lineConflict: boolean;
 }
 
 /** 患者情報の変更履歴。値そのものは残さず、いつ・誰が・どの項目を変えたかだけ記録する */
@@ -185,6 +211,8 @@ export interface PatientDetail {
   /** スキンケア入力の候補（この患者が使ったことのあるもの → 院でよく使うもの） */
   skincareSuggestions: string[];
   history: PatientChange[];
+  /** 重複の可能性がある患者（削除済みの患者では空） */
+  duplicates: DuplicateCandidate[];
 }
 
 export const RESERVATION_STATUSES = [

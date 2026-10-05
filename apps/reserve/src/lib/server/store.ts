@@ -7,6 +7,8 @@ import type {
   Menu,
   Patient,
   PatientChange,
+  DuplicateCandidate,
+  MergePreview,
   PatientDetail,
   Reservation,
   VisitNote,
@@ -91,7 +93,8 @@ function ensureSeeded(date: string): void {
   const now = nowInClinic();
   const reservations = buildDemoReservations(
     date,
-    [...st.patients.values()],
+    // ダミー予約はデモ用の架空患者にだけ付ける（登録した患者に架空の予約が入らないように）
+    [...st.patients.values()].filter((p) => /^p-\d{4}$/.test(p.id)),
     sortedLanes(),
     sortedMenus(),
     DEMO_CLINIC,
@@ -142,12 +145,14 @@ export function searchPatients(query: string, limit = 20): Patient[] {
   if (!q) {
     // 検索語がなければ、最近登録・更新した患者
     return [...state().patients.values()]
+      .filter((p) => !p.deleted)
       .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "") || b.chartNo.localeCompare(a.chartNo))
       .slice(0, limit);
   }
   const digits = query.replace(/\D/g, "");
   const out: Patient[] = [];
   for (const p of state().patients.values()) {
+    if (p.deleted) continue;
     const hay = searchKey(`${p.name}|${p.kana}|${p.nameAlt ?? ""}|${p.chartNo}`);
     const phoneHit = digits.length >= 4 && (p.phone ?? "").replace(/\D/g, "").includes(digits);
     if (hay.includes(q) || phoneHit) out.push(p);
@@ -193,7 +198,8 @@ export interface CreateReservationInput {
 
 export function createReservation(input: CreateReservationInput, by?: Actor): Reservation {
   const st = state();
-  if (!st.patients.has(input.patientId)) throw new StoreError("invalid", "患者が見つかりません");
+  const patient = st.patients.get(input.patientId);
+  if (!patient || patient.deleted) throw new StoreError("invalid", "患者が見つかりません");
   if (!laneExists(input.laneId)) throw new StoreError("invalid", "レーンが見つかりません");
   if (!input.menuIds.every(menuExists)) {
     throw new StoreError("invalid", "施術が見つかりません");
@@ -415,6 +421,7 @@ export function updatePatient(id: string, input: PatientInput & { version: numbe
   const st = state();
   const cur = st.patients.get(id);
   if (!cur) throw new StoreError("not_found", "患者が見つかりません");
+  if (cur.deleted) throw new StoreError("invalid", "削除された患者は編集できません。先に復元してください");
   if (cur.version !== input.version) {
     throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
   }
@@ -444,11 +451,15 @@ export function unlinkPatientLine(id: string, version: number, by?: Actor): Pati
   return next;
 }
 
-function recordChange(id: string, fields: string[], at: string, by?: Actor) {
+/**
+ * 患者の変更履歴に残す。auditAction を渡すと、操作ログにはその文言を使う
+ * （履歴の文言に氏名や自由記載が入る場合、操作ログには患者情報を残さないため）
+ */
+function recordChange(id: string, fields: string[], at: string, by?: Actor, auditAction?: string) {
   const st = state();
   const list = st.patientHistory.get(id) ?? [];
   list.unshift({ at, fields, ...(by && { by }) });
-  if (by) audit(by, `患者情報を変更（${fields.join("・")}）`, id);
+  if (by) audit(by, auditAction ?? `患者情報を変更（${fields.join("・")}）`, id);
   st.patientHistory.set(id, list.slice(0, 100));
 }
 
@@ -549,7 +560,14 @@ export function getPatientDetail(id: string): PatientDetail {
   for (const v of visits) v.skincare.forEach((x) => used.add(x));
   const skincareSuggestions = [...used, ...DEFAULT_SKINCARE_CATALOG.filter((x) => !used.has(x))];
 
-  return { patient, visits, upcoming, skincareSuggestions, history: st.patientHistory.get(id) ?? [] };
+  return {
+    patient,
+    visits,
+    upcoming,
+    skincareSuggestions,
+    history: st.patientHistory.get(id) ?? [],
+    duplicates: patient.deleted ? [] : findDuplicates(patient),
+  };
 }
 
 export interface VisitNoteInput {
@@ -563,7 +581,9 @@ export interface VisitNoteInput {
 export function saveVisitNote(patientId: string, date: string, input: VisitNoteInput, by?: Actor): VisitNote | null {
   ensureHistorySeeded();
   const st = state();
-  if (!st.patients.has(patientId)) throw new StoreError("not_found", "患者が見つかりません");
+  const owner = st.patients.get(patientId);
+  if (!owner) throw new StoreError("not_found", "患者が見つかりません");
+  if (owner.deleted) throw new StoreError("invalid", "削除された患者には記録できません。先に復元してください");
   if (!isDateString(date) || date > nowInClinic().date) {
     throw new StoreError("invalid", "記録できるのは今日までの日付です");
   }
@@ -616,8 +636,20 @@ function futureReservationCount(laneId: string): number {
   return n;
 }
 
+/** 表示できるレーンの数（最小1・最大30） */
+export const MIN_ACTIVE_LANES = 1;
+export const MAX_ACTIVE_LANES = 30;
+/** 非表示を含めて登録できるレーンの数 */
+const MAX_TOTAL_LANES = 100;
+
+const activeLaneCount = () => [...state().lanes.values()].filter((l) => l.active).length;
+
 export function createLane(input: LaneInput, by?: Actor): Lane {
   const st = state();
+  if (activeLaneCount() >= MAX_ACTIVE_LANES) {
+    throw new StoreError("invalid", `表示できるレーンは最大${MAX_ACTIVE_LANES}までです。使わないレーンを非表示か削除にしてください`);
+  }
+  if (st.lanes.size >= MAX_TOTAL_LANES) throw new StoreError("invalid", "登録できるレーンの数を超えています。使わないレーンを削除してください");
   const name = checkText("レーン名", input.name ?? "", 40, true);
   const shortName = checkText("短い名前", input.shortName ?? "", 12, false) || name.slice(0, 6);
   const lane: Lane = {
@@ -644,14 +676,38 @@ export function updateLane(id: string, input: LaneInput, by?: Actor): Lane {
     if (n > 0) {
       throw new StoreError("invalid", `このレーンには今日以降の予約が${n}件あります。別のレーンへ移してから非表示にしてください`);
     }
-    if ([...st.lanes.values()].filter((l) => l.active).length <= 1) {
-      throw new StoreError("invalid", "表示するレーンは1つ以上必要です");
+    if (activeLaneCount() <= MIN_ACTIVE_LANES) {
+      throw new StoreError("invalid", `表示するレーンは${MIN_ACTIVE_LANES}つ以上必要です`);
     }
+  }
+  if (input.active === true && !cur.active && activeLaneCount() >= MAX_ACTIVE_LANES) {
+    throw new StoreError("invalid", `表示できるレーンは最大${MAX_ACTIVE_LANES}までです`);
   }
   if (input.active !== undefined) next.active = input.active;
   st.lanes.set(id, next);
   if (by) audit(by, "レーンを変更", id);
   return next;
+}
+
+/**
+ * レーンを完全に削除する。予約の記録が1件でもあるレーンは、過去の予約の表示のために削除できない
+ * （その場合は非表示にする）。メニューの「行えるレーン」からも外す
+ */
+export function deleteLane(id: string, by?: Actor): void {
+  const st = state();
+  const cur = st.lanes.get(id);
+  if (!cur) throw new StoreError("not_found", "レーンが見つかりません");
+  const used = [...st.reservations.values()].some((r) => r.laneId === id);
+  if (used) throw new StoreError("invalid", "このレーンには予約の記録があるため削除できません。使わない場合は非表示にしてください");
+  if (cur.active && activeLaneCount() <= MIN_ACTIVE_LANES) {
+    throw new StoreError("invalid", `表示するレーンは${MIN_ACTIVE_LANES}つ以上必要です`);
+  }
+  st.lanes.delete(id);
+  for (const m of st.menus.values()) {
+    if (m.laneIds.includes(id)) st.menus.set(m.id, { ...m, laneIds: m.laneIds.filter((x) => x !== id) });
+  }
+  sortedLanes().forEach((l, i) => st.lanes.set(l.id, { ...l, order: i }));
+  if (by) audit(by, "レーンを削除", id);
 }
 
 /** 並び順をまとめて変更（ids の順に並べる） */
@@ -733,4 +789,177 @@ export function reorderMenus(ids: string[], by?: Actor): Menu[] {
   ids.forEach((id, i) => st.menus.set(id, { ...st.menus.get(id)!, order: i }));
   if (by) audit(by, "メニューを並べ替え");
   return sortedMenus();
+}
+
+// ---- 患者の削除（論理削除）・復元・統合 ----
+
+function digits(s?: string): string {
+  return (s ?? "").replace(/\D/g, "");
+}
+
+/** 重複の可能性：フリガナ・氏名・電話番号・生年月日＋フリガナの一致 */
+export function findDuplicates(p: Patient): DuplicateCandidate[] {
+  const out: DuplicateCandidate[] = [];
+  const kana = searchKey(p.kana ?? "");
+  const name = searchKey(p.name);
+  const phone = digits(p.phone);
+  for (const o of state().patients.values()) {
+    if (o.id === p.id || o.deleted) continue;
+    const reasons: string[] = [];
+    if (name && searchKey(o.name) === name) reasons.push("氏名が同じ");
+    else if (kana && searchKey(o.kana ?? "") === kana) reasons.push("フリガナが同じ");
+    if (phone.length >= 8 && digits(o.phone) === phone) reasons.push("電話番号が同じ");
+    if (p.birthDate && o.birthDate === p.birthDate && reasons.length > 0) reasons.push("生年月日が同じ");
+    if (reasons.length > 0) out.push({ patient: o, reasons });
+    if (out.length >= 5) break;
+  }
+  return out;
+}
+
+function futureActiveReservations(patientId: string): number {
+  const today = nowInClinic().date;
+  let n = 0;
+  for (const r of state().reservations.values()) {
+    if (r.patientId === patientId && !INACTIVE_STATUSES.has(r.status) && clinicDateOf(r.startAt) >= today) n++;
+  }
+  return n;
+}
+
+export function deletePatient(id: string, input: { version: number; reason: string }, by?: Actor): Patient {
+  const st = state();
+  const cur = st.patients.get(id);
+  if (!cur) throw new StoreError("not_found", "患者が見つかりません");
+  if (cur.deleted) throw new StoreError("invalid", "この患者は既に削除されています");
+  if (cur.version !== input.version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  const reason = checkText("削除の理由", input.reason, 100, true);
+  const n = futureActiveReservations(id);
+  if (n > 0) throw new StoreError("invalid", `今日以降の予約が${n}件あります。予約をキャンセルするか、重複なら統合してください`);
+  const at = new Date().toISOString();
+  const next: Patient = { ...cur, deleted: { at, reason, ...(by && { by }) }, version: cur.version + 1, updatedAt: at };
+  st.patients.set(id, next);
+  recordChange(id, [`削除（${reason}）`], at, by, "患者を削除");
+  return next;
+}
+
+export function restorePatient(id: string, version: number, by?: Actor): Patient {
+  const st = state();
+  const cur = st.patients.get(id);
+  if (!cur) throw new StoreError("not_found", "患者が見つかりません");
+  if (!cur.deleted) return cur;
+  if (cur.mergedInto) throw new StoreError("invalid", "統合された患者は復元できません");
+  if (cur.version !== version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  for (const p of st.patients.values()) {
+    if (p.id !== id && !p.deleted && p.chartNo === cur.chartNo) {
+      throw new StoreError("invalid", "同じ診察券番号の患者がいるため復元できません");
+    }
+  }
+  const at = new Date().toISOString();
+  const next = dropUndefined({ ...cur, deleted: undefined, version: cur.version + 1, updatedAt: at });
+  st.patients.set(id, next);
+  recordChange(id, ["削除からの復元"], at, by, "患者を削除から復元");
+  return next;
+}
+
+const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "birthDate"];
+
+function mergeTargets(keepId: string, dupId: string): { keep: Patient; dup: Patient } {
+  const st = state();
+  if (keepId === dupId) throw new StoreError("invalid", "同じ患者どうしは統合できません");
+  const keep = st.patients.get(keepId);
+  const dup = st.patients.get(dupId);
+  if (!keep || !dup) throw new StoreError("not_found", "患者が見つかりません");
+  if (keep.deleted || dup.deleted) throw new StoreError("invalid", "削除された患者は統合できません");
+  return { keep, dup };
+}
+
+export function previewMerge(keepId: string, dupId: string): MergePreview {
+  ensureHistorySeeded();
+  const st = state();
+  const { keep, dup } = mergeTargets(keepId, dupId);
+  const keepDates = new Set([...st.visitNotes.values()].filter((n) => n.patientId === keepId).map((n) => n.date));
+  const dupNotes = [...st.visitNotes.values()].filter((n) => n.patientId === dupId);
+  return {
+    keep,
+    dup,
+    reservations: [...st.reservations.values()].filter((r) => r.patientId === dupId).length,
+    visitNotes: dupNotes.length,
+    sameDayNotes: dupNotes.filter((n) => keepDates.has(n.date)).map((n) => n.date).sort(),
+    filledFields: FILLABLE.filter((k) => !keep[k] && dup[k]).map((k) => FIELD_LABEL[k] ?? k),
+    lineConflict: !!keep.lineUserId && !!dup.lineUserId && keep.lineUserId !== dup.lineUserId,
+  };
+}
+
+/**
+ * 重複して登録した患者 dup を keep にまとめる。
+ * - 予約と日付ごとの記録を keep へ移す（同じ日に両方の記録があればメモをつなげ、スキンケアを合わせる）
+ * - keep の空欄は dup の値で埋める。注意事項とメモはつなげる
+ * - dup は削除扱い（mergedInto に keep）にして残す
+ */
+export function mergePatients(
+  input: { keepId: string; dupId: string; keepVersion: number; dupVersion: number },
+  by?: Actor,
+): Patient {
+  ensureHistorySeeded();
+  const st = state();
+  const { keep, dup } = mergeTargets(input.keepId, input.dupId);
+  if (keep.version !== input.keepVersion || dup.version !== input.dupVersion) {
+    throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  }
+  const at = new Date().toISOString();
+  const preview = previewMerge(keep.id, dup.id);
+
+  // 予約を移す
+  for (const r of [...st.reservations.values()]) {
+    if (r.patientId !== dup.id) continue;
+    st.reservations.set(r.id, { ...r, patientId: keep.id, version: r.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
+  }
+  // 日付ごとの記録を移す
+  for (const n of [...st.visitNotes.values()]) {
+    if (n.patientId !== dup.id) continue;
+    st.visitNotes.delete(noteKey(dup.id, n.date));
+    const k = noteKey(keep.id, n.date);
+    const mine = st.visitNotes.get(k);
+    const merged: VisitNote = mine
+      ? {
+          ...mine,
+          note: [mine.note, n.note && `（統合元 診察券${dup.chartNo}の記録）\n${n.note}`].filter(Boolean).join("\n"),
+          skincare: [...new Set([...mine.skincare, ...n.skincare])],
+          version: mine.version + 1,
+          updatedAt: at,
+          ...(by && { updatedBy: by }),
+        }
+      : { ...n, patientId: keep.id, version: n.version + 1, updatedAt: at };
+    st.visitNotes.set(k, merged);
+  }
+  // 患者情報：空欄を埋め、注意事項・メモはつなげる
+  const next: Patient = { ...keep };
+  for (const f of FILLABLE) if (!next[f] && dup[f]) (next as unknown as Record<string, unknown>)[f] = dup[f];
+  if (!next.nameAlt && searchKey(dup.name) !== searchKey(keep.name)) next.nameAlt = dup.name;
+  if (!next.lineUserId && dup.lineUserId) next.lineUserId = dup.lineUserId;
+  next.caution = keep.caution || dup.caution || undefined;
+  next.cautionNote = [keep.cautionNote, dup.cautionNote].filter(Boolean).join("\n") || undefined;
+  next.memo = [keep.memo, dup.memo && `（統合元 診察券${dup.chartNo}）${dup.memo}`].filter(Boolean).join("\n") || undefined;
+  next.version = keep.version + 1;
+  next.updatedAt = at;
+  st.patients.set(keep.id, dropUndefined(next));
+
+  st.patients.set(dup.id, {
+    ...dup,
+    // LINEの紐付けは統合先へ移した（または統合先のものを残した）ので外す
+    lineUserId: undefined,
+    deleted: { at, reason: `重複のため 診察券${keep.chartNo}（${keep.name}）に統合`, ...(by && { by }) },
+    mergedInto: keep.id,
+    version: dup.version + 1,
+    updatedAt: at,
+  });
+
+  const detail = [
+    `予約${preview.reservations}件`,
+    `記録${preview.visitNotes}日分`,
+    preview.filledFields.length ? `空欄を補完（${preview.filledFields.join("・")}）` : null,
+    preview.lineConflict ? "LINEは統合先の紐付けを残した" : null,
+  ].filter(Boolean);
+  recordChange(keep.id, [`診察券${dup.chartNo}（${dup.name}）を統合：${detail.join("、")}`], at, by, `重複患者を統合（統合元 ${dup.id}）`);
+  recordChange(dup.id, [`診察券${keep.chartNo}（${keep.name}）へ統合`], at, by, `統合先へまとめた（統合先 ${keep.id}）`);
+  return st.patients.get(keep.id)!;
 }

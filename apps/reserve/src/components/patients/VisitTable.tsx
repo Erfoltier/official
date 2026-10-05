@@ -16,6 +16,8 @@ interface Props {
   visits: VisitRow[];
   suggestions: string[];
   onSave: (date: string, body: VisitSave) => Promise<boolean>;
+  /** 削除された患者など、見るだけのとき */
+  readOnly?: boolean;
 }
 
 const PAGE = 15;
@@ -35,7 +37,7 @@ export function formatDateFull(date: string): string {
  * 施術歴の表。1行＝1日で、施術内容・メモ（簡易カルテ）・その時点のスキンケアを並べる。
  * 行の「記入／編集」でその場で書き換えられる。
  */
-export function VisitTable({ visits, suggestions, onSave }: Props) {
+export function VisitTable({ visits, suggestions, onSave, readOnly }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [extraDate, setExtraDate] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
@@ -54,6 +56,7 @@ export function VisitTable({ visits, suggestions, onSave }: Props) {
 
   return (
     <div>
+      {!readOnly && (
       <div className={styles.tableTools}>
         <AddRecord
           today={today}
@@ -63,6 +66,7 @@ export function VisitTable({ visits, suggestions, onSave }: Props) {
           }}
         />
       </div>
+      )}
       {rows.length === 0 ? (
         <p className={styles.muted}>施術歴はまだありません</p>
       ) : (
@@ -138,9 +142,11 @@ export function VisitTable({ visits, suggestions, onSave }: Props) {
                     )}
                   </td>
                   <td className={styles.colAct}>
+                    {!readOnly && (
                     <button type="button" className={styles.smallBtn} onClick={() => setEditing(v.date)} disabled={editing !== null}>
                       {v.noteVersion > 0 ? "編集" : "記入"}
                     </button>
+                    )}
                   </td>
                 </tr>
               ),

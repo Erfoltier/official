@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Lane, Menu } from "@/lib/domain/types";
 import { searchKey } from "@/lib/domain/text";
-import { ApiError, fetchMe, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
+import { ApiError, deleteLane, fetchMe, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
@@ -12,6 +12,9 @@ import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
 type Tab = "lanes" | "menus" | "staff" | "audit";
+
+const MIN_LANES = 1;
+const MAX_LANES = 30;
 
 export function SettingsApp() {
   const [tab, setTab] = useState<Tab>("lanes");
@@ -118,6 +121,8 @@ function move<T extends { id: string }>(items: T[], index: number, delta: number
 function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[] }) {
   const [newName, setNewName] = useState("");
   const [newShort, setNewShort] = useState("");
+  const activeCount = lanes.filter((l) => l.active).length;
+  const full = activeCount >= MAX_LANES;
 
   const doReorder = async (i: number, d: number) => {
     try {
@@ -143,8 +148,9 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
   return (
     <section>
       <p className={styles.lead}>
-        予約カレンダーの列です。名前の変更・並べ替え・追加ができます。使わなくなったレーンは「表示」を外すと
-        カレンダーから消えます（過去の予約は残ります）。今日以降の予約が残っているレーンは、予約を移してから外してください。
+        予約カレンダーの列です。表示できるレーンは{MIN_LANES}〜{MAX_LANES}本で、名前の変更・並べ替え・追加ができます（一番上が左端）。
+        使わなくなったレーンは「表示」を外すとカレンダーから消えます（過去の予約は残ります）。予約の記録が一度もないレーンは削除できます。
+        今日以降の予約が残っているレーンは、予約を移してから外してください。
       </p>
       <table className={styles.table}>
         <thead>
@@ -153,6 +159,7 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
             <th>レーン名</th>
             <th>短い名前（スマホ用）</th>
             <th>表示</th>
+            <th />
             <th />
           </tr>
         </thead>
@@ -165,6 +172,16 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
               last={i === lanes.length - 1}
               onUp={() => doReorder(i, -1)}
               onDown={() => doReorder(i, 1)}
+              onDelete={async () => {
+                if (!window.confirm(`「${l.name}」を削除しますか？`)) return;
+                try {
+                  await deleteLane(l.id);
+                  await onChanged();
+                  notify("レーンを削除しました");
+                } catch (err) {
+                  fail(err);
+                }
+              }}
               onSave={async (body) => {
                 try {
                   await saveLane(l.id, body);
@@ -201,9 +218,13 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
             </td>
             <td />
             <td>
-              <button className={styles.primary} onClick={add} disabled={!newName.trim()}>
+              <button className={styles.primary} onClick={add} disabled={!newName.trim() || full}>
                 追加
               </button>
+            </td>
+            <td className={styles.muted}>
+              表示中 {activeCount} / {MAX_LANES}
+              {full && <div>上限です</div>}
             </td>
           </tr>
         </tbody>
@@ -219,6 +240,7 @@ function LaneRow(props: {
   onUp: () => void;
   onDown: () => void;
   onSave: (body: Partial<Pick<Lane, "name" | "shortName" | "active">>) => void;
+  onDelete: () => void;
 }) {
   const { lane } = props;
   const [name, setName] = useState(lane.name);
@@ -255,6 +277,11 @@ function LaneRow(props: {
       <td>
         <button className={styles.btn} disabled={!dirty} onClick={() => props.onSave({ name, shortName })}>
           保存
+        </button>
+      </td>
+      <td>
+        <button className={styles.btn} onClick={props.onDelete} title="予約の記録が一度もないレーンだけ削除できます">
+          削除
         </button>
       </td>
     </tr>

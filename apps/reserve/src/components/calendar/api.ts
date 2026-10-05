@@ -1,4 +1,4 @@
-import type { AuditEntry, DayBundle, Lane, Menu, Patient, PatientDetail, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
 
 export class ApiError extends Error {
   constructor(
@@ -163,4 +163,26 @@ export function saveStaff(
 
 export async function fetchAudit(): Promise<AuditEntry[]> {
   return (await call<{ items: AuditEntry[] }>(`/api/v1/audit`)).items;
+}
+
+// ---- 患者の削除・復元・統合 ----
+
+export function deletePatient(id: string, version: number, reason: string): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}/delete`, { method: "POST", body: JSON.stringify({ version, reason }) });
+}
+
+export function restorePatient(id: string, version: number): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}/restore`, { method: "POST", body: JSON.stringify({ version }) });
+}
+
+export function previewMerge(keepId: string, dupId: string): Promise<MergePreview> {
+  return call(`/api/v1/patients/merge?keep=${encodeURIComponent(keepId)}&dup=${encodeURIComponent(dupId)}`);
+}
+
+export function mergePatients(body: { keepId: string; dupId: string; keepVersion: number; dupVersion: number }): Promise<PatientDetail> {
+  return call(`/api/v1/patients/merge`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function deleteLane(id: string): Promise<void> {
+  await call(`/api/v1/lanes/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

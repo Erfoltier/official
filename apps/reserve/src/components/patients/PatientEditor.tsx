@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PatientDetail } from "@/lib/domain/types";
 import { nowInClinic } from "@/lib/domain/time";
-import { ApiError, fetchPatient, saveVisit, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
+import { ApiError, fetchMe, fetchPatient, saveVisit, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
+import type { Patient, StaffPublic } from "@/lib/domain/types";
+import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
 import { UpcomingTable, VisitTable, type VisitSave } from "./VisitTable";
 import styles from "./patients.module.css";
 
@@ -53,6 +55,13 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [me, setMe] = useState<StaffPublic | null>(null);
+  const [mergeWith, setMergeWith] = useState<Patient | null | undefined>(undefined);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    fetchMe().then(setMe, () => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -135,6 +144,20 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
   }
 
   const p = detail.patient;
+  const canManage = me?.role === "admin" || me?.role === "reception";
+  const readOnly = !!p.deleted;
+  const afterManage = (d: PatientDetail, done = "") => {
+    setMergeWith(undefined);
+    setDeleting(false);
+    onSaved?.();
+    if (d.patient.id !== patientId) {
+      window.location.replace(`/patients/${encodeURIComponent(d.patient.id)}`);
+      return;
+    }
+    setDetail(d);
+    setForm(toForm(d));
+    setNotice(done || (d.patient.deleted ? "削除しました" : "復元しました"));
+  };
   const age = ageOf(form.birthDate);
   const today = nowInClinic().date;
 
@@ -178,10 +201,12 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       )}
       {error && !conflict && <div className={styles.alert}>{error}</div>}
       {notice && <div className={styles.notice} role="status">{notice}</div>}
+      <DeletedBanner detail={detail} canManage={canManage} onChanged={afterManage} />
+      {!readOnly && <DuplicateBanner detail={detail} canManage={canManage} onMerge={(o) => setMergeWith(o)} />}
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>施術歴・メモ・スキンケア</h2>
-        <VisitTable visits={detail.visits} suggestions={detail.skincareSuggestions} onSave={saveVisitRow} />
+        <VisitTable visits={detail.visits} suggestions={detail.skincareSuggestions} onSave={saveVisitRow} readOnly={readOnly} />
       </section>
 
       <section className={styles.section}>
@@ -189,6 +214,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         <UpcomingTable items={detail.upcoming} />
       </section>
 
+      {!readOnly && (
       <details className={styles.section} open={dirty || undefined}>
         <summary className={styles.sectionTitle}>基本情報・注意事項を編集</summary>
       <form
@@ -272,6 +298,25 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
 
       </form>
       </details>
+      )}
+
+      {canManage && !readOnly && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>その他の操作</h2>
+          <div className={styles.manageRow}>
+            <button type="button" className={styles.btn} onClick={() => setMergeWith(null)}>
+              重複している患者をまとめる
+            </button>
+            <button type="button" className={styles.dangerBtn} onClick={() => setDeleting(true)}>
+              この患者を削除
+            </button>
+          </div>
+        </section>
+      )}
+      {mergeWith !== undefined && (
+        <MergeDialog current={p} initialOther={mergeWith} onClose={() => setMergeWith(undefined)} onMerged={(d) => afterManage(d, "統合しました")} />
+      )}
+      {deleting && <DeleteDialog patient={p} onClose={() => setDeleting(false)} onDeleted={afterManage} />}
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>変更履歴</h2>

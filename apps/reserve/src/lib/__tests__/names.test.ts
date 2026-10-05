@@ -27,7 +27,7 @@ describe("氏名の扱い", () => {
 describe("Airリザーブから移した設定", () => {
   it("レーン4件・メニュー35件", () => {
     expect(AIR_LANES.map((l) => l.name)).toEqual([
-      "メインレーン",
+      "メインレーン（医師）",
       "1番レーン(レーザー脱毛など)",
       "3番レーン針脱毛、ハイフ",
       "4番ネオボ撮影・麻酔・ゼオ説明",
@@ -91,5 +91,32 @@ describe("患者・レーン・メニューの登録", () => {
     expect(m.defaultMinutes).toBe(40); // 範囲内に丸める
     expect(() => s.updateMenu(m.id, { duration: { kind: "fixed", minutes: 7 } })).toThrow(/提供時間/);
     expect(() => s.updateMenu(m.id, { color: "red" })).toThrow(/色/);
+  });
+});
+
+describe("レーンの数の制限", () => {
+  beforeEach(() => {
+    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+  });
+
+  it("表示できるレーンは最大30、最小1。予約の記録がないレーンは削除できる", async () => {
+    const s = await import("@/lib/server/store");
+    for (let i = 5; i <= 30; i++) s.createLane({ name: `${i}番レーン` });
+    expect(s.getSettings().lanes.filter((l) => l.active)).toHaveLength(30);
+    expect(() => s.createLane({ name: "31番" })).toThrow(/最大30/);
+    const extra = s.getSettings().lanes.at(-1)!;
+    s.deleteLane(extra.id);
+    expect(s.getSettings().lanes).toHaveLength(29);
+    // 予約の記録があるレーンは削除できない
+    s.getDayBundle("2026-10-07");
+    expect(() => s.deleteLane("lane-main")).toThrow(/予約の記録/);
+    // 最後の1本は非表示にも削除にもできない（新しく作ったレーンだけの状態で確かめる）
+    (globalThis as { __reserveStore?: unknown }).__reserveStore = undefined;
+    const t = await import("@/lib/server/store");
+    const only = t.createLane({ name: "単独" });
+    for (const l of t.getSettings().lanes) if (l.id !== only.id) t.updateLane(l.id, { active: false });
+    expect(t.getSettings().lanes.filter((l) => l.active).map((l) => l.id)).toEqual([only.id]);
+    expect(() => t.updateLane(only.id, { active: false })).toThrow(/1つ以上/);
+    expect(() => t.deleteLane(only.id)).toThrow(/1つ以上/);
   });
 });

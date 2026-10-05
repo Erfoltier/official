@@ -106,3 +106,9 @@ export const createStaffSchema = z.object({ name: z.string().max(60), role, pin:
 export const updateStaffSchema = z
   .object({ name: z.string().max(60).optional(), role: role.optional(), active: z.boolean().optional(), pin: z.string().max(16).optional() })
   .strict();
+
+export const deletePatientSchema = z.object({ version: z.number().int().positive(), reason: z.string().max(200) }).strict();
+
+export const mergePatientsSchema = z
+  .object({ keepId: id, dupId: id, keepVersion: z.number().int().positive(), dupVersion: z.number().int().positive() })
+  .strict();

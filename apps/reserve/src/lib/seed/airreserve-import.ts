@@ -1,6 +1,6 @@
 /**
  * Airリザーブ（いしだ皮フ科）の設定を 2026-10-05 に画面から読み取って移したもの。
- * - レーン：リソースグループ「美容皮膚科」のリソース4件
+ * - レーン：リソースグループ「美容皮膚科」のリソース4件（メインレーンは医師のレーンと分かるよう名前に（医師）を付けた）
  * - メニュー：メニュー設定の35件（表示順・提供時間・開始時間単位・料金・同時予約受付可能数・関連リソース）
  *
  * 略称と色はAirリザーブにない項目なので、こちらで仮に付けた。設定画面から変更できる。
@@ -10,7 +10,7 @@
 import type { Lane, Menu, MenuDuration } from "@/lib/domain/types";
 
 export const AIR_LANES: Lane[] = [
-  { id: "lane-main", name: "メインレーン", shortName: "メイン", order: 0, active: true },
+  { id: "lane-main", name: "メインレーン（医師）", shortName: "メイン(医師)", order: 0, active: true },
   { id: "lane-1", name: "1番レーン(レーザー脱毛など)", shortName: "1番", order: 1, active: true },
   { id: "lane-3", name: "3番レーン針脱毛、ハイフ", shortName: "3番", order: 2, active: true },
   { id: "lane-4", name: "4番ネオボ撮影・麻酔・ゼオ説明", shortName: "4番", order: 3, active: true },
