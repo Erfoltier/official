@@ -24,6 +24,7 @@ export type Kind =
   | "settingsSnapshot"
   | "file"
   | "estimate"
+  | "price"
   | "patient"
   | "patientHistory"
   | "reservation"

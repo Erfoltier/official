@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ClinicSettings } from "@/lib/domain/types";
+import type { ClinicSettings, PaperSize } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS } from "@/lib/domain/types";
 import { formatHm } from "@/lib/domain/time";
 import { saveClinic } from "@/components/calendar/api";
@@ -121,6 +121,7 @@ function DocumentCard({
   const [issuer, setIssuer] = useState(clinic.issuer ?? "");
   const [days, setDays] = useState(String(clinic.estimateValidDays ?? DEFAULT_ESTIMATE_VALID_DAYS));
   const [note, setNote] = useState(clinic.estimateNote ?? DEFAULT_ESTIMATE_NOTE);
+  const [paper, setPaper] = useState<PaperSize>(clinic.estimatePaper ?? "A4");
   const [busy, setBusy] = useState(false);
   const daysNum = Number(days.normalize("NFKC"));
   const valid = Number.isInteger(daysNum) && daysNum >= 1 && daysNum <= 365;
@@ -129,12 +130,13 @@ function DocumentCard({
     phone !== (clinic.phone ?? "") ||
     issuer !== (clinic.issuer ?? "") ||
     daysNum !== (clinic.estimateValidDays ?? DEFAULT_ESTIMATE_VALID_DAYS) ||
-    note !== (clinic.estimateNote ?? DEFAULT_ESTIMATE_NOTE);
+    note !== (clinic.estimateNote ?? DEFAULT_ESTIMATE_NOTE) ||
+    paper !== (clinic.estimatePaper ?? "A4");
 
   const save = async () => {
     setBusy(true);
     try {
-      await saveClinic({ address, phone, issuer, estimateValidDays: daysNum, estimateNote: note });
+      await saveClinic({ address, phone, issuer, estimateValidDays: daysNum, estimateNote: note, estimatePaper: paper });
       await onChanged();
       notify("書類に載せる院の情報を保存しました");
     } catch (err) {
@@ -161,10 +163,20 @@ function DocumentCard({
           <input className={styles.input} value={issuer} maxLength={60} onChange={(ev) => setIssuer(ev.target.value)} disabled={!canEdit} placeholder="例：院長 石田 ○○" />
         </label>
       </div>
-      <label className={styles.field}>
-        <span>見積書の有効期限（発行日から何日）</span>
-        <input className={styles.input} value={days} inputMode="numeric" onChange={(ev) => setDays(ev.target.value)} disabled={!canEdit} style={{ maxWidth: "8em" }} />
-      </label>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>見積書の有効期限（発行日から何日）</span>
+          <input className={styles.input} value={days} inputMode="numeric" onChange={(ev) => setDays(ev.target.value)} disabled={!canEdit} style={{ maxWidth: "8em" }} />
+        </label>
+        <label className={styles.field}>
+          <span>見積書の用紙（印刷時にも切り替え可）</span>
+          <select className={styles.input} value={paper} onChange={(ev) => setPaper(ev.target.value as PaperSize)} disabled={!canEdit}>
+            <option value="A4">A4</option>
+            <option value="A5">A5</option>
+          </select>
+        </label>
+      </div>
+      <p className={styles.hint}>同意書の用紙は A4 です。</p>
       <label className={styles.field}>
         <span>見積書の注意書き（リスク・副作用・個人差など。すべての見積書の下に入ります）</span>
         <textarea className={styles.input} value={note} rows={6} maxLength={2000} onChange={(ev) => setNote(ev.target.value)} disabled={!canEdit} />

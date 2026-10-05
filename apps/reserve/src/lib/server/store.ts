@@ -1,11 +1,14 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type {
   Actor,
   Estimate,
   EstimateLine,
   EstimateView,
+  PriceItem,
+  PriceList,
+  PriceSyncResult,
   ClinicSettings,
   Product,
   Stage,
@@ -65,6 +68,7 @@ interface StoreState {
   snapshots: Map<string, SettingsSnapshot>;
   files: Map<string, PatientFile>;
   estimates: Map<string, Estimate>;
+  prices: Map<string, PriceItem>;
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
   patients: Map<string, Patient>;
@@ -105,6 +109,7 @@ function state(): StoreState {
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
         estimates: new PersistentMap<Estimate>("estimate"),
+        prices: new PersistentMap<PriceItem>("price"),
         lanes: new PersistentMap<Lane>("lane"),
         menus: new PersistentMap<Menu>("menu"),
         patients: new PersistentMap<Patient>("patient"),
@@ -228,7 +233,7 @@ export function getClinic(): ClinicSettings {
 }
 
 export type ClinicInput = Partial<
-  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays">
+  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper">
 >;
 
 /** 院名・診療時間（カレンダーに出す時間帯）・刻みを変更する */
@@ -252,6 +257,7 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
   }
   if (input.estimateNote !== undefined) next.estimateNote = checkNote("見積書の注意書き", input.estimateNote, 2000);
   if (input.estimateValidDays !== undefined) next.estimateValidDays = input.estimateValidDays;
+  if (input.estimatePaper !== undefined) next.estimatePaper = input.estimatePaper;
   if (next.dayStartMin % 5 !== 0 || next.dayEndMin % 5 !== 0) {
     throw new StoreError("invalid", "時刻は5分単位で指定してください");
   }
@@ -1159,6 +1165,8 @@ function reservationSummary(r: Reservation): VisitRow["reservations"][number] {
     status: r.status,
     menuNames: r.menuIds.map((mid) => st.menus.get(mid)?.name ?? ""),
     laneName: st.lanes.get(r.laneId)?.name ?? "",
+    laneId: r.laneId,
+    version: r.version,
     menuIds: r.menuIds,
     stageLabel: stageLabelOf(r),
     ...(r.memo && { memo: r.memo }),
@@ -1810,4 +1818,172 @@ export function deleteEstimate(id: string, input: { version: number }, by?: Acto
   st.estimates.set(id, next);
   if (by) audit(by, `見積書を削除（No.${cur.no}）`, cur.patientId);
   return next;
+}
+
+// ---- 料金表（ホームページが正本。自由入力の項目も足せる） ----
+
+/** 取り込むホームページの既定（院ごとに設定で変える） */
+const DEFAULT_PRICE_URLS: string[] = [];
+/** 前回の取り込みからこれだけ経ったら、料金表を開いたときに取り込み直す */
+const PRICE_SYNC_MS = 24 * 60 * 60 * 1000;
+/** 取り込みに失敗したときは、これだけ経ってから試し直す */
+const PRICE_RETRY_MS = 60 * 60 * 1000;
+
+interface PriceSyncMeta {
+  at: string;
+  results: PriceSyncResult[];
+}
+
+export function priceUrls(): string[] {
+  state();
+  return getMeta<string[]>("priceUrls") ?? DEFAULT_PRICE_URLS;
+}
+
+function sortedPrices(): PriceItem[] {
+  const rank = (p: PriceItem) => (p.source === "homepage" ? 0 : 1);
+  return [...state().prices.values()].filter((p) => !p.removed).sort((a, b) => rank(a) - rank(b) || byOrder(a, b));
+}
+
+export function getPriceList(): PriceList {
+  const sync = getMeta<PriceSyncMeta>("priceSync");
+  return { items: sortedPrices(), urls: priceUrls(), ...(sync && { syncedAt: sync.at }), results: sync?.results ?? [] };
+}
+
+/** 料金表を開いたときに取り込み直すか（1日1回。失敗していたら1時間後） */
+export function priceSyncDue(now = Date.now()): boolean {
+  if (priceUrls().length === 0) return false;
+  const sync = getMeta<PriceSyncMeta>("priceSync");
+  if (!sync) return true;
+  const failed = sync.results.some((r) => !r.ok);
+  return now - Date.parse(sync.at) >= (failed ? PRICE_RETRY_MS : PRICE_SYNC_MS);
+}
+
+export function setPriceUrls(urls: string[], by?: Actor): string[] {
+  const clean = [...new Set(urls.map((u) => u.trim()).filter(Boolean))];
+  for (const u of clean) {
+    if (!/^https?:\/\/[^\s/]+(\/\S*)?$/.test(u)) throw new StoreError("invalid", `ホームページのアドレスが正しくありません：${u}`);
+  }
+  setMeta("priceUrls", clean);
+  if (by) audit(by, "料金表の取り込み元を変更");
+  return clean;
+}
+
+function priceId(url: string, category: string, name: string): string {
+  return "hp-" + createHash("sha1").update(`${url}\n${category}\n${name}`).digest("hex").slice(0, 12);
+}
+
+export interface FetchedPricePage {
+  url: string;
+  items?: { category: string; name: string; priceYen: number | null; priceText: string }[];
+  error?: string;
+}
+
+/** 取り込んだ結果を料金表に反映する。読めなかったページの項目はそのまま残す */
+function applyPriceSyncImpl(pages: FetchedPricePage[], by?: Actor): PriceList {
+  const st = state();
+  const at = new Date().toISOString();
+  const results: PriceSyncResult[] = [];
+  let order = 0;
+  for (const page of pages) {
+    if (!page.items) {
+      results.push({ url: page.url, ok: false, count: 0, error: page.error ?? "読み込めませんでした" });
+      for (const p of st.prices.values()) if (p.source === "homepage" && p.url === page.url && !p.removed) order = Math.max(order, p.order + 1);
+      continue;
+    }
+    const seen = new Set<string>();
+    for (const it of page.items) {
+      let id = priceId(page.url, it.category, it.name);
+      for (let n = 2; seen.has(id); n++) id = priceId(page.url, it.category, `${it.name}#${n}`);
+      seen.add(id);
+      const cur = st.prices.get(id);
+      const next: PriceItem = {
+        id,
+        source: "homepage",
+        category: it.category,
+        name: it.name,
+        priceYen: it.priceYen,
+        priceText: it.priceText,
+        url: page.url,
+        order: order++,
+        updatedAt: cur && cur.priceYen === it.priceYen && cur.priceText === it.priceText && !cur.removed ? cur.updatedAt : at,
+      };
+      if (!cur || JSON.stringify(cur) !== JSON.stringify(next)) st.prices.set(id, next);
+    }
+    // ホームページから消えた項目は候補に出さない
+    for (const p of [...st.prices.values()]) {
+      if (p.source === "homepage" && p.url === page.url && !seen.has(p.id) && !p.removed) st.prices.set(p.id, { ...p, removed: true, updatedAt: at });
+    }
+    results.push({ url: page.url, ok: true, count: seen.size });
+  }
+  // 取り込み元から外したページの項目も候補に出さない
+  const urls = new Set(pages.map((p) => p.url));
+  for (const p of [...st.prices.values()]) {
+    if (p.source === "homepage" && p.url && !urls.has(p.url) && !p.removed) st.prices.set(p.id, { ...p, removed: true, updatedAt: at });
+  }
+  setMeta("priceSync", { at, results } satisfies PriceSyncMeta);
+  if (by) audit(by, "料金表をホームページから取り込み");
+  return getPriceList();
+}
+
+export function applyPriceSync(...args: Parameters<typeof applyPriceSyncImpl>): PriceList {
+  return transaction(() => applyPriceSyncImpl(...args));
+}
+
+export interface PriceItemInput {
+  category?: string;
+  name?: string;
+  priceYen?: number | null;
+}
+
+function checkManualPrice(cur: PriceItem): PriceItem {
+  if (!cur.name) throw new StoreError("invalid", "項目名を入力してください");
+  return cur;
+}
+
+/** 自由入力の料金を足す */
+export function createPriceItem(input: PriceItemInput, by?: Actor): PriceItem {
+  const st = state();
+  const manual = [...st.prices.values()].filter((p) => p.source === "manual");
+  if (manual.length >= 500) throw new StoreError("invalid", "登録できる数を超えています");
+  const priceYen = input.priceYen ?? null;
+  const p = checkManualPrice({
+    id: `price-${Date.now().toString(36)}-${randomId()}`,
+    source: "manual",
+    category: checkText("分類", input.category ?? "", 60, false) || "その他",
+    name: checkText("項目名", input.name ?? "", 120, true),
+    priceYen,
+    priceText: priceYen === null ? "" : `${priceYen.toLocaleString("ja-JP")}円`,
+    order: Math.max(-1, ...manual.map((x) => x.order)) + 1,
+    updatedAt: new Date().toISOString(),
+  });
+  st.prices.set(p.id, p);
+  if (by) audit(by, "料金表に項目を追加");
+  return p;
+}
+
+function manualPrice(id: string): PriceItem {
+  const cur = state().prices.get(id);
+  if (!cur || cur.removed) throw new StoreError("not_found", "料金が見つかりません");
+  if (cur.source !== "manual") throw new StoreError("invalid", "ホームページから取り込んだ料金は、ホームページで直してください");
+  return cur;
+}
+
+export function updatePriceItem(id: string, input: PriceItemInput, by?: Actor): PriceItem {
+  const cur = manualPrice(id);
+  const next: PriceItem = { ...cur, updatedAt: new Date().toISOString() };
+  if (input.category !== undefined) next.category = checkText("分類", input.category, 60, false) || "その他";
+  if (input.name !== undefined) next.name = checkText("項目名", input.name, 120, true);
+  if (input.priceYen !== undefined) {
+    next.priceYen = input.priceYen;
+    next.priceText = input.priceYen === null ? "" : `${input.priceYen.toLocaleString("ja-JP")}円`;
+  }
+  state().prices.set(id, next);
+  if (by) audit(by, "料金表の項目を変更");
+  return next;
+}
+
+export function deletePriceItem(id: string, by?: Actor): void {
+  manualPrice(id);
+  state().prices.delete(id);
+  if (by) audit(by, "料金表の項目を削除");
 }

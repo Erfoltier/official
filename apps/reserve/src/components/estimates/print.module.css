@@ -269,13 +269,40 @@
   .sheet {
     zoom: 0.46;
   }
+  .wrap[data-paper="A5"] .sheet {
+    zoom: 0.46;
+  }
+}
+
+.paper {
+  display: inline-flex;
+  border: 1px solid #d6cee4;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.paper button {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.paper button[data-active] {
+  background: #5b2bb5;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* A5：A4 の版面を 148/210 に縮める */
+.wrap[data-paper="A5"] .sheet {
+  zoom: 0.7048;
 }
 
 @media print {
-  @page {
-    size: A4 portrait;
-    margin: 0;
-  }
   .wrap {
     background: none;
     padding: 0;
@@ -287,6 +314,10 @@
     margin: 0;
     box-shadow: none;
     zoom: 1;
+    min-height: 296mm;
+  }
+  .wrap[data-paper="A5"] .sheet {
+    zoom: 0.7048;
   }
   .amount,
   .table th,

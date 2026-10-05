@@ -248,6 +248,38 @@ try {
         }
     }
 
+    // ---- 料金表 ----
+    if ($p[0] === 'prices') {
+        if ($method === 'GET' && $n === 1) {
+            $me();
+            Store::syncPricesIfDue();
+            Http::json(Store::getPriceList());
+        }
+        if ($method === 'POST' && $n === 1) {
+            $s = $me(STAFF_MANAGE);
+            Http::json(Store::createPriceItem(Schema::priceItem(Http::readJson()), $actor($s)), 201);
+        }
+        if ($method === 'POST' && $n === 2 && $p[1] === 'sync') {
+            $s = $me(STAFF_MANAGE);
+            Http::json(Store::syncPrices($actor($s)));
+        }
+        if ($method === 'POST' && $n === 2 && $p[1] === 'urls') {
+            $s = $me(STAFF_ADMIN);
+            Store::setPriceUrls(Schema::priceUrls(Http::readJson()), $actor($s));
+            Http::json(Store::syncPrices($actor($s)));
+        }
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me(STAFF_MANAGE);
+            Http::json(Store::updatePriceItem(V::id($p[1]), Schema::priceItem(Http::readJson()), $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Store::deletePriceItem($id, $actor($s));
+            Http::json(['id' => $id, 'deleted' => true]);
+        }
+    }
+
     // ---- 見積書 ----
     if ($p[0] === 'estimates' && $n >= 2) {
         if ($method === 'GET' && $n === 2) {

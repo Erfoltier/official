@@ -5,12 +5,13 @@ import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/l
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
+import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { stageOf } from "./stages";
 import { StageTimeInput, parseHm } from "./StageTime";
-import { addDays, formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
+import { formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
 import { displayName } from "./names";
 import styles from "./calendar.module.css";
 
@@ -36,13 +37,14 @@ interface Props {
   onMemo: (memo: string) => void;
   onRequestId: (requestId: string) => void;
   /** 日時・レーンの変更（別の日への移動も可） */
-  onReschedule: (to: { date: string; startMin: number; endMin: number; laneId: string }) => Promise<boolean>;
+  /** 「予約を変更」で日時・レーン・メニューを変えた、または取り消した */
+  onChanged: (next: Reservation, kind: "changed" | "cancelled") => void;
   onEditPatient: () => void;
   /** ファイルを削除できる（院長・管理者と受付） */
   canManage?: boolean;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onStageTime, onFreeNote, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onStageTime, onFreeNote, onMemo, onRequestId, onChanged, onEditPatient, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
@@ -70,19 +72,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const requestIdValid = requestId === "" || REQUEST_ID_RE.test(requestId);
   const start = minutesOfDay(r.startAt);
   const end = minutesOfDay(r.endAt);
-  const [resched, setResched] = useState<{ date: string; start: number; dur: number; laneId: string } | null>(null);
-  const [moving, setMoving] = useState(false);
-  const { clinic } = bundle;
-  const startOptions: number[] = [];
-  if (resched) {
-    for (let m = Math.min(clinic.dayStartMin, start); m < Math.max(clinic.dayEndMin, end); m += clinic.slotMin) startOptions.push(m);
-    if (!startOptions.includes(resched.start)) startOptions.push(resched.start);
-    startOptions.sort((a, b) => a - b);
-  }
-  const durOptions: number[] = [];
-  for (let m = 5; m <= 240; m += 5) durOptions.push(m);
+  const [editOpen, setEditOpen] = useState(false);
   const curDur = durationMin(r.startAt, r.endAt);
-  if (!durOptions.includes(curDur)) durOptions.push(curDur);
 
   const saveRequestId = () => {
     if (!requestIdValid) return;
@@ -170,13 +161,9 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <dt>日時</dt>
         <dd>
           {formatDateJa(bundle.date)} {formatHm(start)}–{formatHm(end)}（{curDur}分）
-          {!resched && (
-            <button
-              type="button"
-              className={styles.miniBtn}
-              onClick={() => setResched({ date: bundle.date, start, dur: curDur, laneId: r.laneId })}
-            >
-              日時を変更
+          {!INACTIVE_STATUSES.has(r.status) && (
+            <button type="button" className={styles.miniBtn} onClick={() => setEditOpen(true)}>
+              予約を変更
             </button>
           )}
         </dd>
@@ -207,80 +194,17 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <dd>{REMINDER_LABEL[r.reminder.status]}</dd>
       </dl>
 
-      {resched && (
-        <div className={styles.reschedule}>
-          <div className={styles.sectionLabel}>日時・レーンを変更</div>
-          <div className={styles.reschedGrid}>
-            <label>
-              日付
-              <input
-                type="date"
-                className={styles.input}
-                value={resched.date}
-                onChange={(e) => e.target.value && setResched({ ...resched, date: e.target.value })}
-              />
-            </label>
-            <label>
-              開始
-              <select className={styles.input} value={resched.start} onChange={(e) => setResched({ ...resched, start: Number(e.target.value) })}>
-                {startOptions.map((m) => (
-                  <option key={m} value={m}>
-                    {formatHm(m)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              時間
-              <select className={styles.input} value={resched.dur} onChange={(e) => setResched({ ...resched, dur: Number(e.target.value) })}>
-                {durOptions.sort((a, b) => a - b).map((m) => (
-                  <option key={m} value={m}>
-                    {m}分
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              レーン
-              <select className={styles.input} value={resched.laneId} onChange={(e) => setResched({ ...resched, laneId: e.target.value })}>
-                {bundle.lanes.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.shortName}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className={styles.reschedQuick}>
-            {[-7, 7, 14, 28].map((d) => (
-              <button key={d} type="button" className={styles.miniBtn} onClick={() => setResched({ ...resched, date: addDays(resched.date, d) })}>
-                {d < 0 ? `${-d / 7}週前` : `${d / 7}週後`}
-              </button>
-            ))}
-          </div>
-          <p className={styles.reschedPreview}>
-            → {formatDateJa(resched.date)} {formatHm(resched.start)}–{formatHm(resched.start + resched.dur)}・
-            {bundle.lanes.find((l) => l.id === resched.laneId)?.shortName}
-          </p>
-          <div className={styles.pasteActions}>
-            <button type="button" className={styles.btn} onClick={() => setResched(null)} disabled={moving}>
-              やめる
-            </button>
-            <button
-              type="button"
-              className={styles.primaryBtn}
-              disabled={moving || resched.start + resched.dur > 1440}
-              onClick={async () => {
-                setMoving(true);
-                const ok = await onReschedule({ date: resched.date, startMin: resched.start, endMin: resched.start + resched.dur, laneId: resched.laneId });
-                setMoving(false);
-                if (ok) setResched(null);
-              }}
-            >
-              この日時に変更
-            </button>
-          </div>
-        </div>
+      {editOpen && (
+        <ReservationEditDialog
+          reservation={r}
+          patientName={patient?.name ?? ""}
+          canCancel={!!canManage}
+          onClose={() => setEditOpen(false)}
+          onSaved={(next, kind) => {
+            setEditOpen(false);
+            onChanged(next, kind);
+          }}
+        />
       )}
 
       {!maskNames && (

@@ -386,6 +386,7 @@ final class Schema
             'issuer?' => fn($x) => V::str($x, 80),
             'estimateNote?' => fn($x) => V::str($x, 3000),
             'estimateValidDays?' => fn($x) => V::int($x, 1, 365),
+            'estimatePaper?' => fn($x) => V::enum($x, ['A4', 'A5']),
             'dayStartMin?' => $min,
             'dayEndMin?' => $min,
             'slotMin?' => function ($x) {
@@ -411,6 +412,27 @@ final class Schema
             'unitYen' => fn($x) => V::int($x, -10_000_000, 10_000_000),
             'qty' => fn($x) => V::int($x, 1, 99),
         ]), $v);
+    }
+
+    public static function priceItem(mixed $v): array
+    {
+        return V::shape($v, [
+            'category?' => fn($x) => V::str($x, 100),
+            'name?' => fn($x) => V::str($x, 200),
+            'priceYen?' => fn($x) => $x === null ? null : V::int($x, -10_000_000, 10_000_000),
+        ]);
+    }
+
+    /** @return string[] */
+    public static function priceUrls(mixed $v): array
+    {
+        $o = V::shape($v, ['urls' => function ($x) {
+            if (!is_array($x) || !array_is_list($x) || count($x) > 10) {
+                throw new InputError();
+            }
+            return array_map(fn($u) => V::str($u, 300), $x);
+        }]);
+        return $o['urls'];
     }
 
     public static function createEstimate(mixed $v): array

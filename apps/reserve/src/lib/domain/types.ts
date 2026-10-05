@@ -122,6 +122,42 @@ export interface Product {
   deleted?: boolean;
 }
 
+/**
+ * 料金表の1項目。ホームページ（正本）から自動で取り込んだものと、院で自由に足したものがある。
+ * 値段は税込（税抜のページは取り込むときに税込へ直す）
+ */
+export interface PriceItem {
+  id: string;
+  source: "homepage" | "manual";
+  category: string;
+  name: string;
+  /** 1つに決まらない値段（「〜」付き・ASK など）は null */
+  priceYen: number | null;
+  /** 元の表記（例：33,000円～49500円、税抜 5,000円） */
+  priceText: string;
+  /** 取り込み元のページ */
+  url?: string;
+  order: number;
+  /** ホームページから消えた（見積の候補に出さない） */
+  removed?: boolean;
+  updatedAt: string;
+}
+
+export interface PriceSyncResult {
+  url: string;
+  ok: boolean;
+  count: number;
+  error?: string;
+}
+
+export interface PriceList {
+  items: PriceItem[];
+  /** 取り込むホームページ */
+  urls: string[];
+  syncedAt?: string;
+  results: PriceSyncResult[];
+}
+
 /** 見積書の1行。値段は税込。割引はマイナスの値段の行で表す */
 export type EstimateLineKind = "menu" | "product" | "custom";
 
@@ -308,6 +344,9 @@ export interface VisitRow {
     status: ReservationStatus;
     menuNames: string[];
     laneName: string;
+    /** 予約の変更に使う */
+    laneId: string;
+    version: number;
     memo?: string;
     requestId?: string;
     /** メニューの色分け・回数の数え上げに使う */
@@ -424,7 +463,11 @@ export interface ClinicSettings {
   estimateNote?: string;
   /** 見積書の有効期限（発行日から何日） */
   estimateValidDays?: number;
+  /** 見積書の用紙（既定 A4）。印刷画面でも切り替えられる */
+  estimatePaper?: PaperSize;
 }
+
+export type PaperSize = "A4" | "A5";
 
 /** 見積書の有効期限の既定（日） */
 export const DEFAULT_ESTIMATE_VALID_DAYS = 30;

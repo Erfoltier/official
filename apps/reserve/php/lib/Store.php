@@ -134,6 +134,9 @@ final class Store
         if (isset($input['estimateValidDays'])) {
             $next['estimateValidDays'] = $input['estimateValidDays'];
         }
+        if (isset($input['estimatePaper'])) {
+            $next['estimatePaper'] = $input['estimatePaper'];
+        }
         if ($next['dayStartMin'] % 5 !== 0 || $next['dayEndMin'] % 5 !== 0) {
             throw new StoreError('invalid', '時刻は5分単位で指定してください');
         }
@@ -1328,6 +1331,8 @@ final class Store
             'status' => $r['status'],
             'menuNames' => array_map(fn($mid) => self::menus()[$mid]['name'] ?? '', $r['menuIds']),
             'laneName' => self::lanes()[$r['laneId']]['name'] ?? '',
+            'laneId' => $r['laneId'],
+            'version' => $r['version'],
             'menuIds' => $r['menuIds'],
             'stageLabel' => self::stageLabelOf($r),
         ];
@@ -1847,6 +1852,258 @@ final class Store
      * 重複して登録した患者 dup を keep にまとめる（途中で失敗したら全部取り消す）。
      * 予約・日付ごとの記録を移し、空欄を補い、dup は削除扱い（mergedInto）で残す
      */
+    // ---- 料金表（ホームページが正本。自由入力の項目も足せる） ----
+
+    private const PRICE_SYNC_SEC = 86400;
+    private const PRICE_RETRY_SEC = 3600;
+
+    public static function priceUrls(): array
+    {
+        self::init();
+        return Db::i()->meta('priceUrls') ?? self::seed()['priceUrls'] ?? [];
+    }
+
+    private static function sortedPrices(): array
+    {
+        $items = array_values(array_filter(Db::i()->all('price'), fn($p) => empty($p['removed'])));
+        $rank = fn($p) => $p['source'] === 'homepage' ? 0 : 1;
+        usort($items, fn($a, $b) => ($rank($a) <=> $rank($b)) ?: ($a['order'] <=> $b['order']) ?: strcmp($a['id'], $b['id']));
+        return $items;
+    }
+
+    public static function getPriceList(): array
+    {
+        self::init();
+        $sync = Db::i()->meta('priceSync');
+        $out = ['items' => self::sortedPrices(), 'urls' => self::priceUrls()];
+        if ($sync) {
+            $out['syncedAt'] = $sync['at'];
+        }
+        $out['results'] = $sync['results'] ?? [];
+        return $out;
+    }
+
+    public static function priceSyncDue(): bool
+    {
+        if (!self::priceUrls()) {
+            return false;
+        }
+        $sync = Db::i()->meta('priceSync');
+        if (!$sync) {
+            return true;
+        }
+        $failed = false;
+        foreach ($sync['results'] as $r) {
+            if (!$r['ok']) {
+                $failed = true;
+            }
+        }
+        return time() - (int) floor(parse_ms($sync['at']) / 1000) >= ($failed ? self::PRICE_RETRY_SEC : self::PRICE_SYNC_SEC);
+    }
+
+    public static function setPriceUrls(array $urls, ?array $by = null): array
+    {
+        $clean = [];
+        foreach ($urls as $u) {
+            $u = trim($u);
+            if ($u === '' || in_array($u, $clean, true)) {
+                continue;
+            }
+            if (!preg_match('#^https?://[^\s/]+(/\S*)?$#', $u)) {
+                throw new StoreError('invalid', "ホームページのアドレスが正しくありません：{$u}");
+            }
+            $clean[] = $u;
+        }
+        Db::i()->setMeta('priceUrls', $clean);
+        if ($by) {
+            Auth::audit($by, '料金表の取り込み元を変更');
+        }
+        return $clean;
+    }
+
+    private static function priceId(string $url, string $category, string $name): string
+    {
+        return 'hp-' . substr(sha1("{$url}\n{$category}\n{$name}"), 0, 12);
+    }
+
+    private static function fetchPricePage(string $url): array
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_USERAGENT => 'reserve-price-sync',
+        ]);
+        $html = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        if (!is_string($html)) {
+            return ['url' => $url, 'error' => '読み込めませんでした（通信エラー）'];
+        }
+        if ($status < 200 || $status >= 300) {
+            return ['url' => $url, 'error' => "読み込めませんでした（{$status}）"];
+        }
+        if (strlen($html) > 3 * 1024 * 1024) {
+            return ['url' => $url, 'error' => 'ページが大きすぎます'];
+        }
+        $items = PriceParse::parse($html);
+        if (!$items) {
+            return ['url' => $url, 'error' => '料金表が見つかりませんでした'];
+        }
+        return ['url' => $url, 'items' => $items];
+    }
+
+    /** ホームページから料金表を取り込む。読めなかったページの項目はそのまま残す */
+    public static function syncPrices(?array $by = null): array
+    {
+        self::init();
+        $pages = array_map([self::class, 'fetchPricePage'], self::priceUrls());
+        Db::i()->transaction(function () use ($pages) {
+            $db = Db::i();
+            $all = $db->all('price');
+            $at = now_iso();
+            $results = [];
+            $order = 0;
+            foreach ($pages as $page) {
+                if (!isset($page['items'])) {
+                    $results[] = ['url' => $page['url'], 'ok' => false, 'count' => 0, 'error' => $page['error'] ?? '読み込めませんでした'];
+                    foreach ($all as $p) {
+                        if ($p['source'] === 'homepage' && ($p['url'] ?? null) === $page['url'] && empty($p['removed'])) {
+                            $order = max($order, $p['order'] + 1);
+                        }
+                    }
+                    continue;
+                }
+                $seen = [];
+                foreach ($page['items'] as $it) {
+                    $id = self::priceId($page['url'], $it['category'], $it['name']);
+                    for ($n = 2; isset($seen[$id]); $n++) {
+                        $id = self::priceId($page['url'], $it['category'], "{$it['name']}#{$n}");
+                    }
+                    $seen[$id] = true;
+                    $cur = $all[$id] ?? null;
+                    $same = $cur && $cur['priceYen'] === $it['priceYen'] && $cur['priceText'] === $it['priceText'] && empty($cur['removed']);
+                    $next = [
+                        'id' => $id, 'source' => 'homepage', 'category' => $it['category'], 'name' => $it['name'],
+                        'priceYen' => $it['priceYen'], 'priceText' => $it['priceText'], 'url' => $page['url'],
+                        'order' => $order++, 'updatedAt' => $same ? $cur['updatedAt'] : $at,
+                    ];
+                    if ($cur !== $next) {
+                        $db->put('price', $id, $next);
+                        $all[$id] = $next;
+                    }
+                }
+                // ホームページから消えた項目は候補に出さない
+                foreach ($all as $p) {
+                    if ($p['source'] === 'homepage' && ($p['url'] ?? null) === $page['url'] && !isset($seen[$p['id']]) && empty($p['removed'])) {
+                        $p = [...$p, 'removed' => true, 'updatedAt' => $at];
+                        $db->put('price', $p['id'], $p);
+                        $all[$p['id']] = $p;
+                    }
+                }
+                $results[] = ['url' => $page['url'], 'ok' => true, 'count' => count($seen)];
+            }
+            // 取り込み元から外したページの項目も候補に出さない
+            $urls = array_column($pages, 'url');
+            foreach ($all as $p) {
+                if ($p['source'] === 'homepage' && !empty($p['url']) && !in_array($p['url'], $urls, true) && empty($p['removed'])) {
+                    $db->put('price', $p['id'], [...$p, 'removed' => true, 'updatedAt' => $at]);
+                }
+            }
+            $db->setMeta('priceSync', ['at' => $at, 'results' => $results]);
+        });
+        if ($by) {
+            Auth::audit($by, '料金表をホームページから取り込み');
+        }
+        return self::getPriceList();
+    }
+
+    public static function syncPricesIfDue(): void
+    {
+        if (self::priceSyncDue()) {
+            self::syncPrices();
+        }
+    }
+
+    private static function priceTextOf(?int $yen): string
+    {
+        return $yen === null ? '' : number_format($yen) . '円';
+    }
+
+    public static function createPriceItem(array $input, ?array $by = null): array
+    {
+        self::init();
+        $manual = array_filter(Db::i()->all('price'), fn($p) => $p['source'] === 'manual');
+        if (count($manual) >= 500) {
+            throw new StoreError('invalid', '登録できる数を超えています');
+        }
+        $category = self::checkText('分類', $input['category'] ?? '', 60, false);
+        $name = self::checkText('項目名', $input['name'] ?? '', 120, true);
+        $yen = $input['priceYen'] ?? null;
+        $p = [
+            'id' => 'price-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4)),
+            'source' => 'manual',
+            'category' => $category !== '' ? $category : 'その他',
+            'name' => $name,
+            'priceYen' => $yen,
+            'priceText' => self::priceTextOf($yen),
+            'order' => ($manual ? max(array_map(fn($x) => $x['order'], $manual)) : -1) + 1,
+            'updatedAt' => now_iso(),
+        ];
+        Db::i()->put('price', $p['id'], $p);
+        if ($by) {
+            Auth::audit($by, '料金表に項目を追加');
+        }
+        return $p;
+    }
+
+    private static function manualPrice(string $id): array
+    {
+        $cur = Db::i()->get('price', $id);
+        if (!$cur || !empty($cur['removed'])) {
+            throw new StoreError('not_found', '料金が見つかりません');
+        }
+        if ($cur['source'] !== 'manual') {
+            throw new StoreError('invalid', 'ホームページから取り込んだ料金は、ホームページで直してください');
+        }
+        return $cur;
+    }
+
+    public static function updatePriceItem(string $id, array $input, ?array $by = null): array
+    {
+        self::init();
+        $next = [...self::manualPrice($id), 'updatedAt' => now_iso()];
+        if (isset($input['category'])) {
+            $c = self::checkText('分類', $input['category'], 60, false);
+            $next['category'] = $c !== '' ? $c : 'その他';
+        }
+        if (isset($input['name'])) {
+            $next['name'] = self::checkText('項目名', $input['name'], 120, true);
+        }
+        if (array_key_exists('priceYen', $input)) {
+            $next['priceYen'] = $input['priceYen'];
+            $next['priceText'] = self::priceTextOf($input['priceYen']);
+        }
+        Db::i()->put('price', $id, $next);
+        if ($by) {
+            Auth::audit($by, '料金表の項目を変更');
+        }
+        return $next;
+    }
+
+    public static function deletePriceItem(string $id, ?array $by = null): void
+    {
+        self::init();
+        self::manualPrice($id);
+        Db::i()->delete('price', $id);
+        if ($by) {
+            Auth::audit($by, '料金表の項目を削除');
+        }
+    }
+
     // ---- 見積書 ----
 
     private const MAX_ESTIMATE_YEN = 100_000_000;

@@ -1008,5 +1008,9 @@
   "in_treatment": "stage-treat",
   "checkout": "stage-checkout",
   "done": "stage-done"
- }
+ },
+ "priceUrls": [
+  "https://ishidahihuka.jp/service/price/",
+  "https://ishidahihuka.jp/service/datsumou/"
+ ]
 }

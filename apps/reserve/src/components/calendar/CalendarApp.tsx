@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
-import { addDays, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
+import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
 import { ApiError, fetchDay, fetchMe, logout, patchReservation, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
@@ -213,31 +213,21 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     save(r, { version: r.version, memo }, { ...r, memo });
   };
 
-  /** 予約の日時・レーンを変更する。別の日へ移したときはその日を表示する */
-  const onReschedule = async (r: Reservation, to: { date: string; startMin: number; endMin: number; laneId: string }) => {
-    busyRef.current = true;
-    try {
-      const next = await patchReservation(r.id, {
-        version: r.version,
-        laneId: to.laneId,
-        startAt: toIso(to.date, to.startMin),
-        endAt: toIso(to.date, to.endMin),
-      });
-      if (to.date !== date) {
-        showToast(`${formatDateJa(to.date)} に移動しました`);
-        pendingSelect.current = next.id;
-        setDate(to.date);
-      } else {
-        applyLocal(next);
-        showToast("日時を変更しました");
-      }
-      return true;
-    } catch (err) {
-      showToast(err instanceof ApiError ? err.message : "変更できませんでした", "error");
-      if (err instanceof ApiError && err.status === 409) load(date);
-      return false;
-    } finally {
-      busyRef.current = false;
+  /** 「予約を変更」のあと。別の日へ移したときはその日を表示する */
+  const onChanged = (next: Reservation, kind: "changed" | "cancelled") => {
+    if (kind === "cancelled") {
+      applyLocal(next);
+      showToast("予約を取り消しました");
+      return;
+    }
+    const nextDate = clinicDateOf(next.startAt);
+    if (nextDate !== date) {
+      showToast(`${formatDateJa(nextDate)} に移動しました`);
+      pendingSelect.current = next.id;
+      setDate(nextDate);
+    } else {
+      applyLocal(next);
+      showToast("予約を変更しました");
     }
   };
 
@@ -464,7 +454,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onFreeNote={(text) => onFreeNote(selected, text)}
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}
-            onReschedule={(to) => onReschedule(selected, to)}
+            onChanged={onChanged}
             canManage={me?.role === "admin" || me?.role === "reception"}
             onEditPatient={() => setEditPatientId(selected.patientId)}
           />

@@ -224,6 +224,11 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           detail={detail}
           onSave={saveVisitRow}
           onFilesChanged={reloadHistory}
+          onReservationChanged={() => {
+            reloadHistory();
+            // カレンダーから開いたときは、カレンダーにも反映する
+            onSaved?.();
+          }}
           readOnly={readOnly}
           canManage={canManage}
         />

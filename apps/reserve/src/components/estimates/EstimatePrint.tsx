@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { EstimateView } from "@/lib/domain/types";
+import type { EstimateView, PaperSize } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, taxIncluded } from "@/lib/domain/types";
 import { formatDateJa } from "@/lib/domain/time";
 import { ApiError, fetchEstimate } from "@/components/calendar/api";
@@ -18,6 +18,8 @@ function dateLong(d: string): string {
 export function EstimatePrint({ id }: { id: string }) {
   const [view, setView] = useState<EstimateView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 用紙。最初は院の既定、印刷画面で切り替えられる */
+  const [paper, setPaper] = useState<PaperSize | null>(null);
 
   useEffect(() => {
     fetchEstimate(id).then(
@@ -33,10 +35,20 @@ export function EstimatePrint({ id }: { id: string }) {
   if (!view) return <p className={styles.message}>読み込み中…</p>;
   const { estimate: e, patient: p, clinic: c } = view;
   const note = c.estimateNote ?? DEFAULT_ESTIMATE_NOTE;
+  const size = paper ?? c.estimatePaper ?? "A4";
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} data-paper={size}>
+      {/* 印刷する用紙の大きさ（A5 は A4 の版面をそのまま縮める） */}
+      <style>{`@page { size: ${size} portrait; margin: 0; }`}</style>
       <div className={styles.bar}>
+        <span className={styles.paper} role="group" aria-label="用紙">
+          {(["A4", "A5"] as const).map((p) => (
+            <button key={p} type="button" data-active={size === p || undefined} aria-pressed={size === p} onClick={() => setPaper(p)}>
+              {p}
+            </button>
+          ))}
+        </span>
         <button type="button" className={styles.printBtn} onClick={() => window.print()}>
           🖨 印刷する
         </button>

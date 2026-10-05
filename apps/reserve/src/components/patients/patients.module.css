@@ -1068,3 +1068,24 @@ details:not([open]) > summary.histTitle {
   padding: 0 7px;
   font-weight: 700;
 }
+
+/* 予約の「変更」ボタン（今回の予約・今後の予約） */
+.changeBtn {
+  height: 26px;
+  margin-left: 6px;
+  padding: 0 12px;
+  border: 1px solid #d3c2ef;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.changeBtn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}

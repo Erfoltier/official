@@ -145,8 +145,19 @@ export const clinicSchema = z
     issuer: z.string().max(80).optional(),
     estimateNote: z.string().max(3000).optional(),
     estimateValidDays: z.number().int().min(1).max(365).optional(),
+    estimatePaper: z.enum(["A4", "A5"]).optional(),
   })
   .strict();
+
+export const priceItemSchema = z
+  .object({
+    category: z.string().max(100).optional(),
+    name: z.string().max(200).optional(),
+    priceYen: z.number().int().min(-10_000_000).max(10_000_000).nullable().optional(),
+  })
+  .strict();
+
+export const priceUrlsSchema = z.object({ urls: z.array(z.string().max(300)).max(10) }).strict();
 
 const estimateLine = z
   .object({

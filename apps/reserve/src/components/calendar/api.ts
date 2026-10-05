@@ -213,7 +213,7 @@ export function saveClinic(
   body: Partial<
     Pick<
       DayBundle["clinic"],
-      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays"
+      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

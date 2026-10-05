@@ -6,6 +6,7 @@ import { INACTIVE_STATUSES, PRODUCT_CATEGORY_LABEL, STATUS_LABEL } from "@/lib/d
 import { formatHm, minutesOfDay, nowInClinic, clinicDateOf } from "@/lib/domain/time";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { FileUploader } from "@/components/files/FileUploader";
+import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import styles from "./patients.module.css";
 import { calendarPath, withBase } from "@/lib/paths";
 
@@ -80,18 +81,23 @@ interface Props {
   /** 削除された患者など、見るだけのとき */
   readOnly?: boolean;
   canManage?: boolean;
+  /** 予約を変更・取り消したあと（患者の情報を読み直す） */
+  onReservationChanged?: () => void;
 }
 
 /**
  * 施術歴：今回の予約／過去の履歴／今後の予約。
  * 表は 日付・施術内容・メモ・スキンケア＆内服・ファイル の5列。メニューは色分けし、何回目かを付ける
  */
-export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, canManage }: Props) {
+export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, canManage, onReservationChanged }: Props) {
   const today = nowInClinic().date;
   const nth = useNth(detail);
   const [editing, setEditing] = useState<string | null>(null);
   const [extraDate, setExtraDate] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
+  /** 「変更」を押した予約 */
+  const [changing, setChanging] = useState<Res | null>(null);
+  const onChange = readOnly ? undefined : (r: Res) => setChanging(r);
 
   const rows: VisitRow[] =
     extraDate && !detail.visits.some((v) => v.date === extraDate)
@@ -116,6 +122,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
     priceOf,
     editing,
     onFilesChanged,
+    onChange,
     onEdit: (d: string) => setEditing(d),
     onCancel: (d: string) => {
       setEditing(null);
@@ -181,8 +188,20 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
         <summary className={styles.histTitle}>
           今後の予約 <span className={styles.histCount}>{detail.upcoming.length}件</span>
         </summary>
-        <UpcomingTable items={detail.upcoming} detail={detail} nth={nth} />
+        <UpcomingTable items={detail.upcoming} detail={detail} nth={nth} onChange={onChange} />
       </details>
+      {changing && (
+        <ReservationEditDialog
+          reservation={changing}
+          patientName={detail.patient.name}
+          canCancel={!!canManage}
+          onClose={() => setChanging(null)}
+          onSaved={() => {
+            setChanging(null);
+            onReservationChanged?.();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -196,6 +215,8 @@ type RowProps = {
   priceOf: Map<string, number | null>;
   editing: string | null;
   onFilesChanged: () => void;
+  /** 予約の「変更」（見るだけのときはなし） */
+  onChange?: (r: Res) => void;
   onEdit: (date: string) => void;
   onCancel: (date: string) => void;
   onSave: (date: string, body: VisitSave) => Promise<void>;
@@ -234,7 +255,7 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
   );
 }
 
-function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onEdit, onFilesChanged }: RowProps & { v: VisitRow }) {
+function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onEdit, onFilesChanged, onChange }: RowProps & { v: VisitRow }) {
   return (
     <tr data-today={v.date === today || undefined}>
       <td className={styles.colDate} data-label="日付">
@@ -257,6 +278,11 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
             <span className={styles.time}>{formatHm(minutesOfDay(r.startAt))}</span>
             <MenuChips r={r} detail={detail} nth={nth} />
             {r.status !== "done" && <span className={styles.status}>{r.stageLabel ?? STATUS_LABEL[r.status]}</span>}
+            {onChange && v.date >= today && !INACTIVE_STATUSES.has(r.status) && (
+              <button type="button" className={styles.changeBtn} onClick={() => onChange(r)}>
+                変更
+              </button>
+            )}
             {r.memo && <div className={styles.resMemo}>予約メモ：{r.memo}</div>}
             {r.requestId && <div className={styles.resMemo}>申請ID：{r.requestId}</div>}
           </div>
@@ -478,7 +504,17 @@ function EditRow(props: { visit: VisitRow; products: Product[]; previous: string
   );
 }
 
-function UpcomingTable({ items, detail, nth }: { items: Res[]; detail: PatientDetail; nth: (r: Res, m: string) => number | null }) {
+function UpcomingTable({
+  items,
+  detail,
+  nth,
+  onChange,
+}: {
+  items: Res[];
+  detail: PatientDetail;
+  nth: (r: Res, m: string) => number | null;
+  onChange?: (r: Res) => void;
+}) {
   if (items.length === 0) return <p className={styles.muted}>今後の予約はありません</p>;
   return (
     <table className={styles.visitTable}>
@@ -490,6 +526,7 @@ function UpcomingTable({ items, detail, nth }: { items: Res[]; detail: PatientDe
           <th>レーン</th>
           <th>状態</th>
           <th>予約メモ・申請ID</th>
+          {onChange && <th aria-label="変更" />}
         </tr>
       </thead>
       <tbody>
@@ -514,6 +551,15 @@ function UpcomingTable({ items, detail, nth }: { items: Res[]; detail: PatientDe
                 {r.memo ?? (r.requestId ? null : <span className={styles.muted}>—</span>)}
                 {r.requestId && <div className={styles.reqId}>申請ID：{r.requestId}</div>}
               </td>
+              {onChange && (
+                <td data-label="">
+                  {!INACTIVE_STATUSES.has(r.status) && (
+                    <button type="button" className={styles.changeBtn} onClick={() => onChange(r)}>
+                      変更
+                    </button>
+                  )}
+                </td>
+              )}
             </tr>
           );
         })}
