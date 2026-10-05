@@ -24,7 +24,7 @@
   align-items: center;
   gap: 2px;
   padding: 3px 4px;
-  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
   background: var(--bg-subtle);
 }
 
@@ -41,9 +41,19 @@
   cursor: pointer;
 }
 
-.toolbar button:hover {
-  background: #fff;
-  border-color: var(--line-strong);
+/* タッチ端末では「指を離したあとも押されたまま」に見えないよう、重ねたときの見た目はマウスのときだけ */
+@media (hover: hover) {
+  .toolbar button:hover {
+    background: #fff;
+    border-color: var(--line-strong);
+  }
+}
+
+/* カーソル位置の文字にその装飾が付いているときだけ、押された見た目 */
+.toolbar button[data-on] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .sep {
@@ -86,7 +96,7 @@
   align-items: center;
   gap: 5px;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
   background: #fff;
 }
 
@@ -101,8 +111,10 @@
   padding: 0;
 }
 
-.swatch:hover {
-  transform: scale(1.12);
+@media (hover: hover) {
+  .swatch:hover {
+    transform: scale(1.12);
+  }
 }
 
 .swatch[data-default] {

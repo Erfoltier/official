@@ -36,6 +36,15 @@ export function RichTextEditor(props: Props) {
   const [custom, setCustom] = usePref<string[]>("textColors", [], isColorList);
   const [empty, setEmpty] = useState(!richToPlain(props.value));
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** カーソル位置の文字が太字・斜体・下線か（ボタンの押された見た目に使う） */
+  const [on, setOn] = useState({ b: false, i: false, u: false });
+  const readState = useCallback(() => {
+    try {
+      setOn({ b: document.queryCommandState("bold"), i: document.queryCommandState("italic"), u: document.queryCommandState("underline") });
+    } catch {
+      /* 調べられない端末では押された見た目を出さない */
+    }
+  }, []);
   const length = richToPlain(props.value).length;
 
   // 親から値が変わったとき（初回・貼り付け欄からの入力など）だけ中身を入れ直す
@@ -55,11 +64,14 @@ export function RichTextEditor(props: Props) {
   useEffect(() => {
     const onSel = () => {
       const sel = document.getSelection();
-      if (sel && sel.rangeCount > 0 && ref.current?.contains(sel.anchorNode)) range.current = sel.getRangeAt(0).cloneRange();
+      if (sel && sel.rangeCount > 0 && ref.current?.contains(sel.anchorNode)) {
+        range.current = sel.getRangeAt(0).cloneRange();
+        readState();
+      }
     };
     document.addEventListener("selectionchange", onSel);
     return () => document.removeEventListener("selectionchange", onSel);
-  }, []);
+  }, [readState]);
 
   const emit = useCallback(() => {
     const el = ref.current;
@@ -87,6 +99,7 @@ export function RichTextEditor(props: Props) {
     document.execCommand("styleWithCSS", false, cmd === "foreColor" ? "true" : "false");
     document.execCommand(cmd, false, value);
     emit();
+    readState();
   };
 
   const applyColor = (c: string) => exec("foreColor", c);
@@ -102,14 +115,37 @@ export function RichTextEditor(props: Props) {
 
   return (
     <div className={`${styles.editor} ${props.className ?? ""}`} data-disabled={props.disabled || undefined}>
+      <div
+        ref={ref}
+        className={styles.area}
+        contentEditable={!props.disabled}
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        aria-label={props.ariaLabel}
+        data-empty={empty || undefined}
+        data-placeholder={props.placeholder ?? ""}
+        style={{ minHeight: `${(props.rows ?? 3) * 1.6 + 0.8}em` }}
+        onInput={emit}
+        onBlur={props.onBlur}
+        onKeyDown={props.onKeyDown}
+        onPaste={(e) => {
+          // 貼り付けは文字だけ（他のアプリの書式は持ち込まない）
+          e.preventDefault();
+          document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+        }}
+        onKeyUp={readState}
+        onMouseUp={readState}
+      />
+      {/* 装飾のボタンは欄の下（文字を選んだときに出るコピー等のメニューと重ならないように） */}
       <div className={styles.toolbar} role="toolbar" aria-label="文字の装飾">
-        <button type="button" onMouseDown={keep} onClick={() => exec("bold")} title="太字（Ctrl+B）" aria-label="太字">
+        <button type="button" onMouseDown={keep} onClick={() => exec("bold")} title="太字（Ctrl+B）" aria-label="太字" aria-pressed={on.b} data-on={on.b || undefined}>
           <b>B</b>
         </button>
-        <button type="button" onMouseDown={keep} onClick={() => exec("italic")} title="斜体（Ctrl+I）" aria-label="斜体">
+        <button type="button" onMouseDown={keep} onClick={() => exec("italic")} title="斜体（Ctrl+I）" aria-label="斜体" aria-pressed={on.i} data-on={on.i || undefined}>
           <i>I</i>
         </button>
-        <button type="button" onMouseDown={keep} onClick={() => exec("underline")} title="下線（Ctrl+U）" aria-label="下線">
+        <button type="button" onMouseDown={keep} onClick={() => exec("underline")} title="下線（Ctrl+U）" aria-label="下線" aria-pressed={on.u} data-on={on.u || undefined}>
           <u>U</u>
         </button>
         <span className={styles.sep} />
@@ -172,26 +208,7 @@ export function RichTextEditor(props: Props) {
           </label>
         </div>
       )}
-      <div
-        ref={ref}
-        className={styles.area}
-        contentEditable={!props.disabled}
-        suppressContentEditableWarning
-        role="textbox"
-        aria-multiline="true"
-        aria-label={props.ariaLabel}
-        data-empty={empty || undefined}
-        data-placeholder={props.placeholder ?? ""}
-        style={{ minHeight: `${(props.rows ?? 3) * 1.6 + 0.8}em` }}
-        onInput={emit}
-        onBlur={props.onBlur}
-        onKeyDown={props.onKeyDown}
-        onPaste={(e) => {
-          // 貼り付けは文字だけ（他のアプリの書式は持ち込まない）
-          e.preventDefault();
-          document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
-        }}
-      />
+
     </div>
   );
 }
