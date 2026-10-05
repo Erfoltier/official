@@ -519,6 +519,39 @@ final class Schema
         ]);
     }
 
+    private static function chartFields(bool $treatmentRequired): array
+    {
+        return [
+            ($treatmentRequired ? 'treatment' : 'treatment?') => fn($x) => V::str($x, 300),
+            'area?' => fn($x) => V::str($x, 400),
+            'settings?' => fn($x) => V::str($x, 2000),
+            'drugs?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 10) {
+                    throw new InputError();
+                }
+                return array_map(fn($d) => V::shape($d, [
+                    'name' => fn($y) => V::str($y, 200),
+                    'lot?' => fn($y) => V::str($y, 100),
+                    'amount?' => fn($y) => V::str($y, 100),
+                ]), $x);
+            },
+            'anesthesia?' => fn($x) => V::str($x, 200),
+            'findings?' => fn($x) => V::str($x, 16000),
+            'nextPlan?' => fn($x) => V::str($x, 400),
+            'operator?' => fn($x) => V::str($x, 100),
+        ];
+    }
+
+    public static function createChart(mixed $v): array
+    {
+        return V::shape($v, ['date' => [V::class, 'date'], 'reservationId?' => [V::class, 'id'], ...self::chartFields(true)]);
+    }
+
+    public static function updateChart(mixed $v): array
+    {
+        return V::shape($v, ['version' => fn($x) => V::int($x, 1), 'date?' => [V::class, 'date'], ...self::chartFields(false)]);
+    }
+
     public static function updateEstimate(mixed $v): array
     {
         return V::shape($v, [

@@ -5,6 +5,7 @@ import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/l
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
+import { ChartDialog } from "@/components/charts/ChartDialog";
 import { ConsentDialog } from "@/components/consents/ConsentDialog";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
@@ -57,6 +58,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
   const [estimateOpen, setEstimateOpen] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
   /** 状態を変えた時刻（空欄なら押した時刻） */
   const [stageTime, setStageTime] = useState("");
@@ -145,6 +147,9 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         </button>
         {patient && !patient.deleted && (
           <span className={styles.panelLinkBtns}>
+            <button type="button" className={styles.estimateBtn} onClick={() => setChartOpen(true)}>
+              🩺 カルテ
+            </button>
             <button type="button" className={styles.estimateBtn} onClick={() => setConsentOpen(true)}>
               📄 同意書
             </button>
@@ -159,6 +164,20 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           patient={patient}
           reservation={{ id: r.id, menuIds: r.menuIds, menuNames: menus.map((m) => m!.name) }}
           onClose={() => setConsentOpen(false)}
+        />
+      )}
+      {chartOpen && patient && (
+        <ChartDialog
+          patientId={patient.id}
+          patientName={patient.name}
+          date={bundle.date}
+          reservationId={r.id}
+          menuNames={menus.map((m) => m!.name)}
+          onClose={() => {
+            setChartOpen(false);
+            // カルテの画面で写真を足したり消したりしたかもしれないので読み直す
+            fetchFiles(r.patientId, bundle.date).then(setFiles, () => {});
+          }}
         />
       )}
       {estimateOpen && patient && (

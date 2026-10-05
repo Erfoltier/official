@@ -2749,6 +2749,143 @@ final class Store
         return $next;
     }
 
+    // ---- カルテ（施術記録） ----
+
+    /** 入力を検査して、保存する項目にそろえる（空の項目は持たない） */
+    private static function chartFields(array $input, ?array $cur = null): array
+    {
+        $pick = fn(string $k) => array_key_exists($k, $input) ? $input[$k] : ($cur[$k] ?? '');
+        $out = [
+            'treatment' => self::checkText('施術名', $input['treatment'] ?? $cur['treatment'] ?? '', 120, true),
+            'drugs' => array_map(function ($d) {
+                $o = ['name' => self::checkText('薬剤名', $d['name'], 80, true)];
+                $lot = self::checkText('ロット番号', $d['lot'] ?? '', 40, false);
+                $amount = self::checkText('使用量', $d['amount'] ?? '', 40, false);
+                if ($lot !== '') {
+                    $o['lot'] = $lot;
+                }
+                if ($amount !== '') {
+                    $o['amount'] = $amount;
+                }
+                return $o;
+            }, $input['drugs'] ?? $cur['drugs'] ?? []),
+        ];
+        $vals = [
+            'area' => self::checkText('部位', $pick('area'), 200, false),
+            'settings' => self::checkNote('条件', $pick('settings'), 1000),
+            'anesthesia' => self::checkText('麻酔', $pick('anesthesia'), 100, false),
+            'findings' => self::checkNote('所見・経過', $pick('findings'), 8000),
+            'nextPlan' => self::checkText('次回の予定', $pick('nextPlan'), 200, false),
+            'operator' => self::checkText('施術者', $pick('operator'), 60, false),
+        ];
+        foreach ($vals as $k => $v) {
+            if ($v !== '') {
+                $out[$k] = $v;
+            }
+        }
+        return $out;
+    }
+
+    public static function listCharts(string $patientId): array
+    {
+        self::init();
+        $out = array_values(array_filter(
+            Db::i()->where('chart', 'k2', $patientId),
+            fn($c) => $c['patientId'] === $patientId && empty($c['deleted']),
+        ));
+        usort($out, fn($a, $b) => strcmp($b['date'], $a['date']) ?: strcmp($a['createdAt'], $b['createdAt']));
+        return $out;
+    }
+
+    private static function liveChart(string $id): array
+    {
+        $c = Db::i()->get('chart', $id);
+        if (!$c || !empty($c['deleted'])) {
+            throw new StoreError('not_found', 'カルテが見つかりません');
+        }
+        return $c;
+    }
+
+    public static function createChart(string $patientId, array $input, ?array $by = null): array
+    {
+        self::init();
+        $p = self::patient($patientId);
+        if (!empty($p['deleted'])) {
+            throw new StoreError('invalid', '削除された患者にはカルテを書けません');
+        }
+        if (!empty($input['reservationId'])) {
+            $r = Db::i()->get('reservation', $input['reservationId']);
+            if (!$r || $r['patientId'] !== $patientId) {
+                throw new StoreError('invalid', '予約が見つかりません');
+            }
+        }
+        $c = [
+            'id' => 'chart-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4)),
+            'patientId' => $patientId,
+            'date' => $input['date'],
+        ];
+        if (!empty($input['reservationId'])) {
+            $c['reservationId'] = $input['reservationId'];
+        }
+        $c += self::chartFields($input);
+        $c['createdAt'] = now_iso();
+        if ($by) {
+            $c['createdBy'] = $by;
+        }
+        $c['version'] = 1;
+        Db::i()->put('chart', $c['id'], $c);
+        if ($by) {
+            Auth::audit($by, "カルテを記入（{$c['date']} {$c['treatment']}）", $patientId);
+        }
+        return $c;
+    }
+
+    public static function updateChart(string $id, array $input, ?array $by = null): array
+    {
+        self::init();
+        $cur = self::liveChart($id);
+        if ($cur['version'] !== $input['version']) {
+            throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+        }
+        $next = ['id' => $cur['id'], 'patientId' => $cur['patientId'], 'date' => $input['date'] ?? $cur['date']];
+        if (!empty($cur['reservationId'])) {
+            $next['reservationId'] = $cur['reservationId'];
+        }
+        $next += self::chartFields($input, $cur);
+        $next['createdAt'] = $cur['createdAt'];
+        if (!empty($cur['createdBy'])) {
+            $next['createdBy'] = $cur['createdBy'];
+        }
+        $next['updatedAt'] = now_iso();
+        if ($by) {
+            $next['updatedBy'] = $by;
+        }
+        $next['version'] = $cur['version'] + 1;
+        Db::i()->put('chart', $id, $next);
+        if ($by) {
+            Auth::audit($by, "カルテを変更（{$next['date']} {$next['treatment']}）", $next['patientId']);
+        }
+        return $next;
+    }
+
+    /** カルテの削除：書いた本人か、管理操作のできるスタッフだけ */
+    public static function deleteChart(string $id, int $version, array $staff): array
+    {
+        self::init();
+        $cur = self::liveChart($id);
+        if (!$staff['canManage'] && ($cur['createdBy']['id'] ?? null) !== $staff['id']) {
+            throw new AuthError('forbidden', '書いた本人か、管理操作のできるスタッフだけが削除できます');
+        }
+        if ($cur['version'] !== $version) {
+            throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+        }
+        $actor = Auth::actorOf($staff);
+        $next = [...$cur, 'deleted' => ['at' => now_iso(), 'by' => $actor], 'version' => $cur['version'] + 1];
+        Db::i()->put('chart', $id, $next);
+        Auth::audit($actor, "カルテを削除（{$cur['date']} {$cur['treatment']}）", $cur['patientId']);
+        return $next;
+    }
+
     public static function mergePatients(array $input, ?array $by = null): array
     {
         return Db::i()->transaction(function () use ($input, $by) {
@@ -2810,6 +2947,15 @@ final class Store
                         $ne['updatedBy'] = $by;
                     }
                     $db->put('estimate', $e['id'], $ne);
+                }
+            }
+            foreach ($db->where('chart', 'k2', $dup['id']) as $c) {
+                if ($c['patientId'] === $dup['id']) {
+                    $nc = [...$c, 'patientId' => $keep['id'], 'version' => $c['version'] + 1, 'updatedAt' => $at];
+                    if ($by) {
+                        $nc['updatedBy'] = $by;
+                    }
+                    $db->put('chart', $c['id'], $nc);
                 }
             }
 

@@ -21,6 +21,8 @@ import type {
   DayBundle,
   Lane,
   Menu,
+  ChartDrug,
+  ChartEntry,
   Patient,
   PatientChange,
   DuplicateCandidate,
@@ -49,7 +51,7 @@ import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 import { DEFAULT_PRODUCTS } from "@/lib/seed/products";
 import { SLOT_MENUS } from "@/lib/seed/slot-menus";
 import { DEFAULT_STAGES, STAGE_FOR_STATUS } from "@/lib/seed/stages";
-import { audit } from "@/lib/server/staff";
+import { AuthError, audit } from "@/lib/server/staff";
 import { PersistentMap, PersistentSet, count, getBlob, getMeta, loadAll, put, putBlob, setMeta, transaction } from "@/lib/server/db";
 
 /**
@@ -73,6 +75,7 @@ interface StoreState {
   snapshots: Map<string, SettingsSnapshot>;
   files: Map<string, PatientFile>;
   estimates: Map<string, Estimate>;
+  charts: Map<string, ChartEntry>;
   prices: Map<string, PriceItem>;
   consentTemplates: Map<string, ConsentTemplateWithHtml>;
   consents: Map<string, ConsentRecord & { html: string }>;
@@ -131,6 +134,7 @@ function state(): StoreState {
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
         estimates: new PersistentMap<Estimate>("estimate"),
+        charts: new PersistentMap<ChartEntry>("chart"),
         prices: new PersistentMap<PriceItem>("price"),
         consentTemplates: new PersistentMap<ConsentTemplateWithHtml>("consentTemplate"),
         consents: new PersistentMap<ConsentRecord & { html: string }>("consent"),
@@ -1666,6 +1670,9 @@ function mergePatientsImpl(
   for (const e of [...st.estimates.values()]) {
     if (e.patientId === dup.id) st.estimates.set(e.id, { ...e, patientId: keep.id, version: e.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
   }
+  for (const c of [...st.charts.values()]) {
+    if (c.patientId === dup.id) st.charts.set(c.id, { ...c, patientId: keep.id, version: c.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
+  }
   // 患者情報：空欄を埋め、注意事項・メモはつなげる
   const next: Patient = { ...keep };
   for (const f of FILLABLE) if (!next[f] && dup[f]) (next as unknown as Record<string, unknown>)[f] = dup[f];
@@ -1855,6 +1862,112 @@ export function deleteEstimate(id: string, input: { version: number }, by?: Acto
   const next: Estimate = { ...cur, deleted: { at: new Date().toISOString(), ...(by && { by }) }, version: cur.version + 1 };
   st.estimates.set(id, next);
   if (by) audit(by, `見積書を削除（No.${cur.no}）`, cur.patientId);
+  return next;
+}
+
+// ---- カルテ（施術記録） ----
+
+export interface ChartInput {
+  date?: string;
+  reservationId?: string;
+  treatment?: string;
+  area?: string;
+  settings?: string;
+  drugs?: ChartDrug[];
+  anesthesia?: string;
+  findings?: string;
+  nextPlan?: string;
+  operator?: string;
+}
+
+/** 入力を検査して、保存する項目にそろえる（空の項目は持たない） */
+function chartFields(input: ChartInput, cur?: ChartEntry): Omit<ChartEntry, "id" | "patientId" | "date" | "createdAt" | "version"> {
+  const pick = (k: "area" | "settings" | "anesthesia" | "findings" | "nextPlan" | "operator") => (input[k] !== undefined ? input[k] : cur?.[k]) ?? "";
+  const out: Omit<ChartEntry, "id" | "patientId" | "date" | "createdAt" | "version"> = {
+    treatment: checkText("施術名", input.treatment ?? cur?.treatment ?? "", 120, true),
+    drugs: (input.drugs ?? cur?.drugs ?? []).map((d) => {
+      const name = checkText("薬剤名", d.name, 80, true);
+      const lot = checkText("ロット番号", d.lot ?? "", 40, false);
+      const amount = checkText("使用量", d.amount ?? "", 40, false);
+      return { name, ...(lot && { lot }), ...(amount && { amount }) };
+    }),
+  };
+  const area = checkText("部位", pick("area"), 200, false);
+  const settings = checkNote("条件", pick("settings"), 1000);
+  const anesthesia = checkText("麻酔", pick("anesthesia"), 100, false);
+  const findings = checkNote("所見・経過", pick("findings"), 8000);
+  const nextPlan = checkText("次回の予定", pick("nextPlan"), 200, false);
+  const operator = checkText("施術者", pick("operator"), 60, false);
+  return { ...out, ...(area && { area }), ...(settings && { settings }), ...(anesthesia && { anesthesia }), ...(findings && { findings }), ...(nextPlan && { nextPlan }), ...(operator && { operator }) };
+}
+
+export function listCharts(patientId: string): ChartEntry[] {
+  return [...state().charts.values()]
+    .filter((c) => c.patientId === patientId && !c.deleted)
+    .sort((a, b) => b.date.localeCompare(a.date) || a.createdAt.localeCompare(b.createdAt));
+}
+
+function liveChart(id: string): ChartEntry {
+  const c = state().charts.get(id);
+  if (!c || c.deleted) throw new StoreError("not_found", "カルテが見つかりません");
+  return c;
+}
+
+export function createChart(patientId: string, input: ChartInput & { date: string }, by?: Actor): ChartEntry {
+  const st = state();
+  const p = st.patients.get(patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  if (p.deleted) throw new StoreError("invalid", "削除された患者にはカルテを書けません");
+  if (input.reservationId) {
+    const r = st.reservations.get(input.reservationId);
+    if (!r || r.patientId !== patientId) throw new StoreError("invalid", "予約が見つかりません");
+  }
+  const c: ChartEntry = {
+    id: `chart-${Date.now().toString(36)}-${randomId()}`,
+    patientId,
+    date: input.date,
+    ...(input.reservationId && { reservationId: input.reservationId }),
+    ...chartFields(input),
+    createdAt: new Date().toISOString(),
+    ...(by && { createdBy: by }),
+    version: 1,
+  };
+  st.charts.set(c.id, c);
+  if (by) audit(by, `カルテを記入（${c.date} ${c.treatment}）`, patientId);
+  return c;
+}
+
+export function updateChart(id: string, input: ChartInput & { version: number }, by?: Actor): ChartEntry {
+  const st = state();
+  const cur = liveChart(id);
+  if (cur.version !== input.version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  const next: ChartEntry = {
+    id: cur.id,
+    patientId: cur.patientId,
+    date: input.date ?? cur.date,
+    ...(cur.reservationId && { reservationId: cur.reservationId }),
+    ...chartFields(input, cur),
+    createdAt: cur.createdAt,
+    ...(cur.createdBy && { createdBy: cur.createdBy }),
+    updatedAt: new Date().toISOString(),
+    ...(by && { updatedBy: by }),
+    version: cur.version + 1,
+  };
+  st.charts.set(id, next);
+  if (by) audit(by, `カルテを変更（${next.date} ${next.treatment}）`, next.patientId);
+  return next;
+}
+
+/** カルテの削除：書いた本人か、管理操作のできるスタッフだけ */
+export function deleteChart(id: string, input: { version: number }, by: Actor & { canManage?: boolean }): ChartEntry {
+  const st = state();
+  const cur = liveChart(id);
+  if (!by.canManage && cur.createdBy?.id !== by.id) throw new AuthError("forbidden", "書いた本人か、管理操作のできるスタッフだけが削除できます");
+  if (cur.version !== input.version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  const actor = { id: by.id, name: by.name };
+  const next: ChartEntry = { ...cur, deleted: { at: new Date().toISOString(), by: actor }, version: cur.version + 1 };
+  st.charts.set(id, next);
+  audit(actor, `カルテを削除（${cur.date} ${cur.treatment}）`, cur.patientId);
   return next;
 }
 

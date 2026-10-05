@@ -210,6 +210,14 @@ try {
             Store::loadConsentTemplate($in['templateId']);
             Http::json(Store::createConsent(V::id($p[1]), $in, $actor($s)), 201);
         }
+        if ($method === 'GET' && $n === 3 && $p[2] === 'charts') {
+            $me();
+            Http::json(['items' => Store::listCharts(V::id($p[1]))]);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'charts') {
+            $s = $me();
+            Http::json(Store::createChart(V::id($p[1]), Schema::createChart(Http::readJson(65_536)), $actor($s)), 201);
+        }
         if ($method === 'GET' && $n === 3 && $p[2] === 'estimates') {
             $me();
             Http::json(['items' => Store::listEstimates(V::id($p[1]))]);
@@ -336,6 +344,19 @@ try {
             $id = V::id($p[1]);
             Store::deletePriceItem($id, $actor($s));
             Http::json(['id' => $id, 'deleted' => true]);
+        }
+    }
+
+    // ---- カルテ ----
+    if ($p[0] === 'charts' && $n >= 2) {
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me();
+            Http::json(Store::updateChart(V::id($p[1]), Schema::updateChart(Http::readJson(65_536)), $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me();
+            $c = Store::deleteChart(V::id($p[1]), Schema::versionOnly(Http::readJson()), $s);
+            Http::json(['id' => $c['id'], 'deleted' => true]);
         }
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { PatientDetail, PatientFile, PriceItem, VisitRow } from "@/lib/domain/types";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import type { ChartEntry, PatientDetail, PatientFile, PriceItem, VisitRow } from "@/lib/domain/types";
 import { INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
 import { formatHm, minutesOfDay, nowInClinic, clinicDateOf } from "@/lib/domain/time";
 import { FileThumbs } from "@/components/files/FileThumbs";
@@ -10,7 +10,9 @@ import { ReservationEditDialog } from "@/components/reservations/ReservationEdit
 import { RichText } from "@/components/richtext/RichText";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { skincareOptions, type SkincareOption } from "@/lib/domain/skincare";
-import { fetchPrices } from "@/components/calendar/api";
+import { fetchCharts, fetchPrices } from "@/components/calendar/api";
+import { ChartCard } from "@/components/charts/ChartCard";
+import { ChartDialog } from "@/components/charts/ChartDialog";
 import { SkincarePicker } from "./SkincarePicker";
 import styles from "./patients.module.css";
 
@@ -117,12 +119,26 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
   const [changing, setChanging] = useState<Res | null>(null);
   const onChange = readOnly ? undefined : (r: Res) => setChanging(r);
 
+  /** カルテ（施術記録）：画面を開いたときと、書いたあとに読み直す */
+  const [charts, setCharts] = useState<ChartEntry[]>([]);
+  const [chartDate, setChartDate] = useState<string | null>(null);
+  const loadCharts = useCallback(() => {
+    fetchCharts(detail.patient.id).then(setCharts, () => {});
+  }, [detail.patient.id]);
+  useEffect(() => {
+    loadCharts();
+  }, [loadCharts]);
+  const chartsByDate = useMemo(() => {
+    const m = new Map<string, ChartEntry[]>();
+    for (const c of charts) m.set(c.date, [...(m.get(c.date) ?? []), c]);
+    return m;
+  }, [charts]);
+
+  // 予約やメモのない日でも、カルテを書いた日・記録を足す日は行に出す
+  const emptyRow = (date: string): VisitRow => ({ date, reservations: [], note: "", skincare: [], files: [], noteVersion: 0 });
+  const extraDates = [...new Set([...(extraDate ? [extraDate] : []), ...chartsByDate.keys()])].filter((d) => !detail.visits.some((v) => v.date === d));
   const rows: VisitRow[] =
-    extraDate && !detail.visits.some((v) => v.date === extraDate)
-      ? [...detail.visits, { date: extraDate, reservations: [], note: "", skincare: [], files: [], noteVersion: 0 }].sort((a, b) =>
-          b.date.localeCompare(a.date),
-        )
-      : detail.visits;
+    extraDates.length > 0 ? [...detail.visits, ...extraDates.map(emptyRow)].sort((a, b) => b.date.localeCompare(a.date)) : detail.visits;
   const todayRow = rows.find((v) => v.date === today);
   const past = rows.filter((v) => v.date !== today);
   const next = detail.upcoming.find((r) => !INACTIVE_STATUSES.has(r.status));
@@ -169,6 +185,8 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
     },
     previousSkincare,
     options,
+    chartsOf: (d: string) => chartsByDate.get(d) ?? [],
+    onChart: (d: string) => setChartDate(d),
   };
 
   return (
@@ -223,6 +241,22 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
         </summary>
         <UpcomingTable items={detail.upcoming} detail={detail} nth={nth} onChange={onChange} />
       </details>
+      {chartDate && (
+        <ChartDialog
+          patientId={detail.patient.id}
+          patientName={detail.patient.name}
+          date={chartDate}
+          reservationId={rows.find((v) => v.date === chartDate)?.reservations.find((r) => !INACTIVE_STATUSES.has(r.status))?.id}
+          menuNames={[...new Set(rows.find((v) => v.date === chartDate)?.reservations.filter((r) => !INACTIVE_STATUSES.has(r.status)).flatMap((r) => r.menuNames) ?? [])]}
+          readOnly={readOnly}
+          onClose={() => {
+            setChartDate(null);
+            // その画面で写真を足したり消したりしたかもしれないので読み直す
+            onFilesChanged();
+          }}
+          onChanged={loadCharts}
+        />
+      )}
       {changing && (
         <ReservationEditDialog
           reservation={changing}
@@ -255,6 +289,8 @@ type RowProps = {
   onSave: (date: string, body: VisitSave) => Promise<void>;
   previousSkincare: (date: string) => string[];
   options: SkincareOption[];
+  chartsOf: (date: string) => ChartEntry[];
+  onChart: (date: string) => void;
 };
 
 function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
@@ -289,7 +325,8 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
   );
 }
 
-function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onEdit, onFilesChanged, onChange }: RowProps & { v: VisitRow }) {
+function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onEdit, onFilesChanged, onChange, chartsOf, onChart }: RowProps & { v: VisitRow }) {
+  const dayCharts = chartsOf(v.date);
   return (
     <tr data-today={v.date === today || undefined}>
       <td className={styles.colDate} data-label="日付">
@@ -301,6 +338,13 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
           <div>
             <button type="button" className={styles.smallBtn} onClick={() => onEdit(v.date)} disabled={editing !== null}>
               {v.noteVersion > 0 ? "編集" : "記入"}
+            </button>
+          </div>
+        )}
+        {(!readOnly || dayCharts.length > 0) && (
+          <div>
+            <button type="button" className={styles.smallBtn} onClick={() => onChart(v.date)} title="カルテ（施術記録）">
+              🩺 カルテ{dayCharts.length > 0 && `（${dayCharts.length}）`}
             </button>
           </div>
         )}
@@ -327,13 +371,18 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
         ))}
       </td>
       <td className={styles.colNote} data-label="メモ">
-        {v.note ? <RichText value={v.note} className={styles.noteText} /> : <span className={styles.muted}>—</span>}
+        {v.note ? <RichText value={v.note} className={styles.noteText} /> : dayCharts.length === 0 && <span className={styles.muted}>—</span>}
         {v.noteUpdatedBy && (
           <div className={styles.writer}>
             記入：{v.noteUpdatedBy.name}
             {v.noteUpdatedAt && `（${formatStamp(v.noteUpdatedAt)}）`}
           </div>
         )}
+        {dayCharts.map((c) => (
+          <button key={c.id} type="button" className={styles.chartLink} onClick={() => onChart(v.date)} aria-label={`${c.treatment}のカルテを開く`}>
+            <ChartCard entry={c} compact />
+          </button>
+        ))}
       </td>
       <td className={styles.colSkin} data-label="スキンケア＆内服">
         <SkincareCell items={v.skincare} priceOf={priceOf} />

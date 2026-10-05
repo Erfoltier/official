@@ -259,6 +259,24 @@ export const updateEstimateSchema = z
   })
   .strict();
 
+const chartDrug = z.object({ name: z.string().max(200), lot: z.string().max(100).optional(), amount: z.string().max(100).optional() }).strict();
+const chartFields = {
+  treatment: z.string().max(300),
+  area: z.string().max(400).optional(),
+  settings: z.string().max(2000).optional(),
+  drugs: z.array(chartDrug).max(10).optional(),
+  anesthesia: z.string().max(200).optional(),
+  findings: z.string().max(16000).optional(),
+  nextPlan: z.string().max(400).optional(),
+  operator: z.string().max(100).optional(),
+};
+
+export const createChartSchema = z.object({ date: dateParam, reservationId: id.optional(), ...chartFields }).strict();
+
+export const updateChartSchema = z
+  .object({ version: z.number().int().positive(), date: dateParam.optional(), ...chartFields, treatment: chartFields.treatment.optional() })
+  .strict();
+
 const productCategory = z.enum(["skincare", "oral"]);
 
 export const productSchema = z

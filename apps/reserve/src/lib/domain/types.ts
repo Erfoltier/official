@@ -248,6 +248,48 @@ export interface Estimate {
   deleted?: { at: string; by?: Actor };
 }
 
+/** カルテ（施術記録）で使った薬剤 */
+export interface ChartDrug {
+  name: string;
+  /** ロット番号 */
+  lot?: string;
+  /** 使用量（例: 1cc、50単位） */
+  amount?: string;
+}
+
+/**
+ * カルテ（施術記録）。日付ごとに施術1件ずつ。写真はその日のファイルを使う。
+ * 所見・経過は文字装飾つき（メモと同じ形）
+ */
+export interface ChartEntry {
+  id: string;
+  patientId: PatientId;
+  /** 施術日（YYYY-MM-DD） */
+  date: string;
+  reservationId?: ReservationId;
+  /** 施術名 */
+  treatment: string;
+  /** 部位 */
+  area?: string;
+  /** 条件（機器・出力・ショット数・深さなど） */
+  settings?: string;
+  drugs: ChartDrug[];
+  /** 麻酔 */
+  anesthesia?: string;
+  /** 所見・経過 */
+  findings?: string;
+  /** 次回の予定 */
+  nextPlan?: string;
+  /** 施術者 */
+  operator?: string;
+  createdAt: string;
+  createdBy?: Actor;
+  updatedAt?: string;
+  updatedBy?: Actor;
+  version: number;
+  deleted?: { at: string; by?: Actor };
+}
+
 /** 見積書の印刷用（患者は書類に載せる項目だけ） */
 export interface EstimateView {
   estimate: Estimate;

@@ -1,4 +1,4 @@
-import type { AuditEntry, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, ChartEntry, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -334,6 +334,26 @@ export function fetchEstimate(id: string): Promise<EstimateView> {
 
 export async function deleteEstimate(id: string, version: number): Promise<void> {
   await call(`/api/v1/estimates/${encodeURIComponent(id)}/delete`, { method: "POST", body: JSON.stringify({ version }) });
+}
+
+// ---- カルテ（施術記録） ----
+
+export async function fetchCharts(patientId: string): Promise<ChartEntry[]> {
+  return (await call<{ items: ChartEntry[] }>(`/api/v1/patients/${encodeURIComponent(patientId)}/charts`)).items;
+}
+
+export type ChartBody = Partial<Pick<ChartEntry, "treatment" | "area" | "settings" | "drugs" | "anesthesia" | "findings" | "nextPlan" | "operator" | "date">>;
+
+export function createChart(patientId: string, body: ChartBody & { date: string; treatment: string; reservationId?: string }): Promise<ChartEntry> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/charts`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function updateChart(id: string, body: ChartBody & { version: number }): Promise<ChartEntry> {
+  return call(`/api/v1/charts/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export async function deleteChart(id: string, version: number): Promise<void> {
+  await call(`/api/v1/charts/${encodeURIComponent(id)}/delete`, { method: "POST", body: JSON.stringify({ version }) });
 }
 
 /** 印刷用ページのURL */
