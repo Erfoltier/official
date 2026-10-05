@@ -1034,6 +1034,27 @@ final class Store
 
     // ---- 患者の削除（論理削除）・復元・統合 ----
 
+    /** 統合してよいかの確認：姓名・セイメイ・生年月日がすべて一致すること。一致しない項目を返す */
+    public static function identityMismatch(array $a, array $b): array
+    {
+        $out = [];
+        $same = fn($x, $y) => !empty($x) && !empty($y) && search_key((string) $x) === search_key((string) $y);
+        if (!$same($a['name'] ?? '', $b['name'] ?? '')) {
+            $out[] = '姓名';
+        }
+        if (empty($a['kana']) || empty($b['kana'])) {
+            $out[] = 'セイメイ（未入力）';
+        } elseif (!$same($a['kana'], $b['kana'])) {
+            $out[] = 'セイメイ';
+        }
+        if (empty($a['birthDate']) || empty($b['birthDate'])) {
+            $out[] = '生年月日（未入力）';
+        } elseif ($a['birthDate'] !== $b['birthDate']) {
+            $out[] = '生年月日';
+        }
+        return $out;
+    }
+
     /** 重複の可能性：フリガナ・氏名・電話番号・生年月日＋フリガナの一致 */
     public static function findDuplicates(array $p): array
     {
@@ -1061,7 +1082,8 @@ final class Store
                 $reasons[] = '生年月日が同じ';
             }
             if ($reasons) {
-                $out[] = ['patient' => $o, 'reasons' => $reasons];
+                $mismatch = self::identityMismatch($p, $o);
+                $out[] = ['patient' => $o, 'reasons' => $reasons, 'identical' => !$mismatch, 'mismatch' => $mismatch];
             }
             if (count($out) >= 5) {
                 break;
@@ -1158,6 +1180,8 @@ final class Store
             'sameDayNotes' => $same,
             'filledFields' => $filled,
             'lineConflict' => !empty($keep['lineUserId']) && !empty($dup['lineUserId']) && $keep['lineUserId'] !== $dup['lineUserId'],
+            'identical' => !self::identityMismatch($keep, $dup),
+            'mismatch' => self::identityMismatch($keep, $dup),
         ];
     }
 
@@ -1171,6 +1195,10 @@ final class Store
             [$keep, $dup] = self::mergeTargets($input['keepId'], $input['dupId']);
             if ($keep['version'] !== $input['keepVersion'] || $dup['version'] !== $input['dupVersion']) {
                 throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+            }
+            $mismatch = self::identityMismatch($keep, $dup);
+            if ($mismatch) {
+                throw new StoreError('invalid', '姓名・セイメイ・生年月日がすべて一致する患者だけ統合できます（一致しない項目：' . implode('・', $mismatch) . '）');
             }
             $at = now_iso();
             $preview = self::previewMerge($keep['id'], $dup['id']);

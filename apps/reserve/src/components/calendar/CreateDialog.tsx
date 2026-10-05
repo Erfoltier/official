@@ -135,7 +135,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
       setPatient(null);
       setNewPatient(null);
       setQuery(r.phone ?? "");
-      notes.push("同じ電話番号の患者がいます。同じ方なら選び、違う方なら「新しい患者として登録」を押してください");
+      notes.push("同じ電話番号の患者がいます。同じ方なら選び、違う方なら「＋新規患者登録」を押してください");
     } else {
       setPatient(null);
       setNewPatient({ name: "", kana: "", nameAlt: "", phone: "", m3ChartNo: "", birthDate: "", ...fromRequest(r) });
@@ -370,7 +370,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                   })
                 }
               >
-                ＋ 新しい患者として登録
+                ＋新規患者登録
               </button>
             </>
           )}

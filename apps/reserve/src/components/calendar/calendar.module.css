@@ -1026,3 +1026,108 @@ button.treatChip[data-active] {
   font-size: 12px;
   white-space: pre-line;
 }
+
+/* ===== 予約の詳細：番号類（名前の下に小さく） ===== */
+.idLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.idLine > span:not(.idEdit),
+.idBtn {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+
+.idBtn {
+  border: 1px dashed #c4b2ec;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 11px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idInput {
+  height: 24px;
+  width: 210px;
+  max-width: 100%;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.miniBtn {
+  margin-left: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #cdbfee;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reschedule {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid #e3d8f5;
+  border-radius: 10px;
+  background: var(--grad-soft);
+}
+
+.reschedGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.reschedGrid label {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.reschedGrid .input {
+  height: 32px;
+  padding: 0 4px;
+  font-size: 13px;
+}
+
+.reschedQuick {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.reschedQuick .miniBtn {
+  margin-left: 0;
+}
+
+.reschedPreview {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+@media (max-width: 420px) {
+  .reschedGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -43,8 +43,8 @@ describe("M3カルテ番号", () => {
 
   it("統合すると、統合先の空欄に統合元のM3カルテ番号が入る", async () => {
     const s = await store();
-    const keep = s.createPatient({ name: "森 りな" });
-    const dup = s.createPatient({ name: "森 りな", m3ChartNo: "9090" });
+    const keep = s.createPatient({ name: "森 りな", kana: "モリ リナ", birthDate: "1988-08-08" });
+    const dup = s.createPatient({ name: "森 りな", kana: "モリ リナ", birthDate: "1988-08-08", m3ChartNo: "9090" });
     const merged = s.mergePatients({ keepId: keep.id, dupId: dup.id, keepVersion: keep.version, dupVersion: dup.version });
     expect(merged.m3ChartNo).toBe("9090");
   });

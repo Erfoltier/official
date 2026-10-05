@@ -59,6 +59,7 @@ export function DuplicateBanner(props: { detail: PatientDetail; canManage: boole
   return (
     <div className={styles.dupBanner}>
       <strong>同じ人が重複して登録されているかもしれません</strong>
+      <div className={styles.dupNote}>姓名・セイメイ・生年月日がすべて一致する場合だけ、確認のうえ統合できます。</div>
       <ul>
         {duplicates.map((d) => (
           <li key={d.patient.id}>
@@ -66,10 +67,18 @@ export function DuplicateBanner(props: { detail: PatientDetail; canManage: boole
               {d.patient.name}（診察券 {d.patient.chartNo}）
             </a>
             <span className={styles.muted}>{d.reasons.join("・")}</span>
-            {props.canManage && (
-              <button type="button" className={styles.smallBtn} onClick={() => props.onMerge(d.patient)}>
-                この患者とまとめる
-              </button>
+            {d.identical ? (
+              props.canManage ? (
+                <button type="button" className={styles.mergeBtn} onClick={() => props.onMerge(d.patient)}>
+                  確認して統合
+                </button>
+              ) : (
+                <span className={styles.muted}>（統合は院長・管理者と受付が行えます）</span>
+              )
+            ) : (
+              <span className={styles.noMerge} title="姓名・セイメイ・生年月日がすべて一致する場合だけ統合できます">
+                統合不可：{d.mismatch.join("・")}が一致しません
+              </span>
             )}
           </li>
         ))}
@@ -92,7 +101,7 @@ function Summary({ p }: { p: Patient }) {
       <div className={styles.mergeName}>{p.name}</div>
       <div className={styles.muted}>診察券 {p.chartNo}</div>
       <dl>
-        <dt>フリガナ</dt>
+        <dt>セイメイ</dt>
         <dd>{p.kana || "—"}</dd>
         <dt>別の表記</dt>
         <dd>{p.nameAlt || "—"}</dd>
@@ -231,6 +240,12 @@ export function MergeDialog(props: {
             })}
           </div>
 
+          {preview && !preview.identical && (
+            <div className={styles.alert}>
+              姓名・セイメイ・生年月日がすべて一致しないため統合できません（一致しない項目：{preview.mismatch.join("・")}）。
+              同じ方であれば、先に患者情報を直してください。
+            </div>
+          )}
           {preview ? (
             <ul className={styles.previewList}>
               <li>予約 {preview.reservations} 件を移します</li>
@@ -258,7 +273,7 @@ export function MergeDialog(props: {
             <button type="button" className={styles.btn} onClick={props.onClose}>
               やめる
             </button>
-            <button type="button" className={styles.dangerFill} disabled={!preview || busy} onClick={run}>
+            <button type="button" className={styles.dangerFill} disabled={!preview || !preview.identical || busy} onClick={run}>
               統合する
             </button>
           </div>

@@ -108,6 +108,10 @@ export interface Patient {
 export interface DuplicateCandidate {
   patient: Patient;
   reasons: string[];
+  /** 姓名・セイメイ・生年月日がすべて一致し、統合できる */
+  identical: boolean;
+  /** 一致しない（または未入力の）項目。統合できない理由 */
+  mismatch: string[];
 }
 
 /** 統合した場合に何が起きるかの事前確認 */
@@ -122,6 +126,10 @@ export interface MergePreview {
   filledFields: string[];
   /** 両方がLINEと紐付いている（統合先の紐付けを残す） */
   lineConflict: boolean;
+  /** 姓名・セイメイ・生年月日がすべて一致し、統合できる */
+  identical: boolean;
+  /** 一致しない（または未入力の）項目 */
+  mismatch: string[];
 }
 
 /** 患者情報の変更履歴。値そのものは残さず、いつ・誰が・どの項目を変えたかだけ記録する */

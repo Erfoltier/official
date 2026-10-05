@@ -43,6 +43,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   const gridRef = useRef<DayGridHandle>(null);
   const busyRef = useRef(false);
+  /** 別の日へ移した予約を、その日の読み込み後に選ぶ */
+  const pendingSelect = useRef<string | null>(null);
   const didInitialScroll = useRef<string | null>(null);
 
   const showToast = useCallback((text: string, kind: "info" | "error" = "info") => {
@@ -55,6 +57,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
       try {
         const b = await fetchDay(d, signal);
         setBundle(b);
+        if (pendingSelect.current && b.reservations.some((x) => x.id === pendingSelect.current)) {
+          setSelectedId(pendingSelect.current);
+          pendingSelect.current = null;
+        }
         setLoadError(null);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
@@ -135,6 +141,34 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   const onMemo = (r: Reservation, memo: string) => {
     save(r, { version: r.version, memo }, { ...r, memo });
+  };
+
+  /** 予約の日時・レーンを変更する。別の日へ移したときはその日を表示する */
+  const onReschedule = async (r: Reservation, to: { date: string; startMin: number; endMin: number; laneId: string }) => {
+    busyRef.current = true;
+    try {
+      const next = await patchReservation(r.id, {
+        version: r.version,
+        laneId: to.laneId,
+        startAt: toIso(to.date, to.startMin),
+        endAt: toIso(to.date, to.endMin),
+      });
+      if (to.date !== date) {
+        showToast(`${formatDateJa(to.date)} に移動しました`);
+        pendingSelect.current = next.id;
+        setDate(to.date);
+      } else {
+        applyLocal(next);
+        showToast("日時を変更しました");
+      }
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "変更できませんでした", "error");
+      if (err instanceof ApiError && err.status === 409) load(date);
+      return false;
+    } finally {
+      busyRef.current = false;
+    }
   };
 
   const onRequestId = (r: Reservation, requestId: string) => {
@@ -326,6 +360,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onStatus={(s) => onStatus(selected, s)}
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}
+            onReschedule={(to) => onReschedule(selected, to)}
             onEditPatient={() => setEditPatientId(selected.patientId)}
           />
         )}

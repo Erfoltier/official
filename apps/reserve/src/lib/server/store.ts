@@ -934,6 +934,21 @@ function digits(s?: string): string {
 }
 
 /** 重複の可能性：フリガナ・氏名・電話番号・生年月日＋フリガナの一致 */
+/**
+ * 統合してよいかの確認：姓名・セイメイ（フリガナ）・生年月日がすべて一致すること。
+ * 表記の揺れ（空白・全角半角・ひらがな／カタカナ）は同じとみなす。一致しない項目を返す
+ */
+export function identityMismatch(a: Patient, b: Patient): string[] {
+  const out: string[] = [];
+  const same = (x?: string, y?: string) => !!x && !!y && searchKey(x) === searchKey(y);
+  if (!same(a.name, b.name)) out.push("姓名");
+  if (!a.kana || !b.kana) out.push("セイメイ（未入力）");
+  else if (!same(a.kana, b.kana)) out.push("セイメイ");
+  if (!a.birthDate || !b.birthDate) out.push("生年月日（未入力）");
+  else if (a.birthDate !== b.birthDate) out.push("生年月日");
+  return out;
+}
+
 export function findDuplicates(p: Patient): DuplicateCandidate[] {
   const out: DuplicateCandidate[] = [];
   const kana = searchKey(p.kana ?? "");
@@ -947,7 +962,10 @@ export function findDuplicates(p: Patient): DuplicateCandidate[] {
     if (phone.length >= 8 && digits(o.phone) === phone) reasons.push("電話番号が同じ");
     if (p.m3ChartNo && o.m3ChartNo === p.m3ChartNo) reasons.push("M3カルテ番号が同じ");
     if (p.birthDate && o.birthDate === p.birthDate && reasons.length > 0) reasons.push("生年月日が同じ");
-    if (reasons.length > 0) out.push({ patient: o, reasons });
+    if (reasons.length > 0) {
+      const mismatch = identityMismatch(p, o);
+      out.push({ patient: o, reasons, identical: mismatch.length === 0, mismatch });
+    }
     if (out.length >= 5) break;
   }
   return out;
@@ -1023,6 +1041,8 @@ export function previewMerge(keepId: string, dupId: string): MergePreview {
     sameDayNotes: dupNotes.filter((n) => keepDates.has(n.date)).map((n) => n.date).sort(),
     filledFields: FILLABLE.filter((k) => !keep[k] && dup[k]).map((k) => FIELD_LABEL[k] ?? k),
     lineConflict: !!keep.lineUserId && !!dup.lineUserId && keep.lineUserId !== dup.lineUserId,
+    identical: identityMismatch(keep, dup).length === 0,
+    mismatch: identityMismatch(keep, dup),
   };
 }
 
@@ -1041,6 +1061,10 @@ function mergePatientsImpl(
   const { keep, dup } = mergeTargets(input.keepId, input.dupId);
   if (keep.version !== input.keepVersion || dup.version !== input.dupVersion) {
     throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
+  }
+  const mismatch = identityMismatch(keep, dup);
+  if (mismatch.length > 0) {
+    throw new StoreError("invalid", `姓名・セイメイ・生年月日がすべて一致する患者だけ統合できます（一致しない項目：${mismatch.join("・")}）`);
   }
   const at = new Date().toISOString();
   const preview = previewMerge(keep.id, dup.id);
