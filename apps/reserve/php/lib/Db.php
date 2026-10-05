@@ -122,7 +122,7 @@ final class Db
     {
         $sql = $this->mysql
             ? 'INSERT INTO blobs (id, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)'
-            : 'INSERT INTO blobs (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data';
+            : 'INSERT OR REPLACE INTO blobs (id, data) VALUES (?, ?)';
         $st = $this->pdo->prepare($sql);
         $st->bindValue(1, $id);
         $st->bindValue(2, $this->encryptBytes($bytes), PDO::PARAM_LOB);
@@ -234,8 +234,8 @@ final class Db
         $sql = $this->mysql
             ? 'INSERT INTO docs (kind, id, data, updated_at, k1, k2) VALUES (?, ?, ?, ?, ?, ?)
                ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at), k1 = VALUES(k1), k2 = VALUES(k2)'
-            : 'INSERT INTO docs (kind, id, data, updated_at, k1, k2) VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(kind, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, k1 = excluded.k1, k2 = excluded.k2';
+            // 共用サーバーの SQLite は古いことがあるため（ロリポップは ON CONFLICT 非対応）、昔からある書き方を使う
+            : 'INSERT OR REPLACE INTO docs (kind, id, data, updated_at, k1, k2) VALUES (?, ?, ?, ?, ?, ?)';
         $st = $this->pdo->prepare($sql);
         $st->bindValue(1, $kind);
         $st->bindValue(2, $id);

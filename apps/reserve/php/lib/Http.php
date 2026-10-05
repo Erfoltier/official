@@ -46,9 +46,40 @@ final class Http
         if ($err instanceof InputError) {
             self::json(['error' => 'invalid', 'message' => '入力内容が正しくありません'], 400);
         }
-        // 詳細（患者情報を含みうる）は応答にもログにも出さない
+        // 応答には詳細を出さない。原因調査のため、種類・場所だけを data/diag.txt（外から見えない）に残す
         error_log('reserve: unexpected error ' . get_class($err));
+        self::logError($err);
         self::json(['error' => 'internal', 'message' => 'サーバーでエラーが発生しました'], 500);
+    }
+
+    /** 想定外のエラーの記録（患者情報を含まないよう、エラーの種類・プログラムの場所・PHPの版だけ） */
+    public static function logError(Throwable $err): void
+    {
+        try {
+            $file = RESERVE_ROOT . '/data/diag.txt';
+            if (is_file($file) && filesize($file) > 200_000) {
+                @rename($file, $file . '.old');
+            }
+            $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+            $path = (string) preg_replace('#/(p|r|f)-[^/]+#', '/$1-…', $path);
+            $msg = $err instanceof PDOException || $err instanceof JsonException || $err instanceof TypeError || $err instanceof ValueError
+                || $err instanceof RuntimeException || $err instanceof Error
+                ? mb_substr(preg_replace('/\s+/', ' ', $err->getMessage()), 0, 200) : '';
+            $line = sprintf(
+                "%s PHP%s %s %s %s:%d %s\n",
+                date('c'),
+                PHP_VERSION,
+                $path,
+                get_class($err),
+                basename($err->getFile()),
+                $err->getLine(),
+                $msg,
+            );
+            @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+            @chmod($file, 0644); // 患者情報は含まない。FTP の画面から読めるように
+        } catch (Throwable) {
+            // 記録に失敗しても応答は返す
+        }
     }
 
     /** 実際のメソッド。共用サーバーで PUT/PATCH/DELETE が通らないため、POST + X-HTTP-Method-Override も受け付ける */
