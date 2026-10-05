@@ -196,3 +196,88 @@
 .navNext {
   right: 8px;
 }
+
+/* ===== 画面の中のカメラ ===== */
+.camera {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  background: #0d0a14;
+}
+
+.cameraStage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cameraVideo {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.cameraError {
+  position: absolute;
+  max-width: 420px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--danger);
+  font-size: 14px;
+  text-align: center;
+}
+
+.cameraBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  background: rgb(0 0 0 / 60%);
+}
+
+.shutter {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  border: 5px solid #fff;
+  background: var(--grad);
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 25%);
+}
+
+.shutter:disabled {
+  opacity: 0.4;
+}
+
+.useBtn {
+  height: 44px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--grad);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* 表の中の小さな追加ボタン：枠からはみ出さないよう折り返す */
+.uploader[data-compact] .uploadBtns {
+  flex-wrap: wrap;
+}
+
+.uploader[data-compact] .camBtn,
+.uploader[data-compact] .pickBtn {
+  flex: 1 1 64px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

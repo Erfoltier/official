@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { PatientFile } from "@/lib/domain/types";
 import { ApiError, uploadFile } from "@/components/calendar/api";
 import { ACCEPT_FILES, prepareFile } from "./prepare";
+import { CameraDialog } from "./CameraDialog";
 import styles from "./files.module.css";
 
 /**
@@ -22,6 +23,13 @@ export function FileUploader(props: {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState(false);
+  const [camera, setCamera] = useState(false);
+
+  /** スマホ・iPad（指で操作する端末）は端末のカメラアプリを、パソコンは画面の中のカメラを使う */
+  const openCamera = () => {
+    if (window.matchMedia("(pointer: coarse)").matches) cameraRef.current?.click();
+    else setCamera(true);
+  };
 
   const send = async (files: FileList | File[]) => {
     const list = [...files];
@@ -58,7 +66,7 @@ export function FileUploader(props: {
       }}
     >
       <div className={styles.uploadBtns}>
-        <button type="button" className={styles.camBtn} onClick={() => cameraRef.current?.click()} disabled={!!busy}>
+        <button type="button" className={styles.camBtn} onClick={openCamera} disabled={!!busy}>
           📷 撮影
         </button>
         <button type="button" className={styles.pickBtn} onClick={() => pickRef.current?.click()} disabled={!!busy}>
@@ -88,6 +96,21 @@ export function FileUploader(props: {
           e.target.value = "";
         }}
       />
+      {camera && (
+        <CameraDialog
+          onClose={() => setCamera(false)}
+          onUnavailable={() => {
+            setCamera(false);
+            cameraRef.current?.click();
+          }}
+          onShot={async (blob) => {
+            const d = new Date();
+            const pad = (n: number) => String(n).padStart(2, "0");
+            const name = `撮影_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.jpg`;
+            await send([new File([blob], name, { type: "image/jpeg" })]);
+          }}
+        />
+      )}
       {busy && <div className={styles.busy}>{busy}</div>}
       {error && <div className={styles.error}>{error}</div>}
     </div>

@@ -853,7 +853,7 @@ details.section[open] > summary.sectionTitle {
 }
 
 /* ===== 施術歴（今回・過去・今後） ===== */
-.history {
+.treatHistory {
   display: grid;
   gap: 14px;
 }
@@ -1049,4 +1049,22 @@ details:not([open]) > summary.histTitle {
     flex-direction: column;
     gap: 2px;
   }
+}
+
+.colFiles {
+  width: 19%;
+}
+
+.visitTable td.colFiles {
+  overflow: hidden;
+}
+
+.todayChip {
+  display: inline-block;
+  width: auto;
+  max-width: max-content;
+  vertical-align: middle;
+  line-height: 1.6;
+  padding: 0 7px;
+  font-weight: 700;
 }

@@ -132,7 +132,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
   };
 
   return (
-    <div className={styles.history}>
+    <div className={styles.treatHistory}>
       <section className={styles.histBlock} data-kind="now">
         <h3 className={styles.histTitle}>今回の予約</h3>
         {todayRow ? (
@@ -152,7 +152,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
 
       <details className={styles.histBlock} open>
         <summary className={styles.histTitle}>
-          過去の履歴 <span className={styles.histCount}>{past.length}日</span>
+          過去の履歴 <span className={styles.histCount}>{past.length}件</span>
         </summary>
         {!readOnly && (
           <div className={styles.tableTools}>
