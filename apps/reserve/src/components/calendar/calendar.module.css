@@ -1135,3 +1135,84 @@ button.treatChip[data-active] {
 .panelFiles {
   margin-bottom: 6px;
 }
+
+/* ===== 状態（院で決めたもの） ===== */
+.stagePill {
+  flex: none;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--sc);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+  max-width: 7em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--sc) 40%, transparent);
+}
+
+.blockLine .stagePill {
+  font-size: min(10px, var(--fs, 10px));
+  line-height: 1.3;
+  margin-left: 4px;
+}
+
+.blockLine .blockTreat {
+  flex: 1 1 auto;
+}
+
+.stageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.stageBtn {
+  min-height: 34px;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--sc) 45%, #fff);
+  border-left: 4px solid var(--sc);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--sc) 8%, #fff);
+  color: color-mix(in srgb, var(--sc) 60%, #1f1630);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stageBtn[data-active] {
+  background: var(--sc);
+  border-color: var(--sc);
+  color: #fff;
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--sc) 40%, transparent);
+}
+
+.freeRow {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.freeRow .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 日時変更：狭い画面でも時刻が欠けないよう2列に */
+.reschedGrid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.reschedGrid .input {
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
+  padding: 0 6px;
+}

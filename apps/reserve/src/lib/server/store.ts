@@ -5,6 +5,7 @@ import type {
   Actor,
   ClinicSettings,
   Product,
+  Stage,
   PatientFile,
   FileKind,
   DayBundle,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 import { DEFAULT_PRODUCTS } from "@/lib/seed/products";
+import { DEFAULT_STAGES, STAGE_FOR_STATUS } from "@/lib/seed/stages";
 import { audit } from "@/lib/server/staff";
 import { PersistentMap, PersistentSet, count, getBlob, getMeta, put, putBlob, setMeta, transaction } from "@/lib/server/db";
 
@@ -56,6 +58,7 @@ export function demoEnabled(): boolean {
 
 interface StoreState {
   products: Map<string, Product>;
+  stages: Map<string, Stage>;
   files: Map<string, PatientFile>;
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
@@ -86,7 +89,13 @@ function state(): StoreState {
         if (count("product") === 0) for (const p of DEFAULT_PRODUCTS) put("product", p.id, p);
         setMeta("productsSeeded", true);
       }
+      // 状態（院ごとに増減できる）も同じく1回だけ入れる
+      if (!getMeta<boolean>("stagesSeeded")) {
+        if (count("stage") === 0) for (const s of DEFAULT_STAGES) put("stage", s.id, s);
+        setMeta("stagesSeeded", true);
+      }
       return {
+        stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
         lanes: new PersistentMap<Lane>("lane"),
@@ -175,6 +184,7 @@ export function getDayBundle(date: string): DayBundle {
     menus: sortedMenus(),
     reservations,
     patients: [...patientIds].map((id) => st.patients.get(id)!).filter(Boolean),
+    stages: sortedStages(),
   };
 }
 
@@ -222,7 +232,76 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
 }
 
 export function getSettings() {
-  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus(), products: sortedProducts() };
+  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus(), products: sortedProducts(), stages: sortedStages() };
+}
+
+// ---- 状態（予約・来院済・医師待ち…。院ごとに増減できる） ----
+
+function sortedStages(): Stage[] {
+  return [...state().stages.values()].sort((a, b) => a.order - b.order);
+}
+
+/** 予約の状態の表示名（自由入力ならその文字。キャンセルはそのまま） */
+export function stageLabelOf(r: Reservation): string {
+  if (INACTIVE_STATUSES.has(r.status)) return STATUS_LABEL[r.status];
+  const s = state().stages.get(r.stageId ?? STAGE_FOR_STATUS[r.status] ?? "");
+  if (!s) return STATUS_LABEL[r.status];
+  return s.free && r.stageText ? r.stageText : s.label;
+}
+
+export type StageInput = Partial<Pick<Stage, "label" | "color" | "phase" | "free" | "active">>;
+
+function validateStage(s: Stage): Stage {
+  const label = checkText("状態の名前", s.label, 12, true);
+  for (const o of state().stages.values()) {
+    if (o.id !== s.id && o.label === label) throw new StoreError("invalid", "同じ名前の状態があります");
+  }
+  if (!/^#[0-9a-fA-F]{6}$/.test(s.color)) throw new StoreError("invalid", "色の指定が正しくありません");
+  return { ...s, label };
+}
+
+export function createStage(input: StageInput, by?: Actor): Stage {
+  const st = state();
+  if (st.stages.size >= 60) throw new StoreError("invalid", "登録できる数を超えています");
+  const s = validateStage({
+    id: `stage-${Date.now().toString(36)}-${++st.seq}`,
+    label: input.label ?? "",
+    color: input.color ?? "#6366f1",
+    phase: input.phase ?? "arrived",
+    free: input.free ?? false,
+    order: Math.max(-1, ...[...st.stages.values()].map((x) => x.order)) + 1,
+    active: input.active ?? true,
+  });
+  st.stages.set(s.id, s);
+  if (by) audit(by, "状態を追加", s.id);
+  return s;
+}
+
+export function updateStage(id: string, input: StageInput, by?: Actor): Stage {
+  const st = state();
+  const cur = st.stages.get(id);
+  if (!cur) throw new StoreError("not_found", "状態が見つかりません");
+  const next = validateStage({ ...cur, ...input, id: cur.id, order: cur.order });
+  if (cur.active && !next.active && [...st.stages.values()].filter((x) => x.active).length <= 1) {
+    throw new StoreError("invalid", "表示する状態は1つ以上必要です");
+  }
+  st.stages.set(id, next);
+  if (by) audit(by, "状態を変更", id);
+  return next;
+}
+
+function reorderStagesImpl(ids: string[], by?: Actor): Stage[] {
+  const st = state();
+  if (ids.length !== st.stages.size || !ids.every((id) => st.stages.has(id))) {
+    throw new StoreError("invalid", "並び順の指定が正しくありません");
+  }
+  ids.forEach((id, i) => st.stages.set(id, { ...st.stages.get(id)!, order: i }));
+  if (by) audit(by, "状態を並べ替え");
+  return sortedStages();
+}
+
+export function reorderStages(...args: Parameters<typeof reorderStagesImpl>): ReturnType<typeof reorderStagesImpl> {
+  return transaction(() => reorderStagesImpl(...args));
 }
 
 // ---- ファイル（同意書のスキャン・写真・PDF・Word） ----
@@ -507,6 +586,10 @@ export interface UpdateReservationInput {
   memo?: string;
   /** 空文字で削除 */
   requestId?: string;
+  /** 院で決めた状態。指定すると status はその段階になる */
+  stageId?: string;
+  /** 自由入力の状態の文字 */
+  stageText?: string;
 }
 
 export function updateReservation(id: string, input: UpdateReservationInput, by?: Actor): Reservation {
@@ -545,12 +628,25 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
     if (input.requestId) next.requestId = input.requestId;
     else delete next.requestId;
   }
+  if (input.stageId !== undefined) {
+    const stage = st.stages.get(input.stageId);
+    if (!stage || (!stage.active && stage.id !== cur.stageId)) throw new StoreError("invalid", "状態が見つかりません");
+    next.stageId = stage.id;
+    next.status = stage.phase;
+    const text = stage.free ? checkText("状態", input.stageText ?? "", 20, false) : "";
+    if (text) next.stageText = text;
+    else delete next.stageText;
+  } else if (input.status !== undefined && !INACTIVE_STATUSES.has(input.status)) {
+    // 段階だけを直接変えたとき（古い画面・外部連携）は、院の状態の選択を外す
+    delete next.stageId;
+    delete next.stageText;
+  }
   st.reservations.set(id, next);
   if (by) {
     const what = [
       timeChanged || input.endAt !== undefined ? "時間" : null,
       input.laneId !== undefined && input.laneId !== cur.laneId ? "レーン" : null,
-      input.status !== undefined ? `状態→${STATUS_LABEL[input.status]}` : null,
+      input.stageId !== undefined ? `状態→${stageLabelOf(next)}` : input.status !== undefined ? `状態→${STATUS_LABEL[input.status]}` : null,
       input.menuIds !== undefined ? "メニュー" : null,
       input.memo !== undefined ? "メモ" : null,
       input.requestId !== undefined ? "予約申請ID" : null,
@@ -830,6 +926,7 @@ function reservationSummary(r: Reservation): VisitRow["reservations"][number] {
     menuNames: r.menuIds.map((mid) => st.menus.get(mid)?.name ?? ""),
     laneName: st.lanes.get(r.laneId)?.name ?? "",
     menuIds: r.menuIds,
+    stageLabel: stageLabelOf(r),
     ...(r.memo && { memo: r.memo }),
     ...(r.requestId && { requestId: r.requestId }),
   };

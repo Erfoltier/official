@@ -882,5 +882,131 @@
    "order": 11,
    "active": true
   }
- ]
+ ],
+ "stages": [
+  {
+   "id": "stage-booked",
+   "label": "予約",
+   "phase": "booked",
+   "color": "#94a3b8",
+   "free": false,
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "stage-arrived",
+   "label": "来院済",
+   "phase": "arrived",
+   "color": "#0ea5e9",
+   "free": false,
+   "order": 1,
+   "active": true
+  },
+  {
+   "id": "stage-wait-dr",
+   "label": "医師待ち",
+   "phase": "arrived",
+   "color": "#f59e0b",
+   "free": false,
+   "order": 2,
+   "active": true
+  },
+  {
+   "id": "stage-wait-ns",
+   "label": "看護師待ち",
+   "phase": "arrived",
+   "color": "#f97316",
+   "free": false,
+   "order": 3,
+   "active": true
+  },
+  {
+   "id": "stage-wait-photo",
+   "label": "撮影待ち",
+   "phase": "arrived",
+   "color": "#14b8a6",
+   "free": false,
+   "order": 4,
+   "active": true
+  },
+  {
+   "id": "stage-wait-anes",
+   "label": "麻酔待ち",
+   "phase": "arrived",
+   "color": "#06b6d4",
+   "free": false,
+   "order": 5,
+   "active": true
+  },
+  {
+   "id": "stage-exam",
+   "label": "診察中",
+   "phase": "in_treatment",
+   "color": "#8b5cf6",
+   "free": false,
+   "order": 6,
+   "active": true
+  },
+  {
+   "id": "stage-treat",
+   "label": "処置中",
+   "phase": "in_treatment",
+   "color": "#a855f7",
+   "free": false,
+   "order": 7,
+   "active": true
+  },
+  {
+   "id": "stage-standby",
+   "label": "待機中",
+   "phase": "arrived",
+   "color": "#64748b",
+   "free": false,
+   "order": 8,
+   "active": true
+  },
+  {
+   "id": "stage-consider",
+   "label": "検討中",
+   "phase": "arrived",
+   "color": "#eab308",
+   "free": false,
+   "order": 9,
+   "active": true
+  },
+  {
+   "id": "stage-checkout",
+   "label": "会計待ち",
+   "phase": "checkout",
+   "color": "#ec4899",
+   "free": false,
+   "order": 10,
+   "active": true
+  },
+  {
+   "id": "stage-done",
+   "label": "帰宅",
+   "phase": "done",
+   "color": "#22c55e",
+   "free": false,
+   "order": 11,
+   "active": true
+  },
+  {
+   "id": "stage-free",
+   "label": "自由入力",
+   "phase": "arrived",
+   "color": "#6366f1",
+   "free": true,
+   "order": 12,
+   "active": true
+  }
+ ],
+ "stageForStatus": {
+  "booked": "stage-booked",
+  "arrived": "stage-arrived",
+  "in_treatment": "stage-treat",
+  "checkout": "stage-checkout",
+  "done": "stage-done"
+ }
 }

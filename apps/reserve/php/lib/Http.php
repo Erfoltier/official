@@ -297,6 +297,8 @@ final class Schema
             'menuIds?' => fn($x) => V::ids($x, 1, 5),
             'memo?' => fn($x) => V::str($x, 500),
             'requestId?' => fn($x) => $x === '' ? '' : V::requestId($x),
+            'stageId?' => [V::class, 'id'],
+            'stageText?' => fn($x) => V::str($x, 40),
         ]);
     }
 
@@ -396,6 +398,17 @@ final class Schema
             'name?' => fn($x) => V::str($x, 120),
             'category?' => fn($x) => V::enum($x, ['skincare', 'oral']),
             'priceYen?' => fn($x) => $x === null ? null : V::int($x),
+            'active?' => [V::class, 'bool'],
+        ]);
+    }
+
+    public static function stage(mixed $v): array
+    {
+        return V::shape($v, [
+            'label?' => fn($x) => V::str($x, 40),
+            'color?' => fn($x) => V::str($x, 7),
+            'phase?' => fn($x) => V::enum($x, ['booked', 'arrived', 'in_treatment', 'checkout', 'done']),
+            'free?' => [V::class, 'bool'],
             'active?' => [V::class, 'bool'],
         ]);
     }

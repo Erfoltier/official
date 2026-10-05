@@ -461,6 +461,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
                   reservation={r}
                   patient={patients.get(r.patientId)}
                   menus={r.menuIds.map((id) => menus.get(id)).filter((t): t is Menu => !!t)}
+                  stages={bundle.stages}
                   top={(start - dayStart) * scale}
                   height={(visualEnd - start) * scale}
                   col={p?.col ?? 0}
@@ -481,6 +482,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
                 reservation={dragged}
                 patient={patients.get(dragged.patientId)}
                 menus={dragged.menuIds.map((id) => menus.get(id)).filter((t): t is Menu => !!t)}
+                stages={bundle.stages}
                 top={(drag.startMin - dayStart) * scale}
                 height={Math.max(MIN_BLOCK_PX, (drag.endMin - drag.startMin) * scale)}
                 col={0}

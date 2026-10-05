@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
-import { STATUS_LABEL } from "@/lib/domain/types";
+import { INACTIVE_STATUSES } from "@/lib/domain/types";
+import { stageOf } from "./stages";
 import { addDays, formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
 import { displayName } from "./names";
 import styles from "./calendar.module.css";
-
-const FLOW: ReservationStatus[] = ["booked", "arrived", "in_treatment", "checkout", "done"];
 
 const REMINDER_LABEL = {
   pending: "未送信",
@@ -26,6 +25,8 @@ interface Props {
   maskNames: boolean;
   onClose: () => void;
   onStatus: (s: ReservationStatus) => void;
+  /** 院で決めた状態を選ぶ（自由入力は文字も） */
+  onStage: (stageId: string, text?: string) => void;
   onMemo: (memo: string) => void;
   onRequestId: (requestId: string) => void;
   /** 日時・レーンの変更（別の日への移動も可） */
@@ -35,13 +36,16 @@ interface Props {
   canManage?: boolean;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
   const [memo, setMemo] = useState(r.memo ?? "");
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
+  const sv = stageOf(r, bundle.stages);
+  const freeStage = bundle.stages.find((s) => s.free && s.active);
+  const [freeText, setFreeText] = useState<string | null>(null);
   const [files, setFiles] = useState<PatientFile[] | null>(null);
   useEffect(() => {
     let alive = true;
@@ -273,18 +277,59 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
 
       <div className={styles.panelSection}>
         <div className={styles.sectionLabel}>状態</div>
-        <div className={styles.statusRow}>
-          {FLOW.map((s) => (
-            <button
-              key={s}
-              className={styles.statusBtn}
-              data-active={r.status === s || undefined}
-              onClick={() => onStatus(s)}
-            >
-              {STATUS_LABEL[s]}
-            </button>
-          ))}
+        <div className={styles.stageGrid}>
+          {bundle.stages
+            .filter((s) => s.active || s.id === sv.stage?.id)
+            .map((s) => {
+              const on = !INACTIVE_STATUSES.has(r.status) && sv.stage?.id === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={styles.stageBtn}
+                  style={{ "--sc": s.color } as CSSProperties}
+                  data-active={on || undefined}
+                  aria-pressed={on}
+                  onClick={() => (s.free ? setFreeText(on ? (r.stageText ?? "") : "") : onStage(s.id))}
+                >
+                  {s.free && on && r.stageText ? r.stageText : s.label}
+                </button>
+              );
+            })}
         </div>
+        {freeText !== null && (
+          <div className={styles.freeRow}>
+            <input
+              className={styles.input}
+              value={freeText}
+              maxLength={20}
+              autoFocus
+              placeholder="例：パッチテスト中"
+              aria-label="状態（自由入力）"
+              onChange={(e) => setFreeText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && freeText.trim()) {
+                  onStage(freeStage!.id, freeText.trim());
+                  setFreeText(null);
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              disabled={!freeText.trim()}
+              onClick={() => {
+                onStage(freeStage!.id, freeText.trim());
+                setFreeText(null);
+              }}
+            >
+              決定
+            </button>
+            <button type="button" className={styles.btn} onClick={() => setFreeText(null)}>
+              やめる
+            </button>
+          </div>
+        )}
         <div className={styles.statusRow}>
           <button
             className={styles.statusBtn}

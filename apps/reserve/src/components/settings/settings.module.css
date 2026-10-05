@@ -377,3 +377,15 @@
   border-color: #e6dcf5;
   box-shadow: var(--shadow-card);
 }
+
+.stagePreview {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+  vertical-align: middle;
+}

@@ -1,4 +1,4 @@
-import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -44,7 +44,7 @@ export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle>
 
 export function patchReservation(
   id: string,
-  body: Partial<Pick<Reservation, "laneId" | "startAt" | "endAt" | "status" | "memo" | "menuIds" | "requestId">> & {
+  body: Partial<Pick<Reservation, "laneId" | "startAt" | "endAt" | "status" | "memo" | "menuIds" | "requestId" | "stageId" | "stageText">> & {
     version: number;
   },
 ): Promise<Reservation> {
@@ -88,6 +88,7 @@ export interface SettingsData {
   lanes: Lane[];
   menus: Menu[];
   products: Product[];
+  stages: Stage[];
 }
 
 export function fetchSettings(): Promise<SettingsData> {
@@ -106,7 +107,7 @@ export function saveMenu(id: string | null, body: Partial<Omit<Menu, "id" | "ord
     : call(`/api/v1/menus`, { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function reorder(kind: "lanes" | "menus" | "products", ids: string[]): Promise<void> {
+export async function reorder(kind: "lanes" | "menus" | "products" | "stages", ids: string[]): Promise<void> {
   await call(`/api/v1/${kind}/reorder`, { method: "POST", body: JSON.stringify({ ids }) });
 }
 
@@ -252,4 +253,13 @@ export async function deleteFile(id: string): Promise<void> {
 
 export function fileUrl(id: string): string {
   return apiUrl(`/api/v1/files/${encodeURIComponent(id)}`);
+}
+
+export function saveStage(
+  id: string | null,
+  body: Partial<Pick<Stage, "label" | "color" | "phase" | "free" | "active">>,
+): Promise<Stage> {
+  return id
+    ? call(`/api/v1/stages/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) })
+    : call(`/api/v1/stages`, { method: "POST", body: JSON.stringify(body) });
 }

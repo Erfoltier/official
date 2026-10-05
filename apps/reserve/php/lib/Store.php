@@ -28,11 +28,12 @@ final class Store
     private static ?array $lanes = null;
     private static ?array $menus = null;
     private static ?array $products = null;
+    private static ?array $stages = null;
     private static ?array $seed = null;
 
     public static function reset(): void
     {
-        self::$patients = self::$lanes = self::$menus = self::$products = self::$seed = null;
+        self::$patients = self::$lanes = self::$menus = self::$products = self::$stages = self::$seed = null;
     }
 
     // ---- 初期データ・読み込み ----
@@ -60,6 +61,17 @@ final class Store
                     $db->put('menu', $m['id'], $m);
                 }
                 $db->setMeta('initialized', true);
+            });
+        }
+        // 状態（院ごとに増減できる）も同じく1回だけ入れる
+        if (!$db->meta('stagesSeeded')) {
+            $db->transaction(function () use ($db) {
+                if ($db->count('stage') === 0) {
+                    foreach (self::seed()['stages'] ?? [] as $s) {
+                        $db->put('stage', $s['id'], $s);
+                    }
+                }
+                $db->setMeta('stagesSeeded', true);
             });
         }
         // スキンケア・内服のプリセット（あとから追加した機能なので、既存のデータにも1回だけ入れる）
@@ -217,6 +229,110 @@ final class Store
         });
     }
 
+    // ---- 状態（予約・来院済・医師待ち…。院ごとに増減できる） ----
+
+    private static function &stages(): array
+    {
+        self::init();
+        if (self::$stages === null) {
+            self::$stages = Db::i()->all('stage');
+        }
+        return self::$stages;
+    }
+
+    private static function putStage(array $s): void
+    {
+        Db::i()->put('stage', $s['id'], $s);
+        $all = &self::stages();
+        $all[$s['id']] = $s;
+    }
+
+    private static function sortedStages(): array
+    {
+        return self::byOrder(self::stages());
+    }
+
+    /** 予約の状態の表示名（自由入力ならその文字。キャンセルはそのまま） */
+    public static function stageLabelOf(array $r): string
+    {
+        if (self::inactive($r)) {
+            return self::STATUS_LABEL[$r['status']];
+        }
+        $id = $r['stageId'] ?? (self::seed()['stageForStatus'][$r['status']] ?? '');
+        $s = self::stages()[$id] ?? null;
+        if (!$s) {
+            return self::STATUS_LABEL[$r['status']];
+        }
+        return $s['free'] && !empty($r['stageText']) ? $r['stageText'] : $s['label'];
+    }
+
+    private static function validateStage(array $s): array
+    {
+        $label = self::checkText('状態の名前', $s['label'], 12, true);
+        foreach (self::stages() as $o) {
+            if ($o['id'] !== $s['id'] && $o['label'] === $label) {
+                throw new StoreError('invalid', '同じ名前の状態があります');
+            }
+        }
+        if (!preg_match('/^#[0-9a-fA-F]{6}$/', $s['color'])) {
+            throw new StoreError('invalid', '色の指定が正しくありません');
+        }
+        return [...$s, 'label' => $label];
+    }
+
+    public static function createStage(array $input, ?array $by = null): array
+    {
+        if (count(self::stages()) >= 60) {
+            throw new StoreError('invalid', '登録できる数を超えています');
+        }
+        $s = self::validateStage([
+            'id' => new_id('stage'),
+            'label' => $input['label'] ?? '',
+            'color' => $input['color'] ?? '#6366f1',
+            'phase' => $input['phase'] ?? 'arrived',
+            'free' => $input['free'] ?? false,
+            'order' => max([-1, ...array_column(self::stages(), 'order')]) + 1,
+            'active' => $input['active'] ?? true,
+        ]);
+        self::putStage($s);
+        if ($by) {
+            Auth::audit($by, '状態を追加', $s['id']);
+        }
+        return $s;
+    }
+
+    public static function updateStage(string $id, array $input, ?array $by = null): array
+    {
+        $cur = self::stages()[$id] ?? null;
+        if (!$cur) {
+            throw new StoreError('not_found', '状態が見つかりません');
+        }
+        $next = self::validateStage([...$cur, ...$input, 'id' => $cur['id'], 'order' => $cur['order']]);
+        if ($cur['active'] && !$next['active'] && count(array_filter(self::stages(), fn($x) => $x['active'])) <= 1) {
+            throw new StoreError('invalid', '表示する状態は1つ以上必要です');
+        }
+        self::putStage($next);
+        if ($by) {
+            Auth::audit($by, '状態を変更', $id);
+        }
+        return $next;
+    }
+
+    public static function reorderStages(array $ids, ?array $by = null): array
+    {
+        return Db::i()->transaction(function () use ($ids, $by) {
+            $items = self::stages();
+            self::checkOrder($ids, $items);
+            foreach ($ids as $i => $id) {
+                self::putStage([...$items[$id], 'order' => $i]);
+            }
+            if ($by) {
+                Auth::audit($by, '状態を並べ替え');
+            }
+            return self::sortedStages();
+        });
+    }
+
     private static function putPatient(array $p): void
     {
         Db::i()->put('patient', $p['id'], $p);
@@ -308,6 +424,7 @@ final class Store
             'menus' => self::sortedMenus(),
             'reservations' => $reservations,
             'patients' => array_values(array_filter(array_map(fn($id) => $patients[$id] ?? null, array_keys($pids)))),
+            'stages' => self::sortedStages(),
         ];
     }
 
@@ -330,7 +447,7 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts()];
+        return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::sortedStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
@@ -485,12 +602,29 @@ final class Store
                 unset($next['requestId']);
             }
         }
+        if (isset($input['stageId'])) {
+            $stage = self::stages()[$input['stageId']] ?? null;
+            if (!$stage || (!$stage['active'] && $stage['id'] !== ($cur['stageId'] ?? null))) {
+                throw new StoreError('invalid', '状態が見つかりません');
+            }
+            $next['stageId'] = $stage['id'];
+            $next['status'] = $stage['phase'];
+            $text = $stage['free'] ? self::checkText('状態', $input['stageText'] ?? '', 20, false) : '';
+            if ($text !== '') {
+                $next['stageText'] = $text;
+            } else {
+                unset($next['stageText']);
+            }
+        } elseif (isset($input['status']) && !in_array($input['status'], self::INACTIVE, true)) {
+            // 段階だけを直接変えたとき（古い画面・外部連携）は、院の状態の選択を外す
+            unset($next['stageId'], $next['stageText']);
+        }
         self::putReservation($next);
         if ($by) {
             $what = array_filter([
                 $timeChanged || isset($input['endAt']) ? '時間' : null,
                 isset($input['laneId']) && $input['laneId'] !== $cur['laneId'] ? 'レーン' : null,
-                isset($input['status']) ? '状態→' . self::STATUS_LABEL[$input['status']] : null,
+                isset($input['stageId']) ? '状態→' . self::stageLabelOf($next) : (isset($input['status']) ? '状態→' . self::STATUS_LABEL[$input['status']] : null),
                 isset($input['menuIds']) ? 'メニュー' : null,
                 isset($input['memo']) ? 'メモ' : null,
                 isset($input['requestId']) ? '予約申請ID' : null,
@@ -923,6 +1057,7 @@ final class Store
             'menuNames' => array_map(fn($mid) => self::menus()[$mid]['name'] ?? '', $r['menuIds']),
             'laneName' => self::lanes()[$r['laneId']]['name'] ?? '',
             'menuIds' => $r['menuIds'],
+            'stageLabel' => self::stageLabelOf($r),
         ];
         if (!empty($r['memo'])) {
             $out['memo'] = $r['memo'];

@@ -34,6 +34,8 @@ export const updateReservationSchema = z
     memo: z.string().max(500).optional(),
     /** 空文字で削除 */
     requestId: z.union([requestId, z.literal("")]).optional(),
+    stageId: id.optional(),
+    stageText: z.string().max(40).optional(),
   })
   .strict();
 
@@ -146,6 +148,16 @@ export const productSchema = z
     name: z.string().max(120).optional(),
     category: productCategory.optional(),
     priceYen: z.number().int().nullable().optional(),
+    active: z.boolean().optional(),
+  })
+  .strict();
+
+export const stageSchema = z
+  .object({
+    label: z.string().max(40).optional(),
+    color: z.string().max(7).optional(),
+    phase: z.enum(["booked", "arrived", "in_treatment", "checkout", "done"]).optional(),
+    free: z.boolean().optional(),
     active: z.boolean().optional(),
   })
   .strict();

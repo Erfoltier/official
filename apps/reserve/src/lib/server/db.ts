@@ -20,6 +20,7 @@ export type Kind =
   | "lane"
   | "menu"
   | "product"
+  | "stage"
   | "file"
   | "patient"
   | "patientHistory"

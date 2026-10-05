@@ -1,8 +1,8 @@
 "use client";
 
 import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import type { Patient, Reservation, Menu } from "@/lib/domain/types";
-import { STATUS_LABEL } from "@/lib/domain/types";
+import type { Patient, Reservation, Menu, Stage } from "@/lib/domain/types";
+import { stageOf } from "./stages";
 import { formatHm } from "@/lib/domain/time";
 import { densityFor, lineFontSize } from "@/lib/calendar/scale";
 import { displayName } from "./names";
@@ -12,6 +12,7 @@ interface Props {
   reservation: Reservation;
   patient: Patient | undefined;
   menus: Menu[];
+  stages: Stage[];
   top: number;
   height: number;
   col: number;
@@ -40,7 +41,13 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
   const abbr = menus.map((t) => t.abbr).join("+");
   const fullNames = menus.map((t) => t.name).join("、");
   const time = `${formatHm(startMin)}–${formatHm(endMin)}`;
-  const label = `${time} ${name} ${fullNames}（${STATUS_LABEL[r.status]}）`;
+  const sv = stageOf(r, props.stages);
+  const label = `${time} ${name} ${fullNames}（${sv.label}）`;
+  const pill = !sv.plain && density !== "bar" && (
+    <span className={styles.stagePill} style={{ "--sc": sv.color } as CSSProperties}>
+      {sv.label}
+    </span>
+  );
 
   const style: CSSProperties = {
     top,
@@ -81,12 +88,12 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
             {patient?.caution && <span className={styles.caution} aria-label="注意事項あり">!</span>}
             <span className={styles.blockName}>{name}</span>
             {patient?.lineUserId && <span className={styles.lineBadge}>LINE</span>}
+            {pill}
           </div>
           <div className={styles.blockMeta}>
             <span>{time}</span>
             <span className={styles.blockTreat}>{h >= 56 ? fullNames : abbr}</span>
           </div>
-          {r.status !== "booked" && h >= 56 && <span className={styles.statusChip}>{STATUS_LABEL[r.status]}</span>}
         </>
       ) : density === "bar" ? null : (
         <div className={styles.blockLine}>
@@ -94,6 +101,7 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
           <span className={styles.blockName}>{name}</span>
           <span className={styles.sep}>｜</span>
           <span className={styles.blockTreat}>{abbr}</span>
+          {pill}
         </div>
       )}
       {props.selected && !props.ghost && (

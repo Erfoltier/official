@@ -139,6 +139,17 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     save(r, { version: r.version, status }, { ...r, status });
   };
 
+  /** 院で決めた状態を選ぶ。段階（status）も合わせて変わる */
+  const onStage = (r: Reservation, stageId: string, text?: string) => {
+    const st = bundle?.stages.find((s) => s.id === stageId);
+    if (!st) return;
+    save(
+      r,
+      { version: r.version, stageId, ...(st.free && { stageText: text ?? "" }) },
+      { ...r, stageId, status: st.phase, stageText: st.free ? text : undefined },
+    );
+  };
+
   const onMemo = (r: Reservation, memo: string) => {
     save(r, { version: r.version, memo }, { ...r, memo });
   };
@@ -358,6 +369,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             maskNames={maskNames}
             onClose={() => setSelectedId(null)}
             onStatus={(s) => onStatus(selected, s)}
+            onStage={(id, text) => onStage(selected, id, text)}
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}
             onReschedule={(to) => onReschedule(selected, to)}

@@ -230,6 +230,23 @@ try {
         }
     }
 
+    // ---- 状態（院長・管理者と受付） ----
+    if ($p[0] === 'stages') {
+        if ($method === 'POST' && $n === 1) {
+            $s = $me(STAFF_MANAGE);
+            Http::json(Store::createStage(Schema::stage(Http::readJson()), $actor($s)), 201);
+        }
+        if ($method === 'POST' && $n === 2 && $p[1] === 'reorder') {
+            $s = $me(STAFF_MANAGE);
+            Http::json(['items' => Store::reorderStages(Schema::reorder(Http::readJson()), $actor($s))]);
+        }
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Http::json(Store::updateStage($id, Schema::stage(Http::readJson()), $actor($s)));
+        }
+    }
+
     // ---- スキンケア・内服のプリセット（院長・管理者と受付） ----
     if ($p[0] === 'products') {
         if ($method === 'POST' && $n === 1) {

@@ -9,11 +9,12 @@ import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab } from "./ClinicTab";
 import { ProductsTab } from "./ProductsTab";
+import { StagesTab } from "./StagesTab";
 import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-type Tab = "lanes" | "menus" | "products" | "clinic" | "staff" | "audit";
+type Tab = "lanes" | "menus" | "stages" | "products" | "clinic" | "staff" | "audit";
 
 const MIN_LANES = 1;
 const MAX_LANES = 30;
@@ -67,6 +68,9 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "menus"} onClick={() => setTab("menus")}>
             メニュー
           </button>
+          <button role="tab" aria-selected={tab === "stages"} onClick={() => setTab("stages")}>
+            状態
+          </button>
           <button role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>
             スキンケア・内服
           </button>
@@ -92,8 +96,8 @@ export function SettingsApp() {
         </div>
       )}
 
-      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "products" || tab === "clinic") && (
-        <p className={styles.lead}>レーン・メニュー・スキンケア・診療時間の変更は、院長・管理者と受付のみができます（閲覧のみ）。</p>
+      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic") && (
+        <p className={styles.lead}>レーン・メニュー・状態・スキンケア・診療時間の変更は、院長・管理者と受付のみができます（閲覧のみ）。</p>
       )}
       {tab === "staff" && isAdmin ? (
         <StaffTab notify={notify} fail={fail} />
@@ -101,6 +105,8 @@ export function SettingsApp() {
         <AuditTab fail={fail} />
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
+      ) : tab === "stages" ? (
+        <StagesTab stages={data.stages} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "products" ? (
         <ProductsTab products={data.products} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "clinic" ? (

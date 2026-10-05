@@ -256,7 +256,7 @@ function Row({ v, detail, nth, today, readOnly, canManage, priceOf, editing, onE
           <div key={r.id} className={styles.resLine} data-inactive={INACTIVE_STATUSES.has(r.status) || undefined}>
             <span className={styles.time}>{formatHm(minutesOfDay(r.startAt))}</span>
             <MenuChips r={r} detail={detail} nth={nth} />
-            {r.status !== "done" && <span className={styles.status}>{STATUS_LABEL[r.status]}</span>}
+            {r.status !== "done" && <span className={styles.status}>{r.stageLabel ?? STATUS_LABEL[r.status]}</span>}
             {r.memo && <div className={styles.resMemo}>予約メモ：{r.memo}</div>}
             {r.requestId && <div className={styles.resMemo}>申請ID：{r.requestId}</div>}
           </div>
@@ -509,7 +509,7 @@ function UpcomingTable({ items, detail, nth }: { items: Res[]; detail: PatientDe
                 <MenuChips r={r} detail={detail} nth={nth} />
               </td>
               <td data-label="レーン">{r.laneName}</td>
-              <td data-label="状態">{STATUS_LABEL[r.status]}</td>
+              <td data-label="状態">{r.stageLabel ?? STATUS_LABEL[r.status]}</td>
               <td data-label="予約メモ・申請ID">
                 {r.memo ?? (r.requestId ? null : <span className={styles.muted}>—</span>)}
                 {r.requestId && <div className={styles.reqId}>申請ID：{r.requestId}</div>}

@@ -138,6 +138,30 @@ export interface PatientFile {
   deleted?: { at: string; by?: Actor };
 }
 
+/** 予約の大まかな段階（キャンセル・無断キャンセル以外） */
+export const STAGE_PHASES = ["booked", "arrived", "in_treatment", "checkout", "done"] as const;
+export type StagePhase = (typeof STAGE_PHASES)[number];
+export const STAGE_PHASE_LABEL: Record<StagePhase, string> = {
+  booked: "来院前",
+  arrived: "来院・待ち",
+  in_treatment: "診察・施術中",
+  checkout: "会計",
+  done: "終了",
+};
+
+/** 院ごとに増減できる「状態」（予約・来院済・医師待ち…） */
+export interface Stage {
+  id: string;
+  label: string;
+  /** 予約枠の右端に出す色 */
+  color: string;
+  phase: StagePhase;
+  /** 押したときに文字を自由に入れる状態 */
+  free: boolean;
+  order: number;
+  active: boolean;
+}
+
 export interface DuplicateCandidate {
   patient: Patient;
   reasons: string[];
@@ -238,6 +262,8 @@ export interface VisitRow {
     requestId?: string;
     /** メニューの色分け・回数の数え上げに使う */
     menuIds: string[];
+    /** 状態の表示名（院で決めた状態。自由入力ならその文字） */
+    stageLabel?: string;
   }[];
   note: string;
   skincare: string[];
@@ -308,6 +334,10 @@ export interface Reservation {
   /** 終了日時（ISO 8601、オフセット付き） */
   endAt: string;
   status: ReservationStatus;
+  /** 院で決めた状態（医師待ち・撮影待ちなど）。status はその大まかな段階 */
+  stageId?: string;
+  /** 「自由入力」の状態で入れた文字 */
+  stageText?: string;
   memo?: string;
   /** LINE予約フォームの予約申請ID（例：R2026100506574020A34A8B） */
   requestId?: string;
@@ -345,4 +375,6 @@ export interface DayBundle {
   reservations: Reservation[];
   /** その日の予約に登場する患者だけ */
   patients: Patient[];
+  /** 状態の一覧（非表示も含む。並び順） */
+  stages: Stage[];
 }
