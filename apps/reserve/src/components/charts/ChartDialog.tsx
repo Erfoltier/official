@@ -11,7 +11,16 @@ import { FileUploader } from "@/components/files/FileUploader";
 import { ChartCard } from "./ChartCard";
 import { QuestionnaireAnswers } from "@/components/questionnaires/QuestionnaireAnswers";
 import { conditionHints } from "./chartHints";
+import { plainMenuName } from "@/lib/domain/estimateDiscount";
 import styles from "./charts.module.css";
+
+type SectionKey = "area" | "settings" | "drugs" | "anesthesia";
+const SECTIONS: [SectionKey, string][] = [
+  ["area", "部位"],
+  ["settings", "条件"],
+  ["drugs", "薬剤"],
+  ["anesthesia", "麻酔"],
+];
 
 /** よく使う部位（すぐ押せる）と、展開して選ぶ部位 */
 const AREAS_MAIN = ["顔", "頬", "首", "VIO", "二の腕", "背中"];
@@ -164,7 +173,9 @@ export function ChartDialog(props: Props) {
 
 function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; onCancel(): void; onSaved(): void }) {
   const e = props.entry;
-  const [treatment, setTreatment] = useState(e?.treatment ?? (props.menuNames?.length === 1 ? props.menuNames[0] : ""));
+  /** 施術名の候補：予約メニューの名前から、予約表の区別のための書き足しを外したもの */
+  const menuChoices = useMemo(() => [...new Set((props.menuNames ?? []).map(plainMenuName))], [props.menuNames]);
+  const [treatment, setTreatment] = useState(e?.treatment ?? (menuChoices.length === 1 ? menuChoices[0] : ""));
   const [area, setArea] = useState(e?.area ?? "");
   const [settings, setSettings] = useState(e?.settings ?? "");
   const [drugs, setDrugs] = useState<ChartDrug[]>(e?.drugs ?? []);
@@ -174,9 +185,39 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
   const [operator, setOperator] = useState(e?.operator ?? "");
   const [saving, setSaving] = useState(false);
   const [moreAreas, setMoreAreas] = useState(false);
+  /** 開いている項目（部位・条件・薬剤・麻酔）。書いてある項目は最初から開く */
+  const [open, setOpen] = useState<Set<SectionKey>>(
+    () =>
+      new Set(
+        (
+          [
+            ["area", !!e?.area],
+            ["settings", !!e?.settings],
+            ["drugs", (e?.drugs.length ?? 0) > 0],
+            ["anesthesia", !!e?.anesthesia],
+          ] as [SectionKey, boolean][]
+        )
+          .filter(([, v]) => v)
+          .map(([k]) => k),
+      ),
+  );
+  const toggle = (k: SectionKey) =>
+    setOpen((cur) => {
+      const next = new Set(cur);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
   const [error, setError] = useState<string | null>(null);
   const [recentDrugs, setRecentDrugs] = usePref<string[]>("recentDrugs", [], isStringArray);
   const hints = useMemo(() => conditionHints(treatment), [treatment]);
+  /** 閉じている項目に書いてある内容（ボタンに小さく出す） */
+  const summary: Record<SectionKey, string> = {
+    area: area.slice(0, 20),
+    settings: settings.split("\n")[0].slice(0, 20),
+    drugs: drugs.filter((d) => d.name.trim()).map((d) => d.name).join("、").slice(0, 20),
+    anesthesia: anesthesia.slice(0, 12),
+  };
   const operatorDefault = props.me?.name;
 
   // 施術者の初期値はログインしている人
@@ -212,9 +253,9 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         <span>施術名</span>
         <input className={styles.input} value={treatment} onChange={(ev) => setTreatment(ev.target.value)} maxLength={120} placeholder="例：ボトックス 額" aria-label="施術名" />
       </label>
-      {(props.menuNames?.length ?? 0) > 0 && (
+      {menuChoices.length > 0 && (
         <div className={styles.chips}>
-          {props.menuNames!.map((m) => (
+          {menuChoices.map((m) => (
             <button key={m} type="button" className={styles.chip} data-on={treatment === m || undefined} onClick={() => setTreatment(m)}>
               {m}
             </button>
@@ -222,6 +263,18 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         </div>
       )}
 
+      {/* 部位・条件・薬剤・麻酔は、書きたい項目だけ開く（書いてある項目は開いた状態で始まる） */}
+      <div className={styles.sectionBar}>
+        {SECTIONS.map(([key, label]) => (
+          <button key={key} type="button" className={styles.sectionBtn} data-open={open.has(key) || undefined} aria-expanded={open.has(key)} onClick={() => toggle(key)}>
+            {open.has(key) ? "▾" : "＋"} {label}
+            {!open.has(key) && summary[key] && <small>：{summary[key]}</small>}
+          </button>
+        ))}
+      </div>
+
+      {open.has("area") && (
+        <>
       <label className={styles.field}>
         <span>部位</span>
         <input className={styles.input} value={area} onChange={(ev) => setArea(ev.target.value)} maxLength={200} placeholder="例：額・眉間" aria-label="部位" />
@@ -237,6 +290,10 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         </button>
       </div>
 
+        </>
+      )}
+      {open.has("settings") && (
+        <>
       <label className={styles.field}>
         <span>条件（機器・出力・ショット数・深さなど）</span>
         <textarea className={styles.input} rows={3} value={settings} onChange={(ev) => setSettings(ev.target.value)} maxLength={1000} aria-label="条件" />
@@ -251,6 +308,9 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         </div>
       )}
 
+        </>
+      )}
+      {open.has("drugs") && (
       <div className={styles.field}>
         <span>薬剤</span>
         {drugs.map((d, i) => (
@@ -274,6 +334,9 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         )}
       </div>
 
+      )}
+      {open.has("anesthesia") && (
+        <>
       <label className={styles.field}>
         <span>麻酔</span>
         <input className={styles.input} value={anesthesia} onChange={(ev) => setAnesthesia(ev.target.value)} maxLength={100} aria-label="麻酔" />
@@ -286,9 +349,12 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         ))}
       </div>
 
+        </>
+      )}
+
       <div className={styles.field}>
         <span>所見・経過</span>
-        <RichTextEditor value={findings} onChange={setFindings} rows={4} maxLength={8000} ariaLabel="所見・経過" placeholder="例：施術直後の赤みあり。内出血なし" />
+        <RichTextEditor value={findings} onChange={setFindings} rows={10} maxLength={8000} ariaLabel="所見・経過" placeholder="例：施術直後の赤みあり。内出血なし" />
       </div>
 
       <div className={styles.twoCols}>

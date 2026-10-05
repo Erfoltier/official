@@ -95,3 +95,16 @@ export function relatedPrices(menuNames: string[], prices: PriceItem[], limit = 
   if (res.length === 0) return [];
   return prices.filter((p) => !p.removed && res.some((re) => re.test(`${p.category} ${p.name}`))).slice(0, limit);
 }
+
+/**
+ * 予約メニューの名前から、予約表の区別のための書き足しを外す（カルテの施術名の候補などに使う）。
+ * 例：「シミ4個まで/男性/75歳以上/説明済照射のみ/ゼオ不要」→「シミ4個まで」、「ボトックス初診標準20分」→「ボトックス初診」
+ */
+export function plainMenuName(name: string): string {
+  const s = name
+    .replace(/[\d/／]*使用しない.*$/, "")
+    .split(/[/／]/)[0]
+    .replace(/標準\d+分|時間自由設定|（メモに自由記載）/g, "")
+    .trim();
+  return s || name;
+}

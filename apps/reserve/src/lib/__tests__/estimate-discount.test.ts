@@ -47,3 +47,15 @@ describe("見積の割引（掛け率）", () => {
     expect(relatedPrices(["予約（メモに自由記載）"], list)).toEqual([]);
   });
 });
+
+describe("予約メニューの名前の書き足しを外す", () => {
+  it("区別のための書き足しを外す", async () => {
+    const { plainMenuName } = await import("../domain/estimateDiscount");
+    expect(plainMenuName("シミ4個まで/男性/75歳以上/説明済照射のみ/ゼオ不要")).toBe("シミ4個まで");
+    expect(plainMenuName("ボトックス初診標準20分")).toBe("ボトックス初診");
+    expect(plainMenuName("フィルロード時間自由設定")).toBe("フィルロード");
+    expect(plainMenuName("色素レーザー5/5使用しない11/3")).toBe("色素レーザー");
+    expect(plainMenuName("スネコス【再診】使用しない9/30")).toBe("スネコス【再診】");
+    expect(plainMenuName("ハイフ")).toBe("ハイフ");
+  });
+});

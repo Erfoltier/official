@@ -372,3 +372,35 @@ textarea.input {
   font-size: 12px;
   cursor: pointer;
 }
+
+/* 部位・条件・薬剤・麻酔：書きたい項目だけ開く */
+.sectionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.sectionBtn {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sectionBtn[data-open] {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sectionBtn small {
+  font-weight: 400;
+  color: var(--text-muted);
+}
