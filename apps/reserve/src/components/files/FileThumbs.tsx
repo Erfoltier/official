@@ -14,6 +14,17 @@ function sizeLabel(n: number): string {
 /** ファイルの小さな一覧。押すと写真は大きく表示、PDF は別タブ、Word はダウンロード */
 export function FileThumbs(props: { files: PatientFile[]; canDelete?: boolean; onDeleted?: (id: string) => void; size?: "s" | "m" }) {
   const [open, setOpen] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const remove = async (f: PatientFile) => {
+    if (!window.confirm(`「${f.name}」を削除しますか？（記録としては残ります）`)) return;
+    try {
+      await deleteFile(f.id);
+      setError(null);
+      props.onDeleted?.(f.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "削除できませんでした");
+    }
+  };
   const images = props.files.filter((f) => f.kind === "image" && f.type !== "image/heic" && f.type !== "image/heif");
   if (props.files.length === 0) return null;
   return (
@@ -21,7 +32,7 @@ export function FileThumbs(props: { files: PatientFile[]; canDelete?: boolean; o
       <div className={styles.thumbs} data-size={props.size ?? "s"}>
         {props.files.map((f) => {
           const viewable = images.includes(f);
-          return viewable ? (
+          const thumb = viewable ? (
             <button key={f.id} type="button" className={styles.thumb} onClick={() => setOpen(images.indexOf(f))} title={f.name}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={fileUrl(f.id)} alt={f.name} loading="lazy" />
@@ -39,8 +50,19 @@ export function FileThumbs(props: { files: PatientFile[]; canDelete?: boolean; o
               <span>{ICON[f.kind]}</span>
             </a>
           );
+          return (
+            <span key={f.id} className={styles.thumbWrap}>
+              {thumb}
+              {props.canDelete && (
+                <button type="button" className={styles.thumbDel} onClick={() => remove(f)} aria-label={`${f.name}を削除`} title="削除">
+                  ×
+                </button>
+              )}
+            </span>
+          );
         })}
       </div>
+      {error && <div className={styles.error}>{error}</div>}
       {open !== null && images[open] && (
         <Viewer
           files={images}

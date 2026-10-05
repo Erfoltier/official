@@ -242,7 +242,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>見積書</h2>
+        <h2 className={styles.sectionTitle}>見積・会計</h2>
         <EstimateList patientId={patientId} patientName={detail.patient.name} readOnly={readOnly} canManage={canManage} />
       </section>
 

@@ -78,7 +78,7 @@
 .thumbs {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 8px;
 }
 
 .thumb {
@@ -280,4 +280,33 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 一覧の削除ボタン（右上の×） */
+.thumbWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.thumbDel {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: rgb(60 40 80 / 75%);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbDel:hover {
+  background: var(--danger);
 }

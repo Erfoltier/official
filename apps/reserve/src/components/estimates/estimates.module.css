@@ -441,3 +441,29 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 御見積書／御会計書の切り替え */
+.kindSwitch {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
+}
+
+.kindSwitch button {
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kindSwitch button[data-active] {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}

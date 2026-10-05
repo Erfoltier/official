@@ -92,7 +92,7 @@ export function EstimateList(props: { patientId: string; patientName: string; re
       {!props.readOnly && (
         <div className={styles.actions} style={{ justifyContent: "flex-start" }}>
           <button type="button" className={styles.btn} onClick={() => setEditing("new")}>
-            ＋見積書を作る
+            ＋見積・会計を作る
           </button>
         </div>
       )}

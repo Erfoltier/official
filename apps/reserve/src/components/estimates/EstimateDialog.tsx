@@ -6,6 +6,7 @@ import { DEFAULT_ESTIMATE_VALID_DAYS, PRODUCT_CATEGORY_LABEL, taxIncluded } from
 import { addDays, nowInClinic } from "@/lib/domain/time";
 import { ApiError, createEstimate, estimatePrintUrl, fetchPrices, fetchSettings, updateEstimate } from "@/components/calendar/api";
 import { searchKey } from "@/lib/domain/text";
+import { usePref } from "@/components/calendar/usePref";
 import styles from "./estimates.module.css";
 
 interface Props {
@@ -29,6 +30,10 @@ interface Row {
   unit: string;
   qty: number;
 }
+
+type DocKind = "estimate" | "bill";
+const isDocKind = (v: unknown): v is DocKind => v === "estimate" || v === "bill";
+const DOC_LABEL: Record<DocKind, string> = { estimate: "御見積書", bill: "御会計書" };
 
 export const yen = (n: number) => `${n < 0 ? "−" : ""}¥${Math.abs(n).toLocaleString("ja-JP")}`;
 
@@ -72,6 +77,8 @@ export function EstimateDialog(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Estimate | null>(null);
+  /** 書類の種類（御見積書／御会計書）。端末ごとに前回の選択を覚えておく */
+  const [kind, setKind] = usePref<DocKind>("estimateKind", "estimate", isDocKind);
 
   useEffect(() => {
     const d = ref.current;
@@ -166,12 +173,19 @@ export function EstimateDialog(props: Props) {
   };
 
   return (
-    <dialog ref={ref} className={styles.dialog} onCancel={props.onClose} aria-label="見積書">
+    <dialog ref={ref} className={styles.dialog} onCancel={props.onClose} aria-label="見積・会計">
       <div className={styles.head}>
         <h2>
-          {props.estimate ? `見積書 No.${props.estimate.no} を直す` : "見積書を作る"}
+          {props.estimate ? `${DOC_LABEL[kind]} No.${props.estimate.no} を直す` : `${DOC_LABEL[kind]}を作る`}
           <small>{props.patientName} 様</small>
         </h2>
+        <div className={styles.kindSwitch} role="radiogroup" aria-label="書類の種類">
+          {(["estimate", "bill"] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={kind === k} data-active={kind === k || undefined} onClick={() => setKind(k)}>
+              {DOC_LABEL[k]}
+            </button>
+          ))}
+        </div>
         <button type="button" className={styles.iconBtn} onClick={props.onClose} aria-label="閉じる">
           ×
         </button>
@@ -180,17 +194,14 @@ export function EstimateDialog(props: Props) {
       {saved ? (
         <div className={styles.done}>
           <p>
-            見積書 <b>No.{saved.no}</b>（合計 {yen(saved.totalYen)}）を保存しました。
+            {DOC_LABEL[kind]} <b>No.{saved.no}</b>（合計 {yen(saved.totalYen)}）を保存しました。
           </p>
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={props.onClose}>
               閉じる
             </button>
-            <a className={styles.btn} href={estimatePrintUrl(saved.id, "bill")} target="_blank" rel="noopener">
-              🧾 御会計書を印刷
-            </a>
-            <a className={styles.primaryBtn} href={estimatePrintUrl(saved.id)} target="_blank" rel="noopener">
-              🖨 御見積書を印刷
+            <a className={styles.primaryBtn} href={estimatePrintUrl(saved.id, kind)} target="_blank" rel="noopener">
+              🖨 {DOC_LABEL[kind]}を印刷
             </a>
           </div>
         </div>
@@ -328,7 +339,7 @@ export function EstimateDialog(props: Props) {
               やめる
             </button>
             <button type="button" className={styles.primaryBtn} onClick={save} disabled={invalid || saving}>
-              {saving ? "保存中…" : props.estimate ? "保存する" : "見積書を作る"}
+              {saving ? "保存中…" : props.estimate ? "保存する" : `${DOC_LABEL[kind]}を作る`}
             </button>
           </div>
         </>

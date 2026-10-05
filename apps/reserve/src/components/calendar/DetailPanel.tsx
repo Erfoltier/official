@@ -149,7 +149,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               📄 同意書
             </button>
             <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
-              📝 見積書
+              📝 見積/会計
             </button>
           </span>
         )}
