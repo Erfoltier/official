@@ -267,12 +267,13 @@ final class Store
         if (self::inactive($r)) {
             return self::STATUS_LABEL[$r['status']];
         }
-        $id = $r['stageId'] ?? (self::seed()['stageForStatus'][$r['status']] ?? '');
-        $s = self::stages()[$id] ?? null;
-        if (!$s) {
-            return self::STATUS_LABEL[$r['status']];
+        $s = isset($r['stageId']) ? (self::stages()[$r['stageId']] ?? null) : null;
+        // 以前の版で「自由入力」を状態として選んでいた予約は、段階から決める
+        if (!$s || $s['free']) {
+            $s = self::stages()[self::seed()['stageForStatus'][$r['status']] ?? ''] ?? null;
         }
-        return $s['free'] && !empty($r['stageText']) ? $r['stageText'] : $s['label'];
+        $label = $s['label'] ?? self::STATUS_LABEL[$r['status']];
+        return !empty($r['stageText']) ? "{$label}・{$r['stageText']}" : $label;
     }
 
     private static function validateStage(array $s): array
@@ -616,17 +617,26 @@ final class Store
             if (!$stage || (!$stage['active'] && $stage['id'] !== ($cur['stageId'] ?? null))) {
                 throw new StoreError('invalid', '状態が見つかりません');
             }
+            if ($stage['free']) {
+                throw new StoreError('invalid', '自由入力は文字（stageText）で指定してください');
+            }
             $next['stageId'] = $stage['id'];
             $next['status'] = $stage['phase'];
-            $text = $stage['free'] ? self::checkText('状態', $input['stageText'] ?? '', 20, false) : '';
+            $next['stageAt'] = now_iso();
+        }
+        if (isset($input['stageText'])) {
+            // 自由入力は状態とは別に持つ（空で消す）
+            $text = self::checkText('自由入力', $input['stageText'], 20, false);
             if ($text !== '') {
                 $next['stageText'] = $text;
             } else {
                 unset($next['stageText']);
             }
-        } elseif (isset($input['status']) && !in_array($input['status'], self::INACTIVE, true)) {
+        }
+        if (!isset($input['stageId']) && isset($input['status']) && !in_array($input['status'], self::INACTIVE, true)) {
             // 段階だけを直接変えたとき（古い画面・外部連携）は、院の状態の選択を外す
-            unset($next['stageId'], $next['stageText']);
+            unset($next['stageId']);
+            $next['stageAt'] = now_iso();
         }
         self::putReservation($next);
         if ($by) {
@@ -634,6 +644,7 @@ final class Store
                 $timeChanged || isset($input['endAt']) ? '時間' : null,
                 isset($input['laneId']) && $input['laneId'] !== $cur['laneId'] ? 'レーン' : null,
                 isset($input['stageId']) ? '状態→' . self::stageLabelOf($next) : (isset($input['status']) ? '状態→' . self::STATUS_LABEL[$input['status']] : null),
+                isset($input['stageText']) ? '自由入力' : null,
                 isset($input['menuIds']) ? 'メニュー' : null,
                 isset($input['memo']) ? 'メモ' : null,
                 isset($input['requestId']) ? '予約申請ID' : null,

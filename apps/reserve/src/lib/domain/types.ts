@@ -336,7 +336,9 @@ export interface Reservation {
   status: ReservationStatus;
   /** 院で決めた状態（医師待ち・撮影待ちなど）。status はその大まかな段階 */
   stageId?: string;
-  /** 「自由入力」の状態で入れた文字 */
+  /** 状態を変えた日時（カレンダーに「16:15 診察待ち」と出す） */
+  stageAt?: string;
+  /** 自由入力の文字（「15時までに出たい」など）。状態とは別に、同時に出せる */
   stageText?: string;
   memo?: string;
   /** LINE予約フォームの予約申請ID（例：R2026100506574020A34A8B） */

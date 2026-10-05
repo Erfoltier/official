@@ -139,15 +139,16 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     save(r, { version: r.version, status }, { ...r, status });
   };
 
-  /** 院で決めた状態を選ぶ。段階（status）も合わせて変わる */
-  const onStage = (r: Reservation, stageId: string, text?: string) => {
+  /** 院で決めた状態を選ぶ。段階（status）と変えた時刻も合わせて変わる */
+  const onStage = (r: Reservation, stageId: string) => {
     const st = bundle?.stages.find((s) => s.id === stageId);
     if (!st) return;
-    save(
-      r,
-      { version: r.version, stageId, ...(st.free && { stageText: text ?? "" }) },
-      { ...r, stageId, status: st.phase, stageText: st.free ? text : undefined },
-    );
+    save(r, { version: r.version, stageId }, { ...r, stageId, status: st.phase, stageAt: new Date().toISOString() });
+  };
+
+  /** 自由入力の一言（状態とは別に出す。空で消す） */
+  const onFreeNote = (r: Reservation, text: string) => {
+    save(r, { version: r.version, stageText: text }, { ...r, stageText: text || undefined });
   };
 
   const onMemo = (r: Reservation, memo: string) => {
@@ -369,7 +370,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             maskNames={maskNames}
             onClose={() => setSelectedId(null)}
             onStatus={(s) => onStatus(selected, s)}
-            onStage={(id, text) => onStage(selected, id, text)}
+            onStage={(id) => onStage(selected, id)}
+            onFreeNote={(text) => onFreeNote(selected, text)}
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}
             onReschedule={(to) => onReschedule(selected, to)}

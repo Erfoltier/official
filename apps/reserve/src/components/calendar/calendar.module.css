@@ -1216,3 +1216,66 @@ button.treatChip[data-active] {
   font-size: 14px;
   padding: 0 6px;
 }
+
+/* 状態の札：自由入力と状態を並べ、状態には変えた時刻を付ける */
+.stagePills {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.stagePills .stagePill {
+  margin-left: 0;
+  max-width: 9em;
+}
+
+.stagePill[data-note] {
+  background: #fff;
+  color: var(--sc);
+  border: 1px solid var(--sc);
+  box-shadow: none;
+}
+
+.stageAt {
+  margin-right: 3px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.blockLine .stagePills {
+  margin-left: 4px;
+}
+
+.stageBtnAt {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.stageBtn[data-free] {
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+/* 高さのある枠では、状態の札を1行使って右寄せに出す（名前を削らない） */
+.pillRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.pillRow .stagePills {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  overflow: visible;
+}
+
+.pillRow .stagePill {
+  max-width: 100%;
+  font-size: 11px;
+}

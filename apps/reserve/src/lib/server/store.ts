@@ -244,9 +244,11 @@ function sortedStages(): Stage[] {
 /** 予約の状態の表示名（自由入力ならその文字。キャンセルはそのまま） */
 export function stageLabelOf(r: Reservation): string {
   if (INACTIVE_STATUSES.has(r.status)) return STATUS_LABEL[r.status];
-  const s = state().stages.get(r.stageId ?? STAGE_FOR_STATUS[r.status] ?? "");
-  if (!s) return STATUS_LABEL[r.status];
-  return s.free && r.stageText ? r.stageText : s.label;
+  let s = r.stageId ? state().stages.get(r.stageId) : undefined;
+  // 以前の版で「自由入力」を状態として選んでいた予約は、段階から決める
+  if (!s || s.free) s = state().stages.get(STAGE_FOR_STATUS[r.status] ?? "");
+  const label = s?.label ?? STATUS_LABEL[r.status];
+  return r.stageText ? `${label}・${r.stageText}` : label;
 }
 
 export type StageInput = Partial<Pick<Stage, "label" | "color" | "phase" | "free" | "active">>;
@@ -631,15 +633,21 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
   if (input.stageId !== undefined) {
     const stage = st.stages.get(input.stageId);
     if (!stage || (!stage.active && stage.id !== cur.stageId)) throw new StoreError("invalid", "状態が見つかりません");
+    if (stage.free) throw new StoreError("invalid", "自由入力は文字（stageText）で指定してください");
     next.stageId = stage.id;
     next.status = stage.phase;
-    const text = stage.free ? checkText("状態", input.stageText ?? "", 20, false) : "";
+    next.stageAt = new Date().toISOString();
+  }
+  if (input.stageText !== undefined) {
+    // 自由入力は状態とは別に持つ（空で消す）
+    const text = checkText("自由入力", input.stageText, 20, false);
     if (text) next.stageText = text;
     else delete next.stageText;
-  } else if (input.status !== undefined && !INACTIVE_STATUSES.has(input.status)) {
+  }
+  if (input.stageId === undefined && input.status !== undefined && !INACTIVE_STATUSES.has(input.status)) {
     // 段階だけを直接変えたとき（古い画面・外部連携）は、院の状態の選択を外す
     delete next.stageId;
-    delete next.stageText;
+    next.stageAt = new Date().toISOString();
   }
   st.reservations.set(id, next);
   if (by) {
@@ -647,6 +655,7 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
       timeChanged || input.endAt !== undefined ? "時間" : null,
       input.laneId !== undefined && input.laneId !== cur.laneId ? "レーン" : null,
       input.stageId !== undefined ? `状態→${stageLabelOf(next)}` : input.status !== undefined ? `状態→${STATUS_LABEL[input.status]}` : null,
+      input.stageText !== undefined ? "自由入力" : null,
       input.menuIds !== undefined ? "メニュー" : null,
       input.memo !== undefined ? "メモ" : null,
       input.requestId !== undefined ? "予約申請ID" : null,

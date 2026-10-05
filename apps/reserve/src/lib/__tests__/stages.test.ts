@@ -11,7 +11,7 @@ describe("状態（院ごとに増減できる）", () => {
     resetStores();
   });
 
-  it("初期の状態が入っていて、押すと大まかな段階も変わる。自由入力は文字を残す", async () => {
+  it("初期の状態が入っていて、押すと大まかな段階と時刻が変わる。自由入力は状態と同時に持てる", async () => {
     const s = await store();
     const labels = s.getSettings().stages.map((x) => x.label);
     expect(labels).toEqual(["予約", "来院済", "医師待ち", "看護師待ち", "撮影待ち", "麻酔待ち", "診察中", "処置中", "待機中", "検討中", "会計待ち", "帰宅", "自由入力"]);
@@ -21,14 +21,19 @@ describe("状態（院ごとに増減できる）", () => {
     const r1 = s.updateReservation(r.id, { version: r.version, stageId: "stage-wait-photo" }, { id: "x", name: "受付" });
     expect(r1).toMatchObject({ stageId: "stage-wait-photo", status: "arrived" });
     expect(s.stageLabelOf(r1)).toBe("撮影待ち");
-    const r2 = s.updateReservation(r.id, { version: r1.version, stageId: "stage-free", stageText: "  パッチテスト中 " });
-    expect(r2).toMatchObject({ stageText: "パッチテスト中", status: "arrived" });
-    expect(s.stageLabelOf(r2)).toBe("パッチテスト中");
+    expect(r1.stageAt).toBeTruthy();
+    // 自由入力は状態と同時に持てる
+    const r2 = s.updateReservation(r.id, { version: r1.version, stageText: "  15時までに出たい " });
+    expect(r2).toMatchObject({ stageId: "stage-wait-photo", stageText: "15時までに出たい", status: "arrived" });
+    expect(s.stageLabelOf(r2)).toBe("撮影待ち・15時までに出たい");
     const r3 = s.updateReservation(r.id, { version: r2.version, stageId: "stage-done" });
-    expect(r3.stageText).toBeUndefined();
+    expect(r3.stageText).toBe("15時までに出たい");
     expect(r3.status).toBe("done");
+    expect(() => s.updateReservation(r.id, { version: r3.version, stageId: "stage-free" })).toThrow(/自由入力/);
+    const r3b = s.updateReservation(r.id, { version: r3.version, stageText: "" });
+    expect(r3b.stageText).toBeUndefined();
     // キャンセルは状態の選択を残したまま、表示はキャンセル
-    const r4 = s.updateReservation(r.id, { version: r3.version, status: "cancelled" });
+    const r4 = s.updateReservation(r.id, { version: r3b.version, status: "cancelled" });
     expect(s.stageLabelOf(r4)).toBe("キャンセル");
     expect(() => s.updateReservation(r.id, { version: r4.version, stageId: "stage-none" })).toThrow(/状態が見つかりません/);
   });

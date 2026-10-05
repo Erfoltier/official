@@ -25,8 +25,10 @@ interface Props {
   maskNames: boolean;
   onClose: () => void;
   onStatus: (s: ReservationStatus) => void;
-  /** 院で決めた状態を選ぶ（自由入力は文字も） */
-  onStage: (stageId: string, text?: string) => void;
+  /** 院で決めた状態を選ぶ */
+  onStage: (stageId: string) => void;
+  /** 自由入力の一言（空で消す）。状態とは別に出す */
+  onFreeNote: (text: string) => void;
   onMemo: (memo: string) => void;
   onRequestId: (requestId: string) => void;
   /** 日時・レーンの変更（別の日への移動も可） */
@@ -36,7 +38,7 @@ interface Props {
   canManage?: boolean;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onFreeNote, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
@@ -279,7 +281,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <div className={styles.sectionLabel}>状態</div>
         <div className={styles.stageGrid}>
           {bundle.stages
-            .filter((s) => s.active || s.id === sv.stage?.id)
+            .filter((s) => !s.free && (s.active || s.id === sv.stage?.id))
             .map((s) => {
               const on = !INACTIVE_STATUSES.has(r.status) && sv.stage?.id === s.id;
               return (
@@ -290,12 +292,27 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                   style={{ "--sc": s.color } as CSSProperties}
                   data-active={on || undefined}
                   aria-pressed={on}
-                  onClick={() => (s.free ? setFreeText(on ? (r.stageText ?? "") : "") : onStage(s.id))}
+                  onClick={() => onStage(s.id)}
                 >
-                  {s.free && on && r.stageText ? r.stageText : s.label}
+                  {s.label}
+                  {on && sv.at && <small className={styles.stageBtnAt}>{sv.at}〜</small>}
                 </button>
               );
             })}
+          {freeStage && (
+            <button
+              type="button"
+              className={styles.stageBtn}
+              data-free
+              style={{ "--sc": freeStage.color } as CSSProperties}
+              data-active={!!r.stageText || undefined}
+              aria-pressed={!!r.stageText}
+              title="ほかの状態と一緒に出せる自由な一言（例：15時までに出たい）"
+              onClick={() => setFreeText(r.stageText ?? "")}
+            >
+              {r.stageText ? `✎ ${r.stageText}` : `＋${freeStage.label}`}
+            </button>
+          )}
         </div>
         {freeText !== null && (
           <div className={styles.freeRow}>
@@ -304,12 +321,12 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               value={freeText}
               maxLength={20}
               autoFocus
-              placeholder="例：パッチテスト中"
-              aria-label="状態（自由入力）"
+              placeholder="例：15時までに出たい"
+              aria-label="自由入力"
               onChange={(e) => setFreeText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && freeText.trim()) {
-                  onStage(freeStage!.id, freeText.trim());
+                if (e.key === "Enter") {
+                  onFreeNote(freeText.trim());
                   setFreeText(null);
                 }
               }}
@@ -317,14 +334,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             <button
               type="button"
               className={styles.primaryBtn}
-              disabled={!freeText.trim()}
               onClick={() => {
-                onStage(freeStage!.id, freeText.trim());
+                onFreeNote(freeText.trim());
                 setFreeText(null);
               }}
             >
               決定
             </button>
+            {r.stageText && (
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={() => {
+                  onFreeNote("");
+                  setFreeText(null);
+                }}
+              >
+                消す
+              </button>
+            )}
             <button type="button" className={styles.btn} onClick={() => setFreeText(null)}>
               やめる
             </button>

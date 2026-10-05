@@ -42,10 +42,20 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
   const fullNames = menus.map((t) => t.name).join("、");
   const time = `${formatHm(startMin)}–${formatHm(endMin)}`;
   const sv = stageOf(r, props.stages);
-  const label = `${time} ${name} ${fullNames}（${sv.label}）`;
-  const pill = !sv.plain && density !== "bar" && (
-    <span className={styles.stagePill} style={{ "--sc": sv.color } as CSSProperties}>
-      {sv.label}
+  const label = `${time} ${name} ${fullNames}（${[sv.at && `${sv.at} `, sv.label, sv.note && `・${sv.note}`].filter(Boolean).join("")}）`;
+  const pill = density !== "bar" && (sv.note || !sv.plain) && (
+    <span className={styles.stagePills}>
+      {sv.note && (
+        <span className={styles.stagePill} data-note style={{ "--sc": sv.noteColor } as CSSProperties}>
+          {sv.note}
+        </span>
+      )}
+      {!sv.plain && (
+        <span className={styles.stagePill} style={{ "--sc": sv.color } as CSSProperties}>
+          {sv.at && <b className={styles.stageAt}>{sv.at}</b>}
+          {sv.label}
+        </span>
+      )}
     </span>
   );
 
@@ -88,12 +98,13 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
             {patient?.caution && <span className={styles.caution} aria-label="注意事項あり">!</span>}
             <span className={styles.blockName}>{name}</span>
             {patient?.lineUserId && <span className={styles.lineBadge}>LINE</span>}
-            {pill}
+            {h < 44 && pill}
           </div>
           <div className={styles.blockMeta}>
             <span>{time}</span>
             <span className={styles.blockTreat}>{h >= 56 ? fullNames : abbr}</span>
           </div>
+          {h >= 44 && pill && <div className={styles.pillRow}>{pill}</div>}
         </>
       ) : density === "bar" ? null : (
         <div className={styles.blockLine}>
