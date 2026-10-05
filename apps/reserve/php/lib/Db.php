@@ -282,14 +282,20 @@ final class Db
         if ($this->txDepth > 0) {
             return $fn();
         }
-        $this->pdo->beginTransaction();
+        // SQLite は最初から書き込みの鍵を取る（BEGIN IMMEDIATE）。同時に来た2つの書き込みが
+        // 途中で鍵を取り合って「database is locked」になるのを防ぎ、待ち合わせ（busy_timeout）を効かせる
+        if ($this->mysql) {
+            $this->pdo->beginTransaction();
+        } else {
+            $this->pdo->exec('BEGIN IMMEDIATE');
+        }
         $this->txDepth++;
         try {
             $out = $fn();
-            $this->pdo->commit();
+            $this->mysql ? $this->pdo->commit() : $this->pdo->exec('COMMIT');
             return $out;
         } catch (Throwable $e) {
-            $this->pdo->rollBack();
+            $this->mysql ? $this->pdo->rollBack() : $this->pdo->exec('ROLLBACK');
             throw $e;
         } finally {
             $this->txDepth--;

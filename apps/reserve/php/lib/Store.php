@@ -54,6 +54,9 @@ final class Store
         $db = Db::i();
         if (!$db->meta('initialized')) {
             $db->transaction(function () use ($db) {
+                if ($db->meta('initialized')) {
+                    return; // 同時に来た別の通信が先に入れた
+                }
                 foreach (self::seed()['lanes'] as $l) {
                     $db->put('lane', $l['id'], $l);
                 }
@@ -66,6 +69,9 @@ final class Store
         // 状態（院ごとに増減できる）も同じく1回だけ入れる
         if (!$db->meta('stagesSeeded')) {
             $db->transaction(function () use ($db) {
+                if ($db->meta('stagesSeeded')) {
+                    return;
+                }
                 if ($db->count('stage') === 0) {
                     foreach (self::seed()['stages'] ?? [] as $s) {
                         $db->put('stage', $s['id'], $s);
@@ -77,6 +83,9 @@ final class Store
         // スキンケア・内服のプリセット（あとから追加した機能なので、既存のデータにも1回だけ入れる）
         if (!$db->meta('productsSeeded')) {
             $db->transaction(function () use ($db) {
+                if ($db->meta('productsSeeded')) {
+                    return;
+                }
                 if ($db->count('product') === 0) {
                     foreach (self::seed()['products'] ?? [] as $p) {
                         $db->put('product', $p['id'], $p);
