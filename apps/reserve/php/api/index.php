@@ -1,0 +1,196 @@
+<?php
+/**
+ * API の入口。/reserve/api/v1/... へのアクセスは .htaccess でここに集まる。
+ * URL とメソッドで処理を振り分ける（Node.js 版の src/app/api/v1 と同じ）。
+ */
+declare(strict_types=1);
+
+require __DIR__ . '/../lib/bootstrap.php';
+
+const STAFF_ADMIN = ['admin'];
+const STAFF_MANAGE = ['admin', 'reception'];
+
+try {
+    $uri = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+    $pos = strpos($uri, '/api/v1/');
+    if ($pos === false) {
+        Http::json(['error' => 'not_found', 'message' => '見つかりません'], 404);
+    }
+    $path = array_map('rawurldecode', explode('/', trim(substr($uri, $pos + 8), '/')));
+    $method = Http::method();
+    $q = fn(string $k) => isset($_GET[$k]) && is_string($_GET[$k]) ? $_GET[$k] : null;
+    $me = fn(?array $roles = null) => Auth::requireStaff($roles);
+    $actor = fn(array $s) => Auth::actorOf($s);
+
+    $route = $method . ' ' . implode('/', array_map(fn($p) => preg_match('/^[A-Za-z0-9_-]{1,64}$/', $p) ? $p : '?', $path));
+    $p = $path;
+    $n = count($p);
+
+    // ---- 動作確認（設置直後の確認用。中身は返さない） ----
+    if ($route === 'GET health') {
+        Db::i()->count('lane');
+        Http::json(['ok' => true]);
+    }
+
+    // ---- ログイン ----
+    if ($route === 'GET auth/staff') {
+        Http::json(['items' => array_map(fn($s) => ['id' => $s['id'], 'name' => $s['name'], 'role' => $s['role']], Auth::listStaff())]);
+    }
+    if ($route === 'POST auth/login') {
+        $in = Schema::login(Http::readJson());
+        $r = Auth::verifyPin($in['staffId'], $in['pin']);
+        Auth::audit(['id' => $r['staff']['id'], 'name' => $r['staff']['name']], 'ログイン');
+        Http::json($r['staff'], 200, ['Set-Cookie: ' . Auth::sessionCookie(Auth::createSessionToken($r['staff']['id'], $r['sessionVersion']))]);
+    }
+    if ($route === 'POST auth/logout') {
+        $s = Auth::currentStaff();
+        if ($s) {
+            Auth::audit(Auth::actorOf($s), 'ログアウト');
+        }
+        Http::noContent(['Set-Cookie: ' . Auth::clearSessionCookie()]);
+    }
+    if ($route === 'GET auth/me') {
+        Http::json($me());
+    }
+
+    // ---- 外部連携（スタッフのログインではなく連携トークンで確認） ----
+    if ($p[0] === 'integration' && ($p[1] ?? '') === 'reminders') {
+        Http::checkIntegrationAuth();
+        if ($method === 'GET' && $n === 2) {
+            Http::json(Store::reminderFeed(V::date($q('date'))));
+        }
+        if ($method === 'POST' && $n === 3) {
+            $id = V::id($p[2]);
+            $status = Schema::reminderResult(Http::readJson())['status'];
+            $r = Store::setReminderStatus($id, $status);
+            Http::json(['reservationId' => $r['id'], 'reminder' => $r['reminder']]);
+        }
+    }
+
+    // ---- カレンダー・設定 ----
+    if ($route === 'GET day') {
+        $me();
+        Http::json(Store::getDayBundle(V::date($q('date'))));
+    }
+    if ($route === 'GET settings') {
+        $me();
+        Http::json(Store::getSettings());
+    }
+
+    // ---- 予約 ----
+    if ($route === 'POST reservations') {
+        $s = $me();
+        Http::json(Store::createReservation(Schema::createReservation(Http::readJson()), $actor($s)), 201);
+    }
+    if ($method === 'PATCH' && $n === 2 && $p[0] === 'reservations') {
+        $s = $me();
+        $id = V::id($p[1]);
+        Http::json(Store::updateReservation($id, Schema::updateReservation(Http::readJson()), $actor($s)));
+    }
+
+    // ---- 患者 ----
+    if ($route === 'GET patients') {
+        $me();
+        Http::json(['items' => Store::searchPatients(mb_substr($q('q') ?? '', 0, 50))]);
+    }
+    if ($route === 'POST patients') {
+        $s = $me();
+        Http::json(Store::createPatient(Schema::createPatient(Http::readJson()), $actor($s)), 201);
+    }
+    if ($route === 'GET patients/merge') {
+        $me(STAFF_MANAGE);
+        Http::json(Store::previewMerge(V::id($q('keep')), V::id($q('dup'))));
+    }
+    if ($route === 'POST patients/merge') {
+        $s = $me(STAFF_MANAGE);
+        $keep = Store::mergePatients(Schema::mergePatients(Http::readJson()), $actor($s));
+        Http::json(Store::getPatientDetail($keep['id']));
+    }
+    if ($p[0] === 'patients' && $n >= 2 && $p[1] !== 'merge') {
+        if ($method === 'GET' && $n === 2) {
+            $me();
+            Http::json(Store::getPatientDetail(V::id($p[1])));
+        }
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me();
+            $id = V::id($p[1]);
+            Store::updatePatient($id, Schema::updatePatient(Http::readJson()), $actor($s));
+            Http::json(Store::getPatientDetail($id));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'unlink-line') {
+            $s = $me();
+            $id = V::id($p[1]);
+            Store::unlinkPatientLine($id, Schema::versionOnly(Http::readJson()), $actor($s));
+            Http::json(Store::getPatientDetail($id));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Store::deletePatient($id, Schema::deletePatient(Http::readJson()), $actor($s));
+            Http::json(Store::getPatientDetail($id));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'restore') {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Store::restorePatient($id, Schema::versionOnly(Http::readJson()), $actor($s));
+            Http::json(Store::getPatientDetail($id));
+        }
+        if ($method === 'PUT' && $n === 4 && $p[2] === 'visits') {
+            $s = $me();
+            $id = V::id($p[1]);
+            Store::saveVisitNote($id, V::date($p[3]), Schema::visitNote(Http::readJson(32_768)), $actor($s));
+            Http::json(Store::getPatientDetail($id));
+        }
+    }
+
+    // ---- レーン・メニュー（院長・管理者と受付） ----
+    foreach (['lanes', 'menus'] as $kind) {
+        if ($p[0] !== $kind) {
+            continue;
+        }
+        if ($method === 'POST' && $n === 1) {
+            $s = $me(STAFF_MANAGE);
+            $in = Http::readJson();
+            Http::json($kind === 'lanes' ? Store::createLane(Schema::lane($in), $actor($s)) : Store::createMenu(Schema::menu($in), $actor($s)), 201);
+        }
+        if ($method === 'POST' && $n === 2 && $p[1] === 'reorder') {
+            $s = $me(STAFF_MANAGE);
+            $ids = Schema::reorder(Http::readJson());
+            Http::json(['items' => $kind === 'lanes' ? Store::reorderLanes($ids, $actor($s)) : Store::reorderMenus($ids, $actor($s))]);
+        }
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            $in = Http::readJson();
+            Http::json($kind === 'lanes' ? Store::updateLane($id, Schema::lane($in), $actor($s)) : Store::updateMenu($id, Schema::menu($in), $actor($s)));
+        }
+        if ($method === 'DELETE' && $n === 2 && $kind === 'lanes') {
+            $s = $me(STAFF_MANAGE);
+            Store::deleteLane(V::id($p[1]), $actor($s));
+            Http::noContent();
+        }
+    }
+
+    // ---- スタッフ・操作ログ（院長・管理者のみ） ----
+    if ($route === 'GET staff') {
+        $me(STAFF_ADMIN);
+        Http::json(['items' => Auth::listStaff(true)]);
+    }
+    if ($route === 'POST staff') {
+        $s = $me(STAFF_ADMIN);
+        Http::json(Auth::createStaff($actor($s), Schema::createStaff(Http::readJson())), 201);
+    }
+    if ($method === 'PATCH' && $n === 2 && $p[0] === 'staff') {
+        $s = $me(STAFF_ADMIN);
+        $id = V::id($p[1]);
+        Http::json(Auth::updateStaff($actor($s), $id, Schema::updateStaff(Http::readJson())));
+    }
+    if ($route === 'GET audit') {
+        $me(STAFF_ADMIN);
+        Http::json(['items' => Auth::listAudit(300)]);
+    }
+
+    Http::json(['error' => 'not_found', 'message' => '見つかりません'], 404);
+} catch (Throwable $e) {
+    Http::error($e);
+}

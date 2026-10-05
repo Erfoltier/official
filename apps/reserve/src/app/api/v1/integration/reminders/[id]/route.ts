@@ -6,7 +6,7 @@ import { setReminderStatus } from "@/lib/server/store";
  * 外部連携：リマインドの送信結果を書き戻す。
  *   POST /api/v1/integration/reminders/{reservationId}  {"status":"sent"}
  */
-export async function POST(request: Request, ctx: RouteContext<"/api/v1/integration/reminders/[id]">) {
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = checkIntegrationAuth(request);
   if (denied) return denied;
   try {

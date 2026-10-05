@@ -5,11 +5,13 @@ import type { StaffPublic } from "@/lib/domain/types";
 import { ROLE_LABEL } from "@/lib/domain/types";
 import { ApiError, fetchLoginStaff, login } from "@/components/calendar/api";
 import styles from "./login.module.css";
+import { withBase } from "@/lib/paths";
 
 /** 戻り先は同じサイト内のパスだけ許す（外部サイトへの転送を防ぐ） */
 function safeNext(): string {
-  const next = new URLSearchParams(window.location.search).get("next") ?? "/";
-  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
+  const home = withBase("/");
+  const next = new URLSearchParams(window.location.search).get("next") ?? home;
+  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : home;
 }
 
 export function LoginApp() {

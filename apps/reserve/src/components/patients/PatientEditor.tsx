@@ -8,6 +8,7 @@ import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
 import { UpcomingTable, VisitTable, type VisitSave } from "./VisitTable";
 import styles from "./patients.module.css";
+import { patientPath, withBase } from "@/lib/paths";
 
 interface Props {
   patientId: string;
@@ -151,7 +152,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
     setDeleting(false);
     onSaved?.();
     if (d.patient.id !== patientId) {
-      window.location.replace(`/patients/${encodeURIComponent(d.patient.id)}`);
+      window.location.replace(withBase(patientPath(d.patient.id)));
       return;
     }
     setDetail(d);

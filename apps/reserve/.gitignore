@@ -43,3 +43,8 @@ next-env.d.ts
 
 # 保存データ（患者情報を含む・暗号化済み）と開発用の鍵。絶対にコミットしない
 /.data/
+/dist/
+
+# PHP版の設定（暗号鍵など）とデータ
+/php/config.php
+/php/data/*.db*

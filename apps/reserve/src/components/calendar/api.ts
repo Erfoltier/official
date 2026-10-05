@@ -1,4 +1,5 @@
 import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
+import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
   constructor(
@@ -10,17 +11,25 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const override = METHOD_OVERRIDE && ["PUT", "PATCH", "DELETE"].includes(method);
+  const res = await fetch(apiUrl(path), {
     ...init,
+    method: override ? "POST" : method,
     cache: "no-store",
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      ...(override && { "X-HTTP-Method-Override": method }),
+      ...init?.headers,
+    },
   });
   const body = res.status === 204 ? {} : await res.json().catch(() => ({}));
   if (res.status === 401 && body.error === "login_required") {
     // ログインが切れていたらログイン画面へ（戻り先を付ける）
     const next = window.location.pathname + window.location.search;
-    window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+    window.location.replace(withBase(`/login/?next=${encodeURIComponent(next)}`));
     return new Promise<T>(() => {});
   }
   if (!res.ok) {

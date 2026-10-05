@@ -5,6 +5,7 @@ import type { AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { ROLE_LABEL, STAFF_ROLES } from "@/lib/domain/types";
 import { fetchAudit, fetchStaff, saveStaff } from "@/components/calendar/api";
 import styles from "./settings.module.css";
+import { patientPath, withBase } from "@/lib/paths";
 
 interface Props {
   notify: (text: string) => void;
@@ -183,7 +184,7 @@ export function AuditTab({ fail }: { fail: (err: unknown) => void }) {
                 <td>{a.actor.name}</td>
                 <td>{a.action}</td>
                 <td>
-                  {a.target?.startsWith("p-") ? <a href={`/patients/${encodeURIComponent(a.target)}`}>患者を開く</a> : a.target ?? ""}
+                  {a.target?.startsWith("p-") ? <a href={withBase(patientPath(a.target))}>患者を開く</a> : a.target ?? ""}
                 </td>
               </tr>
             ))}

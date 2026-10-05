@@ -4,7 +4,7 @@ import { actorOf, requireStaff } from "@/lib/server/session";
 import { getPatientDetail, saveVisitNote } from "@/lib/server/store";
 
 /** 来院日ごとの記録（簡易カルテ・スキンケア）を保存。両方空なら削除 */
-export async function PUT(request: Request, ctx: RouteContext<"/api/v1/patients/[id]/visits/[date]">) {
+export async function PUT(request: Request, ctx: { params: Promise<{ id: string; date: string }> }) {
   try {
     const staff = requireStaff(request);
     const { id, date } = await ctx.params;

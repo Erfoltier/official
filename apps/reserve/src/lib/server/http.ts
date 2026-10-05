@@ -49,8 +49,9 @@ export function checkIntegrationAuth(request: Request): Response | null {
   if (!expected || expected.length < 32) {
     return json({ error: "disabled", message: "外部連携APIは無効です" }, 503);
   }
+  // 共用サーバーで Authorization が Basic認証に使われている場合に備え、X-Integration-Token でも受け付ける
   const header = request.headers.get("authorization") ?? "";
-  const given = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const given = request.headers.get("x-integration-token") ?? (header.startsWith("Bearer ") ? header.slice(7) : "");
   const a = Buffer.from(given);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {

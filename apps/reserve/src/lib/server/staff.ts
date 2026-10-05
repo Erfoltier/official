@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { pbkdf2Sync, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { Actor, AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { cleanName, hasForbiddenChars } from "@/lib/domain/text";
 import { PersistentMap, appendAudit, count, loadAudit, put, transaction } from "@/lib/server/db";
@@ -8,11 +8,17 @@ import { PersistentMap, appendAudit, count, loadAudit, put, transaction } from "
 /**
  * スタッフとPINログイン（試作）。
  * - 画面全体は Basic認証（院の入口）で守り、その上でスタッフごとにPINでログインする
- * - PINは scrypt でハッシュ化して保存し、5回続けて間違えると5分間ロックする
+ * - PINは PBKDF2-SHA256 でハッシュ化して保存し、5回続けて間違えると5分間ロックする
  * - PIN変更・利用停止で、そのスタッフの既存のログインはすべて無効になる
  */
 
 interface StaffRecord extends StaffPublic {
+  /**
+   * PINのハッシュ方式。"pbkdf2-sha256"（Node・PHP共通）。
+   * 未設定の古い記録は scrypt（Node版のみ対応）
+   */
+  pinAlg?: "pbkdf2-sha256";
+  pinIter?: number;
   pinSalt: string;
   pinHash: string;
   /** これが変わるとログイン中のセッションが無効になる */
@@ -88,9 +94,25 @@ function st(): StaffState {
   return g.__reserveStaff;
 }
 
-function hashPin(pin: string): { pinSalt: string; pinHash: string } {
+/** PINのハッシュ化。PHP版でも確かめられるよう PBKDF2-SHA256 を使う */
+export const PIN_ITERATIONS = 210_000;
+
+function hashPin(pin: string): Pick<StaffRecord, "pinAlg" | "pinIter" | "pinSalt" | "pinHash"> {
   const salt = randomBytes(16).toString("hex");
-  return { pinSalt: salt, pinHash: scryptSync(pin, salt, 32).toString("hex") };
+  return {
+    pinAlg: "pbkdf2-sha256",
+    pinIter: PIN_ITERATIONS,
+    pinSalt: salt,
+    pinHash: pbkdf2Sync(pin, salt, PIN_ITERATIONS, 32, "sha256").toString("hex"),
+  };
+}
+
+function pinMatches(rec: StaffRecord, pin: string): boolean {
+  const given =
+    rec.pinAlg === "pbkdf2-sha256"
+      ? pbkdf2Sync(String(pin), rec.pinSalt, rec.pinIter ?? PIN_ITERATIONS, 32, "sha256")
+      : scryptSync(String(pin), rec.pinSalt, 32);
+  return timingSafeEqual(given, Buffer.from(rec.pinHash, "hex"));
 }
 
 function checkPinFormat(pin: string): void {
@@ -116,8 +138,7 @@ export function verifyPin(staffId: string, pin: string, now = Date.now()): { sta
   if (s.lockedUntil > now) {
     throw new AuthError("locked", `PINを続けて間違えたため、${Math.ceil((s.lockedUntil - now) / 60_000)}分ほどログインできません`);
   }
-  const given = scryptSync(String(pin), s.pinSalt, 32);
-  const ok = timingSafeEqual(given, Buffer.from(s.pinHash, "hex"));
+  const ok = pinMatches(s, pin);
   const save = (patch: Partial<StaffRecord>) => st().staff.set(s.id, { ...s, ...patch });
   if (!ok) {
     const fails = s.failedCount + 1;

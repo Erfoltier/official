@@ -3,7 +3,7 @@ import { errorResponse, json, readJson } from "@/lib/server/http";
 import { actorOf, requireStaff } from "@/lib/server/session";
 import { deleteLane, updateLane } from "@/lib/server/store";
 
-export async function PATCH(request: Request, ctx: RouteContext<"/api/v1/lanes/[id]">) {
+export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const staff = requireStaff(request, ["admin", "reception"]);
     const id = idParam.parse((await ctx.params).id);
@@ -14,7 +14,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/v1/lanes/[
 }
 
 /** レーンの削除（予約の記録がないレーンだけ） */
-export async function DELETE(request: Request, ctx: RouteContext<"/api/v1/lanes/[id]">) {
+export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const staff = requireStaff(request, ["admin", "reception"]);
     deleteLane(idParam.parse((await ctx.params).id), actorOf(staff));

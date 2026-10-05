@@ -3,7 +3,7 @@ import { errorResponse, json, readJson } from "@/lib/server/http";
 import { actorOf, requireStaff } from "@/lib/server/session";
 import { updateStaff } from "@/lib/server/staff";
 
-export async function PATCH(request: Request, ctx: RouteContext<"/api/v1/staff/[id]">) {
+export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const staff = requireStaff(request, ["admin"]);
     const id = idParam.parse((await ctx.params).id);

@@ -1,0 +1,788 @@
+{
+ "clinic": {
+  "name": "いしだ皮フ科",
+  "timeZone": "Asia/Tokyo",
+  "dayStartMin": 570,
+  "dayEndMin": 1140,
+  "slotMin": 5
+ },
+ "lanes": [
+  {
+   "id": "lane-main",
+   "name": "メインレーン（医師）",
+   "shortName": "メイン(医師)",
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "lane-1",
+   "name": "1番レーン(レーザー脱毛など)",
+   "shortName": "1番",
+   "order": 1,
+   "active": true
+  },
+  {
+   "id": "lane-3",
+   "name": "3番レーン針脱毛、ハイフ",
+   "shortName": "3番",
+   "order": 2,
+   "active": true
+  },
+  {
+   "id": "lane-4",
+   "name": "4番ネオボ撮影・麻酔・ゼオ説明",
+   "shortName": "4番",
+   "order": 3,
+   "active": true
+  }
+ ],
+ "menus": [
+  {
+   "id": "menu-s000099B91",
+   "name": "シミまとめ標準20分",
+   "abbr": "シミ",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 20
+   },
+   "defaultMinutes": 20,
+   "startStepMin": 20,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#0ea5e9",
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "menu-s0000C1A4F",
+   "name": "シミ4個まで/男性/75歳以上/説明済照射のみ/ゼオ不要",
+   "abbr": "シミ4個",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 60,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#38bdf8",
+   "order": 1,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A192",
+   "name": "ほくろ",
+   "abbr": "ほくろ",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 20
+   },
+   "defaultMinutes": 20,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#a16207",
+   "order": 2,
+   "active": true
+  },
+  {
+   "id": "menu-s000099BF0",
+   "name": "色素レーザー5/5使用しない11/3",
+   "abbr": "色素(旧)",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 10
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 30,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#0284c7",
+   "order": 3,
+   "active": false
+  },
+  {
+   "id": "menu-s000099DC1",
+   "name": "予約（メモに自由記載）",
+   "abbr": "予約",
+   "duration": {
+    "kind": "range",
+    "min": 10,
+    "max": 90,
+    "step": 5
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": 4,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#64748b",
+   "order": 4,
+   "active": true
+  },
+  {
+   "id": "menu-s000099DBF",
+   "name": "部分炭酸ガスフラクショナル",
+   "abbr": "部分CO2",
+   "duration": {
+    "kind": "range",
+    "min": 10,
+    "max": 60,
+    "step": 5
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 30,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#b45309",
+   "order": 5,
+   "active": true
+  },
+  {
+   "id": "menu-s000099E62",
+   "name": "スネコス【再診】使用しない9/30",
+   "abbr": "スネコス再(旧)",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#db2777",
+   "order": 6,
+   "active": false
+  },
+  {
+   "id": "menu-s00009A0D8",
+   "name": "ヒアルロン酸",
+   "abbr": "ヒアル",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 90,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#a855f7",
+   "order": 7,
+   "active": true
+  },
+  {
+   "id": "menu-s000099E63",
+   "name": "スネコス【再診】",
+   "abbr": "スネコス再",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#db2777",
+   "order": 8,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A18A",
+   "name": "マッサージピール",
+   "abbr": "MPピール",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 20
+   },
+   "defaultMinutes": 20,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#f97316",
+   "order": 9,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A18B",
+   "name": "ミラノリピール",
+   "abbr": "ミラノ",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 20
+   },
+   "defaultMinutes": 20,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#fb923c",
+   "order": 10,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A18C",
+   "name": "サリチル酸マクロゴール",
+   "abbr": "サリチル",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 20
+   },
+   "defaultMinutes": 20,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#ea580c",
+   "order": 11,
+   "active": true
+  },
+  {
+   "id": "menu-s0000C1A4E",
+   "name": "ボトックス初診標準20分",
+   "abbr": "BTX初",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 30,
+    "step": 5
+   },
+   "defaultMinutes": 20,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#8b5cf6",
+   "order": 12,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A18E",
+   "name": "ボトックス【再診】",
+   "abbr": "BTX再",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 10
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#7c3aed",
+   "order": 13,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A18F",
+   "name": "脂肪溶解【初診】",
+   "abbr": "脂肪溶解初",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 30
+   },
+   "defaultMinutes": 30,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#ca8a04",
+   "order": 14,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A191",
+   "name": "脂肪溶解【再診】",
+   "abbr": "脂肪溶解再",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#ca8a04",
+   "order": 15,
+   "active": true
+  },
+  {
+   "id": "menu-s00009A3AE",
+   "name": "色素レーザー【再診】",
+   "abbr": "色素再",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 360,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#0284c7",
+   "order": 16,
+   "active": true
+  },
+  {
+   "id": "menu-s00009E6B7",
+   "name": "初診スネコスやクマ",
+   "abbr": "初診スネコス",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 30
+   },
+   "defaultMinutes": 30,
+   "startStepMin": 30,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#be185d",
+   "order": 17,
+   "active": true
+  },
+  {
+   "id": "menu-s0000A1344",
+   "name": "レーザー脱毛",
+   "abbr": "脱毛",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 360,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#14b8a6",
+   "order": 18,
+   "active": true
+  },
+  {
+   "id": "menu-s0000A1349",
+   "name": "ヴェル医師施術",
+   "abbr": "ヴェル医",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 10
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#e11d48",
+   "order": 19,
+   "active": true
+  },
+  {
+   "id": "menu-s0000A134B",
+   "name": "ヴェル麻酔",
+   "abbr": "ヴェル麻酔",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 10
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#a8a29e",
+   "order": 20,
+   "active": true
+  },
+  {
+   "id": "menu-s0000A134C",
+   "name": "炭酸ガスフラクショナル麻酔",
+   "abbr": "CO2麻酔",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 10
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#a8a29e",
+   "order": 21,
+   "active": true
+  },
+  {
+   "id": "menu-s0000A43A3",
+   "name": "脱毛初診説明",
+   "abbr": "脱毛説明",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 15,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#0d9488",
+   "order": 22,
+   "active": true
+  },
+  {
+   "id": "menu-s0000A7D2D",
+   "name": "全顔炭酸ガスフラクショナル",
+   "abbr": "全顔CO2",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 5,
+   "priceYen": 49500,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1"
+   ],
+   "color": "#92400e",
+   "order": 23,
+   "active": true
+  },
+  {
+   "id": "menu-s0000B54EA",
+   "name": "ヴェル看護師施術",
+   "abbr": "ヴェル看",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 15,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#f43f5e",
+   "order": 24,
+   "active": true
+  },
+  {
+   "id": "menu-s0000B6B1C",
+   "name": "針脱毛",
+   "abbr": "針脱毛",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 600,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 30,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#f59e0b",
+   "order": 25,
+   "active": true
+  },
+  {
+   "id": "menu-s0000B6B52",
+   "name": "ネオボ撮影＋頬麻酔",
+   "abbr": "ネオボ+麻酔",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 60,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#78716c",
+   "order": 26,
+   "active": true
+  },
+  {
+   "id": "menu-s0000B6EB5",
+   "name": "トラネ注射",
+   "abbr": "トラネ",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 90,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#6366f1",
+   "order": 27,
+   "active": true
+  },
+  {
+   "id": "menu-s0000B6EB7",
+   "name": "フィルロード時間自由設定",
+   "abbr": "フィルロード",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 60,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#10b981",
+   "order": 28,
+   "active": true
+  },
+  {
+   "id": "menu-s0000BB7B7",
+   "name": "完全初診",
+   "abbr": "初診",
+   "duration": {
+    "kind": "range",
+    "min": 10,
+    "max": 360,
+    "step": 5
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#2563eb",
+   "order": 29,
+   "active": true
+  },
+  {
+   "id": "menu-s0000C0E47",
+   "name": "ハイフ",
+   "abbr": "HIFU",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 360,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#ef4444",
+   "order": 30,
+   "active": true
+  },
+  {
+   "id": "menu-s0000C60FE",
+   "name": "予約不可",
+   "abbr": "予約不可",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 360,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main",
+    "lane-1",
+    "lane-3",
+    "lane-4"
+   ],
+   "color": "#334155",
+   "order": 31,
+   "active": true
+  },
+  {
+   "id": "menu-s0000CF1CB",
+   "name": "ニキビ・ニキビ跡",
+   "abbr": "ニキビ",
+   "duration": {
+    "kind": "range",
+    "min": 10,
+    "max": 90,
+    "step": 5
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 30,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#65a30d",
+   "order": 32,
+   "active": true
+  },
+  {
+   "id": "menu-s0000D0B81",
+   "name": "ジュブアセル看護師施術",
+   "abbr": "ジュブ看",
+   "duration": {
+    "kind": "range",
+    "min": 10,
+    "max": 30,
+    "step": 5
+   },
+   "defaultMinutes": 10,
+   "startStepMin": 30,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-1",
+    "lane-3"
+   ],
+   "color": "#06b6d4",
+   "order": 33,
+   "active": true
+  },
+  {
+   "id": "menu-s0000D14AA",
+   "name": "ジュブアセル医師施術",
+   "abbr": "ジュブ医",
+   "duration": {
+    "kind": "range",
+    "min": 5,
+    "max": 60,
+    "step": 5
+   },
+   "defaultMinutes": 5,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": null,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#0891b2",
+   "order": 34,
+   "active": true
+  }
+ ],
+ "skincareCatalog": [
+  "ゼオスキン ミラミン",
+  "ゼオスキン ミラクトン",
+  "ゼオスキン デイリーPD",
+  "ゼオスキン バランサートナー",
+  "ゼオスキン エクスフォリエーティングクレンザー",
+  "トレチノイン 0.025%",
+  "ハイドロキノン 4%",
+  "ビタミンC美容液",
+  "保湿クリーム（セラミド）",
+  "日焼け止め SPF50+",
+  "トラネキサム酸 内服"
+ ]
+}

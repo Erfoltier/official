@@ -76,6 +76,8 @@ function open(): DbState {
       id   TEXT NOT NULL,
       data BLOB NOT NULL,
       updated_at TEXT NOT NULL,
+      k1   TEXT,
+      k2   TEXT,
       PRIMARY KEY (kind, id)
     );
     CREATE TABLE IF NOT EXISTS audit (
@@ -87,7 +89,45 @@ function open(): DbState {
   if (file !== ":memory:") {
     for (const f of [file, `${file}-wal`, `${file}-shm`]) if (existsSync(f)) chmodSync(f, 0o600);
   }
-  return { db, key: loadKey(), txDepth: 0 };
+  const state: DbState = { db, key: loadKey(), txDepth: 0 };
+  migrateIndexColumns(state);
+  return state;
+}
+
+/**
+ * 検索用の索引列（暗号化しない）。PHP版は1日分・1患者分だけを読むため、これで絞り込む。
+ * 中身は日付と患者IDだけで、氏名などの個人情報は入れない。
+ * - reservation / visitNote：k1 = 日付（YYYY-MM-DD）、k2 = 患者ID
+ * - patientHistory：k2 = 患者ID
+ */
+export function indexKeys(kind: Kind, id: string, value: unknown): [string | null, string | null] {
+  const v = value as { startAt?: string; date?: string; patientId?: string };
+  if (kind === "reservation") return [v.startAt?.slice(0, 10) ?? null, v.patientId ?? null];
+  if (kind === "visitNote") return [v.date ?? null, v.patientId ?? null];
+  if (kind === "patientHistory") return [null, id];
+  return [null, null];
+}
+
+/** 索引列のない古いデータベースに列を足し、既存の行に値を入れる */
+function migrateIndexColumns(s: DbState): void {
+  const cols = (s.db.prepare("PRAGMA table_info(docs)").all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("k1")) s.db.exec("ALTER TABLE docs ADD COLUMN k1 TEXT");
+  if (!cols.includes("k2")) s.db.exec("ALTER TABLE docs ADD COLUMN k2 TEXT");
+  s.db.exec(`
+    CREATE INDEX IF NOT EXISTS docs_k1 ON docs (kind, k1);
+    CREATE INDEX IF NOT EXISTS docs_k2 ON docs (kind, k2);
+  `);
+  const rows = s.db
+    .prepare("SELECT kind, id, data FROM docs WHERE kind IN ('reservation','visitNote','patientHistory') AND k2 IS NULL")
+    .all() as { kind: Kind; id: string; data: Uint8Array }[];
+  if (rows.length === 0) return;
+  const upd = s.db.prepare("UPDATE docs SET k1 = ?, k2 = ? WHERE kind = ? AND id = ?");
+  s.db.exec("BEGIN");
+  for (const r of rows) {
+    const [k1, k2] = indexKeys(r.kind, r.id, decryptWith(s.key, r.data));
+    upd.run(k1, k2, r.kind, r.id);
+  }
+  s.db.exec("COMMIT");
 }
 
 function st(): DbState {
@@ -106,7 +146,10 @@ function encrypt(value: unknown): Buffer {
 }
 
 function decrypt<T>(blob: Uint8Array): T {
-  const { key } = st();
+  return decryptWith<T>(st().key, blob);
+}
+
+function decryptWith<T>(key: Buffer, blob: Uint8Array): T {
   const buf = Buffer.from(blob);
   const d = createDecipheriv("aes-256-gcm", key, buf.subarray(0, 12));
   d.setAuthTag(buf.subarray(12, 28));
@@ -121,11 +164,12 @@ export function loadAll<T>(kind: Kind): Map<string, T> {
 }
 
 export function put(kind: Kind, id: string, value: unknown): void {
+  const [k1, k2] = indexKeys(kind, id, value);
   st()
     .db.prepare(
-      "INSERT INTO docs (kind, id, data, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(kind, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+      "INSERT INTO docs (kind, id, data, updated_at, k1, k2) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(kind, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, k1 = excluded.k1, k2 = excluded.k2",
     )
-    .run(kind, id, encrypt(value), new Date().toISOString());
+    .run(kind, id, encrypt(value), new Date().toISOString(), k1, k2);
 }
 
 export function remove(kind: Kind, id: string): void {

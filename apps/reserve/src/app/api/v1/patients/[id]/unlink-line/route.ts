@@ -4,7 +4,7 @@ import { actorOf, requireStaff } from "@/lib/server/session";
 import { getPatientDetail, unlinkPatientLine } from "@/lib/server/store";
 
 /** LINEの紐付けを解除する。紐付けは本人のQR操作でしか作れないため、ここでは解除のみ */
-export async function POST(request: Request, ctx: RouteContext<"/api/v1/patients/[id]/unlink-line">) {
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const staff = requireStaff(request);
     const id = idParam.parse((await ctx.params).id);

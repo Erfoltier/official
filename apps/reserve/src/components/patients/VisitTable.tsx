@@ -5,6 +5,7 @@ import type { VisitRow } from "@/lib/domain/types";
 import { INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
 import { formatHm, minutesOfDay, nowInClinic } from "@/lib/domain/time";
 import styles from "./patients.module.css";
+import { calendarPath, withBase } from "@/lib/paths";
 
 export interface VisitSave {
   note: string;
@@ -103,7 +104,7 @@ export function VisitTable({ visits, suggestions, onSave, readOnly }: Props) {
               ) : (
                 <tr key={v.date} data-today={v.date === today || undefined}>
                   <td className={styles.colDate} data-label="日付">
-                    <a href={`/?date=${v.date}`} className={styles.dateLink}>
+                    <a href={withBase(calendarPath(v.date))} className={styles.dateLink}>
                       {formatDateFull(v.date)}
                     </a>
                     {v.date === today && <span className={styles.todayChip}>今日</span>}
@@ -330,7 +331,7 @@ export function UpcomingTable({ items }: { items: VisitRow["reservations"] }) {
           return (
             <tr key={r.id} data-inactive={INACTIVE_STATUSES.has(r.status) || undefined}>
               <td className={styles.colDate} data-label="日付">
-                <a href={`/?date=${date}`} className={styles.dateLink}>
+                <a href={withBase(calendarPath(date))} className={styles.dateLink}>
                   {formatDateFull(date)}
                 </a>
               </td>

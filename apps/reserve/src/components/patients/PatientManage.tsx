@@ -12,6 +12,7 @@ import {
 } from "@/components/calendar/api";
 import { formatDateFull } from "./VisitTable";
 import styles from "./patients.module.css";
+import { patientPath, withBase } from "@/lib/paths";
 
 function stamp(iso: string): string {
   return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -28,7 +29,7 @@ export function DeletedBanner(props: { detail: PatientDetail; canManage: boolean
       {p.deleted.by && `・${p.deleted.by.name}`}）
       <div>理由：{p.deleted.reason}</div>
       {p.mergedInto ? (
-        <a href={`/patients/${encodeURIComponent(p.mergedInto)}`}>統合先の患者を開く →</a>
+        <a href={withBase(patientPath(p.mergedInto))}>統合先の患者を開く →</a>
       ) : (
         props.canManage && (
           <button
@@ -61,7 +62,7 @@ export function DuplicateBanner(props: { detail: PatientDetail; canManage: boole
       <ul>
         {duplicates.map((d) => (
           <li key={d.patient.id}>
-            <a href={`/patients/${encodeURIComponent(d.patient.id)}`}>
+            <a href={withBase(patientPath(d.patient.id))}>
               {d.patient.name}（診察券 {d.patient.chartNo}）
             </a>
             <span className={styles.muted}>{d.reasons.join("・")}</span>

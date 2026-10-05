@@ -12,6 +12,7 @@ import { CreateDialog } from "./CreateDialog";
 import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
 import styles from "./calendar.module.css";
+import { withBase } from "@/lib/paths";
 
 const POLL_MS = 20_000;
 const ALL_LANES = "all";
@@ -255,7 +256,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               onClick={async () => {
                 if (!window.confirm(`${me.name} をログアウトして、スタッフを交代しますか？`)) return;
                 await logout();
-                window.location.replace("/login");
+                window.location.replace(withBase("/login/"));
               }}
             >
               {me.name} ⇄

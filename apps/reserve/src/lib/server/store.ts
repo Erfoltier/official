@@ -130,6 +130,12 @@ function seedDemoDay(date: string): void {
   }
 }
 
+/** 開始時刻順。同じ時刻ならID順（PHP版と同じ並びにする） */
+function byStart(a: Reservation, b: Reservation): number {
+  if (a.startAt !== b.startAt) return a.startAt < b.startAt ? -1 : 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
 function sortedLanes(): Lane[] {
   return [...state().lanes.values()].sort((a, b) => a.order - b.order);
 }
@@ -143,7 +149,7 @@ export function getDayBundle(date: string): DayBundle {
   const st = state();
   const reservations = [...st.reservations.values()]
     .filter((r) => clinicDateOf(r.startAt) === date)
-    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+    .sort(byStart);
   const patientIds = new Set(reservations.map((r) => r.patientId));
   // 非表示のレーンでも、その日に予約が残っていれば表示する（予約が見えなくならないように）
   const usedLanes = new Set(reservations.filter((r) => !INACTIVE_STATUSES.has(r.status)).map((r) => r.laneId));
@@ -560,7 +566,7 @@ export function getPatientDetail(id: string): PatientDetail {
 
   const mine = [...st.reservations.values()]
     .filter((r) => r.patientId === id)
-    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+    .sort(byStart);
 
   const rows = new Map<string, VisitRow>();
   const row = (date: string) => {

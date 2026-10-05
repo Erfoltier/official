@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Patient } from "@/lib/domain/types";
 import { searchPatients } from "@/components/calendar/api";
 import styles from "./patients.module.css";
+import { patientPath } from "@/lib/paths";
 
 /** 患者の検索・一覧。検索語が空のときは最近登録・更新した患者を出す */
 export function PatientsApp() {
@@ -40,7 +41,7 @@ export function PatientsApp() {
       <ul className={styles.list}>
         {items?.map((p) => (
           <li key={p.id}>
-            <Link href={`/patients/${encodeURIComponent(p.id)}`}>
+            <Link href={patientPath(p.id)}>
               <span className={styles.listName}>
                 {p.caution && <span className={styles.caution}>!</span>}
                 {p.name}
