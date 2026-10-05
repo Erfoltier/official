@@ -1,15 +1,31 @@
 "use client";
 
-import { useId, useMemo, useState, type CSSProperties } from "react";
-import type { PatientDetail, PatientFile, Product, VisitRow } from "@/lib/domain/types";
-import { INACTIVE_STATUSES, PRODUCT_CATEGORY_LABEL, STATUS_LABEL } from "@/lib/domain/types";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import type { PatientDetail, PatientFile, PriceItem, VisitRow } from "@/lib/domain/types";
+import { INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
 import { formatHm, minutesOfDay, nowInClinic, clinicDateOf } from "@/lib/domain/time";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { FileUploader } from "@/components/files/FileUploader";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import { RichText } from "@/components/richtext/RichText";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
+import { skincareOptions, type SkincareOption } from "@/lib/domain/skincare";
+import { fetchPrices } from "@/components/calendar/api";
+import { SkincarePicker } from "./SkincarePicker";
 import styles from "./patients.module.css";
+
+/** 料金表は画面を開いている間1回だけ読む（読めなければ設定の商品だけで動く） */
+let pricesOnce: Promise<PriceItem[]> | null = null;
+function loadPrices(): Promise<PriceItem[]> {
+  pricesOnce ??= fetchPrices().then(
+    (l) => l.items,
+    () => {
+      pricesOnce = null;
+      return [];
+    },
+  );
+  return pricesOnce;
+}
 import { calendarPath, withBase } from "@/lib/paths";
 
 export interface VisitSave {
@@ -113,7 +129,21 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
 
   /** その日より前で、スキンケア＆内服が記録されている直近の内容 */
   const previousSkincare = (date: string) => rows.find((v) => v.date < date && v.skincare.length > 0)?.skincare ?? [];
-  const priceOf = useMemo(() => new Map(detail.products.map((p) => [p.name, p.priceYen])), [detail.products]);
+  const [prices, setPrices] = useState<PriceItem[]>([]);
+  useEffect(() => {
+    let alive = true;
+    loadPrices().then((l) => alive && setPrices(l));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const options = useMemo(() => skincareOptions(prices, detail.products), [prices, detail.products]);
+  /** 値段：料金表の値段、なければ設定の商品の値段（削除した商品も過去の記録のために使う） */
+  const priceOf = useMemo(() => {
+    const m = new Map<string, number | null>(detail.products.map((p) => [p.name, p.priceYen]));
+    for (const o of options) if (o.priceYen !== null || !m.has(o.name)) m.set(o.name, o.priceYen);
+    return m;
+  }, [detail.products, options]);
 
   const rowProps = {
     detail,
@@ -138,6 +168,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
       }
     },
     previousSkincare,
+    options,
   };
 
   return (
@@ -223,6 +254,7 @@ type RowProps = {
   onCancel: (date: string) => void;
   onSave: (date: string, body: VisitSave) => Promise<void>;
   previousSkincare: (date: string) => string[];
+  options: SkincareOption[];
 };
 
 function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
@@ -243,7 +275,7 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
             <EditRow
               key={v.date}
               visit={v}
-              products={p.detail.products}
+              options={p.options}
               previous={p.previousSkincare(v.date)}
               onCancel={() => p.onCancel(v.date)}
               onSave={(body) => p.onSave(v.date, body)}
@@ -377,20 +409,11 @@ function AddRecord({ today, onPick }: { today: string; onPick: (date: string) =>
   );
 }
 
-function EditRow(props: { visit: VisitRow; products: Product[]; previous: string[]; onCancel: () => void; onSave: (body: VisitSave) => Promise<void> }) {
+function EditRow(props: { visit: VisitRow; options: SkincareOption[]; previous: string[]; onCancel: () => void; onSave: (body: VisitSave) => Promise<void> }) {
   const { visit } = props;
   const [note, setNote] = useState(visit.note);
   const [skincare, setSkincare] = useState<string[]>(visit.skincare);
-  const [item, setItem] = useState("");
   const [saving, setSaving] = useState(false);
-  const listId = useId();
-
-  const add = (x: string) => {
-    const v = x.trim().replace(/\s+/g, " ");
-    if (v && !skincare.includes(v)) setSkincare((s) => [...s, v]);
-    setItem("");
-  };
-  const toggle = (name: string) => setSkincare((s) => (s.includes(name) ? s.filter((y) => y !== name) : [...s, name]));
 
   return (
     <tr className={styles.editRow}>
@@ -413,78 +436,7 @@ function EditRow(props: { visit: VisitRow; products: Product[]; previous: string
         </div>
         <div className={styles.field}>
           <span className={styles.label}>スキンケア＆内服（タップで追加・もう一度で外す）</span>
-          {(["skincare", "oral"] as const).map((cat) => {
-            const list = props.products.filter((p) => p.category === cat);
-            if (list.length === 0) return null;
-            return (
-              <div key={cat} className={styles.presetGroup}>
-                <span className={styles.presetLabel}>{PRODUCT_CATEGORY_LABEL[cat]}</span>
-                <div className={styles.presets}>
-                  {list.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={styles.preset}
-                      data-on={skincare.includes(p.name) || undefined}
-                      aria-pressed={skincare.includes(p.name)}
-                      onClick={() => toggle(p.name)}
-                    >
-                      {p.name}
-                      {p.priceYen !== null && <small>{yen(p.priceYen)}</small>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          <div className={styles.chips}>
-            {skincare.map((x) => (
-              <span key={x} className={styles.chip}>
-                {x}
-                <button type="button" onClick={() => setSkincare((s) => s.filter((y) => y !== x))} aria-label={`${x}を外す`}>
-                  ×
-                </button>
-              </span>
-            ))}
-            {skincare.length === 0 && <span className={styles.muted}>未選択</span>}
-          </div>
-          <div className={styles.inlineForm}>
-            <input
-              className={styles.input}
-              value={item}
-              onChange={(e) => setItem(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  add(item);
-                }
-              }}
-              list={listId}
-              maxLength={60}
-              placeholder="一覧にないものは名前を入力して追加"
-              aria-label="スキンケア・内服を追加"
-            />
-            <datalist id={listId}>
-              {props.products
-                .filter((p) => !skincare.includes(p.name))
-                .map((p) => (
-                  <option key={p.id} value={p.name} />
-                ))}
-            </datalist>
-            <button type="button" className={styles.smallBtn} onClick={() => add(item)} disabled={!item.trim()}>
-              追加
-            </button>
-            {props.previous.length > 0 && (
-              <button
-                type="button"
-                className={styles.smallBtn}
-                onClick={() => setSkincare((s) => [...new Set([...s, ...props.previous])])}
-                title={props.previous.join("、")}
-              >
-                前回と同じ内容を入れる
-              </button>
-            )}
-          </div>
+          <SkincarePicker value={skincare} onChange={setSkincare} options={props.options} previous={props.previous} />
         </div>
         <div className={styles.editActions}>
           <span className={styles.muted}>メモとスキンケア＆内服を両方空にして保存すると、この日の記録を消します</span>
@@ -497,8 +449,7 @@ function EditRow(props: { visit: VisitRow; products: Product[]; previous: string
             disabled={saving}
             onClick={async () => {
               setSaving(true);
-              const pending = item.trim() && !skincare.includes(item.trim()) ? [...skincare, item.trim()] : skincare;
-              await props.onSave({ note, skincare: pending, version: visit.noteVersion });
+              await props.onSave({ note, skincare, version: visit.noteVersion });
               setSaving(false);
             }}
           >

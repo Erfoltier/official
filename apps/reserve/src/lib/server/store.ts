@@ -47,9 +47,10 @@ import {
 } from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 import { DEFAULT_PRODUCTS } from "@/lib/seed/products";
+import { SLOT_MENUS } from "@/lib/seed/slot-menus";
 import { DEFAULT_STAGES, STAGE_FOR_STATUS } from "@/lib/seed/stages";
 import { audit } from "@/lib/server/staff";
-import { PersistentMap, PersistentSet, count, getBlob, getMeta, put, putBlob, setMeta, transaction } from "@/lib/server/db";
+import { PersistentMap, PersistentSet, count, getBlob, getMeta, loadAll, put, putBlob, setMeta, transaction } from "@/lib/server/db";
 
 /**
  * 予約・患者・記録のストア。読み込みはメモリ上で行い、変更は1件ずつデータベース（db.ts）へ保存する。
@@ -103,6 +104,13 @@ function state(): StoreState {
       if (!getMeta<boolean>("productsSeeded")) {
         if (count("product") === 0) for (const p of DEFAULT_PRODUCTS) put("product", p.id, p);
         setMeta("productsSeeded", true);
+      }
+      // 予約枠時間一覧・ホームページから足したメニュー（既存のデータにも1回だけ。同じIDや同じ名前があれば足さない）
+      if (!getMeta<boolean>("slotMenusSeeded")) {
+        const have = loadAll<Menu>("menu");
+        const names = new Set([...have.values()].map((m) => m.name));
+        for (const m of SLOT_MENUS) if (!have.has(m.id) && !names.has(m.name)) put("menu", m.id, m);
+        setMeta("slotMenusSeeded", true);
       }
       // 状態（院ごとに増減できる）も同じく1回だけ入れる
       if (!getMeta<boolean>("stagesSeeded")) {

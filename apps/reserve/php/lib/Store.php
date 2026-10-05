@@ -66,6 +66,25 @@ final class Store
                 $db->setMeta('initialized', true);
             });
         }
+        // 予約枠時間一覧・ホームページから足したメニュー（既存のデータにも1回だけ。同じIDや同じ名前があれば足さない）
+        if (!$db->meta('slotMenusSeeded')) {
+            $db->transaction(function () use ($db) {
+                if ($db->meta('slotMenusSeeded')) {
+                    return;
+                }
+                $have = $db->all('menu');
+                $names = [];
+                foreach ($have as $m) {
+                    $names[$m['name']] = true;
+                }
+                foreach (self::seed()['slotMenus'] ?? [] as $m) {
+                    if (!isset($have[$m['id']]) && !isset($names[$m['name']])) {
+                        $db->put('menu', $m['id'], $m);
+                    }
+                }
+                $db->setMeta('slotMenusSeeded', true);
+            });
+        }
         // 状態（院ごとに増減できる）も同じく1回だけ入れる
         if (!$db->meta('stagesSeeded')) {
             $db->transaction(function () use ($db) {
