@@ -16,10 +16,10 @@ final class Store
     ];
     private const FIELD_LABEL = [
         'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール',
-        'chartNo' => '診察券番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
+        'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
         'memo' => 'メモ', 'lineUserId' => 'LINE紐付け',
     ];
-    private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'birthDate'];
+    private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
     public const MAX_ACTIVE_LANES = 30;
     private const MAX_TOTAL_LANES = 100;
@@ -248,7 +248,7 @@ final class Store
         $digits = digits_only($query);
         $out = [];
         foreach ($all as $p) {
-            $hay = search_key("{$p['name']}|{$p['kana']}|" . ($p['nameAlt'] ?? '') . "|{$p['chartNo']}");
+            $hay = search_key("{$p['name']}|{$p['kana']}|" . ($p['nameAlt'] ?? '') . "|{$p['chartNo']}|" . ($p['m3ChartNo'] ?? ''));
             $phoneHit = strlen($digits) >= 4 && str_contains(digits_only($p['phone'] ?? ''), $digits);
             if (str_contains($hay, $q) || $phoneHit) {
                 $out[] = $p;
@@ -411,6 +411,7 @@ final class Store
                 'patient' => [
                     'id' => $p['id'],
                     'name' => $p['name'],
+                    'm3ChartNo' => $p['m3ChartNo'] ?? null,
                     'lineUserId' => $p['lineUserId'] ?? null,
                     'phone' => $p['phone'] ?? null,
                     'email' => $p['email'] ?? null,
@@ -490,6 +491,20 @@ final class Store
                 }
             }
             $out['chartNo'] = $chartNo;
+        }
+        if (isset($input['m3ChartNo'])) {
+            $m3 = js_trim(normalize_width($input['m3ChartNo']));
+            if ($m3 !== '' && !preg_match('/^[A-Za-z0-9-]{1,20}$/', $m3)) {
+                throw new StoreError('invalid', 'M3カルテ番号は英数字で入力してください');
+            }
+            if ($m3 !== '') {
+                foreach (self::patients() as $p) {
+                    if (($p['m3ChartNo'] ?? null) === $m3 && $p['id'] !== $selfId && empty($p['deleted'])) {
+                        throw new StoreError('invalid', "このM3カルテ番号は 診察券{$p['chartNo']}（{$p['name']}）に登録されています");
+                    }
+                }
+            }
+            $out['m3ChartNo'] = $opt($m3);
         }
         if (isset($input['birthDate'])) {
             $b = js_trim($input['birthDate']);
@@ -993,6 +1008,9 @@ final class Store
             }
             if (strlen($phone) >= 8 && digits_only($o['phone'] ?? '') === $phone) {
                 $reasons[] = '電話番号が同じ';
+            }
+            if (!empty($p['m3ChartNo']) && ($o['m3ChartNo'] ?? null) === $p['m3ChartNo']) {
+                $reasons[] = 'M3カルテ番号が同じ';
             }
             if (!empty($p['birthDate']) && ($o['birthDate'] ?? null) === $p['birthDate'] && $reasons) {
                 $reasons[] = '生年月日が同じ';

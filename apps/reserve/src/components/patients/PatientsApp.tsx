@@ -33,7 +33,7 @@ export function PatientsApp() {
         className={styles.input}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="氏名・フリガナ・ローマ字・診察券番号・電話で検索"
+        placeholder="氏名・フリガナ・ローマ字・診察券／M3番号・電話で検索"
         aria-label="患者を検索"
         autoFocus
       />
@@ -50,7 +50,10 @@ export function PatientsApp() {
                 {p.kana}
                 {p.nameAlt && ` / ${p.nameAlt}`}
               </span>
-              <span className={styles.muted}>診察券 {p.chartNo}</span>
+              <span className={styles.muted}>
+                診察券 {p.chartNo}
+                {p.m3ChartNo && `・M3 ${p.m3ChartNo}`}
+              </span>
               {p.lineUserId && <span className={styles.lineBadge}>LINE</span>}
             </Link>
           </li>

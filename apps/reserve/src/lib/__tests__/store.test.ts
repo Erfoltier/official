@@ -76,7 +76,7 @@ describe("reminder feed", () => {
     expect(Object.keys(item).sort()).toEqual(
       ["endAt", "laneName", "menuNames", "patient", "reminderStatus", "reservationId", "startAt", "version"].sort(),
     );
-    expect(Object.keys(item.patient).sort()).toEqual(["email", "id", "lineUserId", "name", "phone"]);
+    expect(Object.keys(item.patient).sort()).toEqual(["email", "id", "lineUserId", "m3ChartNo", "name", "phone"]);
     expect(item.startAt).toMatch(/^2026-10-07T\d{2}:\d{2}:00\+09:00$/);
   });
 });

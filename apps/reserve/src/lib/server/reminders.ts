@@ -28,6 +28,8 @@ export interface ReminderItem {
   patient: {
     id: string;
     name: string;
+    /** 電子カルテ（M3）のカルテ番号 */
+    m3ChartNo: string | null;
     lineUserId: string | null;
     phone: string | null;
     email: string | null;
@@ -55,6 +57,7 @@ export function buildReminderFeed(date: string): ReminderFeed {
         patient: {
           id: p.id,
           name: p.name,
+          m3ChartNo: p.m3ChartNo ?? null,
           lineUserId: p.lineUserId ?? null,
           phone: p.phone ?? null,
           email: p.email ?? null,

@@ -228,7 +228,7 @@ export function searchPatients(query: string, limit = 20): Patient[] {
   const out: Patient[] = [];
   for (const p of state().patients.values()) {
     if (p.deleted) continue;
-    const hay = searchKey(`${p.name}|${p.kana}|${p.nameAlt ?? ""}|${p.chartNo}`);
+    const hay = searchKey(`${p.name}|${p.kana}|${p.nameAlt ?? ""}|${p.chartNo}|${p.m3ChartNo ?? ""}`);
     const phoneHit = digits.length >= 4 && (p.phone ?? "").replace(/\D/g, "").includes(digits);
     if (hay.includes(q) || phoneHit) out.push(p);
     if (out.length >= limit) break;
@@ -388,6 +388,7 @@ export interface PatientInput {
   phone?: string;
   email?: string;
   chartNo?: string;
+  m3ChartNo?: string;
   birthDate?: string;
   caution?: boolean;
   cautionNote?: string;
@@ -440,6 +441,18 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
     }
     out.chartNo = chartNo;
   }
+  if (input.m3ChartNo !== undefined) {
+    const m3 = input.m3ChartNo.normalize("NFKC").trim();
+    if (m3 && !/^[A-Za-z0-9-]{1,20}$/.test(m3)) throw new StoreError("invalid", "M3カルテ番号は英数字で入力してください");
+    if (m3) {
+      for (const p of st.patients.values()) {
+        if (p.m3ChartNo === m3 && p.id !== selfId && !p.deleted) {
+          throw new StoreError("invalid", `このM3カルテ番号は 診察券${p.chartNo}（${p.name}）に登録されています`);
+        }
+      }
+    }
+    out.m3ChartNo = opt(m3);
+  }
   if (input.birthDate !== undefined) {
     const b = input.birthDate.trim();
     if (b && (!isDateString(b) || b < "1900-01-01" || b > nowInClinic().date)) {
@@ -485,6 +498,7 @@ const FIELD_LABEL: Record<string, string> = {
   phone: "電話",
   email: "メール",
   chartNo: "診察券番号",
+  m3ChartNo: "M3カルテ番号",
   birthDate: "生年月日",
   caution: "注意事項あり",
   cautionNote: "注意事項",
@@ -891,6 +905,7 @@ export function findDuplicates(p: Patient): DuplicateCandidate[] {
     if (name && searchKey(o.name) === name) reasons.push("氏名が同じ");
     else if (kana && searchKey(o.kana ?? "") === kana) reasons.push("フリガナが同じ");
     if (phone.length >= 8 && digits(o.phone) === phone) reasons.push("電話番号が同じ");
+    if (p.m3ChartNo && o.m3ChartNo === p.m3ChartNo) reasons.push("M3カルテ番号が同じ");
     if (p.birthDate && o.birthDate === p.birthDate && reasons.length > 0) reasons.push("生年月日が同じ");
     if (reasons.length > 0) out.push({ patient: o, reasons });
     if (out.length >= 5) break;
@@ -942,7 +957,7 @@ export function restorePatient(id: string, version: number, by?: Actor): Patient
   return next;
 }
 
-const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "birthDate"];
+const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "birthDate", "m3ChartNo"];
 
 function mergeTargets(keepId: string, dupId: string): { keep: Patient; dup: Patient } {
   const st = state();

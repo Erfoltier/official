@@ -67,6 +67,8 @@ export interface Patient {
   id: PatientId;
   /** 診察券番号など院内の番号 */
   chartNo: string;
+  /** 電子カルテ（M3）のカルテ番号。カルテと予約を突き合わせるのに使う */
+  m3ChartNo?: string;
   /**
    * 氏名。漢字・ひらがな・カタカナ・ローマ字を自由に混ぜてよい
    * （例: 「山田 Anna」「さくら 田中」「LEE Min」）。

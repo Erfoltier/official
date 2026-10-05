@@ -46,6 +46,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             <div className={styles.panelSub}>
               {patient.kana}
               {patient.nameAlt && ` / ${patient.nameAlt}`}・診察券 {patient.chartNo}
+              {patient.m3ChartNo && `・M3 ${patient.m3ChartNo}`}
             </div>
           )}
         </div>

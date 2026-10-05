@@ -76,6 +76,7 @@ export function createPatient(body: {
   nameAlt?: string;
   phone?: string;
   chartNo?: string;
+  m3ChartNo?: string;
 }): Promise<Patient> {
   return call(`/api/v1/patients`, { method: "POST", body: JSON.stringify(body) });
 }
@@ -109,7 +110,7 @@ export async function reorder(kind: "lanes" | "menus", ids: string[]): Promise<v
 export type PatientUpdate = Partial<
   Pick<
     Patient,
-    "name" | "kana" | "nameAlt" | "phone" | "email" | "chartNo" | "birthDate" | "caution" | "cautionNote" | "memo"
+    "name" | "kana" | "nameAlt" | "phone" | "email" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo"
   >
 >;
 

@@ -45,6 +45,7 @@ const patientFieldsSchema = {
   phone: shortText(30).optional(),
   email: shortText(200).optional(),
   chartNo: shortText(30).optional(),
+  m3ChartNo: shortText(30).optional(),
   birthDate: shortText(10).optional(),
   caution: z.boolean().optional(),
   cautionNote: shortText(1000).optional(),

@@ -22,7 +22,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Patient[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [newPatient, setNewPatient] = useState<{ name: string; kana: string; nameAlt: string; phone: string } | null>(
+  const [newPatient, setNewPatient] = useState<{ name: string; kana: string; nameAlt: string; phone: string; m3ChartNo: string } | null>(
     null,
   );
   const [laneId, setLaneId] = useState(initialLane);
@@ -106,6 +106,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
           kana: newPatient.kana || undefined,
           nameAlt: newPatient.nameAlt || undefined,
           phone: newPatient.phone || undefined,
+          m3ChartNo: newPatient.m3ChartNo || undefined,
         });
         setPatient(p);
         setNewPatient(null);
@@ -150,6 +151,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                 <small className={styles.pickedSub}>
                   {patient.kana && ` ${patient.kana}`}
                   {patient.nameAlt && ` / ${patient.nameAlt}`}・{patient.chartNo}
+                  {patient.m3ChartNo && `・M3 ${patient.m3ChartNo}`}
                 </small>
               </span>
               <button type="button" className={styles.btn} onClick={() => setPatient(null)}>
@@ -207,6 +209,19 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                   />
                 </div>
               </div>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label htmlFor="np-m3">M3カルテ番号</label>
+                  <input
+                    id="np-m3"
+                    className={styles.input}
+                    value={newPatient.m3ChartNo}
+                    onChange={(e) => setNewPatient({ ...newPatient, m3ChartNo: e.target.value })}
+                    maxLength={20}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
               <p className={styles.hint}>
                 氏名は漢字・ひらがな・カタカナ・ローマ字を混ぜて入力できます。診察券番号は自動で振ります。
               </p>
@@ -221,7 +236,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                 className={styles.input}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="氏名・フリガナ・ローマ字・診察券番号・電話"
+                placeholder="氏名・フリガナ・ローマ字・診察券／M3番号・電話"
                 autoComplete="off"
                 autoFocus
               />
@@ -234,6 +249,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                         <small>
                           {p.kana}
                           {p.nameAlt && ` / ${p.nameAlt}`}・{p.chartNo}
+                          {p.m3ChartNo && `・M3 ${p.m3ChartNo}`}
                         </small>
                       </button>
                     </li>
@@ -250,6 +266,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                     kana: "",
                     nameAlt: "",
                     phone: /^[\d\s-]+$/.test(query) ? query.trim() : "",
+                    m3ChartNo: "",
                   })
                 }
               >

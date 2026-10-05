@@ -26,6 +26,7 @@ function toForm(d: PatientDetail): Form {
     kana: p.kana ?? "",
     nameAlt: p.nameAlt ?? "",
     chartNo: p.chartNo,
+    m3ChartNo: p.m3ChartNo ?? "",
     birthDate: p.birthDate ?? "",
     phone: p.phone ?? "",
     email: p.email ?? "",
@@ -175,6 +176,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
               p.kana,
               p.nameAlt,
               `診察券 ${p.chartNo}`,
+              p.m3ChartNo ? `M3 ${p.m3ChartNo}` : null,
               ageOf(p.birthDate ?? "") !== null ? `${ageOf(p.birthDate ?? "")}歳` : null,
               p.phone,
             ]
@@ -238,6 +240,16 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           </Field>
           <Field label="診察券番号" changed={changedKeys.includes("chartNo")}>
             <input className={styles.input} value={form.chartNo} onChange={(e) => set("chartNo", e.target.value)} maxLength={20} required />
+          </Field>
+          <Field label="M3カルテ番号" hint="電子カルテ（M3）の患者番号。カルテとの突き合わせに使います" changed={changedKeys.includes("m3ChartNo")}>
+            <input
+              className={styles.input}
+              value={form.m3ChartNo}
+              onChange={(e) => set("m3ChartNo", e.target.value)}
+              maxLength={20}
+              inputMode="text"
+              autoComplete="off"
+            />
           </Field>
           <Field label={`生年月日${age !== null ? `（${age}歳）` : ""}`} changed={changedKeys.includes("birthDate")}>
             <input
