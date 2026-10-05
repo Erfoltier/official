@@ -2185,6 +2185,186 @@ final class Store
         }
     }
 
+    // ---- 同意書（ひな形は Google ドキュメントが正本。差し込み・署名はこのソフトの中で行う） ----
+
+    private static function templateMeta(array $t): array
+    {
+        unset($t['html']);
+        return $t;
+    }
+
+    public static function listConsentTemplates(): array
+    {
+        self::init();
+        $out = array_values(array_map([self::class, 'templateMeta'], array_filter(Db::i()->all('consentTemplate'), fn($t) => empty($t['removed']))));
+        usort($out, fn($a, $b) => strcmp($a['title'], $b['title']) ?: strcmp($a['id'], $b['id']));
+        return $out;
+    }
+
+    public static function consentTemplatesReceivedAt(): ?string
+    {
+        self::init();
+        return Db::i()->meta('consentTemplatesAt');
+    }
+
+    public static function getConsentTemplate(string $id): array
+    {
+        self::init();
+        $t = Db::i()->get('consentTemplate', $id);
+        if (!$t || !empty($t['removed'])) {
+            throw new StoreError('not_found', '同意書のひな形が見つかりません');
+        }
+        return $t;
+    }
+
+    /** 同意書フォルダから送られてきたひな形で入れ替える。メニューとの結びつけは残す */
+    public static function receiveConsentTemplates(array $templates): array
+    {
+        self::init();
+        return Db::i()->transaction(function () use ($templates) {
+            $db = Db::i();
+            $at = now_iso();
+            $all = $db->all('consentTemplate');
+            $seen = [];
+            foreach ($templates as $t) {
+                $id = "ct-{$t['driveId']}";
+                if (isset($seen[$id])) {
+                    continue;
+                }
+                $seen[$id] = true;
+                $cur = $all[$id] ?? null;
+                $title = self::checkText('同意書の名前', $t['title'], 120, true);
+                if ($cur && empty($cur['removed']) && $cur['title'] === $title && $cur['modifiedTime'] === $t['modifiedTime'] && $cur['html'] === $t['html']) {
+                    continue;
+                }
+                $db->put('consentTemplate', $id, [
+                    'id' => $id, 'driveId' => $t['driveId'], 'title' => $title, 'modifiedTime' => $t['modifiedTime'],
+                    'menuIds' => $cur['menuIds'] ?? [], 'receivedAt' => $at, 'html' => $t['html'],
+                ]);
+            }
+            $removed = 0;
+            foreach ($all as $t) {
+                if (!isset($seen[$t['id']]) && empty($t['removed'])) {
+                    $db->put('consentTemplate', $t['id'], [...$t, 'removed' => true, 'receivedAt' => $at]);
+                    $removed++;
+                }
+            }
+            $db->setMeta('consentTemplatesAt', $at);
+            return ['count' => count($seen), 'removed' => $removed, 'at' => $at];
+        });
+    }
+
+    public static function setConsentTemplateMenus(string $id, array $menuIds, ?array $by = null): array
+    {
+        $t = self::getConsentTemplate($id);
+        $ids = array_values(array_unique($menuIds));
+        foreach ($ids as $m) {
+            if (!isset(self::menus()[$m])) {
+                throw new StoreError('invalid', 'メニューが見つかりません');
+            }
+        }
+        $t['menuIds'] = $ids;
+        Db::i()->put('consentTemplate', $id, $t);
+        if ($by) {
+            Auth::audit($by, "同意書「{$t['title']}」のメニューを変更");
+        }
+        return self::templateMeta($t);
+    }
+
+    private static function consentSummary(array $c): array
+    {
+        unset($c['html'], $c['signature']);
+        return $c;
+    }
+
+    public static function listConsents(string $patientId): array
+    {
+        self::init();
+        $out = array_values(array_map([self::class, 'consentSummary'], array_filter(
+            Db::i()->where('consent', 'k2', $patientId),
+            fn($c) => $c['patientId'] === $patientId && empty($c['deleted']),
+        )));
+        usort($out, fn($a, $b) => strcmp($b['date'], $a['date']) ?: strcmp($b['createdAt'], $a['createdAt']));
+        return $out;
+    }
+
+    public static function createConsent(string $patientId, array $input, ?array $by = null): array
+    {
+        self::init();
+        $p = self::patient($patientId);
+        if (!empty($p['deleted'])) {
+            throw new StoreError('invalid', '削除された患者には同意書を作れません');
+        }
+        $t = self::getConsentTemplate($input['templateId']);
+        $treatment = isset($input['treatment']) ? self::checkText('施術名', $input['treatment'], 120, false) : '';
+        if (!empty($input['reservationId'])) {
+            $r = Db::i()->get('reservation', $input['reservationId']);
+            if (!$r || $r['patientId'] !== $patientId) {
+                throw new StoreError('invalid', '予約が見つかりません');
+            }
+            if (!isset($input['treatment'])) {
+                $treatment = implode('、', array_values(array_filter(array_map(fn($m) => self::menus()[$m]['name'] ?? '', $r['menuIds']))));
+            }
+        }
+        $rec = ['id' => 'cs-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4)), 'patientId' => $patientId];
+        if (!empty($input['reservationId'])) {
+            $rec['reservationId'] = $input['reservationId'];
+        }
+        $rec += ['templateId' => $t['id'], 'title' => $t['title'], 'templateModifiedTime' => $t['modifiedTime'], 'date' => $input['date'] ?? now_in_clinic()['date']];
+        if ($treatment !== '') {
+            $rec['treatment'] = $treatment;
+        }
+        $rec['signed'] = !empty($input['signature']);
+        if (!empty($input['signature'])) {
+            $rec['signature'] = $input['signature'];
+        }
+        $rec['createdAt'] = now_iso();
+        if ($by) {
+            $rec['createdBy'] = $by;
+        }
+        $rec['html'] = $t['html'];
+        Db::i()->put('consent', $rec['id'], $rec);
+        if ($by) {
+            Auth::audit($by, "同意書「{$t['title']}」を" . ($rec['signed'] ? '署名して保存' : '発行（紙で署名）'), $patientId);
+        }
+        return self::consentSummary($rec);
+    }
+
+    public static function getConsentView(string $id): array
+    {
+        self::init();
+        $c = Db::i()->get('consent', $id);
+        if (!$c || !empty($c['deleted'])) {
+            throw new StoreError('not_found', '同意書が見つかりません');
+        }
+        $p = self::patient($c['patientId']);
+        $html = $c['html'];
+        unset($c['html']);
+        return [
+            'record' => $c,
+            'html' => $html,
+            'patient' => drop_null(['id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'], 'chartNo' => $p['chartNo'], 'birthDate' => $p['birthDate'] ?? null]),
+            'clinic' => self::clinic(),
+        ];
+    }
+
+    public static function deleteConsent(string $id, ?array $by = null): void
+    {
+        self::init();
+        $c = Db::i()->get('consent', $id);
+        if (!$c || !empty($c['deleted'])) {
+            throw new StoreError('not_found', '同意書が見つかりません');
+        }
+        $deleted = ['at' => now_iso()];
+        if ($by) {
+            $deleted['by'] = $by;
+        }
+        Db::i()->put('consent', $id, [...$c, 'deleted' => $deleted]);
+        if ($by) {
+            Auth::audit($by, "同意書「{$c['title']}」を削除", $c['patientId']);
+        }
+    }
+
     // ---- 見積書 ----
 
     private const MAX_ESTIMATE_YEN = 100_000_000;
@@ -2421,6 +2601,11 @@ final class Store
             foreach ($db->where('file', 'k2', $dup['id']) as $f) {
                 if ($f['patientId'] === $dup['id']) {
                     $db->put('file', $f['id'], [...$f, 'patientId' => $keep['id']]);
+                }
+            }
+            foreach ($db->where('consent', 'k2', $dup['id']) as $c) {
+                if ($c['patientId'] === $dup['id']) {
+                    $db->put('consent', $c['id'], [...$c, 'patientId' => $keep['id']]);
                 }
             }
             foreach ($db->where('estimate', 'k2', $dup['id']) as $e) {

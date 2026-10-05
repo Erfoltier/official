@@ -1,4 +1,4 @@
-import type { AuditEntry, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -359,4 +359,42 @@ export function savePriceItem(id: string | null, body: { category?: string; name
 
 export async function deletePriceItem(id: string): Promise<void> {
   await call(`/api/v1/prices/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+// ---- 同意書 ----
+
+export function fetchConsentTemplates(): Promise<{ items: ConsentTemplate[]; receivedAt: string | null }> {
+  return call(`/api/v1/consent-templates`);
+}
+
+export function fetchConsentTemplate(id: string): Promise<ConsentTemplateWithHtml> {
+  return call(`/api/v1/consent-templates/${encodeURIComponent(id)}`);
+}
+
+export function saveConsentTemplateMenus(id: string, menuIds: string[]): Promise<ConsentTemplate> {
+  return call(`/api/v1/consent-templates/${encodeURIComponent(id)}/menus`, { method: "POST", body: JSON.stringify({ menuIds }) });
+}
+
+export async function fetchConsents(patientId: string): Promise<ConsentRecord[]> {
+  const r = await call<{ items: ConsentRecord[] }>(`/api/v1/patients/${encodeURIComponent(patientId)}/consents`);
+  return r.items;
+}
+
+export function createConsent(
+  patientId: string,
+  body: { templateId: string; reservationId?: string; date?: string; treatment?: string; signature?: string },
+): Promise<ConsentRecord> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/consents`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function fetchConsent(id: string): Promise<ConsentView> {
+  return call(`/api/v1/consents/${encodeURIComponent(id)}`);
+}
+
+export async function deleteConsent(id: string): Promise<void> {
+  await call(`/api/v1/consents/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+export function consentPrintUrl(id: string): string {
+  return withBase(`/consents/print/?id=${encodeURIComponent(id)}`);
 }

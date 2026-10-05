@@ -503,3 +503,28 @@
 .priceGroup td:last-child:not(.priceCol) {
   width: 18em;
 }
+
+/* ===== 同意書 ===== */
+.menuPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.menuPickItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.menuPickItem[data-on] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}

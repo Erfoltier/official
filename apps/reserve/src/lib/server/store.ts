@@ -7,6 +7,10 @@ import type {
   EstimateLine,
   EstimateView,
   PriceItem,
+  ConsentRecord,
+  ConsentTemplate,
+  ConsentTemplateWithHtml,
+  ConsentView,
   PriceList,
   PriceSyncResult,
   ClinicSettings,
@@ -69,6 +73,8 @@ interface StoreState {
   files: Map<string, PatientFile>;
   estimates: Map<string, Estimate>;
   prices: Map<string, PriceItem>;
+  consentTemplates: Map<string, ConsentTemplateWithHtml>;
+  consents: Map<string, ConsentRecord & { html: string }>;
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
   patients: Map<string, Patient>;
@@ -110,6 +116,8 @@ function state(): StoreState {
         files: new PersistentMap<PatientFile>("file"),
         estimates: new PersistentMap<Estimate>("estimate"),
         prices: new PersistentMap<PriceItem>("price"),
+        consentTemplates: new PersistentMap<ConsentTemplateWithHtml>("consentTemplate"),
+        consents: new PersistentMap<ConsentRecord & { html: string }>("consent"),
         lanes: new PersistentMap<Lane>("lane"),
         menus: new PersistentMap<Menu>("menu"),
         patients: new PersistentMap<Patient>("patient"),
@@ -1626,6 +1634,9 @@ function mergePatientsImpl(
   for (const f of [...st.files.values()]) {
     if (f.patientId === dup.id) st.files.set(f.id, { ...f, patientId: keep.id });
   }
+  for (const c of [...st.consents.values()]) {
+    if (c.patientId === dup.id) st.consents.set(c.id, { ...c, patientId: keep.id });
+  }
   for (const e of [...st.estimates.values()]) {
     if (e.patientId === dup.id) st.estimates.set(e.id, { ...e, patientId: keep.id, version: e.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
   }
@@ -2033,4 +2044,144 @@ function receiveSheetPricesImpl(sheet: string, items: SheetPriceInput[]): { shee
 
 export function receiveSheetPrices(...args: Parameters<typeof receiveSheetPricesImpl>): ReturnType<typeof receiveSheetPricesImpl> {
   return transaction(() => receiveSheetPricesImpl(...args));
+}
+
+// ---- 同意書（ひな形は Google ドキュメントが正本。差し込み・署名はこのソフトの中で行う） ----
+
+const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+function templateMeta(t: ConsentTemplateWithHtml): ConsentTemplate {
+  const { html: _html, ...meta } = t;
+  void _html;
+  return meta;
+}
+
+export function listConsentTemplates(): ConsentTemplate[] {
+  return [...state().consentTemplates.values()]
+    .filter((t) => !t.removed)
+    .map(templateMeta)
+    .sort((a, b) => byText(a.title, b.title) || byText(a.id, b.id));
+}
+
+export function getConsentTemplate(id: string): ConsentTemplateWithHtml {
+  const t = state().consentTemplates.get(id);
+  if (!t || t.removed) throw new StoreError("not_found", "同意書のひな形が見つかりません");
+  return t;
+}
+
+/** 同意書フォルダから送られてきたひな形で入れ替える。メニューとの結びつけは残す */
+function receiveConsentTemplatesImpl(templates: { driveId: string; title: string; modifiedTime: string; html: string }[]) {
+  const st = state();
+  const at = new Date().toISOString();
+  const seen = new Set<string>();
+  for (const t of templates) {
+    const id = `ct-${t.driveId}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const cur = st.consentTemplates.get(id);
+    const title = checkText("同意書の名前", t.title, 120, true);
+    if (cur && !cur.removed && cur.title === title && cur.modifiedTime === t.modifiedTime && cur.html === t.html) continue;
+    st.consentTemplates.set(id, { id, driveId: t.driveId, title, modifiedTime: t.modifiedTime, menuIds: cur?.menuIds ?? [], receivedAt: at, html: t.html });
+  }
+  let removed = 0;
+  for (const t of [...st.consentTemplates.values()]) {
+    if (!seen.has(t.id) && !t.removed) {
+      st.consentTemplates.set(t.id, { ...t, removed: true, receivedAt: at });
+      removed++;
+    }
+  }
+  setMeta("consentTemplatesAt", at);
+  return { count: seen.size, removed, at };
+}
+
+export function receiveConsentTemplates(...args: Parameters<typeof receiveConsentTemplatesImpl>): ReturnType<typeof receiveConsentTemplatesImpl> {
+  return transaction(() => receiveConsentTemplatesImpl(...args));
+}
+
+export function consentTemplatesReceivedAt(): string | null {
+  state();
+  return getMeta<string>("consentTemplatesAt") ?? null;
+}
+
+export function setConsentTemplateMenus(id: string, menuIds: string[], by?: Actor): ConsentTemplate {
+  const st = state();
+  const t = getConsentTemplate(id);
+  const ids = [...new Set(menuIds)];
+  if (!ids.every((m) => st.menus.has(m))) throw new StoreError("invalid", "メニューが見つかりません");
+  const next = { ...t, menuIds: ids };
+  st.consentTemplates.set(id, next);
+  if (by) audit(by, `同意書「${t.title}」のメニューを変更`);
+  return templateMeta(next);
+}
+
+function consentSummary(c: ConsentRecord & { html: string }): ConsentRecord {
+  const { html: _html, signature: _sig, ...rest } = c;
+  void _html;
+  void _sig;
+  return rest;
+}
+
+export function listConsents(patientId: string): ConsentRecord[] {
+  return [...state().consents.values()]
+    .filter((c) => c.patientId === patientId && !c.deleted)
+    .map(consentSummary)
+    .sort((a, b) => byText(b.date, a.date) || byText(b.createdAt, a.createdAt));
+}
+
+export function createConsent(
+  patientId: string,
+  input: { templateId: string; reservationId?: string; date?: string; treatment?: string; signature?: string },
+  by?: Actor,
+): ConsentRecord {
+  const st = state();
+  const p = st.patients.get(patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  if (p.deleted) throw new StoreError("invalid", "削除された患者には同意書を作れません");
+  const t = getConsentTemplate(input.templateId);
+  let treatment = input.treatment !== undefined ? checkText("施術名", input.treatment, 120, false) : "";
+  if (input.reservationId) {
+    const r = st.reservations.get(input.reservationId);
+    if (!r || r.patientId !== patientId) throw new StoreError("invalid", "予約が見つかりません");
+    if (input.treatment === undefined) treatment = r.menuIds.map((m) => st.menus.get(m)?.name ?? "").filter(Boolean).join("、");
+  }
+  const rec: ConsentRecord & { html: string } = {
+    id: `cs-${Date.now().toString(36)}-${randomId()}`,
+    patientId,
+    ...(input.reservationId && { reservationId: input.reservationId }),
+    templateId: t.id,
+    title: t.title,
+    templateModifiedTime: t.modifiedTime,
+    date: input.date ?? nowInClinic().date,
+    ...(treatment && { treatment }),
+    signed: !!input.signature,
+    ...(input.signature && { signature: input.signature }),
+    createdAt: new Date().toISOString(),
+    ...(by && { createdBy: by }),
+    html: t.html,
+  };
+  st.consents.set(rec.id, rec);
+  if (by) audit(by, `同意書「${t.title}」を${rec.signed ? "署名して保存" : "発行（紙で署名）"}`, patientId);
+  return consentSummary(rec);
+}
+
+export function getConsentView(id: string): ConsentView {
+  const c = state().consents.get(id);
+  if (!c || c.deleted) throw new StoreError("not_found", "同意書が見つかりません");
+  const p = state().patients.get(c.patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  const { html, ...record } = c;
+  return {
+    record,
+    html,
+    patient: dropUndefined({ id: p.id, name: p.name, kana: p.kana, chartNo: p.chartNo, birthDate: p.birthDate }),
+    clinic: getClinic(),
+  };
+}
+
+export function deleteConsent(id: string, by?: Actor): void {
+  const st = state();
+  const c = st.consents.get(id);
+  if (!c || c.deleted) throw new StoreError("not_found", "同意書が見つかりません");
+  st.consents.set(id, { ...c, deleted: { at: new Date().toISOString(), ...(by && { by }) } });
+  if (by) audit(by, `同意書「${c.title}」を削除`, c.patientId);
 }

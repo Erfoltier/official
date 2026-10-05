@@ -8,6 +8,7 @@ import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
 import { TreatmentHistory, type VisitSave } from "./VisitTable";
 import { EstimateList } from "@/components/estimates/EstimateList";
+import { ConsentList } from "@/components/consents/ConsentList";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import styles from "./patients.module.css";
 import { patientPath, withBase } from "@/lib/paths";
@@ -233,6 +234,11 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           readOnly={readOnly}
           canManage={canManage}
         />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>同意書</h2>
+        <ConsentList patient={detail.patient} readOnly={readOnly} canManage={canManage} />
       </section>
 
       <section className={styles.section}>

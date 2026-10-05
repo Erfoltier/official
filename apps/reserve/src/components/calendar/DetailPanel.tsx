@@ -5,6 +5,7 @@ import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/l
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
+import { ConsentDialog } from "@/components/consents/ConsentDialog";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { FileThumbs } from "@/components/files/FileThumbs";
@@ -56,6 +57,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
   const [estimateOpen, setEstimateOpen] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
   /** 状態を変えた時刻（空欄なら押した時刻） */
   const [stageTime, setStageTime] = useState("");
   const stageMin = parseHm(stageTime);
@@ -142,11 +144,23 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           患者情報を見る・編集する
         </button>
         {patient && !patient.deleted && (
-          <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
-            📝 見積書
-          </button>
+          <span className={styles.panelLinkBtns}>
+            <button type="button" className={styles.estimateBtn} onClick={() => setConsentOpen(true)}>
+              📄 同意書
+            </button>
+            <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
+              📝 見積書
+            </button>
+          </span>
         )}
       </div>
+      {consentOpen && patient && (
+        <ConsentDialog
+          patient={patient}
+          reservation={{ id: r.id, menuIds: r.menuIds, menuNames: menus.map((m) => m!.name) }}
+          onClose={() => setConsentOpen(false)}
+        />
+      )}
       {estimateOpen && patient && (
         <EstimateDialog
           patientId={patient.id}

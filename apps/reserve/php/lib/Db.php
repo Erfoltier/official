@@ -152,7 +152,7 @@ final class Db
             'reservation' => [isset($v['startAt']) ? substr((string) $v['startAt'], 0, 10) : null, $v['patientId'] ?? null],
             'visitNote' => [$v['date'] ?? null, $v['patientId'] ?? null],
             'patientHistory' => [null, $id],
-            'file', 'estimate' => [$v['date'] ?? null, $v['patientId'] ?? null],
+            'file', 'estimate', 'consent' => [$v['date'] ?? null, $v['patientId'] ?? null],
             default => [null, null],
         };
     }

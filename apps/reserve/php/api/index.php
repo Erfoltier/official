@@ -72,6 +72,10 @@ try {
         $r = Store::setReservationRequestId(V::id($p[2]), Schema::integrationRequestId(Http::readJson()));
         Http::json(['reservationId' => $r['id'], 'requestId' => $r['requestId'] ?? null, 'version' => $r['version']]);
     }
+    if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'consent-templates') {
+        Http::checkIntegrationAuth();
+        Http::json(Store::receiveConsentTemplates(Schema::integrationConsentTemplates(Http::readJson(20_000_000))));
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));
@@ -195,6 +199,14 @@ try {
                 'bytes' => $bytes,
             ], $actor($s)), 201);
         }
+        if ($method === 'GET' && $n === 3 && $p[2] === 'consents') {
+            $me();
+            Http::json(['items' => Store::listConsents(V::id($p[1]))]);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'consents') {
+            $s = $me();
+            Http::json(Store::createConsent(V::id($p[1]), Schema::createConsent(Http::readJson(500_000)), $actor($s)), 201);
+        }
         if ($method === 'GET' && $n === 3 && $p[2] === 'estimates') {
             $me();
             Http::json(['items' => Store::listEstimates(V::id($p[1]))]);
@@ -250,6 +262,34 @@ try {
             $s = $me(STAFF_MANAGE);
             $f = Store::deleteFile(V::id($p[1]), $actor($s));
             Http::json(['id' => $f['id'], 'deleted' => true]);
+        }
+    }
+
+    // ---- 同意書 ----
+    if ($p[0] === 'consent-templates') {
+        if ($method === 'GET' && $n === 1) {
+            $me();
+            Http::json(['items' => Store::listConsentTemplates(), 'receivedAt' => Store::consentTemplatesReceivedAt()]);
+        }
+        if ($method === 'GET' && $n === 2) {
+            $me();
+            Http::json(Store::getConsentTemplate(V::id($p[1])));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'menus') {
+            $s = $me(STAFF_MANAGE);
+            Http::json(Store::setConsentTemplateMenus(V::id($p[1]), Schema::consentTemplateMenus(Http::readJson()), $actor($s)));
+        }
+    }
+    if ($p[0] === 'consents' && $n >= 2) {
+        if ($method === 'GET' && $n === 2) {
+            $me();
+            Http::json(Store::getConsentView(V::id($p[1])));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Store::deleteConsent($id, $actor($s));
+            Http::json(['id' => $id, 'deleted' => true]);
         }
     }
 

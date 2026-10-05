@@ -160,6 +160,59 @@ export interface PriceList {
   sheets: { name: string; at: string; count: number }[];
 }
 
+/**
+ * 同意書のひな形。Google ドキュメント（同意書フォルダ）が正本で、Apps Script が HTML にして送ってくる。
+ * 患者の情報は Google に送らず、差し込みはこのソフトの中で行う
+ */
+export interface ConsentTemplate {
+  id: string;
+  /** Google ドライブのファイルID */
+  driveId: string;
+  title: string;
+  /** Google ドキュメントの最終更新日時 */
+  modifiedTime: string;
+  /** この同意書を候補の先頭に出すメニュー */
+  menuIds: string[];
+  /** 受け取った日時 */
+  receivedAt: string;
+  /** フォルダから消えた */
+  removed?: boolean;
+}
+
+export interface ConsentTemplateWithHtml extends ConsentTemplate {
+  /** Google ドキュメントの HTML（表示するときに決まった形だけを取り出す） */
+  html: string;
+}
+
+/** 発行した同意書（署名の控え）。発行時のひな形の中身ごと残す */
+export interface ConsentRecord {
+  id: string;
+  patientId: PatientId;
+  reservationId?: ReservationId;
+  templateId: string;
+  title: string;
+  /** 発行時のひな形の最終更新日時（どの版に同意したか） */
+  templateModifiedTime: string;
+  /** 同意日（YYYY-MM-DD） */
+  date: string;
+  /** 施術名（予約のメニューなど。用紙に載る） */
+  treatment?: string;
+  /** 画面で署名したか（false なら紙に署名する用に印刷した） */
+  signed: boolean;
+  /** 署名画像（PNG の data URL）。一覧では省く */
+  signature?: string;
+  createdAt: string;
+  createdBy?: Actor;
+  deleted?: { at: string; by?: Actor };
+}
+
+export interface ConsentView {
+  record: ConsentRecord;
+  html: string;
+  patient: Pick<Patient, "id" | "name" | "kana" | "chartNo" | "birthDate">;
+  clinic: ClinicSettings;
+}
+
 /** 見積書の1行。値段は税込。割引はマイナスの値段の行で表す */
 export type EstimateLineKind = "menu" | "product" | "custom";
 

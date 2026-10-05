@@ -25,6 +25,8 @@ export type Kind =
   | "file"
   | "estimate"
   | "price"
+  | "consentTemplate"
+  | "consent"
   | "patient"
   | "patientHistory"
   | "reservation"
@@ -115,7 +117,7 @@ export function indexKeys(kind: Kind, id: string, value: unknown): [string | nul
   if (kind === "reservation") return [v.startAt?.slice(0, 10) ?? null, v.patientId ?? null];
   if (kind === "visitNote") return [v.date ?? null, v.patientId ?? null];
   if (kind === "patientHistory") return [null, id];
-  if (kind === "file" || kind === "estimate") return [v.date ?? null, v.patientId ?? null];
+  if (kind === "file" || kind === "estimate" || kind === "consent") return [v.date ?? null, v.patientId ?? null];
   return [null, null];
 }
 

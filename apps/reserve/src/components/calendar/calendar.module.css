@@ -1719,3 +1719,16 @@ button.stagePill[data-clickable]:disabled {
 .estimateBtn:hover {
   background: var(--accent-soft);
 }
+
+.panelLinkBtns {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.estimateBtn {
+  white-space: nowrap;
+}
+
+.panelLinks {
+  flex-wrap: wrap;
+}

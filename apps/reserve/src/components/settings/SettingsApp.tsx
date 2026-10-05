@@ -9,6 +9,7 @@ import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab } from "./ClinicTab";
 import { PricesTab } from "./PricesTab";
+import { ConsentsTab } from "./ConsentsTab";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -16,7 +17,7 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-type Tab = "lanes" | "menus" | "stages" | "products" | "prices" | "clinic" | "staff" | "audit" | "restore";
+type Tab = "lanes" | "menus" | "stages" | "products" | "prices" | "consents" | "clinic" | "staff" | "audit" | "restore";
 
 const MIN_LANES = 1;
 const MAX_LANES = 30;
@@ -79,6 +80,9 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "prices"} onClick={() => setTab("prices")}>
             料金表
           </button>
+          <button role="tab" aria-selected={tab === "consents"} onClick={() => setTab("consents")}>
+            同意書
+          </button>
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
@@ -117,6 +121,8 @@ export function SettingsApp() {
         <PricesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
+      ) : tab === "consents" ? (
+        <ConsentsTab menus={data.menus} canEdit={canEdit} notify={notify} fail={fail} />
       ) : tab === "stages" ? (
         <StagesTab stages={data.stages} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "products" ? (

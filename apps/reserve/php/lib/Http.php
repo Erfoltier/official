@@ -424,6 +424,49 @@ final class Schema
         ]);
     }
 
+    public static function integrationConsentTemplates(mixed $v): array
+    {
+        return V::shape($v, ['templates' => function ($x) {
+            if (!is_array($x) || !array_is_list($x) || count($x) > 200) {
+                throw new InputError();
+            }
+            return array_map(fn($t) => V::shape($t, [
+                'driveId' => [V::class, 'id'],
+                'title' => function ($y) {
+                    $y = V::str($y, 200);
+                    if ($y === '') {
+                        throw new InputError();
+                    }
+                    return $y;
+                },
+                'modifiedTime' => [V::class, 'iso'],
+                'html' => fn($y) => V::str($y, 400_000),
+            ]), $x);
+        }])['templates'];
+    }
+
+    public static function consentTemplateMenus(mixed $v): array
+    {
+        return V::shape($v, ['menuIds' => fn($x) => V::ids($x, 0, 100)])['menuIds'];
+    }
+
+    public static function createConsent(mixed $v): array
+    {
+        return V::shape($v, [
+            'templateId' => [V::class, 'id'],
+            'reservationId?' => [V::class, 'id'],
+            'date?' => [V::class, 'date'],
+            'treatment?' => fn($x) => V::str($x, 200),
+            'signature?' => function ($x) {
+                $x = V::str($x, 400_000);
+                if (!preg_match('#^data:image/png;base64,[A-Za-z0-9+/]+=*$#', $x)) {
+                    throw new InputError();
+                }
+                return $x;
+            },
+        ]);
+    }
+
     public static function integrationPrices(mixed $v): array
     {
         return V::shape($v, [

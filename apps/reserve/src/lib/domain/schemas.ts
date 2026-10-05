@@ -177,6 +177,42 @@ export const integrationPricesSchema = z
   })
   .strict();
 
+/** 外部連携：同意書フォルダ（Apps Script）からひな形を送る。フォルダの分をまるごと入れ替える */
+export const integrationConsentTemplatesSchema = z
+  .object({
+    templates: z
+      .array(
+        z
+          .object({
+            driveId: id,
+            title: z.string().min(1).max(200),
+            modifiedTime: isoDateTime,
+            html: z.string().max(400_000),
+          })
+          .strict(),
+      )
+      .max(200),
+  })
+  .strict();
+
+export const consentTemplateMenusSchema = z.object({ menuIds: z.array(id).max(100) }).strict();
+
+/** 署名画像（PNG の data URL、300KB まで） */
+const signature = z
+  .string()
+  .max(400_000)
+  .regex(/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/);
+
+export const createConsentSchema = z
+  .object({
+    templateId: id,
+    reservationId: id.optional(),
+    date: dateParam.optional(),
+    treatment: z.string().max(200).optional(),
+    signature: signature.optional(),
+  })
+  .strict();
+
 export const priceUrlsSchema = z.object({ urls: z.array(z.string().max(300)).max(10) }).strict();
 
 const estimateLine = z
