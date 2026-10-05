@@ -794,3 +794,28 @@ details.section[open] > summary.sectionTitle {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== 配色（グラデーション） ===== */
+.pageHead h1 {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.primary:disabled {
+  background: var(--bg-muted);
+  color: var(--text-faint);
+  box-shadow: none;
+}
+
+.todayChip {
+  background: var(--grad);
+}

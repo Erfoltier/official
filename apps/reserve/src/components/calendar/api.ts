@@ -201,3 +201,7 @@ export async function fetchMonthCounts(month: string, signal?: AbortSignal): Pro
   const r = await call<{ month: string; days: Record<string, number> }>(`/api/v1/month?month=${encodeURIComponent(month)}`, { signal });
   return r.days;
 }
+
+export function saveClinic(body: Partial<Pick<DayBundle["clinic"], "name" | "dayStartMin" | "dayEndMin" | "slotMin">>): Promise<DayBundle["clinic"]> {
+  return call(`/api/v1/clinic`, { method: "PATCH", body: JSON.stringify(body) });
+}

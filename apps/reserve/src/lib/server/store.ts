@@ -2,6 +2,7 @@ import "server-only";
 
 import type {
   Actor,
+  ClinicSettings,
   DayBundle,
   Lane,
   Menu,
@@ -155,7 +156,7 @@ export function getDayBundle(date: string): DayBundle {
   const usedLanes = new Set(reservations.filter((r) => !INACTIVE_STATUSES.has(r.status)).map((r) => r.laneId));
   return {
     date,
-    clinic: DEMO_CLINIC,
+    clinic: getClinic(),
     lanes: sortedLanes().filter((l) => l.active || usedLanes.has(l.id)),
     menus: sortedMenus(),
     reservations,
@@ -177,8 +178,37 @@ export function getMonthCounts(month: string): Record<string, number> {
   return out;
 }
 
+/** 院の設定（院名・診療時間・刻み）。未設定なら標準値（9:00〜20:00・5分刻み） */
+export const DEFAULT_CLINIC: ClinicSettings = { ...DEMO_CLINIC, dayStartMin: 9 * 60, dayEndMin: 20 * 60, slotMin: 5 };
+
+export function getClinic(): ClinicSettings {
+  state();
+  return getMeta<ClinicSettings>("clinic") ?? DEFAULT_CLINIC;
+}
+
+export type ClinicInput = Partial<Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin">>;
+
+/** 院名・診療時間（カレンダーに出す時間帯）・刻みを変更する */
+export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
+  const cur = getClinic();
+  const next: ClinicSettings = { ...cur };
+  if (input.name !== undefined) next.name = checkText("院名", input.name, 40, true);
+  if (input.slotMin !== undefined) next.slotMin = input.slotMin;
+  if (input.dayStartMin !== undefined) next.dayStartMin = input.dayStartMin;
+  if (input.dayEndMin !== undefined) next.dayEndMin = input.dayEndMin;
+  if (next.dayStartMin % 5 !== 0 || next.dayEndMin % 5 !== 0) {
+    throw new StoreError("invalid", "時刻は5分単位で指定してください");
+  }
+  if (next.dayEndMin - next.dayStartMin < 60) {
+    throw new StoreError("invalid", "閉院時間は開院時間の1時間以上あとにしてください");
+  }
+  setMeta("clinic", next);
+  if (by) audit(by, "院の設定（診療時間など）を変更");
+  return next;
+}
+
 export function getSettings() {
-  return { clinic: DEMO_CLINIC, lanes: sortedLanes(), menus: sortedMenus() };
+  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus() };
 }
 
 /**

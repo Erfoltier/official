@@ -115,3 +115,13 @@ export const deletePatientSchema = z.object({ version: z.number().int().positive
 export const mergePatientsSchema = z
   .object({ keepId: id, dupId: id, keepVersion: z.number().int().positive(), dupVersion: z.number().int().positive() })
   .strict();
+
+/** 院の設定（院名・診療時間・刻み） */
+export const clinicSchema = z
+  .object({
+    name: z.string().max(80).optional(),
+    dayStartMin: z.number().int().min(0).max(1440).optional(),
+    dayEndMin: z.number().int().min(0).max(1440).optional(),
+    slotMin: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(30)]).optional(),
+  })
+  .strict();

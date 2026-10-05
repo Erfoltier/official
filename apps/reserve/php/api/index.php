@@ -81,6 +81,10 @@ try {
         $days = Store::monthCounts($month);
         Http::json(['month' => $month, 'days' => $days ?: new stdClass()]);
     }
+    if ($route === 'PATCH clinic') {
+        $s = $me(STAFF_MANAGE);
+        Http::json(Store::updateClinic(Schema::clinic(Http::readJson()), $actor($s)));
+    }
     if ($route === 'GET settings') {
         $me();
         Http::json(Store::getSettings());

@@ -2,8 +2,8 @@
  "clinic": {
   "name": "いしだ皮フ科",
   "timeZone": "Asia/Tokyo",
-  "dayStartMin": 570,
-  "dayEndMin": 1140,
+  "dayStartMin": 540,
+  "dayEndMin": 1200,
   "slotMin": 5
  },
  "lanes": [

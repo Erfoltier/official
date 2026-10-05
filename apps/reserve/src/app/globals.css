@@ -1,16 +1,24 @@
 :root {
+  /* 美容皮膚科向けの配色：すみれ色 → 赤紫 → ローズのグラデーション */
   --bg: #ffffff;
-  --bg-subtle: #f6f7f9;
-  --bg-muted: #eef0f3;
-  --line: #e3e6eb;
-  --line-strong: #c9ced6;
-  --text: #1f2933;
-  --text-muted: #5f6b7a;
-  --text-faint: #8a94a3;
-  --accent: #1d6fe0;
-  --accent-soft: #e5efff;
-  --danger: #d43c3c;
-  --now: #e5484d;
+  --bg-subtle: #f8f6fc;
+  --bg-muted: #f0ecf7;
+  --line: #ebe6f2;
+  --line-strong: #d6cee4;
+  --text: #241f30;
+  --text-muted: #655d77;
+  --text-faint: #968ea7;
+  --accent: #7c3aed;
+  --accent-strong: #6425d0;
+  --accent-soft: #f3edff;
+  --danger: #d43c5a;
+  --now: #ec4899;
+  --grad: linear-gradient(135deg, #7c3aed 0%, #b23ad6 52%, #ec4899 100%);
+  --grad-line: linear-gradient(90deg, #7c3aed 0%, #c026d3 50%, #f472b6 100%);
+  --grad-soft: linear-gradient(135deg, #f6f0ff 0%, #fbf1fa 60%, #fff1f6 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%);
+  --shadow-accent: 0 4px 14px rgb(124 58 237 / 24%);
+  --shadow-card: 0 6px 24px rgb(64 30 120 / 8%);
   --radius: 6px;
   --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   color-scheme: light;

@@ -94,8 +94,18 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     onCreateAt,
   } = props;
   const { clinic } = bundle;
-  const dayStart = clinic.dayStartMin;
-  const dayEnd = clinic.dayEndMin;
+  // 診療時間の外に予約が入っていても見えるよう、表示する時間帯を1時間単位で広げる
+  const { dayStart, dayEnd } = useMemo(() => {
+    let start = clinic.dayStartMin;
+    let end = clinic.dayEndMin;
+    for (const r of bundle.reservations) {
+      if (INACTIVE_STATUSES.has(r.status)) continue;
+      start = Math.min(start, Math.floor(minutesOfDay(r.startAt) / 60) * 60);
+      const e = minutesOfDay(r.endAt) || 1440;
+      end = Math.max(end, Math.min(1440, Math.ceil(e / 60) * 60));
+    }
+    return { dayStart: start, dayEnd: end };
+  }, [bundle.reservations, clinic.dayStartMin, clinic.dayEndMin]);
   const totalMin = dayEnd - dayStart;
 
   const scrollerRef = useRef<HTMLDivElement>(null);

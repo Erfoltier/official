@@ -244,3 +244,53 @@
     height: 50px;
   }
 }
+
+/* ===== 配色（グラデーション） ===== */
+.picker {
+  border-color: #ddd3ee;
+  box-shadow: 0 14px 40px rgb(64 30 120 / 18%);
+  background: linear-gradient(180deg, #fcfaff 0%, #ffffff 90px);
+}
+
+.picker::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  border-radius: 10px 10px 0 0;
+  background: var(--grad-line);
+}
+
+.title {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.title .caret {
+  color: var(--accent);
+}
+
+.today {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.day[data-selected] {
+  background: var(--grad);
+  border-color: transparent;
+  box-shadow: var(--shadow-accent);
+}
+
+.month[data-current] {
+  background: var(--grad);
+  border-color: transparent;
+}
+
+.cnt {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}

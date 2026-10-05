@@ -63,9 +63,35 @@ final class Store
         }
     }
 
+    /** 院の設定（院名・診療時間・刻み）。画面から変更したものがあればそれを使う */
     public static function clinic(): array
     {
-        return config()['clinic'] ?? self::seed()['clinic'];
+        self::init();
+        return Db::i()->meta('clinic') ?? config()['clinic'] ?? self::seed()['clinic'];
+    }
+
+    public static function updateClinic(array $input, ?array $by = null): array
+    {
+        $next = self::clinic();
+        if (isset($input['name'])) {
+            $next['name'] = self::checkText('院名', $input['name'], 40, true);
+        }
+        foreach (['slotMin', 'dayStartMin', 'dayEndMin'] as $k) {
+            if (isset($input[$k])) {
+                $next[$k] = $input[$k];
+            }
+        }
+        if ($next['dayStartMin'] % 5 !== 0 || $next['dayEndMin'] % 5 !== 0) {
+            throw new StoreError('invalid', '時刻は5分単位で指定してください');
+        }
+        if ($next['dayEndMin'] - $next['dayStartMin'] < 60) {
+            throw new StoreError('invalid', '閉院時間は開院時間の1時間以上あとにしてください');
+        }
+        Db::i()->setMeta('clinic', $next);
+        if ($by) {
+            Auth::audit($by, '院の設定（診療時間など）を変更');
+        }
+        return $next;
     }
 
     private static function &patients(): array

@@ -286,6 +286,23 @@ final class Schema
         ]);
     }
 
+    public static function clinic(mixed $v): array
+    {
+        $min = fn($x) => V::int($x, 0, 1440);
+        return V::shape($v, [
+            'name?' => fn($x) => V::str($x, 80),
+            'dayStartMin?' => $min,
+            'dayEndMin?' => $min,
+            'slotMin?' => function ($x) {
+                $x = V::int($x);
+                if (!in_array($x, [5, 10, 15, 30], true)) {
+                    throw new InputError();
+                }
+                return $x;
+            },
+        ]);
+    }
+
     public static function reorder(mixed $v): array
     {
         return V::shape($v, ['ids' => fn($x) => V::ids($x, 1, 500)])['ids'];

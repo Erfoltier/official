@@ -295,3 +295,85 @@
     margin-left: 0;
   }
 }
+
+/* ---- 診療時間 ---- */
+.clinicCard {
+  max-width: 520px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-grad, var(--bg));
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.field .input {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.timeRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.timeRow .field {
+  flex: 1;
+}
+
+.timeSep {
+  padding-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.hint[data-invalid] {
+  color: var(--danger);
+}
+
+/* ===== 配色（グラデーション） ===== */
+.head h1 {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.primary:disabled {
+  background: var(--bg-muted);
+  color: var(--text-faint);
+  box-shadow: none;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.clinicCard {
+  background: var(--grad-soft);
+  border-color: #e6dcf5;
+  box-shadow: var(--shadow-card);
+}
