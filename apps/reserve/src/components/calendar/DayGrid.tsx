@@ -311,7 +311,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
       const cur = dragRef.current;
       if (!cur || cur.id !== r.id) return;
       updateDrag({ ...cur, active: true });
-      onSelect(r.id);
+      // ここで選ぶと右の詳細が開いて列の幅が変わり、指の下のレーンがずれる。選ぶのは離したとき
       if (isTouch) navigator.vibrate?.(10);
     };
 
@@ -354,6 +354,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
         return;
       }
       suppressClickUntil.current = Date.now() + 300;
+      onSelect(r.id);
       if (cur.laneId !== r.laneId || cur.startMin !== start || cur.endMin !== end) {
         onMove(r, { laneId: cur.laneId, startMin: cur.startMin, endMin: cur.endMin });
       }

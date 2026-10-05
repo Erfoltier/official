@@ -1632,3 +1632,67 @@ button.stagePill[data-clickable]:disabled {
   padding: 2px 10px;
   font-size: 12px;
 }
+
+/* ===== 確認ダイアログ（ドラッグ移動） ===== */
+.confirm {
+  width: min(380px, calc(100vw - 32px));
+  padding: 20px 20px 16px;
+  border-radius: 14px;
+}
+
+.confirmTitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.confirmDetail {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f7f3fc;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.confirmActions button {
+  min-width: 112px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+
+/* ===== カレンダー以外（上のバー・受付一覧・予約詳細）は薄く色をつけて、予定表と見分けやすくする ===== */
+.toolbar {
+  background: linear-gradient(90deg, #efe7fa 0%, #f3ecfa 50%, #faeaf3 100%);
+}
+
+.reception,
+.panel {
+  background: #f5f0fb;
+}
+
+.receptionHead {
+  background: #ede4f8;
+}
+
+.panel {
+  border-left: 1px solid #e2d6f2;
+}
+
+.reception {
+  border-right: 1px solid #e2d6f2;
+}
+
+@media (max-width: 760px) {
+  .reception {
+    background: #f5f0fb;
+  }
+}

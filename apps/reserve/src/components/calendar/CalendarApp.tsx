@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
-import { addDays, formatDateJa, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
+import { addDays, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
 import { ApiError, fetchDay, fetchMe, logout, patchReservation, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
@@ -11,6 +11,8 @@ import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
 import { DatePicker } from "./DatePicker";
 import { ReceptionList } from "./ReceptionList";
+import { MoveConfirm } from "./MoveConfirm";
+import { displayName } from "./names";
 import { ChevronDown } from "./Chevron";
 import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
@@ -143,7 +145,26 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     }
   };
 
+  /** ドラッグで動かした予約（確認ダイアログで「はい」を押すまで保存しない） */
+  const [pendingMove, setPendingMove] = useState<{ r: Reservation; to: MoveTarget } | null>(null);
+
   const onMove = (r: Reservation, to: MoveTarget) => {
+    const same = to.laneId === r.laneId && toIso(date, to.startMin) === r.startAt && toIso(date, to.endMin) === r.endAt;
+    if (!same) setPendingMove({ r, to });
+  };
+
+  const moveDetail = (r: Reservation, to: MoveTarget) => {
+    const laneName = (id: string) => bundle?.lanes.find((l) => l.id === id)?.shortName ?? "";
+    const from = `${formatHm(minutesOfDay(r.startAt))}–${formatHm(minutesOfDay(r.endAt))}`;
+    const next = `${formatHm(to.startMin)}–${formatHm(to.endMin)}`;
+    return [
+      displayName(bundle?.patients.find((p) => p.id === r.patientId), maskNames),
+      from === next ? `時間：${from}（変更なし）` : `時間：${from} → ${next}`,
+      to.laneId !== r.laneId ? `レーン：${laneName(r.laneId)} → ${laneName(to.laneId)}` : "",
+    ].filter(Boolean);
+  };
+
+  const doMove = (r: Reservation, to: MoveTarget) => {
     const startAt = toIso(date, to.startMin);
     const endAt = toIso(date, to.endMin);
     save(r, { version: r.version, laneId: to.laneId, startAt, endAt }, { ...r, laneId: to.laneId, startAt, endAt });
@@ -470,6 +491,19 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           patientId={editPatientId}
           onClose={() => setEditPatientId(null)}
           onSaved={() => load(date)}
+        />
+      )}
+
+      {pendingMove && (
+        <MoveConfirm
+          detail={moveDetail(pendingMove.r, pendingMove.to)}
+          onCancel={() => setPendingMove(null)}
+          onYes={() => {
+            const { r, to } = pendingMove;
+            setPendingMove(null);
+            // 確認中に他の端末で変わっていたら最新の版で保存する（中身が変わっていれば保存側で弾かれる）
+            doMove(bundle?.reservations.find((x) => x.id === r.id) ?? r, to);
+          }}
         />
       )}
 
