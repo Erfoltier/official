@@ -153,6 +153,8 @@ final class Db
             'visitNote' => [$v['date'] ?? null, $v['patientId'] ?? null],
             'patientHistory' => [null, $id],
             'file', 'estimate', 'consent', 'chart' => [$v['date'] ?? null, $v['patientId'] ?? null],
+            // 問診票：k2 = 患者ID（結びついていない回答は空文字）
+            'questionnaire' => [null, $v['patientId'] ?? ''],
             default => [null, null],
         };
     }

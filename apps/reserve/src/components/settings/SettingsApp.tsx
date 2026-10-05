@@ -10,6 +10,8 @@ import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab } from "./ClinicTab";
 import { PricesTab } from "./PricesTab";
 import { ConsentsTab } from "./ConsentsTab";
+import { QuestionnairesTab } from "./QuestionnairesTab";
+import { ImportsTab } from "./ImportsTab";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -17,7 +19,7 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "clinic", "staff", "audit", "restore"] as const;
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "clinic", "staff", "audit", "restore"] as const;
 type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
@@ -88,6 +90,12 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "consents"} onClick={() => setTab("consents")}>
             同意書
           </button>
+          <button role="tab" aria-selected={tab === "questionnaires"} onClick={() => setTab("questionnaires")}>
+            問診票
+          </button>
+          <button role="tab" aria-selected={tab === "imports"} onClick={() => setTab("imports")}>
+            取り込み
+          </button>
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
@@ -126,6 +134,10 @@ export function SettingsApp() {
         <PricesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
+      ) : tab === "imports" ? (
+        <ImportsTab menus={data.menus} lanes={data.lanes} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "questionnaires" ? (
+        <QuestionnairesTab canEdit={canEdit} notify={notify} fail={fail} />
       ) : tab === "consents" ? (
         <ConsentsTab menus={data.menus} canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : tab === "stages" ? (

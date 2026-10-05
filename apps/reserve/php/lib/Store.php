@@ -17,7 +17,7 @@ final class Store
     private const FIELD_LABEL = [
         'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール',
         'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
-        'memo' => 'メモ', 'lineUserId' => 'LINE紐付け',
+        'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'lineUserId' => 'LINE紐付け',
     ];
     private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
@@ -1124,6 +1124,12 @@ final class Store
         }
         if (isset($input['memo'])) {
             $out['memo'] = $opt(self::checkNote('メモ', $input['memo'], 12000));
+        }
+        if (isset($input['history'])) {
+            $out['history'] = $opt(self::checkNote('既往歴', $input['history'], 2000));
+        }
+        if (isset($input['medications'])) {
+            $out['medications'] = $opt(self::checkNote('内服歴', $input['medications'], 2000));
         }
         return $out;
     }
@@ -2295,7 +2301,8 @@ final class Store
             }
             $removed = 0;
             foreach ($all as $t) {
-                if (!isset($seen[$t['id']]) && empty($t['removed'])) {
+                // ファイルから取り込んだひな形は、ドライブのフォルダにないので消さない
+                if (!isset($seen[$t['id']]) && empty($t['removed']) && !self::isUploadedTemplate($t)) {
                     $db->put('consentTemplate', $t['id'], [...$t, 'removed' => true, 'receivedAt' => $at]);
                     $removed++;
                 }
@@ -2303,6 +2310,93 @@ final class Store
             $db->setMeta('consentTemplatesAt', $at);
             return ['count' => count($seen), 'removed' => $removed, 'at' => $at];
         });
+    }
+
+    /** ファイル（Word・HTML・Googleドキュメントの書き出し）から取り込んだひな形か */
+    public static function isUploadedTemplate(array $t): bool
+    {
+        return str_starts_with($t['driveId'], 'upload-');
+    }
+
+    /** ファイルから同意書のひな形を取り込む。同じ名前のものは入れ替える（メニューとの結びつけは残す） */
+    public static function importConsentTemplates(array $templates, ?array $by = null): array
+    {
+        self::init();
+        Db::i()->transaction(function () use ($templates) {
+            $at = now_iso();
+            foreach ($templates as $t) {
+                $title = self::checkText('同意書の名前', $t['title'], 120, true);
+                $driveId = 'upload-' . substr(sha1(search_key($title)), 0, 16);
+                $id = "ct-{$driveId}";
+                $cur = Db::i()->get('consentTemplate', $id);
+                Db::i()->put('consentTemplate', $id, [
+                    'id' => $id, 'driveId' => $driveId, 'title' => $title, 'modifiedTime' => $at,
+                    'menuIds' => $cur['menuIds'] ?? [], 'receivedAt' => $at, 'html' => $t['html'],
+                ]);
+            }
+        });
+        if ($by) {
+            Auth::audit($by, '同意書のひな形をファイルから取り込み（' . count($templates) . '件）');
+        }
+        return ['count' => count($templates)];
+    }
+
+    public static function deleteConsentTemplate(string $id, ?array $by = null): void
+    {
+        self::init();
+        $t = self::getConsentTemplate($id);
+        if (!self::isUploadedTemplate($t)) {
+            throw new StoreError('invalid', 'Googleドライブのひな形は、ドライブのフォルダから消してください');
+        }
+        Db::i()->put('consentTemplate', $id, [...$t, 'removed' => true]);
+        if ($by) {
+            Auth::audit($by, "同意書のひな形「{$t['title']}」を削除");
+        }
+    }
+
+    /** 共有されたGoogleスプレッドシート（CSV）・ドキュメント（HTML）を読む。患者の情報は送らない */
+    public static function fetchGoogleExport(string $input): array
+    {
+        $target = google_export_url($input);
+        if (!$target) {
+            throw new StoreError('invalid', 'Googleスプレッドシートかドキュメントの共有リンクを入れてください');
+        }
+        $url = $target['url'];
+        $denied = '読み込めませんでした。共有の設定を「リンクを知っている全員（閲覧者）」にしてください';
+        for ($i = 0; $i < 6; $i++) {
+            $host = (string) parse_url($url, PHP_URL_HOST);
+            if (!allowed_google_host($host) || parse_url($url, PHP_URL_SCHEME) !== 'https') {
+                throw new StoreError('invalid', $denied);
+            }
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+                CURLOPT_HEADER => false,
+                CURLOPT_USERAGENT => 'reserve-import',
+            ]);
+            $body = curl_exec($ch);
+            $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $next = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+            curl_close($ch);
+            if (!is_string($body)) {
+                throw new StoreError('invalid', '読み込めませんでした（通信エラー）');
+            }
+            if ($status >= 300 && $status < 400 && $next !== '') {
+                $url = $next;
+                continue;
+            }
+            if ($status < 200 || $status >= 300) {
+                throw new StoreError('invalid', $denied);
+            }
+            if (strlen($body) > 5_000_000) {
+                throw new StoreError('invalid', '大きすぎて読み込めません（5MBまで）');
+            }
+            return ['kind' => $target['kind'], 'text' => $body];
+        }
+        throw new StoreError('invalid', '読み込めませんでした（転送が多すぎます）');
     }
 
     public static function setConsentTemplateMenus(string $id, array $menuIds, ?array $by = null): array
@@ -2521,7 +2615,7 @@ final class Store
                     ]);
                 }
                 foreach ($all as $t) {
-                    if (!isset($seen[$t['id']]) && empty($t['removed'])) {
+                    if (!isset($seen[$t['id']]) && empty($t['removed']) && !self::isUploadedTemplate($t)) {
                         $db->put('consentTemplate', $t['id'], [...$t, 'removed' => true]);
                     }
                 }
@@ -2537,7 +2631,8 @@ final class Store
     public static function loadConsentTemplate(string $id): array
     {
         $cached = self::getConsentTemplate($id);
-        if (!self::consentSource()) {
+        // ファイルから取り込んだひな形は、ドライブから読み込まない
+        if (!self::consentSource() || self::isUploadedTemplate($cached)) {
             return $cached;
         }
         try {
@@ -2749,6 +2844,181 @@ final class Store
         return $next;
     }
 
+    // ---- 問診票（Googleフォームなどから。患者の情報はこちらからは送らない） ----
+
+    private const FORBIDDEN_ALL = '/[\x{0000}-\x{001f}\x{007f}-\x{009f}\x{202a}-\x{202e}\x{2066}-\x{2069}]/u';
+    private const FORBIDDEN_EXCEPT_NL = '/[\x{0000}-\x{0009}\x{000b}-\x{001f}\x{007f}-\x{009f}\x{202a}-\x{202e}\x{2066}-\x{2069}]/u';
+
+    /** 外から来た1行の文字：使えない文字を外して長さをそろえる */
+    private static function extLine(?string $v, int $max): string
+    {
+        return js_trim(js_slice(clean_name((string) preg_replace(self::FORBIDDEN_ALL, ' ', $v ?? '')), $max));
+    }
+
+    /** 外から来た複数行の文字 */
+    private static function extBlock(?string $v, int $max): string
+    {
+        $s = str_replace(["\r\n", "\r"], "\n", normalize_nfc($v ?? ''));
+        return js_trim(js_slice(js_trim((string) preg_replace(self::FORBIDDEN_EXCEPT_NL, '', $s)), $max));
+    }
+
+    /** 氏名（またはフリガナ）が合い、さらに生年月日か電話番号（10桁以上）が合う患者がちょうど1人のときだけ結びつける */
+    private static function matchQuestionnaire(string $name, string $kana, ?string $birthDate, string $phone): ?string
+    {
+        $keys = array_values(array_filter([search_key($name), search_key($kana)], fn($k) => $k !== ''));
+        if (!$keys) {
+            return null;
+        }
+        $tel = digits_only($phone);
+        $hits = [];
+        foreach (self::patients() as $p) {
+            if (!empty($p['deleted'])) {
+                continue;
+            }
+            $nameHit = false;
+            foreach ([$p['name'], $p['kana'] ?? '', $p['nameAlt'] ?? ''] as $x) {
+                if ($x !== '' && in_array(search_key($x), $keys, true)) {
+                    $nameHit = true;
+                }
+            }
+            if (!$nameHit) {
+                continue;
+            }
+            if (($birthDate !== null && ($p['birthDate'] ?? null) === $birthDate) || (strlen($tel) >= 10 && digits_only($p['phone'] ?? '') === $tel)) {
+                $hits[] = $p['id'];
+            }
+        }
+        return count($hits) === 1 ? $hits[0] : null;
+    }
+
+    public static function receiveQuestionnaires(array $responses): array
+    {
+        self::init();
+        return Db::i()->transaction(function () use ($responses) {
+            $known = [];
+            foreach (Db::i()->all('questionnaire') as $q) {
+                $known[$q['key']] = true;
+            }
+            $out = ['received' => 0, 'matched' => 0, 'unmatched' => 0, 'duplicates' => 0];
+            foreach ($responses as $r) {
+                $key = js_trim($r['key']);
+                if (isset($known[$key])) {
+                    $out['duplicates']++;
+                    continue;
+                }
+                $known[$key] = true;
+                $birthDate = !empty($r['birthDate']) && is_date_string($r['birthDate']) ? $r['birthDate'] : null;
+                $name = self::extLine($r['name'], 60);
+                $name = $name !== '' ? $name : '（氏名なし）';
+                $kana = self::extLine($r['kana'] ?? '', 60);
+                $phone = self::extLine($r['phone'] ?? '', 30);
+                $patientId = self::matchQuestionnaire($name, $kana, $birthDate, $phone);
+                $answers = [];
+                foreach ($r['answers'] as $a) {
+                    $qq = self::extLine($a['q'], 200);
+                    $aa = self::extBlock($a['a'], 2000);
+                    if ($qq !== '' && $aa !== '') {
+                        $answers[] = ['q' => $qq, 'a' => $aa];
+                    }
+                }
+                $q = [
+                    'id' => 'qn-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4)),
+                    'key' => $key,
+                    'patientId' => $patientId,
+                    'submittedAt' => self::extLine($r['submittedAt'], 40),
+                    'name' => $name,
+                    'kana' => $kana !== '' ? $kana : null,
+                    'birthDate' => $birthDate,
+                    'phone' => $phone !== '' ? $phone : null,
+                ];
+                foreach (['history', 'medications', 'allergies'] as $f) {
+                    $v = self::extBlock($r[$f] ?? '', 2000);
+                    $q[$f] = $v !== '' ? $v : null;
+                }
+                $q['answers'] = $answers;
+                $q['receivedAt'] = now_iso();
+                $q = drop_null($q);
+                Db::i()->put('questionnaire', $q['id'], $q);
+                $out['received']++;
+                $patientId ? $out['matched']++ : $out['unmatched']++;
+            }
+            return $out;
+        });
+    }
+
+    private static function sortQuestionnaires(array $list): array
+    {
+        usort($list, fn($a, $b) => strcmp($b['submittedAt'], $a['submittedAt']) ?: strcmp($b['receivedAt'], $a['receivedAt']));
+        return $list;
+    }
+
+    public static function listQuestionnaires(string $patientId): array
+    {
+        self::init();
+        return self::sortQuestionnaires(array_values(array_filter(
+            Db::i()->where('questionnaire', 'k2', $patientId),
+            fn($q) => ($q['patientId'] ?? null) === $patientId && empty($q['deleted']),
+        )));
+    }
+
+    public static function listUnmatchedQuestionnaires(): array
+    {
+        self::init();
+        return self::sortQuestionnaires(array_values(array_filter(
+            Db::i()->where('questionnaire', 'k2', ''),
+            fn($q) => empty($q['patientId']) && empty($q['deleted']),
+        )));
+    }
+
+    private static function liveQuestionnaire(string $id): array
+    {
+        $q = Db::i()->get('questionnaire', $id);
+        if (!$q || !empty($q['deleted'])) {
+            throw new StoreError('not_found', '問診票が見つかりません');
+        }
+        return $q;
+    }
+
+    public static function linkQuestionnaire(string $id, string $chartNo, ?array $by = null): array
+    {
+        self::init();
+        $q = self::liveQuestionnaire($id);
+        $no = js_trim($chartNo);
+        $found = null;
+        foreach (self::patients() as $p) {
+            if (empty($p['deleted']) && $p['chartNo'] === $no) {
+                $found = $p;
+                break;
+            }
+        }
+        if (!$found) {
+            throw new StoreError('invalid', 'その診察券番号の患者が見つかりません');
+        }
+        $next = [...$q, 'patientId' => $found['id']];
+        if ($by) {
+            $next['linkedBy'] = $by;
+        }
+        Db::i()->put('questionnaire', $id, $next);
+        if ($by) {
+            Auth::audit($by, '問診票を患者に結びつけ', $found['id']);
+        }
+        return $next;
+    }
+
+    public static function deleteQuestionnaire(string $id, ?array $by = null): void
+    {
+        self::init();
+        $q = self::liveQuestionnaire($id);
+        $deleted = ['at' => now_iso()];
+        if ($by) {
+            $deleted['by'] = $by;
+        }
+        Db::i()->put('questionnaire', $id, [...$q, 'deleted' => $deleted]);
+        if ($by) {
+            Auth::audit($by, '問診票を削除', $q['patientId'] ?? null);
+        }
+    }
+
     // ---- カルテ（施術記録） ----
 
     /** 入力を検査して、保存する項目にそろえる（空の項目は持たない） */
@@ -2949,6 +3219,11 @@ final class Store
                     $db->put('estimate', $e['id'], $ne);
                 }
             }
+            foreach ($db->where('questionnaire', 'k2', $dup['id']) as $q) {
+                if (($q['patientId'] ?? null) === $dup['id']) {
+                    $db->put('questionnaire', $q['id'], [...$q, 'patientId' => $keep['id']]);
+                }
+            }
             foreach ($db->where('chart', 'k2', $dup['id']) as $c) {
                 if ($c['patientId'] === $dup['id']) {
                     $nc = [...$c, 'patientId' => $keep['id'], 'version' => $c['version'] + 1, 'updatedAt' => $at];
@@ -2974,6 +3249,8 @@ final class Store
             $next['caution'] = (!empty($keep['caution']) || !empty($dup['caution'])) ? true : null;
             $next['cautionNote'] = implode("\n", array_filter([$keep['cautionNote'] ?? '', $dup['cautionNote'] ?? ''])) ?: null;
             $next['memo'] = implode("\n", array_filter([$keep['memo'] ?? '', !empty($dup['memo']) ? "（統合元 診察券{$dup['chartNo']}）{$dup['memo']}" : ''])) ?: null;
+            $next['history'] = implode("\n", array_filter([$keep['history'] ?? '', $dup['history'] ?? ''])) ?: null;
+            $next['medications'] = implode("\n", array_filter([$keep['medications'] ?? '', $dup['medications'] ?? ''])) ?: null;
             $next['version'] = $keep['version'] + 1;
             $next['updatedAt'] = $at;
             self::putPatient(drop_null($next));
@@ -3010,6 +3287,35 @@ function drop_null(array $a): array
 function js_trim(string $s): string
 {
     return (string) preg_replace('/^[\s\x{00a0}\x{3000}\x{feff}]+|[\s\x{00a0}\x{3000}\x{feff}]+$/u', '', $s);
+}
+
+/** Google スプレッドシート・ドキュメントの共有リンク → 書き出しのアドレス（Node.js 版の googleExportUrl と同じ） */
+function google_export_url(string $input): ?array
+{
+    $u = parse_url(trim($input));
+    if (!is_array($u) || ($u['scheme'] ?? '') !== 'https' || ($u['host'] ?? '') !== 'docs.google.com' || isset($u['user']) || isset($u['port'])) {
+        return null;
+    }
+    $path = ($u['path'] ?? '') . '/';
+    $gid = preg_match('/(?:^|[#&?])gid=(\d{1,12})/', '?' . ($u['query'] ?? '') . '#' . ($u['fragment'] ?? ''), $g) ? $g[1] : '0';
+    if (preg_match('#^/spreadsheets/d/e/([A-Za-z0-9_-]{10,200})/#', $path, $m)) {
+        return ['kind' => 'sheet', 'url' => "https://docs.google.com/spreadsheets/d/e/{$m[1]}/pub?output=csv&gid={$gid}"];
+    }
+    if (preg_match('#^/spreadsheets/d/([A-Za-z0-9_-]{10,200})/#', $path, $m)) {
+        return ['kind' => 'sheet', 'url' => "https://docs.google.com/spreadsheets/d/{$m[1]}/export?format=csv&gid={$gid}"];
+    }
+    if (preg_match('#^/document/d/e/([A-Za-z0-9_-]{10,200})/#', $path, $m)) {
+        return ['kind' => 'doc', 'url' => "https://docs.google.com/document/d/e/{$m[1]}/pub"];
+    }
+    if (preg_match('#^/document/d/([A-Za-z0-9_-]{10,200})/#', $path, $m)) {
+        return ['kind' => 'doc', 'url' => "https://docs.google.com/document/d/{$m[1]}/export?format=html"];
+    }
+    return null;
+}
+
+function allowed_google_host(string $host): bool
+{
+    return $host === 'docs.google.com' || preg_match('/^[a-z0-9-]+\.googleusercontent\.com$/', $host) === 1;
 }
 
 /** JavaScript の slice(0, n) と同じ（UTF-16 単位） */

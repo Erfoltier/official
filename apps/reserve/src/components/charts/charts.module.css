@@ -244,7 +244,7 @@ textarea.input {
 
 .drugRow {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr auto;
+  grid-template-columns: 2fr 1.2fr auto;
   gap: 4px;
 }
 
@@ -286,12 +286,6 @@ textarea.input {
   .dialog {
     padding: 12px;
   }
-  .drugRow {
-    grid-template-columns: 1fr 1fr auto;
-  }
-  .drugRow input:first-child {
-    grid-column: 1 / -1;
-  }
   .twoCols {
     grid-template-columns: 1fr;
   }
@@ -302,4 +296,79 @@ textarea.input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 重要事項（目立つように）・既往歴・内服歴 */
+.notes {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cautionBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  border: 2px solid #dc2626;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.cautionBox strong {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.cautionBox textarea {
+  flex: 1 1 100%;
+}
+
+.cautionText {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: pre-wrap;
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.historyBox {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: #fff;
+}
+
+.historyBox summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.historyBox .facts {
+  margin-bottom: 4px;
+}
+
+.moreBtn {
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }

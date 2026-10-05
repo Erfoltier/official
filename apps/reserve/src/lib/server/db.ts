@@ -25,6 +25,7 @@ export type Kind =
   | "file"
   | "estimate"
   | "chart"
+  | "questionnaire"
   | "price"
   | "consentTemplate"
   | "consent"
@@ -119,6 +120,8 @@ export function indexKeys(kind: Kind, id: string, value: unknown): [string | nul
   if (kind === "visitNote") return [v.date ?? null, v.patientId ?? null];
   if (kind === "patientHistory") return [null, id];
   if (kind === "file" || kind === "estimate" || kind === "consent" || kind === "chart") return [v.date ?? null, v.patientId ?? null];
+  // 問診票：k2 = 患者ID（結びついていない回答は空文字）
+  if (kind === "questionnaire") return [null, v.patientId ?? ""];
   return [null, null];
 }
 

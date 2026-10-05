@@ -23,6 +23,7 @@ import type {
   Menu,
   ChartDrug,
   ChartEntry,
+  Questionnaire,
   Patient,
   PatientChange,
   DuplicateCandidate,
@@ -76,6 +77,7 @@ interface StoreState {
   files: Map<string, PatientFile>;
   estimates: Map<string, Estimate>;
   charts: Map<string, ChartEntry>;
+  questionnaires: Map<string, Questionnaire>;
   prices: Map<string, PriceItem>;
   consentTemplates: Map<string, ConsentTemplateWithHtml>;
   consents: Map<string, ConsentRecord & { html: string }>;
@@ -135,6 +137,7 @@ function state(): StoreState {
         files: new PersistentMap<PatientFile>("file"),
         estimates: new PersistentMap<Estimate>("estimate"),
         charts: new PersistentMap<ChartEntry>("chart"),
+        questionnaires: new PersistentMap<Questionnaire>("questionnaire"),
         prices: new PersistentMap<PriceItem>("price"),
         consentTemplates: new PersistentMap<ConsentTemplateWithHtml>("consentTemplate"),
         consents: new PersistentMap<ConsentRecord & { html: string }>("consent"),
@@ -976,6 +979,8 @@ export interface PatientInput {
   caution?: boolean;
   cautionNote?: string;
   memo?: string;
+  history?: string;
+  medications?: string;
 }
 
 export type CreatePatientInput = PatientInput & { name: string };
@@ -1046,6 +1051,8 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
   if (input.caution !== undefined) out.caution = input.caution || undefined;
   if (input.cautionNote !== undefined) out.cautionNote = opt(checkNote("注意事項", input.cautionNote, 500));
   if (input.memo !== undefined) out.memo = opt(checkNote("メモ", input.memo, 12000));
+  if (input.history !== undefined) out.history = opt(checkNote("既往歴", input.history, 2000));
+  if (input.medications !== undefined) out.medications = opt(checkNote("内服歴", input.medications, 2000));
   return out;
 }
 
@@ -1086,6 +1093,8 @@ const FIELD_LABEL: Record<string, string> = {
   caution: "注意事項あり",
   cautionNote: "注意事項",
   memo: "メモ",
+  history: "既往歴",
+  medications: "内服歴",
   lineUserId: "LINE紐付け",
 };
 
@@ -1670,6 +1679,9 @@ function mergePatientsImpl(
   for (const e of [...st.estimates.values()]) {
     if (e.patientId === dup.id) st.estimates.set(e.id, { ...e, patientId: keep.id, version: e.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
   }
+  for (const q of [...st.questionnaires.values()]) {
+    if (q.patientId === dup.id) st.questionnaires.set(q.id, { ...q, patientId: keep.id });
+  }
   for (const c of [...st.charts.values()]) {
     if (c.patientId === dup.id) st.charts.set(c.id, { ...c, patientId: keep.id, version: c.version + 1, updatedAt: at, ...(by && { updatedBy: by }) });
   }
@@ -1681,6 +1693,8 @@ function mergePatientsImpl(
   next.caution = keep.caution || dup.caution || undefined;
   next.cautionNote = [keep.cautionNote, dup.cautionNote].filter(Boolean).join("\n") || undefined;
   next.memo = [keep.memo, dup.memo && `（統合元 診察券${dup.chartNo}）${dup.memo}`].filter(Boolean).join("\n") || undefined;
+  next.history = [keep.history, dup.history].filter(Boolean).join("\n") || undefined;
+  next.medications = [keep.medications, dup.medications].filter(Boolean).join("\n") || undefined;
   next.version = keep.version + 1;
   next.updatedAt = at;
   st.patients.set(keep.id, dropUndefined(next));
@@ -1863,6 +1877,132 @@ export function deleteEstimate(id: string, input: { version: number }, by?: Acto
   st.estimates.set(id, next);
   if (by) audit(by, `見積書を削除（No.${cur.no}）`, cur.patientId);
   return next;
+}
+
+// ---- 問診票（Googleフォームなどから。患者の情報はこちらからは送らない） ----
+
+const FORBIDDEN_ALL = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g;
+const FORBIDDEN_EXCEPT_NL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g;
+
+export interface QuestionnaireInput {
+  key: string;
+  submittedAt: string;
+  name: string;
+  kana?: string;
+  birthDate?: string;
+  phone?: string;
+  history?: string;
+  medications?: string;
+  allergies?: string;
+  answers: { q: string; a: string }[];
+}
+
+/**
+ * 回答を患者に結びつける：氏名（またはフリガナ）が合い、さらに生年月日か電話番号（10桁以上）が合う患者が
+ * ちょうど1人のときだけ。迷うときは結びつけない（取り違え防止）
+ */
+function matchQuestionnaire(r: { name: string; kana?: string; birthDate?: string; phone?: string }): string | undefined {
+  const keys = new Set([searchKey(r.name), searchKey(r.kana ?? "")].filter(Boolean));
+  if (keys.size === 0) return undefined;
+  const tel = digits(r.phone);
+  const hits = [...state().patients.values()].filter((p) => {
+    if (p.deleted) return false;
+    const nameHit = [p.name, p.kana, p.nameAlt].some((x) => x && keys.has(searchKey(x)));
+    if (!nameHit) return false;
+    return (!!r.birthDate && p.birthDate === r.birthDate) || (tel.length >= 10 && digits(p.phone) === tel);
+  });
+  return hits.length === 1 ? hits[0].id : undefined;
+}
+
+function receiveQuestionnairesImpl(responses: QuestionnaireInput[]): { received: number; matched: number; unmatched: number; duplicates: number } {
+  const st = state();
+  const known = new Set([...st.questionnaires.values()].map((q) => q.key));
+  const out = { received: 0, matched: 0, unmatched: 0, duplicates: 0 };
+  for (const r of responses) {
+    const key = r.key.trim();
+    if (known.has(key)) {
+      out.duplicates++;
+      continue;
+    }
+    known.add(key);
+    // 外から来た文字は、使えない文字を外して長さをそろえる（1件のせいで全部が取り込めなくならないように）
+    const line = (v: string | undefined, max: number) => cleanName((v ?? "").replace(FORBIDDEN_ALL, " ")).slice(0, max).trim();
+    const block = (v: string | undefined, max: number) =>
+      (v ?? "").normalize("NFC").replace(/\r\n?/g, "\n").replace(FORBIDDEN_EXCEPT_NL, "").trim().slice(0, max).trim();
+    const birthDate = r.birthDate && isDateString(r.birthDate) ? r.birthDate : undefined;
+    const base = {
+      name: line(r.name, 60) || "（氏名なし）",
+      kana: line(r.kana, 60),
+      phone: line(r.phone, 30),
+      history: block(r.history, 2000),
+      medications: block(r.medications, 2000),
+      allergies: block(r.allergies, 2000),
+    };
+    const patientId = matchQuestionnaire({ ...base, birthDate });
+    const q: Questionnaire = dropUndefined({
+      id: `qn-${Date.now().toString(36)}-${randomId()}`,
+      key,
+      ...(patientId && { patientId }),
+      submittedAt: line(r.submittedAt, 40),
+      name: base.name,
+      kana: base.kana || undefined,
+      birthDate,
+      phone: base.phone || undefined,
+      history: base.history || undefined,
+      medications: base.medications || undefined,
+      allergies: base.allergies || undefined,
+      answers: r.answers
+        .map((x) => ({ q: line(x.q, 200), a: block(x.a, 2000) }))
+        .filter((x) => x.q && x.a),
+      receivedAt: new Date().toISOString(),
+    });
+    st.questionnaires.set(q.id, q);
+    out.received++;
+    if (patientId) out.matched++;
+    else out.unmatched++;
+  }
+  return out;
+}
+
+export function receiveQuestionnaires(...args: Parameters<typeof receiveQuestionnairesImpl>): ReturnType<typeof receiveQuestionnairesImpl> {
+  return transaction(() => receiveQuestionnairesImpl(...args));
+}
+
+const byNewest = (a: Questionnaire, b: Questionnaire) => b.submittedAt.localeCompare(a.submittedAt) || b.receivedAt.localeCompare(a.receivedAt);
+
+export function listQuestionnaires(patientId: string): Questionnaire[] {
+  return [...state().questionnaires.values()].filter((q) => q.patientId === patientId && !q.deleted).sort(byNewest);
+}
+
+/** 患者が見つからなかった回答（新しい順） */
+export function listUnmatchedQuestionnaires(): Questionnaire[] {
+  return [...state().questionnaires.values()].filter((q) => !q.patientId && !q.deleted).sort(byNewest);
+}
+
+function liveQuestionnaire(id: string): Questionnaire {
+  const q = state().questionnaires.get(id);
+  if (!q || q.deleted) throw new StoreError("not_found", "問診票が見つかりません");
+  return q;
+}
+
+/** 回答を、診察券番号で選んだ患者に結びつける */
+export function linkQuestionnaire(id: string, chartNo: string, by?: Actor): Questionnaire {
+  const st = state();
+  const q = liveQuestionnaire(id);
+  const no = chartNo.trim();
+  const p = [...st.patients.values()].find((x) => !x.deleted && x.chartNo === no);
+  if (!p) throw new StoreError("invalid", "その診察券番号の患者が見つかりません");
+  const next: Questionnaire = { ...q, patientId: p.id, ...(by && { linkedBy: by }) };
+  st.questionnaires.set(id, next);
+  if (by) audit(by, "問診票を患者に結びつけ", p.id);
+  return next;
+}
+
+export function deleteQuestionnaire(id: string, by?: Actor): void {
+  const st = state();
+  const q = liveQuestionnaire(id);
+  st.questionnaires.set(id, { ...q, deleted: { at: new Date().toISOString(), ...(by && { by }) } });
+  if (by) audit(by, "問診票を削除", q.patientId);
 }
 
 // ---- カルテ（施術記録） ----
@@ -2224,7 +2364,8 @@ function receiveConsentTemplatesImpl(templates: { driveId: string; title: string
   }
   let removed = 0;
   for (const t of [...st.consentTemplates.values()]) {
-    if (!seen.has(t.id) && !t.removed) {
+    // ファイルから取り込んだひな形は、ドライブのフォルダにないので消さない
+    if (!seen.has(t.id) && !t.removed && !isUploadedTemplate(t)) {
       st.consentTemplates.set(t.id, { ...t, removed: true, receivedAt: at });
       removed++;
     }
@@ -2235,6 +2376,35 @@ function receiveConsentTemplatesImpl(templates: { driveId: string; title: string
 
 export function receiveConsentTemplates(...args: Parameters<typeof receiveConsentTemplatesImpl>): ReturnType<typeof receiveConsentTemplatesImpl> {
   return transaction(() => receiveConsentTemplatesImpl(...args));
+}
+
+/** ファイル（Word・HTML・Googleドキュメントの書き出し）から取り込んだひな形か */
+export const isUploadedTemplate = (t: { driveId: string }) => t.driveId.startsWith("upload-");
+
+/** ファイルから同意書のひな形を取り込む。同じ名前のものは入れ替える（メニューとの結びつけは残す） */
+export function importConsentTemplates(templates: { title: string; html: string }[], by?: Actor): { count: number } {
+  return transaction(() => {
+    const st = state();
+    const at = new Date().toISOString();
+    for (const t of templates) {
+      const title = checkText("同意書の名前", t.title, 120, true);
+      const driveId = `upload-${createHash("sha1").update(searchKey(title)).digest("hex").slice(0, 16)}`;
+      const id = `ct-${driveId}`;
+      const cur = st.consentTemplates.get(id);
+      st.consentTemplates.set(id, { id, driveId, title, modifiedTime: at, menuIds: cur?.menuIds ?? [], receivedAt: at, html: t.html });
+    }
+    if (by) audit(by, `同意書のひな形をファイルから取り込み（${templates.length}件）`);
+    return { count: templates.length };
+  });
+}
+
+/** ファイルから取り込んだひな形を消す（ドライブのものはフォルダから消す） */
+export function deleteConsentTemplate(id: string, by?: Actor): void {
+  const st = state();
+  const t = getConsentTemplate(id);
+  if (!isUploadedTemplate(t)) throw new StoreError("invalid", "Googleドライブのひな形は、ドライブのフォルダから消してください");
+  st.consentTemplates.set(id, { ...t, removed: true });
+  if (by) audit(by, `同意書のひな形「${t.title}」を削除`);
 }
 
 export function consentTemplatesReceivedAt(): string | null {
@@ -2379,7 +2549,7 @@ function applyConsentListImpl(list: { driveId: string; title: string; modifiedTi
     });
   }
   for (const t of [...st.consentTemplates.values()]) {
-    if (!seen.has(t.id) && !t.removed) st.consentTemplates.set(t.id, { ...t, removed: true });
+    if (!seen.has(t.id) && !t.removed && !isUploadedTemplate(t)) st.consentTemplates.set(t.id, { ...t, removed: true });
   }
   setMeta("consentTemplatesAt", at);
 }

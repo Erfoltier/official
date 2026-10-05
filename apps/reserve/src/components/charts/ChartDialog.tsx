@@ -2,17 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ChartDrug, ChartEntry, PatientFile, StaffPublic } from "@/lib/domain/types";
-import { ApiError, createChart, deleteChart, fetchCharts, fetchFiles, fetchMe, updateChart } from "@/components/calendar/api";
+import type { ChartDrug, ChartEntry, Patient, PatientFile, StaffPublic } from "@/lib/domain/types";
+import { ApiError, createChart, deleteChart, fetchCharts, fetchFiles, fetchMe, fetchPatient, updateChart, updatePatient } from "@/components/calendar/api";
 import { usePref } from "@/components/calendar/usePref";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { FileThumbs } from "@/components/files/FileThumbs";
 import { FileUploader } from "@/components/files/FileUploader";
 import { ChartCard } from "./ChartCard";
+import { QuestionnaireAnswers } from "@/components/questionnaires/QuestionnaireAnswers";
 import { conditionHints } from "./chartHints";
 import styles from "./charts.module.css";
 
-const AREAS = ["全顔", "額", "眉間", "目尻", "目の下", "頬", "鼻", "口周り", "顎", "顎下", "首", "脇", "腕", "背中", "腹部", "VIO", "脚", "頭皮"];
+/** よく使う部位（すぐ押せる）と、展開して選ぶ部位 */
+const AREAS_MAIN = ["顔", "頬", "首", "VIO", "二の腕", "背中"];
+const AREAS_MORE = ["全顔", "額", "眉間", "目尻", "目の下", "鼻", "口周り", "顎", "顎下", "デコルテ", "脇", "腕", "手", "腹部", "お尻", "脚", "膝下", "頭皮"];
 const ANESTHESIA = ["なし", "麻酔クリーム", "局所麻酔注射", "冷却"];
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 
@@ -37,6 +40,7 @@ export function ChartDialog(props: Props) {
   const [entries, setEntries] = useState<ChartEntry[] | null>(null);
   const [files, setFiles] = useState<PatientFile[]>([]);
   const [me, setMe] = useState<StaffPublic | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(null);
   const [editing, setEditing] = useState<ChartEntry | "new" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { patientId, date, onChanged } = props;
@@ -58,6 +62,7 @@ export function ChartDialog(props: Props) {
     const d = ref.current;
     if (d && !d.open) d.showModal();
     fetchMe().then(setMe, () => {});
+    fetchPatient(patientId).then((d) => setPatient(d.patient), () => {});
     // 開いたときに読み込む
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load().then((today) => {
@@ -92,6 +97,7 @@ export function ChartDialog(props: Props) {
           ×
         </button>
       </div>
+      {patient && <PatientNotes patient={patient} readOnly={props.readOnly} onSaved={setPatient} />}
       {error && <p className={styles.error}>{error}</p>}
       {entries === null && <p className={styles.muted}>読み込み中…</p>}
 
@@ -167,6 +173,7 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
   const [nextPlan, setNextPlan] = useState(e?.nextPlan ?? "");
   const [operator, setOperator] = useState(e?.operator ?? "");
   const [saving, setSaving] = useState(false);
+  const [moreAreas, setMoreAreas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentDrugs, setRecentDrugs] = usePref<string[]>("recentDrugs", [], isStringArray);
   const hints = useMemo(() => conditionHints(treatment), [treatment]);
@@ -184,7 +191,8 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
   const save = async () => {
     setError(null);
     if (!treatment.trim()) return setError("施術名を入れてください");
-    const cleanDrugs = drugs.filter((d) => d.name.trim()).map((d) => ({ name: d.name, lot: d.lot ?? "", amount: d.amount ?? "" }));
+    // ロット番号は入力しない（前に入れたものはそのまま残す）
+    const cleanDrugs = drugs.filter((d) => d.name.trim()).map((d) => ({ name: d.name, ...(d.lot && { lot: d.lot }), amount: d.amount ?? "" }));
     const body = { treatment, area, settings, drugs: cleanDrugs, anesthesia, findings, nextPlan, operator };
     setSaving(true);
     try {
@@ -219,11 +227,14 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
         <input className={styles.input} value={area} onChange={(ev) => setArea(ev.target.value)} maxLength={200} placeholder="例：額・眉間" aria-label="部位" />
       </label>
       <div className={styles.chips}>
-        {AREAS.map((a) => (
+        {(moreAreas ? [...AREAS_MAIN, ...AREAS_MORE] : AREAS_MAIN).map((a) => (
           <button key={a} type="button" className={styles.chip} data-on={area.split("・").includes(a) || undefined} onClick={() => setArea((cur) => appendTo(cur, a, "・"))}>
             {a}
           </button>
         ))}
+        <button type="button" className={styles.moreBtn} onClick={() => setMoreAreas((v) => !v)} aria-expanded={moreAreas}>
+          {moreAreas ? "▲ 閉じる" : "▼ ほかの部位"}
+        </button>
       </div>
 
       <label className={styles.field}>
@@ -241,11 +252,10 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
       )}
 
       <div className={styles.field}>
-        <span>薬剤・ロット番号</span>
+        <span>薬剤</span>
         {drugs.map((d, i) => (
           <div key={i} className={styles.drugRow}>
             <input className={styles.input} value={d.name} onChange={(ev) => setDrug(i, { name: ev.target.value })} list="chart-drugs" maxLength={80} placeholder="薬剤名" aria-label={`薬剤名${i + 1}`} />
-            <input className={styles.input} value={d.lot ?? ""} onChange={(ev) => setDrug(i, { lot: ev.target.value })} maxLength={40} placeholder="ロット番号" aria-label={`ロット番号${i + 1}`} />
             <input className={styles.input} value={d.amount ?? ""} onChange={(ev) => setDrug(i, { amount: ev.target.value })} maxLength={40} placeholder="使用量（例：20単位）" aria-label={`使用量${i + 1}`} />
             <button type="button" className={styles.remove} onClick={() => setDrugs((ds) => ds.filter((_, j) => j !== i))} aria-label={`薬剤${i + 1}を外す`}>
               ×
@@ -301,6 +311,119 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
           {saving ? "保存中…" : "保存"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** カルテの上：重要事項（目立つように）と、押して開く既往歴・内服歴 */
+function PatientNotes({ patient: p, readOnly, onSaved }: { patient: Patient; readOnly?: boolean; onSaved(p: Patient): void }) {
+  const [editing, setEditing] = useState<"caution" | "history" | null>(null);
+  const [caution, setCaution] = useState(p.cautionNote ?? "");
+  const [history, setHistory] = useState(p.history ?? "");
+  const [medications, setMedications] = useState(p.medications ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async (body: { cautionNote?: string; caution?: boolean; history?: string; medications?: string }) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const d = await updatePatient(p.id, { ...body, version: p.version });
+      onSaved(d.patient);
+      setEditing(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "保存できませんでした");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={styles.notes}>
+      {editing === "caution" ? (
+        <div className={styles.cautionBox}>
+          <strong>⚠ 重要事項</strong>
+          <textarea
+            className={styles.input}
+            rows={2}
+            value={caution}
+            onChange={(e) => setCaution(e.target.value)}
+            maxLength={500}
+            placeholder="例：アルコール綿禁止、薬疹（セフェム系）、ラテックスアレルギー"
+            aria-label="重要事項"
+            autoFocus
+          />
+          <div className={styles.actions}>
+            <button type="button" className={styles.btn} onClick={() => setEditing(null)} disabled={saving}>
+              やめる
+            </button>
+            <button type="button" className={styles.primaryBtn} disabled={saving} onClick={() => save({ cautionNote: caution, caution: !!caution.trim() || !!p.caution })}>
+              保存
+            </button>
+          </div>
+        </div>
+      ) : p.cautionNote ? (
+        <div className={styles.cautionBox} role="alert">
+          <strong>⚠ 重要事項</strong>
+          <span className={styles.cautionText}>{p.cautionNote}</span>
+          {!readOnly && (
+            <button type="button" className={styles.linkBtn} onClick={() => setEditing("caution")}>
+              直す
+            </button>
+          )}
+        </div>
+      ) : (
+        !readOnly && (
+          <button type="button" className={styles.linkBtn} onClick={() => setEditing("caution")}>
+            ＋ 重要事項（アルコール綿禁止・薬疹など）を書く
+          </button>
+        )
+      )}
+
+      <details className={styles.historyBox}>
+        <summary>
+          既往歴・内服歴
+          <span className={styles.muted}>{p.history || p.medications ? "（記入あり）" : "（未記入）"}</span>
+        </summary>
+        {editing === "history" ? (
+          <div className={styles.form}>
+            <label className={styles.field}>
+              <span>既往歴</span>
+              <textarea className={styles.input} rows={2} value={history} onChange={(e) => setHistory(e.target.value)} maxLength={2000} aria-label="既往歴" />
+            </label>
+            <label className={styles.field}>
+              <span>内服歴・服用中の薬</span>
+              <textarea className={styles.input} rows={2} value={medications} onChange={(e) => setMedications(e.target.value)} maxLength={2000} aria-label="内服歴" />
+            </label>
+            <div className={styles.actions}>
+              <button type="button" className={styles.btn} onClick={() => setEditing(null)} disabled={saving}>
+                やめる
+              </button>
+              <button type="button" className={styles.primaryBtn} disabled={saving} onClick={() => save({ history, medications })}>
+                保存
+              </button>
+            </div>
+          </div>
+        ) : (
+          <dl className={styles.facts}>
+            <div>
+              <dt>既往歴</dt>
+              <dd className={styles.pre}>{p.history || "—"}</dd>
+            </div>
+            <div>
+              <dt>内服歴</dt>
+              <dd className={styles.pre}>{p.medications || "—"}</dd>
+            </div>
+            {!readOnly && (
+              <button type="button" className={styles.linkBtn} onClick={() => setEditing("history")} style={{ justifySelf: "start" }}>
+                直す
+              </button>
+            )}
+          </dl>
+        )}
+        <QuestionnaireAnswers patientId={p.id} />
+      </details>
+      {error && <p className={styles.error}>{error}</p>}
     </div>
   );
 }

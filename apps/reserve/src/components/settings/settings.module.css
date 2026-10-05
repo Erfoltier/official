@@ -568,3 +568,55 @@
 .managerRow[data-inactive] .nameBtn {
   opacity: 0.55;
 }
+
+/* 取り込み */
+.importBox {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.importBox h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.importSource {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.importSource .input {
+  flex: 1 1 260px;
+}
+
+.importSource label.btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+.importError {
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
+.importBox .linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}

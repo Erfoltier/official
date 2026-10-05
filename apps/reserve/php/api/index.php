@@ -76,6 +76,10 @@ try {
         Http::checkIntegrationAuth();
         Http::json(Store::receiveConsentTemplates(Schema::integrationConsentTemplates(Http::readJson(20_000_000))));
     }
+    if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'questionnaires') {
+        Http::checkIntegrationAuth();
+        Http::json(Store::receiveQuestionnaires(Schema::integrationQuestionnaires(Http::readJson(2_000_000))['responses']));
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));
@@ -210,6 +214,10 @@ try {
             Store::loadConsentTemplate($in['templateId']);
             Http::json(Store::createConsent(V::id($p[1]), $in, $actor($s)), 201);
         }
+        if ($method === 'GET' && $n === 3 && $p[2] === 'questionnaires') {
+            $me();
+            Http::json(['items' => Store::listQuestionnaires(V::id($p[1]))]);
+        }
         if ($method === 'GET' && $n === 3 && $p[2] === 'charts') {
             $me();
             Http::json(['items' => Store::listCharts(V::id($p[1]))]);
@@ -343,6 +351,47 @@ try {
             $s = $manager();
             $id = V::id($p[1]);
             Store::deletePriceItem($id, $actor($s));
+            Http::json(['id' => $id, 'deleted' => true]);
+        }
+    }
+
+    // ---- 取り込み（ファイル・Googleの共有リンクから。管理操作のできるスタッフ） ----
+    if ($p[0] === 'imports' && $method === 'POST' && $n === 2) {
+        $s = $manager();
+        if ($p[1] === 'fetch') {
+            Http::json(Store::fetchGoogleExport(Schema::importFetch(Http::readJson())));
+        }
+        if ($p[1] === 'prices') {
+            $in = Schema::integrationPrices(Http::readJson(524_288));
+            $r = Store::receiveSheetPrices($in['sheet'], $in['items']);
+            Auth::audit($actor($s), "料金表を取り込み（{$in['sheet']}・" . count($in['items']) . '件）');
+            Http::json($r);
+        }
+        if ($p[1] === 'consent-templates') {
+            Http::json(Store::importConsentTemplates(Schema::importConsentTemplates(Http::readJson(13_000_000)), $actor($s)));
+        }
+    }
+    if ($p[0] === 'consent-templates' && $method === 'POST' && $n === 3 && $p[2] === 'delete') {
+        $s = $manager();
+        $id = V::id($p[1]);
+        Store::deleteConsentTemplate($id, $actor($s));
+        Http::json(['id' => $id, 'deleted' => true]);
+    }
+
+    // ---- 問診票 ----
+    if ($p[0] === 'questionnaires') {
+        if ($method === 'GET' && $n === 2 && $p[1] === 'unmatched') {
+            $me();
+            Http::json(['items' => Store::listUnmatchedQuestionnaires()]);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'link') {
+            $s = $me();
+            Http::json(Store::linkQuestionnaire(V::id($p[1]), Schema::linkQuestionnaire(Http::readJson()), $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $manager();
+            $id = V::id($p[1]);
+            Store::deleteQuestionnaire($id, $actor($s));
             Http::json(['id' => $id, 'deleted' => true]);
         }
     }

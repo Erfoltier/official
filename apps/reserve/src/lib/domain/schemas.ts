@@ -66,6 +66,8 @@ const patientFieldsSchema = {
   caution: z.boolean().optional(),
   cautionNote: shortText(1000).optional(),
   memo: shortText(12000).optional(),
+  history: shortText(4000).optional(),
+  medications: shortText(4000).optional(),
 };
 
 export const createPatientSchema = z.object({ name: shortText(120), ...patientFieldsSchema }).strict();
@@ -258,6 +260,55 @@ export const updateEstimateSchema = z
     note: z.string().max(2000).optional(),
   })
   .strict();
+
+export const integrationQuestionnairesSchema = z
+  .object({
+    responses: z
+      .array(
+        z
+          .object({
+            key: z.string().min(1).max(200),
+            submittedAt: z.string().max(40),
+            name: z.string().max(120),
+            kana: z.string().max(120).optional(),
+            birthDate: z.string().max(10).optional(),
+            phone: z.string().max(30).optional(),
+            history: z.string().max(4000).optional(),
+            medications: z.string().max(4000).optional(),
+            allergies: z.string().max(4000).optional(),
+            answers: z.array(z.object({ q: z.string().max(300), a: z.string().max(4000) }).strict()).max(80),
+          })
+          .strict(),
+      )
+      .max(200),
+  })
+  .strict();
+
+export const importPricesSchema = z
+  .object({
+    sheet: z.string().min(1).max(100),
+    items: z
+      .array(
+        z
+          .object({
+            category: z.string().max(100),
+            name: z.string().max(200),
+            priceYen: z.number().int().min(-10_000_000).max(10_000_000).nullable(),
+            priceText: z.string().max(100).optional(),
+          })
+          .strict(),
+      )
+      .max(1000),
+  })
+  .strict();
+
+export const importConsentTemplatesSchema = z
+  .object({ templates: z.array(z.object({ title: z.string().max(200), html: z.string().max(400_000) }).strict()).min(1).max(30) })
+  .strict();
+
+export const importFetchSchema = z.object({ url: z.string().max(2000) }).strict();
+
+export const linkQuestionnaireSchema = z.object({ chartNo: z.string().min(1).max(30) }).strict();
 
 const chartDrug = z.object({ name: z.string().max(200), lot: z.string().max(100).optional(), amount: z.string().max(100).optional() }).strict();
 const chartFields = {

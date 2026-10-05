@@ -15,10 +15,17 @@ export const SCOPE_LABEL: Record<DiscountScope, string> = {
 };
 
 /** 料金表の項目が商品（スキンケア・内服・外用）か。スプレッドシートの特殊メニューは施術 */
-export function priceCat(p: Pick<PriceItem, "source" | "category">): LineCat {
-  if (p.source === "sheet") return p.category === "特殊メニュー" ? "treatment" : "product";
-  return /外用|内服|スキンケア|サプリ|ゼオ/.test(p.category) ? "product" : "treatment";
+export function priceCat(p: Pick<PriceItem, "source" | "category" | "url">): LineCat {
+  if (p.source === "sheet" && !isImportedPrice(p)) return p.category === "特殊メニュー" ? "treatment" : "product";
+  return PRODUCT_CATEGORY.test(p.category) ? "product" : "treatment";
 }
+
+/** 商品（物販）の分類に使われる言葉。取り込むときは分類にこのどれかを入れると商品として扱う */
+export const PRODUCT_CATEGORY = /外用|内服|スキンケア|サプリ|ゼオ|化粧品|商品|物販/;
+
+/** 設定の「取り込み」でファイル・スプレッドシートから入れた料金か */
+export const IMPORT_SHEET_PREFIX = "取り込み：";
+export const isImportedPrice = (p: { url?: string }) => !!p.url?.startsWith(`sheet:${IMPORT_SHEET_PREFIX}`);
 
 /**
  * "0.9" "×0.9" "x0.85" "90%" "10%引き" "10%off" → 掛け率（0より大きく1以下）。読めなければ null

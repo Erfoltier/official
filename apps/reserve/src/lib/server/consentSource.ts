@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { applyConsentDoc, applyConsentList, consentSource, getConsentTemplate } from "@/lib/server/store";
+import { applyConsentDoc, applyConsentList, consentSource, getConsentTemplate, isUploadedTemplate } from "@/lib/server/store";
 import type { ConsentTemplateWithHtml } from "@/lib/domain/types";
 
 /**
@@ -44,7 +44,8 @@ export async function refreshConsentList(): Promise<boolean> {
 /** 本文をドライブから読む。読めなければ前回読めた本文（stale: true） */
 export async function loadConsentTemplate(id: string): Promise<ConsentTemplateWithHtml & { stale?: boolean }> {
   const cached = getConsentTemplate(id);
-  if (!consentSource()) return cached;
+  // ファイルから取り込んだひな形は、ドライブから読み込まない
+  if (!consentSource() || isUploadedTemplate(cached)) return cached;
   try {
     const doc = docSchema.parse(await call({ action: "doc", id: cached.driveId }));
     if (doc.driveId !== cached.driveId) throw new Error("mismatch");

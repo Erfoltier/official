@@ -95,6 +95,10 @@ export interface Patient {
   cautionNote?: string;
   /** 院内メモ（施術の好み・対応の注意など） */
   memo?: string;
+  /** 既往歴（自由記載。問診票からも入る） */
+  history?: string;
+  /** 内服歴・服用中の薬 */
+  medications?: string;
   /** 楽観的排他制御用。更新のたびに増える */
   version: number;
   updatedAt?: string;
@@ -245,6 +249,29 @@ export interface Estimate {
   updatedAt?: string;
   updatedBy?: Actor;
   version: number;
+  deleted?: { at: string; by?: Actor };
+}
+
+/** 問診票（Googleフォームなど）の回答。氏名＋生年月日か電話番号で患者に結びつける */
+export interface Questionnaire {
+  id: string;
+  /** 送り元での回答の識別（同じ回答を二重に取り込まないため） */
+  key: string;
+  /** 結びついた患者。見つからなかった回答は空（設定 → 問診票 で結びつける） */
+  patientId?: PatientId;
+  /** 回答日時（送り元の値） */
+  submittedAt: string;
+  name: string;
+  kana?: string;
+  birthDate?: string;
+  phone?: string;
+  history?: string;
+  medications?: string;
+  allergies?: string;
+  /** すべての質問と回答 */
+  answers: { q: string; a: string }[];
+  receivedAt: string;
+  linkedBy?: Actor;
   deleted?: { at: string; by?: Actor };
 }
 

@@ -1,0 +1,50 @@
+.box {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  background: #f5f7ff;
+  font-size: 13px;
+}
+
+.head {
+  font-weight: 700;
+  color: #3730a3;
+}
+
+.muted {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.facts {
+  margin: 4px 0;
+  display: grid;
+  gap: 3px;
+}
+
+.facts > div {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+  gap: 8px;
+}
+
+.facts dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.facts dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.all summary {
+  cursor: pointer;
+  color: #4338ca;
+  font-size: 12.5px;
+}

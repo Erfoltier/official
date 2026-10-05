@@ -4,6 +4,7 @@
  */
 import type { PriceItem, Product } from "./types";
 import { searchKey } from "./text";
+import { PRODUCT_CATEGORY, isImportedPrice } from "./estimateDiscount";
 
 export interface SkincareOption {
   name: string;
@@ -31,7 +32,13 @@ export function skincareOptions(prices: PriceItem[], products: Product[]): Skinc
   };
   const picked = prices
     .filter((p) => !p.removed)
-    .filter((p) => (p.source === "sheet" ? p.category !== "特殊メニュー" : p.source === "homepage" ? HP_CATEGORY.test(p.category) : /外用|内服|スキンケア|ゼオ/.test(p.category)))
+    .filter((p) =>
+      p.source === "sheet" && !isImportedPrice(p)
+        ? p.category !== "特殊メニュー"
+        : p.source === "homepage"
+          ? HP_CATEGORY.test(p.category)
+          : PRODUCT_CATEGORY.test(p.category),
+    )
     .map((p, i) => ({ p, i }))
     .sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i);
   for (const { p } of picked) {

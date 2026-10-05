@@ -10,6 +10,7 @@ import { TreatmentHistory, type VisitSave } from "./VisitTable";
 import { EstimateList } from "@/components/estimates/EstimateList";
 import { ConsentList } from "@/components/consents/ConsentList";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
+import { QuestionnaireAnswers } from "@/components/questionnaires/QuestionnaireAnswers";
 import styles from "./patients.module.css";
 import { patientPath, withBase } from "@/lib/paths";
 
@@ -36,6 +37,8 @@ function toForm(d: PatientDetail): Form {
     caution: !!p.caution,
     cautionNote: p.cautionNote ?? "",
     memo: p.memo ?? "",
+    history: p.history ?? "",
+    medications: p.medications ?? "",
   };
 }
 
@@ -299,14 +302,21 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       </fieldset>
 
       <fieldset className={styles.subSection}>
-        <legend>注意事項・メモ</legend>
+        <legend>注意事項・既往歴・メモ</legend>
         <label className={styles.check}>
           <input type="checkbox" checked={form.caution} onChange={(e) => set("caution", e.target.checked)} />
           注意事項あり（予約表に <span className={styles.caution}>!</span> を表示）
         </label>
-        <Field label="注意事項（アレルギー・既往・禁忌など）" changed={changedKeys.includes("cautionNote")}>
+        <Field label="重要事項（アルコール綿禁止・薬疹・アレルギー・禁忌など。カルテの上に目立つように出ます）" changed={changedKeys.includes("cautionNote")}>
           <textarea className={styles.textarea} value={form.cautionNote} onChange={(e) => set("cautionNote", e.target.value)} maxLength={500} rows={2} />
         </Field>
+        <Field label="既往歴" changed={changedKeys.includes("history")}>
+          <textarea className={styles.textarea} value={form.history} onChange={(e) => set("history", e.target.value)} maxLength={2000} rows={2} placeholder="例：高血圧、帝王切開（2019）" />
+        </Field>
+        <Field label="内服歴・服用中の薬" changed={changedKeys.includes("medications")}>
+          <textarea className={styles.textarea} value={form.medications} onChange={(e) => set("medications", e.target.value)} maxLength={2000} rows={2} placeholder="例：ロキソニン頓用、低用量ピル" />
+        </Field>
+        <QuestionnaireAnswers patientId={p.id} />
         <Field label="院内メモ" changed={changedKeys.includes("memo")}>
           <RichTextEditor value={form.memo} onChange={(v) => set("memo", v)} maxLength={4000} rows={3} ariaLabel="院内メモ" />
         </Field>

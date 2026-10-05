@@ -1,4 +1,4 @@
-import type { AuditEntry, ChartEntry, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -116,7 +116,7 @@ export async function reorder(kind: "lanes" | "menus" | "products" | "stages", i
 export type PatientUpdate = Partial<
   Pick<
     Patient,
-    "name" | "kana" | "nameAlt" | "phone" | "email" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo"
+    "name" | "kana" | "nameAlt" | "phone" | "email" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications"
   >
 >;
 
@@ -334,6 +334,42 @@ export function fetchEstimate(id: string): Promise<EstimateView> {
 
 export async function deleteEstimate(id: string, version: number): Promise<void> {
   await call(`/api/v1/estimates/${encodeURIComponent(id)}/delete`, { method: "POST", body: JSON.stringify({ version }) });
+}
+
+// ---- 取り込み（ファイル・Googleの共有リンク） ----
+
+export function importFetch(url: string): Promise<{ kind: "sheet" | "doc"; text: string }> {
+  return call(`/api/v1/imports/fetch`, { method: "POST", body: JSON.stringify({ url }) });
+}
+
+export function importPrices(sheet: string, items: { category: string; name: string; priceYen: number | null; priceText?: string }[]): Promise<{ sheet: string; count: number }> {
+  return call(`/api/v1/imports/prices`, { method: "POST", body: JSON.stringify({ sheet, items }) });
+}
+
+export function importConsentTemplates(templates: { title: string; html: string }[]): Promise<{ count: number }> {
+  return call(`/api/v1/imports/consent-templates`, { method: "POST", body: JSON.stringify({ templates }) });
+}
+
+export async function deleteConsentTemplate(id: string): Promise<void> {
+  await call(`/api/v1/consent-templates/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+// ---- 問診票 ----
+
+export async function fetchQuestionnaires(patientId: string): Promise<Questionnaire[]> {
+  return (await call<{ items: Questionnaire[] }>(`/api/v1/patients/${encodeURIComponent(patientId)}/questionnaires`)).items;
+}
+
+export async function fetchUnmatchedQuestionnaires(): Promise<Questionnaire[]> {
+  return (await call<{ items: Questionnaire[] }>(`/api/v1/questionnaires/unmatched`)).items;
+}
+
+export function linkQuestionnaire(id: string, chartNo: string): Promise<Questionnaire> {
+  return call(`/api/v1/questionnaires/${encodeURIComponent(id)}/link`, { method: "POST", body: JSON.stringify({ chartNo }) });
+}
+
+export async function deleteQuestionnaire(id: string): Promise<void> {
+  await call(`/api/v1/questionnaires/${encodeURIComponent(id)}/delete`, { method: "POST" });
 }
 
 // ---- カルテ（施術記録） ----
