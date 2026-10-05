@@ -6,7 +6,7 @@ import { nowInClinic } from "@/lib/domain/time";
 import { ApiError, fetchMe, fetchPatient, saveVisit, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
 import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
-import { UpcomingTable, VisitTable, type VisitSave } from "./VisitTable";
+import { TreatmentHistory, type VisitSave } from "./VisitTable";
 import styles from "./patients.module.css";
 import { patientPath, withBase } from "@/lib/paths";
 
@@ -74,6 +74,16 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "患者情報を読み込めませんでした");
+    }
+  }, [patientId]);
+
+  /** ファイルの追加・削除のあと：施術歴だけ読み直す（編集中の基本情報は消さない） */
+  const reloadHistory = useCallback(async () => {
+    try {
+      const d = await fetchPatient(patientId);
+      setDetail((cur) => (cur ? { ...cur, visits: d.visits, upcoming: d.upcoming } : d));
+    } catch {
+      // 読み直しに失敗しても、表示中の内容はそのまま
     }
   }, [patientId]);
 
@@ -208,13 +218,14 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       {!readOnly && <DuplicateBanner detail={detail} canManage={canManage} onMerge={(o) => setMergeWith(o)} />}
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>施術歴・メモ・スキンケア</h2>
-        <VisitTable visits={detail.visits} suggestions={detail.skincareSuggestions} onSave={saveVisitRow} readOnly={readOnly} />
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>今後の予約</h2>
-        <UpcomingTable items={detail.upcoming} />
+        <h2 className={styles.sectionTitle}>施術歴</h2>
+        <TreatmentHistory
+          detail={detail}
+          onSave={saveVisitRow}
+          onFilesChanged={reloadHistory}
+          readOnly={readOnly}
+          canManage={canManage}
+        />
       </section>
 
       {!readOnly && (

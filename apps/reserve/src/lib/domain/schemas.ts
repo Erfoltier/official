@@ -138,3 +138,14 @@ export const clinicSchema = z
     slotMin: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(30)]).optional(),
   })
   .strict();
+
+const productCategory = z.enum(["skincare", "oral"]);
+
+export const productSchema = z
+  .object({
+    name: z.string().max(120).optional(),
+    category: productCategory.optional(),
+    priceYen: z.number().int().nullable().optional(),
+    active: z.boolean().optional(),
+  })
+  .strict();

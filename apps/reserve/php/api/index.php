@@ -159,6 +159,27 @@ try {
             Store::restorePatient($id, Schema::versionOnly(Http::readJson()), $actor($s));
             Http::json(Store::getPatientDetail($id));
         }
+        if ($method === 'GET' && $n === 3 && $p[2] === 'files') {
+            $me();
+            $date = $q('date');
+            Http::json(['items' => Store::listFiles(V::id($p[1]), $date === null ? null : V::date($date))]);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'files') {
+            $s = $me();
+            $id = V::id($p[1]);
+            $rid = $q('reservationId');
+            $name = rawurldecode((string) ($_SERVER['HTTP_X_FILE_NAME'] ?? ''));
+            if (!mb_check_encoding($name, 'UTF-8')) {
+                $name = '';
+            }
+            $bytes = Http::readBytes(Store::MAX_FILE_BYTES);
+            Http::json(Store::saveFile($id, [
+                'date' => V::date($q('date')),
+                'reservationId' => $rid ? V::id($rid) : null,
+                'name' => $name,
+                'bytes' => $bytes,
+            ], $actor($s)), 201);
+        }
         if ($method === 'PUT' && $n === 4 && $p[2] === 'visits') {
             $s = $me();
             $id = V::id($p[1]);
@@ -192,6 +213,37 @@ try {
             $s = $me(STAFF_MANAGE);
             Store::deleteLane(V::id($p[1]), $actor($s));
             Http::noContent();
+        }
+    }
+
+    // ---- ファイル ----
+    if ($p[0] === 'files' && $n >= 2) {
+        if ($method === 'GET' && $n === 2) {
+            $me();
+            [$meta, $bytes] = Store::getFile(V::id($p[1]));
+            Http::file($meta, $bytes);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_MANAGE);
+            $f = Store::deleteFile(V::id($p[1]), $actor($s));
+            Http::json(['id' => $f['id'], 'deleted' => true]);
+        }
+    }
+
+    // ---- スキンケア・内服のプリセット（院長・管理者と受付） ----
+    if ($p[0] === 'products') {
+        if ($method === 'POST' && $n === 1) {
+            $s = $me(STAFF_MANAGE);
+            Http::json(Store::createProduct(Schema::product(Http::readJson()), $actor($s)), 201);
+        }
+        if ($method === 'POST' && $n === 2 && $p[1] === 'reorder') {
+            $s = $me(STAFF_MANAGE);
+            Http::json(['items' => Store::reorderProducts(Schema::reorder(Http::readJson()), $actor($s))]);
+        }
+        if ($method === 'PATCH' && $n === 2) {
+            $s = $me(STAFF_MANAGE);
+            $id = V::id($p[1]);
+            Http::json(Store::updateProduct($id, Schema::product(Http::readJson()), $actor($s)));
         }
     }
 

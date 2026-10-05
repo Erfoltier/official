@@ -784,5 +784,103 @@
   "保湿クリーム（セラミド）",
   "日焼け止め SPF50+",
   "トラネキサム酸 内服"
+ ],
+ "products": [
+  {
+   "id": "prod-001",
+   "name": "ゼオスキン ミラミン",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "prod-002",
+   "name": "ゼオスキン ミラクトン",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 1,
+   "active": true
+  },
+  {
+   "id": "prod-003",
+   "name": "ゼオスキン デイリーPD",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 2,
+   "active": true
+  },
+  {
+   "id": "prod-004",
+   "name": "ゼオスキン バランサートナー",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 3,
+   "active": true
+  },
+  {
+   "id": "prod-005",
+   "name": "ゼオスキン エクスフォリエーティングクレンザー",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 4,
+   "active": true
+  },
+  {
+   "id": "prod-006",
+   "name": "トレチノイン 0.025%",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 5,
+   "active": true
+  },
+  {
+   "id": "prod-007",
+   "name": "ハイドロキノン 4%",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 6,
+   "active": true
+  },
+  {
+   "id": "prod-008",
+   "name": "ビタミンC美容液",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 7,
+   "active": true
+  },
+  {
+   "id": "prod-009",
+   "name": "保湿クリーム（セラミド）",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 8,
+   "active": true
+  },
+  {
+   "id": "prod-010",
+   "name": "日焼け止め SPF50+",
+   "category": "skincare",
+   "priceYen": null,
+   "order": 9,
+   "active": true
+  },
+  {
+   "id": "prod-011",
+   "name": "トラネキサム酸 内服",
+   "category": "oral",
+   "priceYen": null,
+   "order": 10,
+   "active": true
+  },
+  {
+   "id": "prod-012",
+   "name": "ビタミンC 内服",
+   "category": "oral",
+   "priceYen": null,
+   "order": 11,
+   "active": true
+  }
  ]
 }

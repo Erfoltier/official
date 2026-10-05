@@ -1,0 +1,198 @@
+/* ===== ファイルの追加 ===== */
+.uploader {
+  border: 1px dashed #cdbfee;
+  border-radius: 10px;
+  padding: 8px;
+  background: var(--grad-soft);
+}
+
+.uploader[data-compact] {
+  border: none;
+  padding: 0;
+  background: none;
+}
+
+.uploader[data-over] {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-soft);
+}
+
+.uploadBtns {
+  display: flex;
+  gap: 6px;
+}
+
+.camBtn,
+.pickBtn {
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.camBtn {
+  border: none;
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.pickBtn {
+  border: 1px solid #cdbfee;
+  background: #fff;
+  color: var(--accent-strong);
+}
+
+.uploader[data-compact] .camBtn,
+.uploader[data-compact] .pickBtn {
+  height: 28px;
+  font-size: 12px;
+  padding: 0 8px;
+  flex: none;
+  box-shadow: none;
+}
+
+.dropHint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.busy {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--accent-strong);
+}
+
+.error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* ===== 一覧（小さな画像） ===== */
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.thumb {
+  --s: 40px;
+  width: var(--s);
+  height: var(--s);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.thumbs[data-size="m"] .thumb {
+  --s: 64px;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb[data-kind="pdf"] {
+  background: #fdecee;
+  color: #c0392b;
+}
+
+.thumb[data-kind="doc"] {
+  background: #e8f0fd;
+  color: #1d4ed8;
+}
+
+/* ===== 大きく表示 ===== */
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgb(15 10 25 / 88%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewerBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  color: #fff;
+  font-size: 13px;
+  background: linear-gradient(180deg, rgb(0 0 0 / 50%), transparent);
+}
+
+.viewerName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewerBtn {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 12%);
+  color: #fff;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.viewerImg {
+  max-width: 96vw;
+  max-height: 86vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.navPrev,
+.navNext {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 64px;
+  border: none;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 15%);
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.navPrev {
+  left: 8px;
+}
+
+.navNext {
+  right: 8px;
+}

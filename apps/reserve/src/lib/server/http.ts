@@ -39,6 +39,15 @@ export async function readJson(request: Request, maxBytes = 16_384): Promise<unk
   }
 }
 
+/** ファイル本体を読む（上限を超えたら読み込みをやめる） */
+export async function readBytes(request: Request, maxBytes: number): Promise<Uint8Array> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > maxBytes) throw new StoreError("invalid", "ファイルが大きすぎます（10MBまで）");
+  const buf = new Uint8Array(await request.arrayBuffer());
+  if (buf.length > maxBytes) throw new StoreError("invalid", "ファイルが大きすぎます（10MBまで）");
+  return buf;
+}
+
 /**
  * 外部連携API（リマインド送信プログラム等）の認証。
  * 環境変数 INTEGRATION_API_TOKEN（32文字以上）を Bearer トークンとして要求する。

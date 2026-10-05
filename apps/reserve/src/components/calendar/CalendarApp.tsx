@@ -361,6 +361,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onMemo={(m) => onMemo(selected, m)}
             onRequestId={(v) => onRequestId(selected, v)}
             onReschedule={(to) => onReschedule(selected, to)}
+            canManage={me?.role === "admin" || me?.role === "reception"}
             onEditPatient={() => setEditPatientId(selected.patientId)}
           />
         )}

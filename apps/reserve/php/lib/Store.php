@@ -27,11 +27,12 @@ final class Store
     private static ?array $patients = null;
     private static ?array $lanes = null;
     private static ?array $menus = null;
+    private static ?array $products = null;
     private static ?array $seed = null;
 
     public static function reset(): void
     {
-        self::$patients = self::$lanes = self::$menus = self::$seed = null;
+        self::$patients = self::$lanes = self::$menus = self::$products = self::$seed = null;
     }
 
     // ---- 初期データ・読み込み ----
@@ -59,6 +60,17 @@ final class Store
                     $db->put('menu', $m['id'], $m);
                 }
                 $db->setMeta('initialized', true);
+            });
+        }
+        // スキンケア・内服のプリセット（あとから追加した機能なので、既存のデータにも1回だけ入れる）
+        if (!$db->meta('productsSeeded')) {
+            $db->transaction(function () use ($db) {
+                if ($db->count('product') === 0) {
+                    foreach (self::seed()['products'] ?? [] as $p) {
+                        $db->put('product', $p['id'], $p);
+                    }
+                }
+                $db->setMeta('productsSeeded', true);
             });
         }
     }
@@ -119,6 +131,90 @@ final class Store
             self::$menus = Db::i()->all('menu');
         }
         return self::$menus;
+    }
+
+    private static function &products(): array
+    {
+        self::init();
+        if (self::$products === null) {
+            self::$products = Db::i()->all('product');
+        }
+        return self::$products;
+    }
+
+    private static function putProduct(array $p): void
+    {
+        Db::i()->put('product', $p['id'], $p);
+        $all = &self::products();
+        $all[$p['id']] = $p;
+    }
+
+    private static function sortedProducts(): array
+    {
+        return self::byOrder(self::products());
+    }
+
+    private static function validateProduct(array $p): array
+    {
+        $name = self::checkText('名前', $p['name'], 60, true);
+        foreach (self::products() as $o) {
+            if ($o['id'] !== $p['id'] && search_key($o['name']) === search_key($name)) {
+                throw new StoreError('invalid', '同じ名前のプリセットがあります');
+            }
+        }
+        if ($p['priceYen'] !== null && !(is_int($p['priceYen']) && $p['priceYen'] >= 0 && $p['priceYen'] <= 10_000_000)) {
+            throw new StoreError('invalid', '価格の指定が正しくありません');
+        }
+        return [...$p, 'name' => $name];
+    }
+
+    public static function createProduct(array $input, ?array $by = null): array
+    {
+        if (count(self::products()) >= 500) {
+            throw new StoreError('invalid', '登録できる数を超えています');
+        }
+        $p = self::validateProduct([
+            'id' => new_id('prod'),
+            'name' => $input['name'] ?? '',
+            'category' => $input['category'] ?? 'skincare',
+            'priceYen' => array_key_exists('priceYen', $input) ? $input['priceYen'] : null,
+            'order' => max([-1, ...array_column(self::products(), 'order')]) + 1,
+            'active' => $input['active'] ?? true,
+        ]);
+        self::putProduct($p);
+        if ($by) {
+            Auth::audit($by, 'スキンケア・内服のプリセットを追加', $p['id']);
+        }
+        return $p;
+    }
+
+    public static function updateProduct(string $id, array $input, ?array $by = null): array
+    {
+        $cur = self::products()[$id] ?? null;
+        if (!$cur) {
+            throw new StoreError('not_found', 'プリセットが見つかりません');
+        }
+        $next = self::validateProduct([...$cur, ...$input, 'id' => $cur['id'], 'order' => $cur['order']]);
+        self::putProduct($next);
+        if ($by) {
+            Auth::audit($by, 'スキンケア・内服のプリセットを変更', $id);
+        }
+        return $next;
+    }
+
+    public static function reorderProducts(array $ids, ?array $by = null): array
+    {
+        return Db::i()->transaction(function () use ($ids, $by) {
+            $items = self::products();
+            self::checkOrder($ids, $items);
+            foreach ($ids as $i => $id) {
+                self::putProduct([...$items[$id], 'order' => $i]);
+            }
+            if ($by) {
+                Auth::audit($by, 'スキンケア・内服のプリセットを並べ替え');
+            }
+            return self::sortedProducts();
+        });
     }
 
     private static function putPatient(array $p): void
@@ -234,7 +330,7 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus()];
+        return ['clinic' => self::clinic(), 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
@@ -578,6 +674,145 @@ final class Store
         return (string) ($max + 1);
     }
 
+    // ---- ファイル（同意書のスキャン・写真・PDF・Word） ----
+
+    public const MAX_FILE_BYTES = 10 * 1024 * 1024;
+    private const FILE_TYPES = [
+        'image/jpeg' => 'image', 'image/png' => 'image', 'image/webp' => 'image', 'image/heic' => 'image', 'image/heif' => 'image',
+        'application/pdf' => 'pdf', 'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'doc',
+    ];
+
+    /** ファイルの先頭の印で種類を確かめる（拡張子や申告だけを信じない） */
+    public static function sniffType(string $b): ?string
+    {
+        if (str_starts_with($b, "\xFF\xD8\xFF")) {
+            return 'image/jpeg';
+        }
+        if (str_starts_with($b, "\x89PNG")) {
+            return 'image/png';
+        }
+        if (substr($b, 0, 4) === 'RIFF' && substr($b, 8, 4) === 'WEBP') {
+            return 'image/webp';
+        }
+        if (substr($b, 4, 4) === 'ftyp' && in_array(substr($b, 8, 4), ['heic', 'heix', 'hevc', 'mif1', 'msf1', 'heis'], true)) {
+            return 'image/heic';
+        }
+        if (str_starts_with($b, '%PDF-')) {
+            return 'application/pdf';
+        }
+        if (str_starts_with($b, "\xD0\xCF\x11\xE0")) {
+            return 'application/msword';
+        }
+        if (str_starts_with($b, "PK\x03\x04")) {
+            return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        }
+        return null;
+    }
+
+    private static function cleanFileName(string $name, string $type): string
+    {
+        $base = js_slice(clean_name((string) preg_replace('#[\\\\/:*?"<>|]#u', '_', $name)), 100);
+        if ($base !== '' && !has_forbidden_chars($base)) {
+            return $base;
+        }
+        $ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/heic' => 'heic', 'application/pdf' => 'pdf', 'application/msword' => 'doc'][$type] ?? 'docx';
+        return "file.{$ext}";
+    }
+
+    public static function listFiles(string $patientId, ?string $date = null): array
+    {
+        $out = array_values(array_filter(
+            Db::i()->where('file', 'k2', $patientId),
+            fn($f) => $f['patientId'] === $patientId && empty($f['deleted']) && ($date === null || $f['date'] === $date),
+        ));
+        usort($out, fn($a, $b) => strcmp($a['createdAt'], $b['createdAt']));
+        return $out;
+    }
+
+    public static function saveFile(string $patientId, array $input, ?array $by = null): array
+    {
+        $p = self::patient($patientId);
+        if (!empty($p['deleted'])) {
+            throw new StoreError('invalid', '削除された患者にはファイルを追加できません');
+        }
+        if (!is_date_string($input['date'])) {
+            throw new StoreError('invalid', '日付が正しくありません');
+        }
+        if (!empty($input['reservationId'])) {
+            $r = Db::i()->get('reservation', $input['reservationId']);
+            if (!$r || $r['patientId'] !== $patientId) {
+                throw new StoreError('invalid', '予約が見つかりません');
+            }
+        }
+        $bytes = $input['bytes'];
+        if ($bytes === '') {
+            throw new StoreError('invalid', 'ファイルが空です');
+        }
+        if (strlen($bytes) > self::MAX_FILE_BYTES) {
+            throw new StoreError('invalid', 'ファイルが大きすぎます（10MBまで）');
+        }
+        $type = self::sniffType($bytes);
+        if (!$type || !isset(self::FILE_TYPES[$type])) {
+            throw new StoreError('invalid', '追加できるのは 写真（JPEG・PNG・WebP・HEIC）・PDF・Word です');
+        }
+        $id = 'f-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4));
+        $meta = ['id' => $id, 'patientId' => $patientId, 'date' => $input['date']];
+        if (!empty($input['reservationId'])) {
+            $meta['reservationId'] = $input['reservationId'];
+        }
+        $meta += [
+            'name' => self::cleanFileName($input['name'], $type),
+            'type' => $type,
+            'kind' => self::FILE_TYPES[$type],
+            'size' => strlen($bytes),
+            'createdAt' => now_iso(),
+        ];
+        if ($by) {
+            $meta['createdBy'] = $by;
+        }
+        Db::i()->transaction(function () use ($id, $bytes, $meta) {
+            Db::i()->putBlob($id, $bytes);
+            Db::i()->put('file', $id, $meta);
+        });
+        if ($by) {
+            Auth::audit($by, 'ファイルを追加', $patientId);
+        }
+        return $meta;
+    }
+
+    /** @return array{0: array, 1: string} */
+    public static function getFile(string $id): array
+    {
+        $meta = Db::i()->get('file', $id);
+        if (!$meta || !empty($meta['deleted'])) {
+            throw new StoreError('not_found', 'ファイルが見つかりません');
+        }
+        $bytes = Db::i()->getBlob($id);
+        if ($bytes === null) {
+            throw new StoreError('not_found', 'ファイルが見つかりません');
+        }
+        return [$meta, $bytes];
+    }
+
+    public static function deleteFile(string $id, ?array $by = null): array
+    {
+        $cur = Db::i()->get('file', $id);
+        if (!$cur || !empty($cur['deleted'])) {
+            throw new StoreError('not_found', 'ファイルが見つかりません');
+        }
+        $deleted = ['at' => now_iso()];
+        if ($by) {
+            $deleted['by'] = $by;
+        }
+        $next = [...$cur, 'deleted' => $deleted];
+        Db::i()->put('file', $id, $next);
+        if ($by) {
+            Auth::audit($by, 'ファイルを削除', $cur['patientId']);
+        }
+        return $next;
+    }
+
     // ---- 患者 ----
 
     public static function getPatient(string $id): ?array
@@ -687,6 +922,7 @@ final class Store
             'status' => $r['status'],
             'menuNames' => array_map(fn($mid) => self::menus()[$mid]['name'] ?? '', $r['menuIds']),
             'laneName' => self::lanes()[$r['laneId']]['name'] ?? '',
+            'menuIds' => $r['menuIds'],
         ];
         if (!empty($r['memo'])) {
             $out['memo'] = $r['memo'];
@@ -707,19 +943,25 @@ final class Store
         foreach ($mine as $r) {
             $date = clinic_date_of($r['startAt']);
             if ($date <= $today) {
-                $rows[$date] ??= ['date' => $date, 'reservations' => [], 'note' => '', 'skincare' => [], 'noteVersion' => 0];
+                $rows[$date] ??= ['date' => $date, 'reservations' => [], 'note' => '', 'skincare' => [], 'files' => [], 'noteVersion' => 0];
                 $rows[$date]['reservations'][] = self::reservationSummary($r);
             }
         }
         foreach (self::notesOf($id) as $n) {
             $d = $n['date'];
-            $rows[$d] ??= ['date' => $d, 'reservations' => [], 'note' => '', 'skincare' => [], 'noteVersion' => 0];
+            $rows[$d] ??= ['date' => $d, 'reservations' => [], 'note' => '', 'skincare' => [], 'files' => [], 'noteVersion' => 0];
             $rows[$d]['note'] = $n['note'];
             $rows[$d]['skincare'] = $n['skincare'];
             $rows[$d]['noteVersion'] = $n['version'];
             $rows[$d]['noteUpdatedAt'] = $n['updatedAt'];
             if (!empty($n['updatedBy'])) {
                 $rows[$d]['noteUpdatedBy'] = $n['updatedBy'];
+            }
+        }
+        foreach (self::listFiles($id) as $f) {
+            if ($f['date'] <= $today) {
+                $rows[$f['date']] ??= ['date' => $f['date'], 'reservations' => [], 'note' => '', 'skincare' => [], 'files' => [], 'noteVersion' => 0];
+                $rows[$f['date']]['files'][] = $f;
             }
         }
         $visits = array_values($rows);
@@ -747,6 +989,8 @@ final class Store
             'visits' => $visits,
             'upcoming' => $upcoming,
             'skincareSuggestions' => $suggest,
+            'products' => array_values(array_filter(self::sortedProducts(), fn($p) => $p['active'])),
+            'menuInfo' => (object) array_map(fn($m) => ['name' => $m['name'], 'color' => $m['color']], self::menus()),
             'history' => Db::i()->get('patientHistory', $id) ?? [],
             'duplicates' => !empty($patient['deleted']) ? [] : self::findDuplicates($patient),
         ];

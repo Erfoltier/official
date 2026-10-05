@@ -70,6 +70,26 @@ POST https://（ドメイン）/reserve/api/v1/integration/reminders/（予約ID
 {"status": "sent"}       ← "sent" / "skipped" / "failed"
 ```
 
+### 自動入力（予約申請ID・M3カルテ番号）
+
+LINE予約フォームや M3 側のプログラムから、次のように書き込めます（同じく連携トークンと Basic認証が必要）。
+
+```
+POST https://（ドメイン）/reserve/api/v1/integration/reservations/（予約ID）/request-id
+{"requestId": "R2026100506574020A34A8B"}
+
+POST https://（ドメイン）/reserve/api/v1/integration/patients/（患者ID）/m3-chart-no
+{"m3ChartNo": "004567"}
+```
+
+予約ID・患者IDは、上の予約一覧（`reservationId`、`patient.id`）で分かります。書き込みは変更履歴に「外部連携」として残ります。
+
+## 写真・同意書などのファイル
+
+予約の詳細の「📷 撮影」「📎 ファイル」から追加します（ドラッグ＆ドロップも可）。写真・PDF・Word、1ファイル10MBまで。
+写真は自動で縮小してから送ります。中身は暗号化して `data/reserve.db` に保存されるので、バックアップはこれまでどおり
+`data/reserve.db` と `config.php` の2つです。
+
 ## ファイルの構成
 
 | パス | 中身 |

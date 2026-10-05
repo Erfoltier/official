@@ -61,6 +61,7 @@ final class Db
             $this->pdo->exec('CREATE TABLE IF NOT EXISTS audit (
                 seq BIGINT AUTO_INCREMENT PRIMARY KEY, at VARCHAR(32) NOT NULL, data LONGBLOB NOT NULL
             ) DEFAULT CHARSET=utf8mb4');
+            $this->pdo->exec('CREATE TABLE IF NOT EXISTS blobs (id VARCHAR(128) PRIMARY KEY, data LONGBLOB NOT NULL)');
             return;
         }
         // 共用サーバーのファイル置き場では WAL 方式が不安定なことがあるため、標準の方式（DELETE）を使う
@@ -72,6 +73,7 @@ final class Db
             k1 TEXT, k2 TEXT, PRIMARY KEY (kind, id))');
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS audit (
             seq INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, data BLOB NOT NULL)');
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS blobs (id TEXT PRIMARY KEY, data BLOB NOT NULL)');
         $cols = array_column($this->pdo->query('PRAGMA table_info(docs)')->fetchAll(), 'name');
         if (!in_array('k1', $cols, true)) {
             $this->pdo->exec('ALTER TABLE docs ADD COLUMN k1 TEXT');
@@ -104,6 +106,45 @@ final class Db
         return json_decode($plain, true, 512, JSON_THROW_ON_ERROR);
     }
 
+    /** ファイル本体（写真・PDFなど）を暗号化する。形式は JSON と同じ（IV12＋タグ16＋本文） */
+    private function encryptBytes(string $bytes): string
+    {
+        $iv = random_bytes(12);
+        $tag = '';
+        $body = openssl_encrypt($bytes, 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, $iv, $tag, '', 16);
+        if ($body === false) {
+            throw new RuntimeException('暗号化に失敗しました');
+        }
+        return $iv . $tag . $body;
+    }
+
+    public function putBlob(string $id, string $bytes): void
+    {
+        $sql = $this->mysql
+            ? 'INSERT INTO blobs (id, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)'
+            : 'INSERT INTO blobs (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data';
+        $st = $this->pdo->prepare($sql);
+        $st->bindValue(1, $id);
+        $st->bindValue(2, $this->encryptBytes($bytes), PDO::PARAM_LOB);
+        $st->execute();
+    }
+
+    public function getBlob(string $id): ?string
+    {
+        $st = $this->pdo->prepare('SELECT data FROM blobs WHERE id = ?');
+        $st->execute([$id]);
+        $row = $st->fetch();
+        if (!$row) {
+            return null;
+        }
+        $blob = is_resource($row['data']) ? stream_get_contents($row['data']) : $row['data'];
+        $plain = openssl_decrypt(substr($blob, 28), 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, substr($blob, 0, 12), substr($blob, 12, 16));
+        if ($plain === false) {
+            throw new RuntimeException('ファイルを読めません（暗号鍵が違う可能性があります）');
+        }
+        return $plain;
+    }
+
     /** 索引列（暗号化しない）：日付と患者IDだけ。Node.js 版 indexKeys と同じ */
     private static function indexKeys(string $kind, string $id, mixed $v): array
     {
@@ -111,6 +152,7 @@ final class Db
             'reservation' => [isset($v['startAt']) ? substr((string) $v['startAt'], 0, 10) : null, $v['patientId'] ?? null],
             'visitNote' => [$v['date'] ?? null, $v['patientId'] ?? null],
             'patientHistory' => [null, $id],
+            'file' => [$v['date'] ?? null, $v['patientId'] ?? null],
             default => [null, null],
         };
     }

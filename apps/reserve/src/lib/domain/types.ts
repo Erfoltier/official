@@ -105,6 +105,39 @@ export interface Patient {
 }
 
 /** 重複の可能性がある患者 */
+/** スキンケア・内服のプリセット（設定で登録し、施術歴でタップして追加する） */
+export const PRODUCT_CATEGORIES = ["skincare", "oral"] as const;
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+export const PRODUCT_CATEGORY_LABEL: Record<ProductCategory, string> = { skincare: "スキンケア", oral: "内服" };
+
+export interface Product {
+  id: string;
+  name: string;
+  category: ProductCategory;
+  /** 税込の価格（円）。未設定は null */
+  priceYen: number | null;
+  order: number;
+  active: boolean;
+}
+
+/** 患者のファイル（同意書のスキャン・写真・PDF・Word）。中身は暗号化して別に保存する */
+export type FileKind = "image" | "pdf" | "doc";
+
+export interface PatientFile {
+  id: string;
+  patientId: string;
+  /** どの日の記録か（YYYY-MM-DD） */
+  date: string;
+  reservationId?: string;
+  name: string;
+  type: string;
+  kind: FileKind;
+  size: number;
+  createdAt: string;
+  createdBy?: Actor;
+  deleted?: { at: string; by?: Actor };
+}
+
 export interface DuplicateCandidate {
   patient: Patient;
   reasons: string[];
@@ -203,9 +236,13 @@ export interface VisitRow {
     laneName: string;
     memo?: string;
     requestId?: string;
+    /** メニューの色分け・回数の数え上げに使う */
+    menuIds: string[];
   }[];
   note: string;
   skincare: string[];
+  /** その日のファイル（同意書・写真など） */
+  files: PatientFile[];
   /** 記録がまだない日は 0 */
   noteVersion: number;
   noteUpdatedAt?: string;
@@ -221,6 +258,10 @@ export interface PatientDetail {
   upcoming: VisitRow["reservations"];
   /** スキンケア入力の候補（この患者が使ったことのあるもの → 院でよく使うもの） */
   skincareSuggestions: string[];
+  /** スキンケア・内服のプリセット（有効なもの、並び順） */
+  products: Product[];
+  /** メニューの名前と色（施術歴の色分け用。非表示のメニューも含む） */
+  menuInfo: Record<string, { name: string; color: string }>;
   history: PatientChange[];
   /** 重複の可能性がある患者（削除済みの患者では空） */
   duplicates: DuplicateCandidate[];

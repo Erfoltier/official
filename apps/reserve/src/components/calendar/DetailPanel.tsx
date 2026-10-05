@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { DayBundle, Reservation, ReservationStatus } from "@/lib/domain/types";
+import { useEffect, useState } from "react";
+import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
+import { fetchFiles } from "./api";
+import { FileUploader } from "@/components/files/FileUploader";
+import { FileThumbs } from "@/components/files/FileThumbs";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { STATUS_LABEL } from "@/lib/domain/types";
 import { addDays, formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
@@ -28,15 +31,28 @@ interface Props {
   /** 日時・レーンの変更（別の日への移動も可） */
   onReschedule: (to: { date: string; startMin: number; endMin: number; laneId: string }) => Promise<boolean>;
   onEditPatient: () => void;
+  /** ファイルを削除できる（院長・管理者と受付） */
+  canManage?: boolean;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo, onRequestId, onReschedule, onEditPatient }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo, onRequestId, onReschedule, onEditPatient, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
   const [memo, setMemo] = useState(r.memo ?? "");
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
+  const [files, setFiles] = useState<PatientFile[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchFiles(r.patientId, bundle.date).then(
+      (items) => alive && setFiles(items),
+      () => alive && setFiles([]),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [r.patientId, bundle.date]);
   const requestIdValid = requestId === "" || REQUEST_ID_RE.test(requestId);
   const start = minutesOfDay(r.startAt);
   const end = minutesOfDay(r.endAt);
@@ -233,6 +249,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               この日時に変更
             </button>
           </div>
+        </div>
+      )}
+
+      {!maskNames && (
+        <div className={styles.panelSection}>
+          <div className={styles.sectionLabel}>
+            写真・同意書など（{formatDateJa(bundle.date)}）{files && files.length > 0 && ` ${files.length}件`}
+          </div>
+          {files && files.length > 0 && (
+            <div className={styles.panelFiles}>
+              <FileThumbs files={files} size="m" canDelete={canManage} onDeleted={(id) => setFiles((fs) => fs?.filter((f) => f.id !== id) ?? null)} />
+            </div>
+          )}
+          <FileUploader
+            patientId={r.patientId}
+            date={bundle.date}
+            reservationId={r.id}
+            onUploaded={(f) => setFiles((fs) => [...(fs ?? []), f])}
+          />
         </div>
       )}
 

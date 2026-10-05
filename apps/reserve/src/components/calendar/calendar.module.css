@@ -1131,3 +1131,7 @@ button.treatChip[data-active] {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.panelFiles {
+  margin-bottom: 6px;
+}

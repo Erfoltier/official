@@ -1,4 +1,4 @@
-import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { AuditEntry, DayBundle, Lane, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 
 export class ApiError extends Error {
@@ -87,6 +87,7 @@ export interface SettingsData {
   clinic: DayBundle["clinic"];
   lanes: Lane[];
   menus: Menu[];
+  products: Product[];
 }
 
 export function fetchSettings(): Promise<SettingsData> {
@@ -105,7 +106,7 @@ export function saveMenu(id: string | null, body: Partial<Omit<Menu, "id" | "ord
     : call(`/api/v1/menus`, { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function reorder(kind: "lanes" | "menus", ids: string[]): Promise<void> {
+export async function reorder(kind: "lanes" | "menus" | "products", ids: string[]): Promise<void> {
   await call(`/api/v1/${kind}/reorder`, { method: "POST", body: JSON.stringify({ ids }) });
 }
 
@@ -207,4 +208,48 @@ export async function fetchMonthCounts(month: string, signal?: AbortSignal): Pro
 
 export function saveClinic(body: Partial<Pick<DayBundle["clinic"], "name" | "dayStartMin" | "dayEndMin" | "slotMin">>): Promise<DayBundle["clinic"]> {
   return call(`/api/v1/clinic`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function saveProduct(
+  id: string | null,
+  body: Partial<Pick<Product, "name" | "category" | "priceYen" | "active">>,
+): Promise<Product> {
+  return id
+    ? call(`/api/v1/products/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) })
+    : call(`/api/v1/products`, { method: "POST", body: JSON.stringify(body) });
+}
+
+// ---- ファイル（同意書のスキャン・写真・PDF・Word） ----
+
+export async function fetchFiles(patientId: string, date?: string): Promise<PatientFile[]> {
+  const q = date ? `?date=${encodeURIComponent(date)}` : "";
+  return (await call<{ items: PatientFile[] }>(`/api/v1/patients/${encodeURIComponent(patientId)}/files${q}`)).items;
+}
+
+/** ファイルを1つ送る（本文はファイルそのもの） */
+export async function uploadFile(
+  patientId: string,
+  params: { date: string; reservationId?: string },
+  file: Blob,
+  name: string,
+): Promise<PatientFile> {
+  const q = new URLSearchParams({ date: params.date, ...(params.reservationId && { reservationId: params.reservationId }) });
+  const res = await fetch(apiUrl(`/api/v1/patients/${encodeURIComponent(patientId)}/files?${q}`), {
+    method: "POST",
+    body: file,
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { "Content-Type": file.type || "application/octet-stream", "X-File-Name": encodeURIComponent(name) },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, body.error ?? "error", body.message ?? "アップロードできませんでした");
+  return body as PatientFile;
+}
+
+export async function deleteFile(id: string): Promise<void> {
+  await call(`/api/v1/files/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+export function fileUrl(id: string): string {
+  return apiUrl(`/api/v1/files/${encodeURIComponent(id)}`);
 }

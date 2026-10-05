@@ -1,8 +1,12 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
 import type {
   Actor,
   ClinicSettings,
+  Product,
+  PatientFile,
+  FileKind,
   DayBundle,
   Lane,
   Menu,
@@ -31,8 +35,9 @@ import {
   demoVisitNote,
 } from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
+import { DEFAULT_PRODUCTS } from "@/lib/seed/products";
 import { audit } from "@/lib/server/staff";
-import { PersistentMap, PersistentSet, count, getMeta, put, setMeta, transaction } from "@/lib/server/db";
+import { PersistentMap, PersistentSet, count, getBlob, getMeta, put, putBlob, setMeta, transaction } from "@/lib/server/db";
 
 /**
  * 予約・患者・記録のストア。読み込みはメモリ上で行い、変更は1件ずつデータベース（db.ts）へ保存する。
@@ -50,6 +55,8 @@ export function demoEnabled(): boolean {
 }
 
 interface StoreState {
+  products: Map<string, Product>;
+  files: Map<string, PatientFile>;
   lanes: Map<string, Lane>;
   menus: Map<string, Menu>;
   patients: Map<string, Patient>;
@@ -74,7 +81,14 @@ function state(): StoreState {
         if (demoEnabled()) for (const p of buildDemoPatients()) put("patient", p.id, p);
         setMeta("initialized", true);
       }
+      // スキンケア・内服のプリセット（あとから追加した機能なので、既存のデータにも1回だけ入れる）
+      if (!getMeta<boolean>("productsSeeded")) {
+        if (count("product") === 0) for (const p of DEFAULT_PRODUCTS) put("product", p.id, p);
+        setMeta("productsSeeded", true);
+      }
       return {
+        products: new PersistentMap<Product>("product"),
+        files: new PersistentMap<PatientFile>("file"),
         lanes: new PersistentMap<Lane>("lane"),
         menus: new PersistentMap<Menu>("menu"),
         patients: new PersistentMap<Patient>("patient"),
@@ -208,7 +222,172 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
 }
 
 export function getSettings() {
-  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus() };
+  return { clinic: getClinic(), lanes: sortedLanes(), menus: sortedMenus(), products: sortedProducts() };
+}
+
+// ---- ファイル（同意書のスキャン・写真・PDF・Word） ----
+
+/** 1ファイルの上限（画像は画面側で縮小してから送る） */
+export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+const FILE_TYPES: Record<string, FileKind> = {
+  "image/jpeg": "image",
+  "image/png": "image",
+  "image/webp": "image",
+  "image/heic": "image",
+  "image/heif": "image",
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "doc",
+};
+
+/** ファイルの先頭の印で種類を確かめる（拡張子や申告だけを信じない） */
+export function sniffType(b: Uint8Array): string | null {
+  const ascii = (from: number, to: number) => String.fromCharCode(...b.subarray(from, to));
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x89 && ascii(1, 4) === "PNG") return "image/png";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
+  if (ascii(4, 8) === "ftyp" && /^(heic|heix|hevc|mif1|msf1|heis)$/.test(ascii(8, 12))) return "image/heic";
+  if (ascii(0, 5) === "%PDF-") return "application/pdf";
+  if (b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0) return "application/msword";
+  if (b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  return null;
+}
+
+function cleanFileName(name: string, type: string): string {
+  const base = cleanName(name.replace(/[\\/:*?"<>|]/g, "_")).slice(0, 100);
+  if (base && !hasForbiddenChars(base)) return base;
+  const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "application/pdf": "pdf", "application/msword": "doc" }[type] ?? "docx";
+  return `file.${ext}`;
+}
+
+export function listFiles(patientId: string, date?: string): PatientFile[] {
+  return [...state().files.values()]
+    .filter((f) => f.patientId === patientId && !f.deleted && (!date || f.date === date))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export function saveFile(
+  patientId: string,
+  input: { date: string; reservationId?: string; name: string; bytes: Uint8Array },
+  by?: Actor,
+): PatientFile {
+  const st = state();
+  const p = st.patients.get(patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  if (p.deleted) throw new StoreError("invalid", "削除された患者にはファイルを追加できません");
+  if (!isDateString(input.date)) throw new StoreError("invalid", "日付が正しくありません");
+  if (input.reservationId) {
+    const r = st.reservations.get(input.reservationId);
+    if (!r || r.patientId !== patientId) throw new StoreError("invalid", "予約が見つかりません");
+  }
+  if (input.bytes.length === 0) throw new StoreError("invalid", "ファイルが空です");
+  if (input.bytes.length > MAX_FILE_BYTES) throw new StoreError("invalid", "ファイルが大きすぎます（10MBまで）");
+  const type = sniffType(input.bytes);
+  if (!type || !FILE_TYPES[type]) throw new StoreError("invalid", "追加できるのは 写真（JPEG・PNG・WebP・HEIC）・PDF・Word です");
+  const id = `f-${Date.now().toString(36)}-${randomId()}`;
+  const meta: PatientFile = {
+    id,
+    patientId,
+    date: input.date,
+    ...(input.reservationId && { reservationId: input.reservationId }),
+    name: cleanFileName(input.name, type),
+    type,
+    kind: FILE_TYPES[type],
+    size: input.bytes.length,
+    createdAt: new Date().toISOString(),
+    ...(by && { createdBy: by }),
+  };
+  transaction(() => {
+    putBlob(id, input.bytes);
+    st.files.set(id, meta);
+  });
+  if (by) audit(by, "ファイルを追加", patientId);
+  return meta;
+}
+
+export function getFile(id: string): { meta: PatientFile; bytes: Buffer } {
+  const meta = state().files.get(id);
+  if (!meta || meta.deleted) throw new StoreError("not_found", "ファイルが見つかりません");
+  const bytes = getBlob(id);
+  if (!bytes) throw new StoreError("not_found", "ファイルが見つかりません");
+  return { meta, bytes };
+}
+
+/** ファイルを削除扱いにする（中身は記録として残す） */
+export function deleteFile(id: string, by?: Actor): PatientFile {
+  const st = state();
+  const cur = st.files.get(id);
+  if (!cur || cur.deleted) throw new StoreError("not_found", "ファイルが見つかりません");
+  const next: PatientFile = { ...cur, deleted: { at: new Date().toISOString(), ...(by && { by }) } };
+  st.files.set(id, next);
+  if (by) audit(by, "ファイルを削除", cur.patientId);
+  return next;
+}
+
+function randomId(): string {
+  return randomBytes(4).toString("hex");
+}
+
+// ---- スキンケア・内服のプリセット ----
+
+function sortedProducts(): Product[] {
+  return [...state().products.values()].sort((a, b) => a.order - b.order);
+}
+
+export type ProductInput = Partial<Pick<Product, "name" | "category" | "priceYen" | "active">>;
+
+function validateProduct(p: Product): Product {
+  const name = checkText("名前", p.name, 60, true);
+  for (const o of state().products.values()) {
+    if (o.id !== p.id && searchKey(o.name) === searchKey(name)) throw new StoreError("invalid", "同じ名前のプリセットがあります");
+  }
+  if (p.priceYen !== null && !(Number.isInteger(p.priceYen) && p.priceYen >= 0 && p.priceYen <= 10_000_000)) {
+    throw new StoreError("invalid", "価格の指定が正しくありません");
+  }
+  return { ...p, name };
+}
+
+export function createProduct(input: ProductInput, by?: Actor): Product {
+  const st = state();
+  if (st.products.size >= 500) throw new StoreError("invalid", "登録できる数を超えています");
+  const p = validateProduct({
+    id: `prod-${Date.now().toString(36)}-${++st.seq}`,
+    name: input.name ?? "",
+    category: input.category ?? "skincare",
+    priceYen: input.priceYen ?? null,
+    order: Math.max(-1, ...[...st.products.values()].map((x) => x.order)) + 1,
+    active: input.active ?? true,
+  });
+  st.products.set(p.id, p);
+  if (by) audit(by, "スキンケア・内服のプリセットを追加", p.id);
+  return p;
+}
+
+export function updateProduct(id: string, input: ProductInput, by?: Actor): Product {
+  const st = state();
+  const cur = st.products.get(id);
+  if (!cur) throw new StoreError("not_found", "プリセットが見つかりません");
+  const next = validateProduct({ ...cur, ...input, id: cur.id, order: cur.order });
+  st.products.set(id, next);
+  if (by) audit(by, "スキンケア・内服のプリセットを変更", id);
+  return next;
+}
+
+function reorderProductsImpl(ids: string[], by?: Actor): Product[] {
+  const st = state();
+  if (ids.length !== st.products.size || !ids.every((id) => st.products.has(id))) {
+    throw new StoreError("invalid", "並び順の指定が正しくありません");
+  }
+  ids.forEach((id, i) => st.products.set(id, { ...st.products.get(id)!, order: i }));
+  if (by) audit(by, "スキンケア・内服のプリセットを並べ替え");
+  return sortedProducts();
+}
+
+export function reorderProducts(...args: Parameters<typeof reorderProductsImpl>): ReturnType<typeof reorderProductsImpl> {
+  return transaction(() => reorderProductsImpl(...args));
 }
 
 /**
@@ -650,6 +829,7 @@ function reservationSummary(r: Reservation): VisitRow["reservations"][number] {
     status: r.status,
     menuNames: r.menuIds.map((mid) => st.menus.get(mid)?.name ?? ""),
     laneName: st.lanes.get(r.laneId)?.name ?? "",
+    menuIds: r.menuIds,
     ...(r.memo && { memo: r.memo }),
     ...(r.requestId && { requestId: r.requestId }),
   };
@@ -670,7 +850,7 @@ export function getPatientDetail(id: string): PatientDetail {
   const row = (date: string) => {
     let v = rows.get(date);
     if (!v) {
-      v = { date, reservations: [], note: "", skincare: [], noteVersion: 0 };
+      v = { date, reservations: [], note: "", skincare: [], files: [], noteVersion: 0 };
       rows.set(date, v);
     }
     return v;
@@ -689,6 +869,7 @@ export function getPatientDetail(id: string): PatientDetail {
       ...(n.updatedBy && { noteUpdatedBy: n.updatedBy }),
     });
   }
+  for (const f of listFiles(id)) if (f.date <= today) row(f.date).files.push(f);
   const visits = [...rows.values()].sort((a, b) => b.date.localeCompare(a.date));
   const upcoming = mine.filter((r) => clinicDateOf(r.startAt) > today).map(reservationSummary);
 
@@ -701,6 +882,8 @@ export function getPatientDetail(id: string): PatientDetail {
     visits,
     upcoming,
     skincareSuggestions,
+    products: sortedProducts().filter((p) => p.active),
+    menuInfo: Object.fromEntries([...st.menus.values()].map((m) => [m.id, { name: m.name, color: m.color }])),
     history: st.patientHistory.get(id) ?? [],
     duplicates: patient.deleted ? [] : findDuplicates(patient),
   };

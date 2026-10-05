@@ -22,6 +22,8 @@ final class Http
     public static function noContent(array $headers = []): never
     {
         http_response_code(204);
+        ini_set('default_mimetype', '');
+        header_remove('Content-Type');
         header('Cache-Control: no-store');
         foreach ($headers as $h) {
             header($h, false);
@@ -68,6 +70,39 @@ final class Http
         } catch (JsonException) {
             throw new StoreError('invalid', 'JSONの形式が正しくありません');
         }
+    }
+
+    /** ファイル本体を読む（上限を超えたら断る） */
+    public static function readBytes(int $maxBytes): string
+    {
+        $declared = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($declared > $maxBytes) {
+            throw new StoreError('invalid', 'ファイルが大きすぎます（10MBまで）');
+        }
+        $bytes = (string) file_get_contents('php://input', false, null, 0, $maxBytes + 1);
+        if (strlen($bytes) > $maxBytes) {
+            throw new StoreError('invalid', 'ファイルが大きすぎます（10MBまで）');
+        }
+        return $bytes;
+    }
+
+    /** ファイルの中身を返す。写真・PDFはその場で表示し、Word はダウンロードさせる */
+    public static function file(array $meta, string $bytes): never
+    {
+        http_response_code(200);
+        $disposition = $meta['kind'] === 'doc' ? 'attachment' : 'inline';
+        header('Content-Type: ' . $meta['type']);
+        header('Content-Length: ' . strlen($bytes));
+        header("Content-Disposition: {$disposition}; filename=\"file\"; filename*=UTF-8''" . rawurlencode($meta['name']));
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        if ($meta['kind'] !== 'pdf') {
+            header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+        } else {
+            header_remove('Content-Security-Policy');
+        }
+        echo $bytes;
+        exit;
     }
 
     /** 外部連携API（リマインド送信プログラム等）の認証。トークン未設定なら停止（503） */
@@ -321,6 +356,16 @@ final class Schema
                 }
                 return $x;
             },
+        ]);
+    }
+
+    public static function product(mixed $v): array
+    {
+        return V::shape($v, [
+            'name?' => fn($x) => V::str($x, 120),
+            'category?' => fn($x) => V::enum($x, ['skincare', 'oral']),
+            'priceYen?' => fn($x) => $x === null ? null : V::int($x),
+            'active?' => [V::class, 'bool'],
         ]);
     }
 

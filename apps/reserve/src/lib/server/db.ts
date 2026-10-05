@@ -19,6 +19,8 @@ import { DatabaseSync } from "node:sqlite";
 export type Kind =
   | "lane"
   | "menu"
+  | "product"
+  | "file"
   | "patient"
   | "patientHistory"
   | "reservation"
@@ -85,6 +87,10 @@ function open(): DbState {
       at   TEXT NOT NULL,
       data BLOB NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS blobs (
+      id   TEXT PRIMARY KEY,
+      data BLOB NOT NULL
+    );
   `);
   if (file !== ":memory:") {
     for (const f of [file, `${file}-wal`, `${file}-shm`]) if (existsSync(f)) chmodSync(f, 0o600);
@@ -105,6 +111,7 @@ export function indexKeys(kind: Kind, id: string, value: unknown): [string | nul
   if (kind === "reservation") return [v.startAt?.slice(0, 10) ?? null, v.patientId ?? null];
   if (kind === "visitNote") return [v.date ?? null, v.patientId ?? null];
   if (kind === "patientHistory") return [null, id];
+  if (kind === "file") return [v.date ?? null, v.patientId ?? null];
   return [null, null];
 }
 
@@ -143,6 +150,31 @@ function encrypt(value: unknown): Buffer {
   const c = createCipheriv("aes-256-gcm", key, iv);
   const body = Buffer.concat([c.update(JSON.stringify(value), "utf8"), c.final()]);
   return Buffer.concat([iv, c.getAuthTag(), body]);
+}
+
+/** ファイル本体（写真・PDFなど）を暗号化する。形式は JSON と同じ（IV12＋タグ16＋本文） */
+function encryptBytes(bytes: Uint8Array): Buffer {
+  const { key } = st();
+  const iv = randomBytes(12);
+  const c = createCipheriv("aes-256-gcm", key, iv);
+  const body = Buffer.concat([c.update(bytes), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), body]);
+}
+
+function decryptBytes(blob: Uint8Array): Buffer {
+  const buf = Buffer.from(blob);
+  const d = createDecipheriv("aes-256-gcm", st().key, buf.subarray(0, 12));
+  d.setAuthTag(buf.subarray(12, 28));
+  return Buffer.concat([d.update(buf.subarray(28)), d.final()]);
+}
+
+export function putBlob(id: string, bytes: Uint8Array): void {
+  st().db.prepare("INSERT INTO blobs (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data").run(id, encryptBytes(bytes));
+}
+
+export function getBlob(id: string): Buffer | undefined {
+  const row = st().db.prepare("SELECT data FROM blobs WHERE id = ?").get(id) as { data: Uint8Array } | undefined;
+  return row ? decryptBytes(row.data) : undefined;
 }
 
 function decrypt<T>(blob: Uint8Array): T {
