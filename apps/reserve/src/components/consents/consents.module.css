@@ -1,8 +1,9 @@
 /* ===== 同意書の本文（画面・印刷共通） ===== */
 .doc {
   color: #111;
-  font-size: 10pt;
-  line-height: 1.65;
+  /* 文書に大きさ・行間が書いてないときだけ使う（Googleドキュメントは段落ごとの値を使う） */
+  font-size: 10.5pt;
+  line-height: 1.5;
 }
 
 .head {
@@ -38,6 +39,8 @@
   margin: 0;
   min-height: 1em;
   overflow-wrap: anywhere;
+  /* 元の文書の空白（字下げ・寄せに使われている）を詰めない */
+  white-space: pre-wrap;
 }
 
 .l {
@@ -62,14 +65,36 @@
 }
 
 .table {
+  width: 100%;
   border-collapse: collapse;
-  margin: 2mm 0;
+  margin: 0;
 }
 
 .table td {
-  border: 1px solid #999;
-  padding: 1mm 2mm;
+  border: 1px solid #000;
+  padding: 5pt;
   vertical-align: top;
+}
+
+/* 署名の行：元の行のまま。署名の画像は幅も高さも取らずに重ねる（改行の位置を変えない） */
+.signLine {
+  position: relative;
+}
+
+.signInline {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: baseline;
+}
+
+.signInline img {
+  position: absolute;
+  left: 2mm;
+  bottom: -3mm;
+  max-height: 13mm;
+  max-width: 55mm;
 }
 
 .sign {
@@ -387,9 +412,13 @@
     width: auto;
     min-height: 0;
     margin: 0;
-    padding: 0;
+    padding: 0 !important;
     box-shadow: none;
     zoom: 1;
+  }
+  /* 発行の記録は画面だけ（印刷すると最後のページがずれるため） */
+  .meta {
+    display: none;
   }
 }
 

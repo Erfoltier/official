@@ -15,6 +15,11 @@ export interface Para {
   size?: "l" | "xl";
   /** 箇条書き */
   list?: "ul" | "ol";
+  /** 元の文書の文字の大きさ（pt。段落でいちばん大きいもの）・行間・段落の前後の間隔（pt） */
+  pt?: number;
+  lh?: number;
+  before?: number;
+  after?: number;
 }
 
 export interface Table {
@@ -31,9 +36,29 @@ interface Style {
   c?: string;
   align?: Align;
   pt?: number;
+  /** 行間（倍率） */
+  lh?: number;
+  /** 段落の前後の間隔（pt） */
+  before?: number;
+  after?: number;
+  /** 余白（pt。上・右・下・左）。body の余白＝ページの余白 */
+  pad?: [number, number, number, number];
+  /** 書体の名前（1つ目） */
+  ff?: string;
 }
 
-const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " " };
+/** "72pt" "96px" "1in" "2.54cm" → pt */
+function toPt(v: string): number | undefined {
+  const m = /^(-?[\d.]+)(pt|px|in|cm|mm)?$/.exec(v.trim());
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  const unit = m[2] ?? "px";
+  const pt = unit === "pt" ? n : unit === "px" ? n * 0.75 : unit === "in" ? n * 72 : unit === "cm" ? (n * 72) / 2.54 : (n * 72) / 25.4;
+  return Number.isFinite(pt) ? Math.round(pt * 100) / 100 : undefined;
+}
+
+/** &nbsp; は詰めない空白（\u00a0）のまま残す。Googleドキュメントは空白の数で字下げ・寄せをしているため */
+const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: "\u00a0" };
 const decode = (s: string) =>
   s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, n: string) => {
     if (n[0] === "#") {
@@ -58,6 +83,25 @@ function parseDecls(css: string): Style {
     else if (k === "font-size") {
       const m = /^([\d.]+)(pt|px)$/.exec(v);
       if (m) out.pt = m[2] === "px" ? Number(m[1]) * 0.75 : Number(m[1]);
+    } else if (k === "font-family") {
+      // 1つ目の書体名だけ。文字・数字・空白・ハイフンと日本語の名前だけを通す
+      const name = decl.slice(i + 1).split(",")[0].trim().replace(/^["']|["']$/g, "");
+      if (/^[A-Za-z0-9 \-ぁ-んァ-ヶー一-龠Ａ-Ｚａ-ｚ０-９　]{1,60}$/.test(name)) out.ff = name;
+    } else if (k === "line-height") {
+      const n = /^([\d.]+)(%)?$/.exec(v);
+      if (n) out.lh = n[2] ? Number(n[1]) / 100 : Number(n[1]);
+    } else if (k === "padding-top" || k === "margin-top") {
+      const n = toPt(v);
+      if (n !== undefined && n >= 0) out.before = n;
+    } else if (k === "padding-bottom" || k === "margin-bottom") {
+      const n = toPt(v);
+      if (n !== undefined && n >= 0) out.after = n;
+    } else if (k === "padding") {
+      const parts = v.split(/\s+/).map(toPt);
+      if (parts.every((x) => x !== undefined)) {
+        const [t, r = t, b = t, l = r] = parts as number[];
+        out.pad = [t, r, b, l];
+      }
     }
   }
   return out;
@@ -116,6 +160,9 @@ export function parseDocHtml(html: string): DocBlock[] {
     para = { kind: "p", runs: [] };
     if (st.align && st.align !== "left") para.align = st.align;
     if (list) para.list = list;
+    if (st.lh && st.lh > 0 && st.lh < 5) para.lh = st.lh;
+    if (st.before) para.before = st.before;
+    if (st.after) para.after = st.after;
   };
   const closePara = () => {
     if (!para) return;
@@ -133,9 +180,11 @@ export function parseDocHtml(html: string): DocBlock[] {
     if (st.i) run.i = true;
     if (st.u) run.u = true;
     if (st.c && !PLAIN_COLORS.has(st.c)) run.c = st.c;
+    if (st.ff) run.f = st.ff;
     const last = para!.runs[para!.runs.length - 1];
-    if (last && !!last.b === !!run.b && !!last.i === !!run.i && !!last.u === !!run.u && (last.c ?? "") === (run.c ?? "")) last.t += t;
+    if (last && !!last.b === !!run.b && !!last.i === !!run.i && !!last.u === !!run.u && (last.c ?? "") === (run.c ?? "") && (last.f ?? "") === (run.f ?? "")) last.t += t;
     else para!.runs.push(run);
+    if (st.pt && st.pt > 0 && st.pt < 100) para!.pt = Math.max(para!.pt ?? 0, st.pt);
     if (st.pt && st.pt >= 13) {
       const size = st.pt >= 17 ? "xl" : "l";
       if (para!.size !== "xl") para!.size = size;
@@ -145,7 +194,8 @@ export function parseDocHtml(html: string): DocBlock[] {
   const re = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>|<!--[\s\S]*?-->|([^<]+)|</g;
   for (let m = re.exec(body); m; m = re.exec(body)) {
     if (m[4] !== undefined || m[0] === "<") {
-      if (!drop) addText(decode(m[4] ?? "<").replace(/[\r\n\t]+/g, " "));
+      // 書き出しの改行・タブ・続く空白は1つの空白に（&nbsp; の空白はそのまま）
+      if (!drop) addText(decode(m[4] ?? "<").replace(/[\r\n\t ]+/g, " "));
       continue;
     }
     if (!m[2]) continue;
@@ -179,7 +229,11 @@ export function parseDocHtml(html: string): DocBlock[] {
 
     // 書式：親の書式＋クラス＋style 属性＋タグ
     const st: Style = { ...cur() };
+    // 寄せ・段落の間隔・余白は、その要素だけのもの（子には引き継がない）
     delete st.align;
+    delete st.before;
+    delete st.after;
+    delete st.pad;
     for (const cls of (attr(attrs, "class") ?? "").split(/\s+/)) {
       const cs = classes.get(cls);
       if (cs) Object.assign(st, Object.fromEntries(Object.entries(cs).filter(([, v]) => v !== undefined)));
@@ -212,6 +266,11 @@ export function parseDocHtml(html: string): DocBlock[] {
       listStack.push(tag);
     } else if (PARA.has(tag)) {
       openPara(st, tag === "li" ? listStack[listStack.length - 1] ?? "ul" : undefined);
+      if (st.pt) (para as Para | null)!.pt = st.pt;
+    } else {
+      // 文字のない段落（空行）でも、中の文字の大きさで高さを決める
+      const open = para as Para | null;
+      if (open && st.pt && st.pt > 0 && st.pt < 100) open.pt = Math.max(open.pt ?? 0, st.pt);
     }
   }
   closePara();
@@ -239,4 +298,58 @@ export function toWareki(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
   const r = y - 2018;
   return `令和${r === 1 ? "元" : r}年${m}月${d}日`;
+}
+
+/** 文書の余白（＝印刷のページの余白、pt）。Googleドキュメントの書き出しは body の余白に入っている。なければ null */
+export function docPageMargins(html: string): [number, number, number, number] | null {
+  const classes = classStyles(html);
+  const attrs = /<body\b([^>]*)>/i.exec(html)?.[1] ?? "";
+  let pad: Style["pad"];
+  for (const cls of (attr(attrs, "class") ?? "").split(/\s+/)) {
+    const cs = classes.get(cls);
+    if (cs?.pad) pad = cs.pad;
+  }
+  const inline = parseDecls(attr(attrs, "style") ?? "").pad;
+  if (inline) pad = inline;
+  if (!pad || pad.some((x) => x < 0 || x > 200)) return null;
+  return pad;
+}
+
+/** 書体の名前 → 印刷で使う書体の並び（その端末にない書体は近いものに） */
+export function fontStack(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const n = name.toLowerCase().replace(/\s+/g, " ");
+  const mincho = '"Yu Mincho", YuMincho, "Hiragino Mincho ProN", "Noto Serif JP", "Noto Serif CJK JP", serif';
+  const gothic = '"Yu Gothic", YuGothic, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", sans-serif';
+  if (/ms pmincho|ｍｓ ｐ明朝|ms p明朝/.test(n)) return `"MS PMincho", "ＭＳ Ｐ明朝", "MS Mincho", "ＭＳ 明朝", ${mincho}`;
+  if (/ms mincho|ｍｓ 明朝|ms 明朝/.test(n)) return `"MS Mincho", "ＭＳ 明朝", ${mincho}`;
+  if (/mincho|明朝|serif/.test(n)) return `"${name}", ${mincho}`;
+  if (/ms pgothic|ｍｓ ｐゴシック/.test(n)) return `"MS PGothic", "ＭＳ Ｐゴシック", "MS Gothic", ${gothic}`;
+  if (/ms gothic|ｍｓ ゴシック/.test(n)) return `"MS Gothic", "ＭＳ ゴシック", ${gothic}`;
+  if (/gothic|ゴシック|meiryo|メイリオ|sans/.test(n)) return `"${name}", ${gothic}`;
+  return `"${name}"`;
+}
+
+/** 文書でいちばん多く使われている書体（本文の書体） */
+export function mainFont(blocks: DocBlock[]): string | undefined {
+  const count = new Map<string, number>();
+  const add = (p: Para) => {
+    for (const r of p.runs) if (r.f) count.set(r.f, (count.get(r.f) ?? 0) + r.t.length);
+  };
+  for (const b of blocks) {
+    if (b.kind === "p") add(b);
+    else for (const row of b.rows) for (const cell of row) cell.forEach(add);
+  }
+  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+/**
+ * Googleドキュメントの行間（1.15 など）は「書体本来の1行の高さ」に掛ける。CSS は文字の大きさに掛けるので、その分を足す。
+ * （MS明朝・MSゴシックなど日本語の書体は文字の大きさの約1.3倍、Arial などは約1.15倍。Googleが書き出したPDFで測った値）
+ */
+export function lineHeightFactor(font: string | undefined): number {
+  if (!font) return 1.3;
+  const n = font.toLowerCase();
+  if (/arial|helvetica|roboto|times|georgia|verdana|calibri/.test(n)) return 1.15;
+  return 1.3;
 }

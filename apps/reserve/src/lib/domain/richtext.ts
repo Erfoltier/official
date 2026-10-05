@@ -15,6 +15,8 @@ export interface Run {
   u?: boolean;
   /** 文字色（#rrggbb）。なしは標準の色 */
   c?: string;
+  /** 書体の名前（同意書のひな形だけで使う。メモ・カルテでは使わない） */
+  f?: string;
 }
 
 export type Line = Run[];

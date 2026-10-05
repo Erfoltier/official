@@ -9,10 +9,10 @@ describe("同意書のひな形（Google ドキュメントの HTML）", () => {
     const blocks = parseDocHtml(GDOC);
     const title = blocks[0] as Para;
     expect(title).toMatchObject({ kind: "p", align: "center", size: "l" });
-    expect(title.runs).toEqual([{ t: "ボトックス注射　施術同意書", b: true }]);
+    expect(title.runs).toEqual([{ t: "ボトックス注射　施術同意書", b: true, f: "Arial" }]);
     const body = blocks.find((b) => b.kind === "p" && paraText(b).startsWith("効果")) as Para;
     expect(body.runs).toEqual([
-      { t: "効果には 個人差があります。" },
+      { t: "効果には\u00a0個人差があります。", f: "Arial" },
       { t: "注入後2-3日は入浴を避けて下さい。", b: true, u: true, c: "#ff0000" },
     ]);
     const lis = blocks.filter((b) => b.kind === "p" && b.list === "ul");
@@ -30,5 +30,20 @@ describe("同意書のひな形（Google ドキュメントの HTML）", () => {
   it("和暦にする", () => {
     expect(toWareki("2026-10-05")).toBe("令和8年10月5日");
     expect(toWareki("2019-05-01")).toBe("令和元年5月1日");
+  });
+});
+
+describe("Googleドキュメントの配置", () => {
+  it("ページの余白・文字の大きさ・行間・段落の間隔を読む", async () => {
+    const { docPageMargins, parseDocHtml } = await import("../domain/docHtml");
+    const html =
+      '<html><head><style>.c1{padding-top:0pt;padding-bottom:6pt;line-height:1.15;text-align:left}.c2{font-size:11pt}.c9{background-color:#ffffff;max-width:451.4pt;padding:72pt 72pt 72pt 72pt}</style></head>' +
+      '<body class="c9 doc-content"><p class="c1"><span class="c2">本文</span></p><p style="padding:0;line-height:150%"><span style="font-size:16px">二行目</span></p></body></html>';
+    expect(docPageMargins(html)).toEqual([72, 72, 72, 72]);
+    const [a, b] = parseDocHtml(html);
+    expect(a).toMatchObject({ pt: 11, lh: 1.15, after: 6 });
+    expect(a).not.toHaveProperty("before");
+    expect(b).toMatchObject({ pt: 12, lh: 1.5 });
+    expect(docPageMargins("<html><body><p>x</p></body></html>")).toBeNull();
   });
 });
