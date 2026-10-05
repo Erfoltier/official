@@ -1,12 +1,14 @@
 import { idParam, versionOnlySchema } from "@/lib/domain/schemas";
 import { errorResponse, json, readJson } from "@/lib/server/http";
+import { actorOf, requireStaff } from "@/lib/server/session";
 import { getPatientDetail, unlinkPatientLine } from "@/lib/server/store";
 
 /** LINEの紐付けを解除する。紐付けは本人のQR操作でしか作れないため、ここでは解除のみ */
 export async function POST(request: Request, ctx: RouteContext<"/api/v1/patients/[id]/unlink-line">) {
   try {
+    const staff = requireStaff(request);
     const id = idParam.parse((await ctx.params).id);
-    unlinkPatientLine(id, versionOnlySchema.parse(await readJson(request)).version);
+    unlinkPatientLine(id, versionOnlySchema.parse(await readJson(request)).version, actorOf(staff));
     return json(getPatientDetail(id));
   } catch (err) {
     return errorResponse(err);

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DayBundle, Reservation, ReservationStatus } from "@/lib/domain/types";
+import type { DayBundle, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
 import { addDays, formatDateJa, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
-import { ApiError, fetchDay, patchReservation } from "./api";
+import { ApiError, fetchDay, fetchMe, logout, patchReservation } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
@@ -24,6 +24,11 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createAt, setCreateAt] = useState<{ laneId: string; minute: number } | null>(null);
   const [editPatientId, setEditPatientId] = useState<string | null>(null);
+  const [me, setMe] = useState<StaffPublic | null>(null);
+
+  useEffect(() => {
+    fetchMe().then(setMe, () => {});
+  }, []);
   const [now, setNow] = useState(() => nowInClinic());
 
   const [scale, setScale] = usePref("scale", DEFAULT_PX_PER_MIN, isNumber);
@@ -243,6 +248,19 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           >
             ⛶
           </button>
+          {me && (
+            <button
+              className={styles.btn}
+              title="ログイン中のスタッフ（押すと交代）"
+              onClick={async () => {
+                if (!window.confirm(`${me.name} をログアウトして、スタッフを交代しますか？`)) return;
+                await logout();
+                window.location.replace("/login");
+              }}
+            >
+              {me.name} ⇄
+            </button>
+          )}
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
             👤
           </Link>

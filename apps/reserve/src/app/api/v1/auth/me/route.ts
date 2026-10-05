@@ -1,12 +1,9 @@
 import { errorResponse, json } from "@/lib/server/http";
 import { requireStaff } from "@/lib/server/session";
-import { getSettings } from "@/lib/server/store";
 
-/** 設定画面用：すべてのレーン・メニュー（非表示を含む） */
 export async function GET(request: Request) {
   try {
-    requireStaff(request);
-    return json(getSettings());
+    return json(requireStaff(request));
   } catch (err) {
     return errorResponse(err);
   }

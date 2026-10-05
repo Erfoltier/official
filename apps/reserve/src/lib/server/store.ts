@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  Actor,
   DayBundle,
   Lane,
   Menu,
@@ -13,7 +14,7 @@ import type {
   ReservationStatus,
   ReminderStatus,
 } from "@/lib/domain/types";
-import { INACTIVE_STATUSES } from "@/lib/domain/types";
+import { INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, isDateString, minutesOfDay, nowInClinic, toIso, weekdayOf } from "@/lib/domain/time";
 import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
 import {
@@ -27,6 +28,7 @@ import {
   demoVisitNote,
 } from "@/lib/demo/seed";
 import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
+import { audit } from "@/lib/server/staff";
 
 /**
  * 試作用のメモリ上の予約ストア。サーバーを再起動すると変更は消える。
@@ -189,7 +191,7 @@ export interface CreateReservationInput {
   memo?: string;
 }
 
-export function createReservation(input: CreateReservationInput): Reservation {
+export function createReservation(input: CreateReservationInput, by?: Actor): Reservation {
   const st = state();
   if (!st.patients.has(input.patientId)) throw new StoreError("invalid", "患者が見つかりません");
   if (!laneExists(input.laneId)) throw new StoreError("invalid", "レーンが見つかりません");
@@ -209,11 +211,13 @@ export function createReservation(input: CreateReservationInput): Reservation {
     status: "booked",
     memo: input.memo,
     reminder: { status: "pending" },
+    ...(by && { createdBy: by, updatedBy: by }),
     version: 1,
     createdAt: nowIso,
     updatedAt: nowIso,
   };
   st.reservations.set(r.id, r);
+  if (by) audit(by, "予約を登録", r.id);
   return r;
 }
 
@@ -228,7 +232,7 @@ export interface UpdateReservationInput {
   memo?: string;
 }
 
-export function updateReservation(id: string, input: UpdateReservationInput): Reservation {
+export function updateReservation(id: string, input: UpdateReservationInput, by?: Actor): Reservation {
   const st = state();
   const cur = st.reservations.get(id);
   if (!cur) throw new StoreError("not_found", "予約が見つかりません");
@@ -256,10 +260,21 @@ export function updateReservation(id: string, input: UpdateReservationInput): Re
     endAt,
     // 時刻が変わったら、送信済みのリマインドは送り直しが必要
     reminder: timeChanged ? { status: "pending" } : cur.reminder,
+    ...(by && { updatedBy: by }),
     version: cur.version + 1,
     updatedAt: new Date().toISOString(),
   };
   st.reservations.set(id, next);
+  if (by) {
+    const what = [
+      timeChanged || input.endAt !== undefined ? "時間" : null,
+      input.laneId !== undefined && input.laneId !== cur.laneId ? "レーン" : null,
+      input.status !== undefined ? `状態→${STATUS_LABEL[input.status]}` : null,
+      input.menuIds !== undefined ? "メニュー" : null,
+      input.memo !== undefined ? "メモ" : null,
+    ].filter(Boolean);
+    audit(by, `予約を変更（${what.join("・")}）`, id);
+  }
   return next;
 }
 
@@ -362,7 +377,7 @@ function nextChartNo(): string {
   return String(Math.max(10000, ...used) + 1);
 }
 
-export function createPatient(input: CreatePatientInput): Patient {
+export function createPatient(input: CreatePatientInput, by?: Actor): Patient {
   const st = state();
   const chartNoGiven = (input.chartNo ?? "").trim() !== "";
   const fields = patientFields({ kana: "", ...input, chartNo: chartNoGiven ? input.chartNo : undefined }, null);
@@ -377,7 +392,8 @@ export function createPatient(input: CreatePatientInput): Patient {
     updatedAt: now,
   } as Patient);
   st.patients.set(p.id, p);
-  st.patientHistory.set(p.id, [{ at: now, fields: ["新規登録"] }]);
+  st.patientHistory.set(p.id, [{ at: now, fields: ["新規登録"], ...(by && { by }) }]);
+  if (by) audit(by, "患者を登録", p.id);
   return p;
 }
 
@@ -395,7 +411,7 @@ const FIELD_LABEL: Record<string, string> = {
   lineUserId: "LINE紐付け",
 };
 
-export function updatePatient(id: string, input: PatientInput & { version: number }): Patient {
+export function updatePatient(id: string, input: PatientInput & { version: number }, by?: Actor): Patient {
   const st = state();
   const cur = st.patients.get(id);
   if (!cur) throw new StoreError("not_found", "患者が見つかりません");
@@ -410,12 +426,12 @@ export function updatePatient(id: string, input: PatientInput & { version: numbe
   const now = new Date().toISOString();
   const next = dropUndefined({ ...cur, ...fields, version: cur.version + 1, updatedAt: now });
   st.patients.set(id, next);
-  recordChange(id, changed.map((k) => FIELD_LABEL[k] ?? k), now);
+  recordChange(id, changed.map((k) => FIELD_LABEL[k] ?? k), now, by);
   return next;
 }
 
 /** LINEの紐付けを解除する（誤った紐付けの訂正・本人の希望） */
-export function unlinkPatientLine(id: string, version: number): Patient {
+export function unlinkPatientLine(id: string, version: number, by?: Actor): Patient {
   const st = state();
   const cur = st.patients.get(id);
   if (!cur) throw new StoreError("not_found", "患者が見つかりません");
@@ -424,14 +440,15 @@ export function unlinkPatientLine(id: string, version: number): Patient {
   const now = new Date().toISOString();
   const next = dropUndefined({ ...cur, lineUserId: undefined, version: cur.version + 1, updatedAt: now });
   st.patients.set(id, next);
-  recordChange(id, ["LINE紐付けの解除"], now);
+  recordChange(id, ["LINE紐付けの解除"], now, by);
   return next;
 }
 
-function recordChange(id: string, fields: string[], at: string) {
+function recordChange(id: string, fields: string[], at: string, by?: Actor) {
   const st = state();
   const list = st.patientHistory.get(id) ?? [];
-  list.unshift({ at, fields });
+  list.unshift({ at, fields, ...(by && { by }) });
+  if (by) audit(by, `患者情報を変更（${fields.join("・")}）`, id);
   st.patientHistory.set(id, list.slice(0, 100));
 }
 
@@ -522,6 +539,7 @@ export function getPatientDetail(id: string): PatientDetail {
       skincare: n.skincare,
       noteVersion: n.version,
       noteUpdatedAt: n.updatedAt,
+      ...(n.updatedBy && { noteUpdatedBy: n.updatedBy }),
     });
   }
   const visits = [...rows.values()].sort((a, b) => b.date.localeCompare(a.date));
@@ -542,7 +560,7 @@ export interface VisitNoteInput {
 }
 
 /** 来院日ごとの記録（簡易カルテ・スキンケア）を保存する */
-export function saveVisitNote(patientId: string, date: string, input: VisitNoteInput): VisitNote | null {
+export function saveVisitNote(patientId: string, date: string, input: VisitNoteInput, by?: Actor): VisitNote | null {
   ensureHistorySeeded();
   const st = state();
   if (!st.patients.has(patientId)) throw new StoreError("not_found", "患者が見つかりません");
@@ -562,13 +580,21 @@ export function saveVisitNote(patientId: string, date: string, input: VisitNoteI
   if (!note && skincare.length === 0) {
     if (cur) {
       st.visitNotes.delete(key);
-      recordChange(patientId, [`${label}の削除`], at);
+      recordChange(patientId, [`${label}の削除`], at, by);
     }
     return null;
   }
-  const next: VisitNote = { patientId, date, note, skincare, version: (cur?.version ?? 0) + 1, updatedAt: at };
+  const next: VisitNote = {
+    patientId,
+    date,
+    note,
+    skincare,
+    version: (cur?.version ?? 0) + 1,
+    updatedAt: at,
+    ...(by && { updatedBy: by }),
+  };
   st.visitNotes.set(key, next);
-  recordChange(patientId, [label], at);
+  recordChange(patientId, [label], at, by);
   return next;
 }
 
@@ -590,7 +616,7 @@ function futureReservationCount(laneId: string): number {
   return n;
 }
 
-export function createLane(input: LaneInput): Lane {
+export function createLane(input: LaneInput, by?: Actor): Lane {
   const st = state();
   const name = checkText("レーン名", input.name ?? "", 40, true);
   const shortName = checkText("短い名前", input.shortName ?? "", 12, false) || name.slice(0, 6);
@@ -602,10 +628,11 @@ export function createLane(input: LaneInput): Lane {
     active: true,
   };
   st.lanes.set(lane.id, lane);
+  if (by) audit(by, "レーンを追加", lane.id);
   return lane;
 }
 
-export function updateLane(id: string, input: LaneInput): Lane {
+export function updateLane(id: string, input: LaneInput, by?: Actor): Lane {
   const st = state();
   const cur = st.lanes.get(id);
   if (!cur) throw new StoreError("not_found", "レーンが見つかりません");
@@ -623,16 +650,18 @@ export function updateLane(id: string, input: LaneInput): Lane {
   }
   if (input.active !== undefined) next.active = input.active;
   st.lanes.set(id, next);
+  if (by) audit(by, "レーンを変更", id);
   return next;
 }
 
 /** 並び順をまとめて変更（ids の順に並べる） */
-export function reorderLanes(ids: string[]): Lane[] {
+export function reorderLanes(ids: string[], by?: Actor): Lane[] {
   const st = state();
   if (ids.length !== st.lanes.size || !ids.every((id) => st.lanes.has(id))) {
     throw new StoreError("invalid", "並び順の指定が正しくありません");
   }
   ids.forEach((id, i) => st.lanes.set(id, { ...st.lanes.get(id)!, order: i }));
+  if (by) audit(by, "レーンを並べ替え");
   return sortedLanes();
 }
 
@@ -665,7 +694,7 @@ function validateMenu(m: Menu): Menu {
   return { ...m, name, abbr, defaultMinutes, laneIds };
 }
 
-export function createMenu(input: MenuInput): Menu {
+export function createMenu(input: MenuInput, by?: Actor): Menu {
   const st = state();
   const menu = validateMenu({
     id: `menu-${Date.now().toString(36)}-${++st.seq}`,
@@ -682,23 +711,26 @@ export function createMenu(input: MenuInput): Menu {
     active: input.active ?? true,
   });
   st.menus.set(menu.id, menu);
+  if (by) audit(by, "メニューを追加", menu.id);
   return menu;
 }
 
-export function updateMenu(id: string, input: MenuInput): Menu {
+export function updateMenu(id: string, input: MenuInput, by?: Actor): Menu {
   const st = state();
   const cur = st.menus.get(id);
   if (!cur) throw new StoreError("not_found", "メニューが見つかりません");
   const next = validateMenu({ ...cur, ...input, id: cur.id, order: cur.order });
   st.menus.set(id, next);
+  if (by) audit(by, "メニューを変更", id);
   return next;
 }
 
-export function reorderMenus(ids: string[]): Menu[] {
+export function reorderMenus(ids: string[], by?: Actor): Menu[] {
   const st = state();
   if (ids.length !== st.menus.size || !ids.every((id) => st.menus.has(id))) {
     throw new StoreError("invalid", "並び順の指定が正しくありません");
   }
   ids.forEach((id, i) => st.menus.set(id, { ...st.menus.get(id)!, order: i }));
+  if (by) audit(by, "メニューを並べ替え");
   return sortedMenus();
 }

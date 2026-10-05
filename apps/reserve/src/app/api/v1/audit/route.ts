@@ -1,12 +1,12 @@
 import { errorResponse, json } from "@/lib/server/http";
 import { requireStaff } from "@/lib/server/session";
-import { getSettings } from "@/lib/server/store";
+import { listAudit } from "@/lib/server/staff";
 
-/** 設定画面用：すべてのレーン・メニュー（非表示を含む） */
+/** 操作ログ（院長・管理者のみ） */
 export async function GET(request: Request) {
   try {
-    requireStaff(request);
-    return json(getSettings());
+    requireStaff(request, ["admin"]);
+    return json({ items: listAudit(300) });
   } catch (err) {
     return errorResponse(err);
   }

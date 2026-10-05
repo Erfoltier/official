@@ -3,6 +3,7 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { StoreError } from "@/lib/server/store";
+import { AuthError } from "@/lib/server/staff";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -11,6 +12,11 @@ export function json(data: unknown, status = 200): Response {
 }
 
 export function errorResponse(err: unknown): Response {
+  if (err instanceof AuthError) {
+    const status =
+      err.code === "login_required" ? 401 : err.code === "forbidden" ? 403 : err.code === "locked" ? 429 : err.code === "invalid" ? 400 : 401;
+    return json({ error: err.code, message: err.message }, status);
+  }
   if (err instanceof StoreError) {
     const status = err.code === "not_found" ? 404 : err.code === "version_conflict" ? 409 : 400;
     return json({ error: err.code, message: err.message }, status);

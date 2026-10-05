@@ -79,6 +79,19 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             </span>
           ))}
         </dd>
+        {(r.createdBy || r.updatedBy) && (
+          <>
+            <dt>担当記録</dt>
+            <dd>
+              {[
+                r.createdBy && `登録：${r.createdBy.name}`,
+                r.updatedBy && r.updatedBy.id !== r.createdBy?.id && `最終更新：${r.updatedBy.name}`,
+              ]
+                .filter(Boolean)
+                .join(" ／ ")}
+            </dd>
+          </>
+        )}
         <dt>リマインド</dt>
         <dd>{REMINDER_LABEL[r.reminder.status]}</dd>
       </dl>

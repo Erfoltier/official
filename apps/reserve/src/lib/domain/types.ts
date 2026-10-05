@@ -96,10 +96,45 @@ export interface Patient {
   updatedAt?: string;
 }
 
-/** 患者情報の変更履歴。値そのものは残さず、いつ・どの項目を変えたかだけ記録する */
+/** 患者情報の変更履歴。値そのものは残さず、いつ・誰が・どの項目を変えたかだけ記録する */
 export interface PatientChange {
   at: string;
   fields: string[];
+  /** 変更したスタッフ（ログイン導入前の記録・外部連携では空） */
+  by?: Actor;
+}
+
+export const STAFF_ROLES = ["admin", "doctor", "nurse", "reception"] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export const ROLE_LABEL: Record<StaffRole, string> = {
+  admin: "院長・管理者",
+  doctor: "医師",
+  nurse: "看護師",
+  reception: "受付",
+};
+
+/** 画面に出してよいスタッフ情報（PINのハッシュ等は含まない） */
+export interface StaffPublic {
+  id: string;
+  name: string;
+  role: StaffRole;
+  active: boolean;
+}
+
+/** 操作したスタッフ。名前は操作時点のものを残す */
+export interface Actor {
+  id: string;
+  name: string;
+}
+
+/** 操作ログ（監査用）。患者情報の値そのものは含めない */
+export interface AuditEntry {
+  at: string;
+  actor: Actor;
+  action: string;
+  /** 対象（患者ID・予約IDなど） */
+  target?: string;
 }
 
 /**
@@ -116,6 +151,7 @@ export interface VisitNote {
   skincare: string[];
   version: number;
   updatedAt: string;
+  updatedBy?: Actor;
 }
 
 /** 施術歴の1行（1日分） */
@@ -136,6 +172,7 @@ export interface VisitRow {
   /** 記録がまだない日は 0 */
   noteVersion: number;
   noteUpdatedAt?: string;
+  noteUpdatedBy?: Actor;
 }
 
 /** 患者の画面に渡すデータ */
@@ -192,6 +229,9 @@ export interface Reservation {
   endAt: string;
   status: ReservationStatus;
   memo?: string;
+  /** 登録・最終更新したスタッフ */
+  createdBy?: Actor;
+  updatedBy?: Actor;
   reminder: {
     status: ReminderStatus;
     /** 送信・スキップした日時 */

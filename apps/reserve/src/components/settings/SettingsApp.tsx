@@ -4,17 +4,24 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Lane, Menu } from "@/lib/domain/types";
 import { searchKey } from "@/lib/domain/text";
-import { ApiError, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
+import { ApiError, fetchMe, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
+import type { StaffPublic } from "@/lib/domain/types";
+import { AuditTab, StaffTab } from "./StaffTab";
 import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-type Tab = "lanes" | "menus";
+type Tab = "lanes" | "menus" | "staff" | "audit";
 
 export function SettingsApp() {
   const [tab, setTab] = useState<Tab>("lanes");
   const [data, setData] = useState<SettingsData | null>(null);
   const [message, setMessage] = useState<{ text: string; kind: "info" | "error" } | null>(null);
+  const [me, setMe] = useState<StaffPublic | null>(null);
+
+  useEffect(() => {
+    fetchMe().then(setMe, () => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -30,11 +37,16 @@ export function SettingsApp() {
     load();
   }, [load]);
 
-  const notify = (text: string, kind: "info" | "error" = "info") => {
+  const notify = useCallback((text: string, kind: "info" | "error" = "info") => {
     setMessage({ text, kind });
     window.setTimeout(() => setMessage((m) => (m?.text === text ? null : m)), 4000);
-  };
-  const fail = (err: unknown) => notify(err instanceof ApiError ? err.message : "保存できませんでした", "error");
+  }, []);
+  const fail = useCallback(
+    (err: unknown) => notify(err instanceof ApiError ? err.message : "保存できませんでした", "error"),
+    [notify],
+  );
+  const isAdmin = me?.role === "admin";
+  const canEdit = me?.role === "admin" || me?.role === "reception";
 
   return (
     <div className={styles.page}>
@@ -50,6 +62,16 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "menus"} onClick={() => setTab("menus")}>
             メニュー
           </button>
+          {isAdmin && (
+            <>
+              <button role="tab" aria-selected={tab === "staff"} onClick={() => setTab("staff")}>
+                スタッフ
+              </button>
+              <button role="tab" aria-selected={tab === "audit"} onClick={() => setTab("audit")}>
+                操作ログ
+              </button>
+            </>
+          )}
         </nav>
       </header>
 
@@ -59,7 +81,14 @@ export function SettingsApp() {
         </div>
       )}
 
-      {!data ? (
+      {me && !canEdit && (tab === "lanes" || tab === "menus") && (
+        <p className={styles.lead}>レーン・メニューの変更は、院長・管理者と受付のみができます（閲覧のみ）。</p>
+      )}
+      {tab === "staff" && isAdmin ? (
+        <StaffTab notify={notify} fail={fail} />
+      ) : tab === "audit" && isAdmin ? (
+        <AuditTab fail={fail} />
+      ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : tab === "lanes" ? (
         <LanesTab lanes={data.lanes} onChanged={load} notify={notify} fail={fail} />

@@ -282,6 +282,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             {detail.history.slice(0, 20).map((h, i) => (
               <li key={i}>
                 <span>{formatDateTime(h.at)}</span>
+                <strong className={styles.who}>{h.by ? h.by.name : "（記録なし）"}</strong>
                 {h.fields.join("、")}
               </li>
             ))}

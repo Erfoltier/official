@@ -1,4 +1,4 @@
-import type { DayBundle, Lane, Menu, Patient, PatientDetail, Reservation } from "@/lib/domain/types";
+import type { AuditEntry, DayBundle, Lane, Menu, Patient, PatientDetail, Reservation, StaffPublic, StaffRole } from "@/lib/domain/types";
 
 export class ApiError extends Error {
   constructor(
@@ -16,7 +16,13 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
-  const body = await res.json().catch(() => ({}));
+  const body = res.status === 204 ? {} : await res.json().catch(() => ({}));
+  if (res.status === 401 && body.error === "login_required") {
+    // ログインが切れていたらログイン画面へ（戻り先を付ける）
+    const next = window.location.pathname + window.location.search;
+    window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+    return new Promise<T>(() => {});
+  }
   if (!res.ok) {
     throw new ApiError(res.status, body.error ?? "error", body.message ?? "通信に失敗しました");
   }
@@ -122,4 +128,39 @@ export function saveVisit(
     method: "PUT",
     body: JSON.stringify(body),
   });
+}
+
+// ---- ログイン・スタッフ ----
+
+export async function fetchLoginStaff(): Promise<Pick<StaffPublic, "id" | "name" | "role">[]> {
+  return (await call<{ items: Pick<StaffPublic, "id" | "name" | "role">[] }>(`/api/v1/auth/staff`)).items;
+}
+
+export function login(staffId: string, pin: string): Promise<StaffPublic> {
+  return call(`/api/v1/auth/login`, { method: "POST", body: JSON.stringify({ staffId, pin }) });
+}
+
+export async function logout(): Promise<void> {
+  await call(`/api/v1/auth/logout`, { method: "POST" });
+}
+
+export function fetchMe(): Promise<StaffPublic> {
+  return call(`/api/v1/auth/me`);
+}
+
+export async function fetchStaff(): Promise<StaffPublic[]> {
+  return (await call<{ items: StaffPublic[] }>(`/api/v1/staff`)).items;
+}
+
+export function saveStaff(
+  id: string | null,
+  body: { name?: string; role?: StaffRole; active?: boolean; pin?: string },
+): Promise<StaffPublic> {
+  return id
+    ? call(`/api/v1/staff/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) })
+    : call(`/api/v1/staff`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function fetchAudit(): Promise<AuditEntry[]> {
+  return (await call<{ items: AuditEntry[] }>(`/api/v1/audit`)).items;
 }

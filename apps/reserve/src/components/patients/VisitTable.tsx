@@ -20,6 +20,10 @@ interface Props {
 
 const PAGE = 15;
 
+function formatStamp(iso: string): string {
+  return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 /** "2026-10-07" → "2026/10/7(水)" */
 export function formatDateFull(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
@@ -113,6 +117,12 @@ export function VisitTable({ visits, suggestions, onSave }: Props) {
                   </td>
                   <td className={styles.colNote} data-label="メモ">
                     {v.note ? <div className={styles.noteText}>{v.note}</div> : <span className={styles.muted}>—</span>}
+                    {v.noteUpdatedBy && (
+                      <div className={styles.writer}>
+                        記入：{v.noteUpdatedBy.name}
+                        {v.noteUpdatedAt && `（${formatStamp(v.noteUpdatedAt)}）`}
+                      </div>
+                    )}
                   </td>
                   <td className={styles.colSkin} data-label="スキンケア">
                     {v.skincare.length === 0 ? (

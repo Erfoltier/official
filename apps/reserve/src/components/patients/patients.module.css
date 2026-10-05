@@ -630,3 +630,16 @@ details.section[open] > summary.sectionTitle {
     text-align: left;
   }
 }
+
+.who {
+  display: inline-block;
+  min-width: 7em;
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+.writer {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+}

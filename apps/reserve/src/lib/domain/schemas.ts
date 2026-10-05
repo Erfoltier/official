@@ -96,3 +96,13 @@ export const visitNoteSchema = z
     version: z.number().int().min(0),
   })
   .strict();
+
+export const loginSchema = z.object({ staffId: id, pin: z.string().max(16) }).strict();
+
+const role = z.enum(["admin", "doctor", "nurse", "reception"]);
+
+export const createStaffSchema = z.object({ name: z.string().max(60), role, pin: z.string().max(16) }).strict();
+
+export const updateStaffSchema = z
+  .object({ name: z.string().max(60).optional(), role: role.optional(), active: z.boolean().optional(), pin: z.string().max(16).optional() })
+  .strict();
