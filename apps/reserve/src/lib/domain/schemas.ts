@@ -178,6 +178,7 @@ export const integrationPricesSchema = z
             name: z.string().max(200),
             priceYen: z.number().int().min(-10_000_000).max(10_000_000).nullable(),
             priceText: z.string().max(100).optional(),
+            kind: z.enum(["treatment", "product"]).optional(),
           })
           .strict(),
       )
@@ -295,6 +296,7 @@ export const importPricesSchema = z
             name: z.string().max(200),
             priceYen: z.number().int().min(-10_000_000).max(10_000_000).nullable(),
             priceText: z.string().max(100).optional(),
+            kind: z.enum(["treatment", "product"]).optional(),
           })
           .strict(),
       )

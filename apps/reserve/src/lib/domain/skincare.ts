@@ -33,7 +33,9 @@ export function skincareOptions(prices: PriceItem[], products: Product[]): Skinc
   const picked = prices
     .filter((p) => !p.removed)
     .filter((p) =>
-      p.source === "sheet" && !isImportedPrice(p)
+      p.kind
+        ? p.kind === "product"
+        : p.source === "sheet" && !isImportedPrice(p)
         ? p.category !== "特殊メニュー"
         : p.source === "homepage"
           ? HP_CATEGORY.test(p.category)

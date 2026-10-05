@@ -5,6 +5,7 @@
 import type { Lane, MenuDuration } from "./types";
 import { findHeader, parseMinutes, parseYenCell, type Table } from "./importFiles";
 import { searchKey } from "./text";
+import { PRODUCT_CATEGORY } from "./estimateDiscount";
 
 export const MENU_TEMPLATE: string[][] = [
   ["メニュー名", "略称", "時間（分）", "最短（分）", "最長（分）", "レーン", "色", "料金（税込）", "予約の選択肢"],
@@ -14,10 +15,18 @@ export const MENU_TEMPLATE: string[][] = [
 ];
 
 export const PRICE_TEMPLATE: string[][] = [
-  ["分類", "項目名", "料金（税込）", "表示（任意）"],
-  ["シミ取り", "Qスイッチルビーレーザー 〜10mm", "11000", ""],
-  ["シミ取り", "顔まとめ取り", "", "要相談"],
-  ["商品（スキンケア）", "日焼け止め SPF50", "3300", ""],
+  ["種類", "分類", "項目名", "料金（税込）", "表示（任意）"],
+  ["施術", "シミ取り", "Qスイッチルビーレーザー 〜10mm", "11000", ""],
+  ["施術", "シミ取り", "顔まとめ取り", "", "要相談"],
+  ["商品", "スキンケア", "日焼け止め SPF50", "3300", ""],
+];
+
+/** 自費商品（スキンケア・内服・外用など）の書式。種類の列がなければすべて商品として扱う */
+export const PRODUCT_TEMPLATE: string[][] = [
+  ["分類", "商品名", "料金（税込）", "表示（任意）"],
+  ["ゼオスキンヘルス", "ミラミン", "14300", ""],
+  ["内服", "トラネキサム酸 30日分", "2200", ""],
+  ["外用", "トレチノインクリーム", "1500", ""],
 ];
 
 const MENU_WORDS = {
@@ -124,20 +133,35 @@ export function menuRowsFromTable(table: Table, lanes: Lane[]): MenuImportRow[] 
 }
 
 const PRICE_WORDS = {
+  kind: /^種類/,
   category: /分類|カテゴリ|区分/,
   name: /項目|商品名|施術名|メニュー|^名前$/,
   price: /料金|値段|価格/,
   text: /表示|備考/,
 };
 
+export type PriceKind = "treatment" | "product";
+
 export interface PriceImportRow {
   line: number;
-  item?: { category: string; name: string; priceYen: number | null; priceText?: string };
+  item?: { category: string; name: string; priceYen: number | null; priceText?: string; kind: PriceKind };
   name: string;
   error?: string;
 }
 
-export function priceRowsFromTable(table: Table): PriceImportRow[] | { error: string } {
+/** 種類の欄の言葉 → 施術／商品。空なら null */
+function kindOf(word: string): PriceKind | null | undefined {
+  const w = word.normalize("NFKC").trim();
+  if (!w) return null;
+  if (/商品|物販|スキンケア|内服|外用|化粧品|サプリ/.test(w)) return "product";
+  if (/施術|治療|メニュー|処置|手術/.test(w)) return "treatment";
+  return undefined;
+}
+
+/**
+ * @param defaultKind 種類の欄がない・空のときの種類。省いたときは分類の言葉で見分ける（「商品」「スキンケア」「内服」などは商品）
+ */
+export function priceRowsFromTable(table: Table, defaultKind?: PriceKind): PriceImportRow[] | { error: string } {
   const head = findHeader(table, PRICE_WORDS);
   if (!head || head.cols.name < 0) return { error: "見出しの行（分類・項目名・料金）が見つかりません。書式のひな形に合わせてください" };
   const c = head.cols;
@@ -151,6 +175,12 @@ export function priceRowsFromTable(table: Table): PriceImportRow[] | { error: st
     if (!name) continue;
     const price = parseYenCell(cell(row, c.price));
     const text = cell(row, c.text);
+    const k = kindOf(cell(row, c.kind));
+    if (k === undefined) {
+      out.push({ line: r + 1, name, error: "種類は「施術」か「商品」にしてください" });
+      continue;
+    }
+    const kind: PriceKind = k ?? defaultKind ?? (PRODUCT_CATEGORY.test(category) ? "product" : "treatment");
     if (price === undefined) {
       out.push({ line: r + 1, name, error: "料金が数字ではありません（値段がないときは空にして、表示に「要相談」など）" });
       continue;
@@ -158,7 +188,7 @@ export function priceRowsFromTable(table: Table): PriceImportRow[] | { error: st
     out.push({
       line: r + 1,
       name,
-      item: { category: (category || "その他").slice(0, 100), name: name.slice(0, 200), priceYen: price, ...(text && { priceText: text.slice(0, 100) }) },
+      item: { category: (category || "その他").slice(0, 100), name: name.slice(0, 200), priceYen: price, ...(text && { priceText: text.slice(0, 100) }), kind },
     });
   }
   return out;

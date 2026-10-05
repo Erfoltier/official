@@ -553,6 +553,7 @@ final class Schema
                     'name' => fn($y) => V::str($y, 200),
                     'priceYen' => fn($y) => $y === null ? null : V::int($y, -10_000_000, 10_000_000),
                     'priceText?' => fn($y) => V::str($y, 100),
+                    'kind?' => fn($y) => V::enum($y, ['treatment', 'product']),
                 ]), $x);
             },
         ]);

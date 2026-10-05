@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
 import { decodeText, docxToHtml, parseCsv, parseXlsx } from "../domain/importFiles";
-import { MENU_TEMPLATE, PRICE_TEMPLATE, menuRowsFromTable, priceRowsFromTable } from "../domain/importMap";
+import { MENU_TEMPLATE, PRICE_TEMPLATE, PRODUCT_TEMPLATE, menuRowsFromTable, priceRowsFromTable } from "../domain/importMap";
 import { parseDocHtml, paraText } from "../domain/docHtml";
 import type { Lane } from "../domain/types";
 
@@ -81,12 +81,28 @@ describe("取り込み：表をメニュー・料金に直す", () => {
     expect(menuRowsFromTable([["a", "b"]], lanes)).toEqual({ error: expect.stringContaining("見出し") });
   });
 
+  it("自費商品の書式は種類の列がなくてもすべて商品、種類の言葉がおかしい行は止める", () => {
+    const rows = priceRowsFromTable(PRODUCT_TEMPLATE, "product") as { item?: { kind: string; category: string } }[];
+    expect(rows.map((x) => [x.item?.category, x.item?.kind])).toEqual([
+      ["ゼオスキンヘルス", "product"],
+      ["内服", "product"],
+      ["外用", "product"],
+    ]);
+    const bad = priceRowsFromTable([
+      ["種類", "分類", "項目名", "料金"],
+      ["なにか", "A", "B", "100"],
+      ["", "日焼け止め", "C", "100"],
+    ]) as { error?: string; item?: { kind: string } }[];
+    expect(bad[0].error).toContain("種類");
+    expect(bad[1].item?.kind).toBe("treatment");
+  });
+
   it("料金表：分類が空なら上の行と同じ、値段なしは表示の文字", () => {
     const rows = priceRowsFromTable(PRICE_TEMPLATE) as { item?: object }[];
     expect(rows.map((x) => x.item)).toEqual([
-      { category: "シミ取り", name: "Qスイッチルビーレーザー 〜10mm", priceYen: 11000 },
-      { category: "シミ取り", name: "顔まとめ取り", priceYen: null, priceText: "要相談" },
-      { category: "商品（スキンケア）", name: "日焼け止め SPF50", priceYen: 3300 },
+      { category: "シミ取り", name: "Qスイッチルビーレーザー 〜10mm", priceYen: 11000, kind: "treatment" },
+      { category: "シミ取り", name: "顔まとめ取り", priceYen: null, priceText: "要相談", kind: "treatment" },
+      { category: "スキンケア", name: "日焼け止め SPF50", priceYen: 3300, kind: "product" },
     ]);
     const r2 = priceRowsFromTable([
       ["分類", "項目名", "料金"],

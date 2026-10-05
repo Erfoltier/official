@@ -137,6 +137,8 @@ export interface PriceItem {
   source: "homepage" | "sheet" | "manual";
   category: string;
   name: string;
+  /** 種類：施術か商品（スキンケア・内服など）か。取り込むときに決めたもの（なければ分類の言葉で見分ける） */
+  kind?: "treatment" | "product";
   /** 1つに決まらない値段（「〜」付き・ASK など）は null */
   priceYen: number | null;
   /** 元の表記（例：33,000円～49500円、税抜 5,000円） */

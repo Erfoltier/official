@@ -342,7 +342,10 @@ export function importFetch(url: string): Promise<{ kind: "sheet" | "doc"; text:
   return call(`/api/v1/imports/fetch`, { method: "POST", body: JSON.stringify({ url }) });
 }
 
-export function importPrices(sheet: string, items: { category: string; name: string; priceYen: number | null; priceText?: string }[]): Promise<{ sheet: string; count: number }> {
+export function importPrices(
+  sheet: string,
+  items: { category: string; name: string; priceYen: number | null; priceText?: string; kind?: "treatment" | "product" }[],
+): Promise<{ sheet: string; count: number }> {
   return call(`/api/v1/imports/prices`, { method: "POST", body: JSON.stringify({ sheet, items }) });
 }
 

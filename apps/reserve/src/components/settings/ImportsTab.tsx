@@ -11,7 +11,7 @@ import {
   saveMenu,
 } from "@/components/calendar/api";
 import { decodeText, docxToHtml, parseCsv, parseXlsx, toCsv, type Table } from "@/lib/domain/importFiles";
-import { MENU_TEMPLATE, PRICE_TEMPLATE, menuRowsFromTable, priceRowsFromTable, type MenuImportRow, type PriceImportRow } from "@/lib/domain/importMap";
+import { MENU_TEMPLATE, PRICE_TEMPLATE, PRODUCT_TEMPLATE, menuRowsFromTable, priceRowsFromTable, type MenuImportRow, type PriceImportRow } from "@/lib/domain/importMap";
 import { IMPORT_SHEET_PREFIX } from "@/lib/domain/estimateDiscount";
 import { searchKey } from "@/lib/domain/text";
 import styles from "./settings.module.css";
@@ -58,13 +58,14 @@ export function ImportsTab(props: Props) {
         読み込んだら中身が表で出るので、確かめてから「取り込む」を押してください。表の書式は「書式のひな形」を開いて、その形に合わせてください（列の順番は自由です）。
       </p>
       <MenuImport {...props} />
-      <PriceImport {...props} />
+      <PriceImport {...props} mode="price" />
+      <PriceImport {...props} mode="product" />
       <ConsentImport {...props} />
       <div className={styles.importBox}>
         <h3>Googleと自動でつなぐ</h3>
         <p className={styles.hint}>
           表やフォルダを直すたびに自動で反映したいときは、配布物に入っている Apps Script を使います（置き方は各ファイルの先頭に書いてあります）。
-          <br />・料金表：sheet-prices.gs（スプレッドシートを直すと送られる）
+          <br />・料金表・自費商品：sheet-prices-standard.gs（上の「書式のひな形」と同じ形のスプレッドシートを、直すたびに送る）
           <br />・同意書：consent-templates.gs（Googleドライブのフォルダの文書を、開くたびに最新で読む。設定 → 同意書 で読み込み元を入れる）
           <br />・問診票：questionnaire.gs（Googleフォームの回答が届くたびに送られる）
         </p>
@@ -238,7 +239,25 @@ function MenuImport({ menus, lanes, onChanged, notify, fail }: Props) {
   );
 }
 
-function PriceImport({ notify, fail }: Props) {
+const PRICE_MODE = {
+  price: {
+    title: "料金表（見積・会計の候補）",
+    template: ["料金表の書式.csv", PRICE_TEMPLATE] as const,
+    hint: "施術と商品をまとめた料金表です。「種類」の列に「施術」か「商品」を入れます（空なら、分類に「商品」「スキンケア」「内服」「外用」などがある行を商品として扱います）。商品はスキンケア＆内服の候補に出て、割引の「商品のみ」の対象になります。",
+    defaultKind: undefined,
+    defaultLabel: "",
+  },
+  product: {
+    title: "自費商品（スキンケア・内服・外用）",
+    template: ["自費商品の書式.csv", PRODUCT_TEMPLATE] as const,
+    hint: "販売する商品の一覧です。すべて商品として、患者画面のスキンケア＆内服と、見積・会計の「スキンケア＆内服」に出ます。分類（ゼオスキンヘルス・内服・外用など）は全リストの見出しになります。1つずつ足すときは「設定 → スキンケア・内服」からも入れられます。",
+    defaultKind: "product" as const,
+    defaultLabel: "自費商品",
+  },
+};
+
+function PriceImport({ notify, fail, mode }: Props & { mode: keyof typeof PRICE_MODE }) {
+  const m = PRICE_MODE[mode];
   const [rows, setRows] = useState<PriceImportRow[] | null>(null);
   const [label, setLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -247,27 +266,28 @@ function PriceImport({ notify, fail }: Props) {
   return (
     <div className={styles.importBox}>
       <h3>
-        料金表（見積・会計の候補、スキンケア＆内服の候補）
-        <button type="button" className={styles.linkBtn} onClick={() => download("料金表の書式.csv", PRICE_TEMPLATE)}>
+        {m.title}
+        <button type="button" className={styles.linkBtn} onClick={() => download(m.template[0], m.template[1].map((r) => [...r]))}>
           書式のひな形（CSV）
         </button>
       </h3>
       <p className={styles.hint}>
-        同じ名前で取り込み直すと、前に取り込んだ分とまるごと入れ替わります。分類に「商品」「スキンケア」「内服」「外用」などを入れた行は商品として扱います（スキンケア＆内服の候補に出て、割引の「商品のみ」の対象になります）。
+        {m.hint}
+        同じ「取り込みの名前」で取り込み直すと、前に取り込んだ分とまるごと入れ替わります。
       </p>
       <Source
         accept=".csv,.tsv,.txt,.xlsx"
         kind="sheet"
         busy={busy}
         onTable={(t, name) => {
-          const r = priceRowsFromTable(t);
+          const r = priceRowsFromTable(t, m.defaultKind);
           if ("error" in r) {
             setRows(null);
             setError(r.error);
           } else {
             setRows(r);
             setError(null);
-            setLabel(name.replace(/\.(csv|tsv|txt|xlsx)$/i, ""));
+            setLabel(m.defaultLabel || name.replace(/\.(csv|tsv|txt|xlsx)$/i, ""));
           }
         }}
       />
@@ -282,6 +302,7 @@ function PriceImport({ notify, fail }: Props) {
             <thead>
               <tr>
                 <th>行</th>
+                <th>種類</th>
                 <th>分類</th>
                 <th>項目名</th>
                 <th>料金</th>
@@ -291,6 +312,7 @@ function PriceImport({ notify, fail }: Props) {
               {rows.map((r) => (
                 <tr key={r.line} data-inactive={!r.item || undefined}>
                   <td>{r.line}</td>
+                  <td>{r.item && (r.item.kind === "product" ? "商品" : "施術")}</td>
                   <td>{r.item?.category}</td>
                   <td>{r.name}</td>
                   <td>
@@ -314,7 +336,7 @@ function PriceImport({ notify, fail }: Props) {
               setBusy(true);
               try {
                 const r = await importPrices(`${IMPORT_SHEET_PREFIX}${label.trim()}`.slice(0, 60), ok.map((x) => x.item!));
-                notify(`料金表を${r.count}件取り込みました（設定 → 料金表 で見られます）`);
+                notify(`${m.title}を${r.count}件取り込みました（設定 → 料金表 で見られます）`);
                 setRows(null);
               } catch (e) {
                 fail(e);

@@ -2042,9 +2042,13 @@ final class Store
                     $text = self::priceTextOf($it['priceYen']);
                 }
                 $cur = $all[$id] ?? null;
-                $same = $cur && $cur['priceYen'] === $it['priceYen'] && $cur['priceText'] === $text && empty($cur['removed']);
-                $next = [
-                    'id' => $id, 'source' => 'sheet', 'category' => $category, 'name' => $name,
+                $kind = $it['kind'] ?? null;
+                $same = $cur && $cur['priceYen'] === $it['priceYen'] && $cur['priceText'] === $text && ($cur['kind'] ?? null) === $kind && empty($cur['removed']);
+                $next = ['id' => $id, 'source' => 'sheet', 'category' => $category, 'name' => $name];
+                if ($kind !== null) {
+                    $next['kind'] = $kind;
+                }
+                $next += [
                     'priceYen' => $it['priceYen'], 'priceText' => $text, 'url' => $url,
                     'order' => $order++, 'updatedAt' => $same ? $cur['updatedAt'] : $at,
                 ];

@@ -15,7 +15,9 @@ export const SCOPE_LABEL: Record<DiscountScope, string> = {
 };
 
 /** 料金表の項目が商品（スキンケア・内服・外用）か。スプレッドシートの特殊メニューは施術 */
-export function priceCat(p: Pick<PriceItem, "source" | "category" | "url">): LineCat {
+export function priceCat(p: Pick<PriceItem, "source" | "category" | "url" | "kind">): LineCat {
+  // 取り込むときに種類が決まっていればそれを使う
+  if (p.kind) return p.kind;
   if (p.source === "sheet" && !isImportedPrice(p)) return p.category === "特殊メニュー" ? "treatment" : "product";
   return PRODUCT_CATEGORY.test(p.category) ? "product" : "treatment";
 }

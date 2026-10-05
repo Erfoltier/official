@@ -2287,6 +2287,7 @@ export interface SheetPriceInput {
   name: string;
   priceYen: number | null;
   priceText?: string;
+  kind?: "treatment" | "product";
 }
 
 /**
@@ -2309,8 +2310,19 @@ function receiveSheetPricesImpl(sheet: string, items: SheetPriceInput[]): { shee
     seen.add(id);
     const priceText = (it.priceText ?? "").trim() || (it.priceYen === null ? "" : `${it.priceYen.toLocaleString("ja-JP")}円`);
     const cur = st.prices.get(id);
-    const same = cur && cur.priceYen === it.priceYen && cur.priceText === priceText && !cur.removed;
-    const next: PriceItem = { id, source: "sheet", category, name, priceYen: it.priceYen, priceText, url, order: order++, updatedAt: same ? cur.updatedAt : at };
+    const same = cur && cur.priceYen === it.priceYen && cur.priceText === priceText && cur.kind === it.kind && !cur.removed;
+    const next: PriceItem = {
+      id,
+      source: "sheet",
+      category,
+      name,
+      ...(it.kind && { kind: it.kind }),
+      priceYen: it.priceYen,
+      priceText,
+      url,
+      order: order++,
+      updatedAt: same ? cur.updatedAt : at,
+    };
     if (!cur || JSON.stringify(cur) !== JSON.stringify(next)) st.prices.set(id, next);
   }
   for (const p of [...st.prices.values()]) {
