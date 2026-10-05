@@ -10,7 +10,7 @@ export const dateParam = z.string().refine(isDateString, "日付の形式が正�
 export const createReservationSchema = z.object({
   patientId: id,
   laneId: id,
-  treatmentIds: z.array(id).min(1).max(5),
+  menuIds: z.array(id).min(1).max(5),
   startAt: isoDateTime,
   endAt: isoDateTime,
   memo: z.string().max(500).optional(),
@@ -23,7 +23,7 @@ export const updateReservationSchema = z
     startAt: isoDateTime.optional(),
     endAt: isoDateTime.optional(),
     status: z.enum(RESERVATION_STATUSES).optional(),
-    treatmentIds: z.array(id).min(1).max(5).optional(),
+    menuIds: z.array(id).min(1).max(5).optional(),
     memo: z.string().max(500).optional(),
   })
   .strict();
@@ -33,3 +33,49 @@ export const reminderResultSchema = z
   .strict();
 
 export const reservationIdParam = id;
+
+const shortText = (max: number) => z.string().max(max);
+
+export const createPatientSchema = z
+  .object({
+    name: shortText(120),
+    kana: shortText(120).optional(),
+    nameAlt: shortText(120).optional(),
+    phone: shortText(30).optional(),
+    email: shortText(200).optional(),
+    chartNo: shortText(30).optional(),
+  })
+  .strict();
+
+export const laneSchema = z
+  .object({
+    name: shortText(80).optional(),
+    shortName: shortText(30).optional(),
+    active: z.boolean().optional(),
+  })
+  .strict();
+
+const minutes = z.number().int().min(0).max(1440);
+
+export const menuSchema = z
+  .object({
+    name: shortText(160).optional(),
+    abbr: shortText(30).optional(),
+    duration: z
+      .discriminatedUnion("kind", [
+        z.object({ kind: z.literal("fixed"), minutes }).strict(),
+        z.object({ kind: z.literal("range"), min: minutes, max: minutes, step: minutes }).strict(),
+      ])
+      .optional(),
+    defaultMinutes: minutes.optional(),
+    startStepMin: minutes.optional(),
+    priceYen: z.number().int().nullable().optional(),
+    capacity: z.number().int().nullable().optional(),
+    laneIds: z.array(id).max(50).optional(),
+    color: z.string().max(7).optional(),
+    active: z.boolean().optional(),
+  })
+  .strict();
+
+export const reorderSchema = z.object({ ids: z.array(id).min(1).max(500) }).strict();
+export const idParam = id;

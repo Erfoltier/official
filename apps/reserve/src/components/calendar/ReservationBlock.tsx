@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import type { Patient, Reservation, Treatment } from "@/lib/domain/types";
+import type { Patient, Reservation, Menu } from "@/lib/domain/types";
 import { STATUS_LABEL } from "@/lib/domain/types";
 import { formatHm } from "@/lib/domain/time";
 import { densityFor, lineFontSize } from "@/lib/calendar/scale";
@@ -11,7 +11,7 @@ import styles from "./calendar.module.css";
 interface Props {
   reservation: Reservation;
   patient: Patient | undefined;
-  treatments: Treatment[];
+  menus: Menu[];
   top: number;
   height: number;
   col: number;
@@ -32,13 +32,13 @@ interface Props {
  * 予約1件の枠。枠の高さに応じて表示内容を切り替え、5分枠でも名前と施術が読めるようにする。
  */
 export const ReservationBlock = memo(function ReservationBlock(props: Props) {
-  const { reservation: r, patient, treatments, top, height, col, cols, startMin, endMin, maskNames } = props;
+  const { reservation: r, patient, menus, top, height, col, cols, startMin, endMin, maskNames } = props;
   const h = Math.max(3, height - 1);
   const density = densityFor(h);
   const name = displayName(patient, maskNames);
-  const color = treatments[0]?.color ?? "#94a3b8";
-  const abbr = treatments.map((t) => t.abbr).join("+");
-  const fullNames = treatments.map((t) => t.name).join("、");
+  const color = menus[0]?.color ?? "#94a3b8";
+  const abbr = menus.map((t) => t.abbr).join("+");
+  const fullNames = menus.map((t) => t.name).join("、");
   const time = `${formatHm(startMin)}–${formatHm(endMin)}`;
   const label = `${time} ${name} ${fullNames}（${STATUS_LABEL[r.status]}）`;
 

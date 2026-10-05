@@ -12,7 +12,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import type { DayBundle, Lane, Patient, Reservation, Treatment } from "@/lib/domain/types";
+import type { DayBundle, Lane, Patient, Reservation, Menu } from "@/lib/domain/types";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { formatHm, minutesOfDay } from "@/lib/domain/time";
 import { findConflicts, layoutLane } from "@/lib/calendar/layout";
@@ -224,9 +224,9 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
   }, [zoomAt]);
 
   const patients = useMemo(() => new Map<string, Patient>(bundle.patients.map((p) => [p.id, p])), [bundle.patients]);
-  const treatments = useMemo(
-    () => new Map<string, Treatment>(bundle.treatments.map((t) => [t.id, t])),
-    [bundle.treatments],
+  const menus = useMemo(
+    () => new Map<string, Menu>(bundle.menus.map((t) => [t.id, t])),
+    [bundle.menus],
   );
   const byId = useMemo(() => new Map(bundle.reservations.map((r) => [r.id, r])), [bundle.reservations]);
 
@@ -450,7 +450,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
                   key={r.id}
                   reservation={r}
                   patient={patients.get(r.patientId)}
-                  treatments={r.treatmentIds.map((id) => treatments.get(id)).filter((t): t is Treatment => !!t)}
+                  menus={r.menuIds.map((id) => menus.get(id)).filter((t): t is Menu => !!t)}
                   top={(start - dayStart) * scale}
                   height={(visualEnd - start) * scale}
                   col={p?.col ?? 0}
@@ -470,7 +470,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
               <ReservationBlock
                 reservation={dragged}
                 patient={patients.get(dragged.patientId)}
-                treatments={dragged.treatmentIds.map((id) => treatments.get(id)).filter((t): t is Treatment => !!t)}
+                menus={dragged.menuIds.map((id) => menus.get(id)).filter((t): t is Menu => !!t)}
                 top={(drag.startMin - dayStart) * scale}
                 height={Math.max(MIN_BLOCK_PX, (drag.endMin - drag.startMin) * scale)}
                 col={0}

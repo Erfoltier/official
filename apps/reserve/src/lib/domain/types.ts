@@ -7,36 +7,75 @@
  */
 
 export type LaneId = string;
-export type TreatmentId = string;
+export type MenuId = string;
 export type PatientId = string;
 export type ReservationId = string;
 
-/** 予約カレンダーの列（施術レーン・部屋・機器）。 */
+/** 予約カレンダーの列（施術レーン・部屋・機器）。Airリザーブの「リソース」にあたる。 */
 export interface Lane {
   id: LaneId;
   name: string;
   /** 狭い画面用の短い名前 */
   shortName: string;
   order: number;
+  /** false ならカレンダーに出さない（過去の予約のために削除はしない） */
+  active: boolean;
 }
 
-export interface Treatment {
-  id: TreatmentId;
+/**
+ * 所要時間の決め方。Airリザーブの「提供時間」と同じ2種類。
+ * - fixed: 固定（例: 20分）
+ * - range: 最小〜最大の間で、刻みごとに予約ごとに決める（例: 5〜60分・5分刻み）
+ */
+export type MenuDuration =
+  | { kind: "fixed"; minutes: number }
+  | { kind: "range"; min: number; max: number; step: number };
+
+/** 予約メニュー（施術内容）。Airリザーブの「メニュー」にあたる。 */
+export interface Menu {
+  id: MenuId;
   name: string;
-  /** 短い枠に表示する略称（例: ハイフ → HIFU） */
+  /** 短い枠に表示する略称（例: ボトックス【再診】 → BTX再） */
   abbr: string;
-  /** 標準の所要時間（分） */
-  durationMin: number;
-  /** カレンダー上の色（CSSカラー） */
+  duration: MenuDuration;
+  /** 予約登録時に最初に入る時間（分）。range のときは min〜max の範囲内 */
+  defaultMinutes: number;
+  /** 開始時刻の刻み（分）。Airリザーブの「開始時間単位」 */
+  startStepMin: number;
+  /** 税込料金（円）。設定しない場合は null */
+  priceYen: number | null;
+  /** 同時に受け付けられる予約数。設定しない場合は null */
+  capacity: number | null;
+  /** このメニューを行えるレーン。空ならどのレーンでも可 */
+  laneIds: LaneId[];
+  /** カレンダー上の色（#rrggbb） */
   color: string;
+  order: number;
+  /** false なら予約登録の選択肢に出さない（過去の予約の表示には使う） */
+  active: boolean;
+}
+
+/** メニューの所要時間の候補（分） */
+export function menuDurationOptions(d: MenuDuration): number[] {
+  if (d.kind === "fixed") return [d.minutes];
+  const out: number[] = [];
+  for (let m = d.min; m <= d.max; m += d.step) out.push(m);
+  return out;
 }
 
 export interface Patient {
   id: PatientId;
   /** 診察券番号など院内の番号 */
   chartNo: string;
+  /**
+   * 氏名。漢字・ひらがな・カタカナ・ローマ字を自由に混ぜてよい
+   * （例: 「山田 Anna」「さくら 田中」「LEE Min」）。
+   */
   name: string;
+  /** フリガナ（ひらがな・カタカナどちらでも可） */
   kana: string;
+  /** 別の表記（ローマ字、旧姓、通称など）。検索に使う */
+  nameAlt?: string;
   phone?: string;
   email?: string;
   /**
@@ -83,7 +122,7 @@ export interface Reservation {
   id: ReservationId;
   patientId: PatientId;
   laneId: LaneId;
-  treatmentIds: TreatmentId[];
+  menuIds: MenuId[];
   /** 開始日時（ISO 8601、オフセット付き） */
   startAt: string;
   /** 終了日時（ISO 8601、オフセット付き） */
@@ -117,7 +156,7 @@ export interface DayBundle {
   date: string;
   clinic: ClinicSettings;
   lanes: Lane[];
-  treatments: Treatment[];
+  menus: Menu[];
   reservations: Reservation[];
   /** その日の予約に登場する患者だけ */
   patients: Patient[];

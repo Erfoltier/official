@@ -1,0 +1,349 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Lane, Menu } from "@/lib/domain/types";
+import { searchKey } from "@/lib/domain/text";
+import { ApiError, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
+import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
+import { MenuEditor } from "./MenuEditor";
+import styles from "./settings.module.css";
+
+type Tab = "lanes" | "menus";
+
+export function SettingsApp() {
+  const [tab, setTab] = useState<Tab>("lanes");
+  const [data, setData] = useState<SettingsData | null>(null);
+  const [message, setMessage] = useState<{ text: string; kind: "info" | "error" } | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await fetchSettings());
+    } catch {
+      setMessage({ text: "設定を読み込めませんでした", kind: "error" });
+    }
+  }, []);
+
+  useEffect(() => {
+    // 初回の読み込み
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  const notify = (text: string, kind: "info" | "error" = "info") => {
+    setMessage({ text, kind });
+    window.setTimeout(() => setMessage((m) => (m?.text === text ? null : m)), 4000);
+  };
+  const fail = (err: unknown) => notify(err instanceof ApiError ? err.message : "保存できませんでした", "error");
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.head}>
+        <Link href="/" className={styles.back}>
+          ← カレンダーへ
+        </Link>
+        <h1>設定</h1>
+        <nav className={styles.tabs} role="tablist">
+          <button role="tab" aria-selected={tab === "lanes"} onClick={() => setTab("lanes")}>
+            レーン
+          </button>
+          <button role="tab" aria-selected={tab === "menus"} onClick={() => setTab("menus")}>
+            メニュー
+          </button>
+        </nav>
+      </header>
+
+      {message && (
+        <div className={styles.message} data-kind={message.kind} role="status">
+          {message.text}
+        </div>
+      )}
+
+      {!data ? (
+        <p className={styles.muted}>読み込み中…</p>
+      ) : tab === "lanes" ? (
+        <LanesTab lanes={data.lanes} onChanged={load} notify={notify} fail={fail} />
+      ) : (
+        <MenusTab data={data} onChanged={load} notify={notify} fail={fail} />
+      )}
+    </div>
+  );
+}
+
+// ---- レーン ----
+
+interface TabProps {
+  onChanged: () => Promise<void>;
+  notify: (text: string) => void;
+  fail: (err: unknown) => void;
+}
+
+function move<T extends { id: string }>(items: T[], index: number, delta: number): string[] {
+  const ids = items.map((x) => x.id);
+  const j = index + delta;
+  if (j < 0 || j >= ids.length) return ids;
+  [ids[index], ids[j]] = [ids[j], ids[index]];
+  return ids;
+}
+
+function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[] }) {
+  const [newName, setNewName] = useState("");
+  const [newShort, setNewShort] = useState("");
+
+  const doReorder = async (i: number, d: number) => {
+    try {
+      await reorder("lanes", move(lanes, i, d));
+      await onChanged();
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  const add = async () => {
+    try {
+      await saveLane(null, { name: newName, shortName: newShort });
+      setNewName("");
+      setNewShort("");
+      await onChanged();
+      notify("レーンを追加しました");
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  return (
+    <section>
+      <p className={styles.lead}>
+        予約カレンダーの列です。名前の変更・並べ替え・追加ができます。使わなくなったレーンは「表示」を外すと
+        カレンダーから消えます（過去の予約は残ります）。今日以降の予約が残っているレーンは、予約を移してから外してください。
+      </p>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th className={styles.orderCol}>順番</th>
+            <th>レーン名</th>
+            <th>短い名前（スマホ用）</th>
+            <th>表示</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {lanes.map((l, i) => (
+            <LaneRow
+              key={`${l.id}:${l.name}:${l.shortName}:${l.active}`}
+              lane={l}
+              first={i === 0}
+              last={i === lanes.length - 1}
+              onUp={() => doReorder(i, -1)}
+              onDown={() => doReorder(i, 1)}
+              onSave={async (body) => {
+                try {
+                  await saveLane(l.id, body);
+                  await onChanged();
+                  notify("保存しました");
+                } catch (err) {
+                  fail(err);
+                  await onChanged();
+                }
+              }}
+            />
+          ))}
+          <tr className={styles.addRow}>
+            <td />
+            <td>
+              <input
+                className={styles.input}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="例：5番レーン（ダーマペン）"
+                maxLength={40}
+                aria-label="新しいレーン名"
+              />
+            </td>
+            <td>
+              <input
+                className={styles.input}
+                value={newShort}
+                onChange={(e) => setNewShort(e.target.value)}
+                placeholder="例：5番"
+                maxLength={12}
+                aria-label="新しいレーンの短い名前"
+              />
+            </td>
+            <td />
+            <td>
+              <button className={styles.primary} onClick={add} disabled={!newName.trim()}>
+                追加
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function LaneRow(props: {
+  lane: Lane;
+  first: boolean;
+  last: boolean;
+  onUp: () => void;
+  onDown: () => void;
+  onSave: (body: Partial<Pick<Lane, "name" | "shortName" | "active">>) => void;
+}) {
+  const { lane } = props;
+  const [name, setName] = useState(lane.name);
+  const [shortName, setShortName] = useState(lane.shortName);
+  const dirty = name !== lane.name || shortName !== lane.shortName;
+  return (
+    <tr data-inactive={!lane.active || undefined}>
+      <td className={styles.orderCol}>
+        <button className={styles.arrow} onClick={props.onUp} disabled={props.first} aria-label="上へ">
+          ▲
+        </button>
+        <button className={styles.arrow} onClick={props.onDown} disabled={props.last} aria-label="下へ">
+          ▼
+        </button>
+      </td>
+      <td>
+        <input className={styles.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={40} aria-label="レーン名" />
+      </td>
+      <td>
+        <input
+          className={styles.input}
+          value={shortName}
+          onChange={(e) => setShortName(e.target.value)}
+          maxLength={12}
+          aria-label="短い名前"
+        />
+      </td>
+      <td>
+        <label className={styles.toggle}>
+          <input type="checkbox" checked={lane.active} onChange={(e) => props.onSave({ active: e.target.checked })} />
+          {lane.active ? "表示" : "非表示"}
+        </label>
+      </td>
+      <td>
+        <button className={styles.btn} disabled={!dirty} onClick={() => props.onSave({ name, shortName })}>
+          保存
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+// ---- メニュー ----
+
+function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: SettingsData }) {
+  const [query, setQuery] = useState("");
+  const [showInactive, setShowInactive] = useState(true);
+  const [editing, setEditing] = useState<Menu | "new" | null>(null);
+  const laneName = useMemo(() => new Map(data.lanes.map((l) => [l.id, l.shortName])), [data.lanes]);
+
+  const q = searchKey(query);
+  const filtered = data.menus.filter(
+    (m) => (showInactive || m.active) && (!q || searchKey(`${m.name}${m.abbr}`).includes(q)),
+  );
+
+  const doReorder = async (id: string, d: number) => {
+    const i = data.menus.findIndex((m) => m.id === id);
+    try {
+      await reorder("menus", move(data.menus, i, d));
+      await onChanged();
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  return (
+    <section>
+      <p className={styles.lead}>
+        予約登録で選ぶメニューです。Airリザーブのメニュー設定（35件）を取り込んであります。略称は予約表の短い枠に、色は枠の色に使います。
+      </p>
+      <div className={styles.toolbar}>
+        <input
+          className={styles.input}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="メニューを絞り込む"
+          aria-label="メニューを絞り込む"
+        />
+        <label className={styles.toggle}>
+          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+          使わないメニューも表示
+        </label>
+        <button className={styles.primary} onClick={() => setEditing("new")}>
+          ＋ 新しいメニュー
+        </button>
+      </div>
+
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th className={styles.orderCol}>順番</th>
+              <th>メニュー名</th>
+              <th>略称</th>
+              <th>提供時間</th>
+              <th>料金（税込）</th>
+              <th>レーン</th>
+              <th>予約の選択肢</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((m) => (
+              <tr key={m.id} data-inactive={!m.active || undefined} className={styles.clickRow} onClick={() => setEditing(m)}>
+                <td className={styles.orderCol} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className={styles.arrow}
+                    onClick={() => doReorder(m.id, -1)}
+                    disabled={!!q || m.order === 0}
+                    aria-label="上へ"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    className={styles.arrow}
+                    onClick={() => doReorder(m.id, 1)}
+                    disabled={!!q || m.order === data.menus.length - 1}
+                    aria-label="下へ"
+                  >
+                    ▼
+                  </button>
+                </td>
+                <td>
+                  <span className={styles.swatch} style={{ background: m.color }} />
+                  <button className={styles.nameBtn}>{m.name}</button>
+                </td>
+                <td>{m.abbr}</td>
+                <td>
+                  {durationLabel(m.duration)}
+                  {m.duration.kind === "range" && <small className={styles.muted}>（{m.duration.step}分刻み）</small>}
+                </td>
+                <td>{priceLabel(m.priceYen)}</td>
+                <td className={styles.lanesCell}>
+                  {m.laneIds.length === 0 ? "すべて" : m.laneIds.map((id) => laneName.get(id) ?? "?").join("・")}
+                </td>
+                <td>{m.active ? "出す" : "出さない"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <MenuEditor
+          menu={editing === "new" ? null : editing}
+          lanes={data.lanes}
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            setEditing(null);
+            await onChanged();
+            notify("メニューを保存しました");
+          }}
+          fail={fail}
+        />
+      )}
+    </section>
+  );
+}

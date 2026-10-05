@@ -24,7 +24,7 @@ export interface ReminderItem {
   startAt: string;
   endAt: string;
   laneName: string;
-  treatmentNames: string[];
+  menuNames: string[];
   patient: {
     id: string;
     name: string;
@@ -38,7 +38,7 @@ export interface ReminderItem {
 export function buildReminderFeed(date: string): ReminderFeed {
   const day = getDayBundle(date);
   const lanes = new Map(day.lanes.map((l) => [l.id, l]));
-  const treatments = new Map(day.treatments.map((t) => [t.id, t]));
+  const menus = new Map(day.menus.map((t) => [t.id, t]));
   const patients = new Map(day.patients.map((p) => [p.id, p]));
 
   const items: ReminderItem[] = day.reservations
@@ -51,7 +51,7 @@ export function buildReminderFeed(date: string): ReminderFeed {
         startAt: r.startAt,
         endAt: r.endAt,
         laneName: lanes.get(r.laneId)?.name ?? "",
-        treatmentNames: r.treatmentIds.map((id) => treatments.get(id)?.name ?? ""),
+        menuNames: r.menuIds.map((id) => menus.get(id)?.name ?? ""),
         patient: {
           id: p.id,
           name: p.name,

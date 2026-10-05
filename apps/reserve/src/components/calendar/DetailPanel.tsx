@@ -28,7 +28,7 @@ interface Props {
 export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
-  const treatments = r.treatmentIds.map((id) => bundle.treatments.find((t) => t.id === id)).filter(Boolean);
+  const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
   const [memo, setMemo] = useState(r.memo ?? "");
   const start = minutesOfDay(r.startAt);
   const end = minutesOfDay(r.endAt);
@@ -43,7 +43,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           </div>
           {!maskNames && patient && (
             <div className={styles.panelSub}>
-              {patient.kana}・診察券 {patient.chartNo}
+              {patient.kana}
+              {patient.nameAlt && ` / ${patient.nameAlt}`}・診察券 {patient.chartNo}
             </div>
           )}
         </div>
@@ -61,7 +62,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <dd>{lane?.name}</dd>
         <dt>施術</dt>
         <dd>
-          {treatments.map((t) => (
+          {menus.map((t) => (
             <span key={t!.id} className={styles.treatChip} style={{ ["--c" as string]: t!.color }}>
               {t!.name}
             </span>

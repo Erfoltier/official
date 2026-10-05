@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Reservation, ReservationStatus } from "@/lib/domain/types";
 import { addDays, formatDateJa, nowInClinic, toIso } from "@/lib/domain/time";
@@ -240,6 +241,9 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           >
             ⛶
           </button>
+          <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
+            ⚙
+          </Link>
         </div>
       </header>
 

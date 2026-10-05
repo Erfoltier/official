@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DayBundle, Patient, Reservation } from "@/lib/domain/types";
+import type { DayBundle, Menu, Patient, Reservation } from "@/lib/domain/types";
 import { formatDateJa, formatHm, toIso } from "@/lib/domain/time";
-import { ApiError, postReservation, searchPatients } from "./api";
+import { searchKey } from "@/lib/domain/text";
+import { ApiError, createPatient, postReservation, searchPatients } from "./api";
+import { durationLabel } from "./menuFormat";
 import styles from "./calendar.module.css";
 
 interface Props {
@@ -20,9 +22,13 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Patient[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [newPatient, setNewPatient] = useState<{ name: string; kana: string; nameAlt: string; phone: string } | null>(
+    null,
+  );
   const [laneId, setLaneId] = useState(initialLane);
   const [start, setStart] = useState(minute);
-  const [treatmentIds, setTreatmentIds] = useState<string[]>([]);
+  const [menuIds, setMenuIds] = useState<string[]>([]);
+  const [menuQuery, setMenuQuery] = useState("");
   const [duration, setDuration] = useState<number | null>(null);
   const [memo, setMemo] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +40,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   }, []);
 
   useEffect(() => {
-    if (patient || query.trim().length === 0) return;
+    if (patient || newPatient || query.trim().length === 0) return;
     const ac = new AbortController();
     const t = setTimeout(() => {
       searchPatients(query, ac.signal).then(setResults, () => {});
@@ -43,32 +49,71 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
       clearTimeout(t);
       ac.abort();
     };
-  }, [query, patient]);
+  }, [query, patient, newPatient]);
 
-  const autoDuration = useMemo(
-    () =>
-      treatmentIds.reduce((sum, id) => sum + (bundle.treatments.find((t) => t.id === id)?.durationMin ?? 0), 0),
-    [treatmentIds, bundle.treatments],
-  );
+  const menuById = useMemo(() => new Map(bundle.menus.map((m) => [m.id, m])), [bundle.menus]);
+  const selectedMenus = menuIds.map((id) => menuById.get(id)).filter((m): m is Menu => !!m);
+
+  const visibleMenus = useMemo(() => {
+    const q = searchKey(menuQuery);
+    return bundle.menus
+      .filter((m) => m.active && !menuIds.includes(m.id))
+      .filter((m) => !q || searchKey(`${m.name}${m.abbr}`).includes(q))
+      .sort((a, b) => Number(!fitsLane(a, laneId)) - Number(!fitsLane(b, laneId)) || a.order - b.order);
+  }, [bundle.menus, menuIds, menuQuery, laneId]);
+
+  const autoDuration = selectedMenus.reduce((sum, m) => sum + m.defaultMinutes, 0);
   const dur = duration ?? (autoDuration || clinic.slotMin * 2);
+  const durationOptions: number[] = [];
+  for (let m = clinic.slotMin; m <= Math.max(180, dur); m += clinic.slotMin) durationOptions.push(m);
 
   const startOptions: number[] = [];
   for (let m = clinic.dayStartMin; m < clinic.dayEndMin; m += clinic.slotMin) startOptions.push(m);
 
-  const toggleTreatment = (id: string) =>
-    setTreatmentIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const laneName = (id: string) => bundle.lanes.find((l) => l.id === id)?.shortName ?? "";
+  const laneWarnings = selectedMenus
+    .filter((m) => !fitsLane(m, laneId))
+    .map((m) => `「${m.name}」は通常 ${m.laneIds.map(laneName).filter(Boolean).join("・")} で行います`);
+  const single = selectedMenus.length === 1 ? selectedMenus[0] : null;
+  const durationWarning =
+    single && single.duration.kind === "range" && (dur < single.duration.min || dur > single.duration.max)
+      ? `メニューの設定（${durationLabel(single.duration)}）の範囲外です`
+      : single && single.duration.kind === "fixed" && dur !== single.duration.minutes
+        ? `メニューの設定は${single.duration.minutes}分（固定）です`
+        : null;
+
+  const addMenu = (m: Menu) => {
+    setMenuIds((ids) => [...ids, m.id]);
+    setMenuQuery("");
+    setDuration(null);
+  };
+  const removeMenu = (id: string) => {
+    setMenuIds((ids) => ids.filter((x) => x !== id));
+    setDuration(null);
+  };
 
   const submit = async () => {
-    if (!patient) return setError("患者を選んでください");
-    if (treatmentIds.length === 0) return setError("施術を選んでください");
+    setError(null);
+    if (!patient && !newPatient) return setError("患者を選ぶか、新しい患者として登録してください");
+    if (menuIds.length === 0) return setError("メニューを選んでください");
     if (start + dur > clinic.dayEndMin) return setError("診療時間を超えています");
     setSaving(true);
-    setError(null);
     try {
+      let p = patient;
+      if (!p && newPatient) {
+        p = await createPatient({
+          name: newPatient.name,
+          kana: newPatient.kana || undefined,
+          nameAlt: newPatient.nameAlt || undefined,
+          phone: newPatient.phone || undefined,
+        });
+        setPatient(p);
+        setNewPatient(null);
+      }
       const r = await postReservation({
-        patientId: patient.id,
+        patientId: p!.id,
         laneId,
-        treatmentIds,
+        menuIds,
         startAt: toIso(date, start),
         endAt: toIso(date, start + dur),
         memo: memo || undefined,
@@ -101,10 +146,72 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
           {patient ? (
             <div className={styles.picked}>
               <span>
-                {patient.name}（{patient.kana}・{patient.chartNo}）
+                {patient.name}
+                <small className={styles.pickedSub}>
+                  {patient.kana && ` ${patient.kana}`}
+                  {patient.nameAlt && ` / ${patient.nameAlt}`}・{patient.chartNo}
+                </small>
               </span>
               <button type="button" className={styles.btn} onClick={() => setPatient(null)}>
                 変更
+              </button>
+            </div>
+          ) : newPatient ? (
+            <div className={styles.newPatient}>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label htmlFor="np-name">氏名（必須）</label>
+                  <input
+                    id="np-name"
+                    className={styles.input}
+                    value={newPatient.name}
+                    onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
+                    placeholder="例：山田 Anna／さくら 田中"
+                    maxLength={60}
+                    autoFocus
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="np-kana">フリガナ</label>
+                  <input
+                    id="np-kana"
+                    className={styles.input}
+                    value={newPatient.kana}
+                    onChange={(e) => setNewPatient({ ...newPatient, kana: e.target.value })}
+                    placeholder="ヤマダ アンナ"
+                    maxLength={60}
+                  />
+                </div>
+              </div>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label htmlFor="np-alt">別の表記（ローマ字・旧姓など）</label>
+                  <input
+                    id="np-alt"
+                    className={styles.input}
+                    value={newPatient.nameAlt}
+                    onChange={(e) => setNewPatient({ ...newPatient, nameAlt: e.target.value })}
+                    placeholder="Yamada Anna"
+                    maxLength={60}
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="np-phone">電話</label>
+                  <input
+                    id="np-phone"
+                    className={styles.input}
+                    type="tel"
+                    value={newPatient.phone}
+                    onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
+                    maxLength={20}
+                  />
+                </div>
+              </div>
+              <p className={styles.hint}>
+                氏名は漢字・ひらがな・カタカナ・ローマ字を混ぜて入力できます。診察券番号は自動で振ります。
+              </p>
+              <button type="button" className={styles.linkBtn} onClick={() => setNewPatient(null)}>
+                ← 既存の患者から探す
               </button>
             </div>
           ) : (
@@ -114,7 +221,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                 className={styles.input}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="氏名・カナ・診察券番号"
+                placeholder="氏名・フリガナ・ローマ字・診察券番号・電話"
                 autoComplete="off"
                 autoFocus
               />
@@ -123,15 +230,77 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                   {results.map((p) => (
                     <li key={p.id}>
                       <button type="button" onClick={() => setPatient(p)}>
-                        {p.name} <small>{p.kana}・{p.chartNo}</small>
+                        {p.name}{" "}
+                        <small>
+                          {p.kana}
+                          {p.nameAlt && ` / ${p.nameAlt}`}・{p.chartNo}
+                        </small>
                       </button>
                     </li>
                   ))}
                   {results.length === 0 && <li className={styles.hint}>該当する患者がいません</li>}
                 </ul>
               )}
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() =>
+                  setNewPatient({
+                    name: /^[\d\s-]+$/.test(query) ? "" : query.trim(),
+                    kana: "",
+                    nameAlt: "",
+                    phone: /^[\d\s-]+$/.test(query) ? query.trim() : "",
+                  })
+                }
+              >
+                ＋ 新しい患者として登録
+              </button>
             </>
           )}
+        </div>
+
+        <div className={styles.field}>
+          <span>メニュー（複数可）</span>
+          {selectedMenus.length > 0 && (
+            <div className={styles.treatPicker}>
+              {selectedMenus.map((m) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  className={styles.treatChip}
+                  style={{ ["--c" as string]: m.color }}
+                  data-active
+                  onClick={() => removeMenu(m.id)}
+                  aria-label={`${m.name}を外す`}
+                >
+                  {m.name} <small>{durationLabel(m.duration)}</small> ×
+                </button>
+              ))}
+            </div>
+          )}
+          <input
+            className={styles.input}
+            value={menuQuery}
+            onChange={(e) => setMenuQuery(e.target.value)}
+            placeholder="メニューを絞り込む（例：ボトックス、HIFU、脱毛）"
+            aria-label="メニューを絞り込む"
+          />
+          <div className={styles.menuList}>
+            {visibleMenus.map((m) => (
+              <button
+                type="button"
+                key={m.id}
+                className={styles.treatChip}
+                style={{ ["--c" as string]: m.color }}
+                data-other-lane={!fitsLane(m, laneId) || undefined}
+                onClick={() => addMenu(m)}
+                title={fitsLane(m, laneId) ? undefined : "このレーンでは通常行わないメニュー"}
+              >
+                {m.name} <small>{durationLabel(m.duration)}</small>
+              </button>
+            ))}
+            {visibleMenus.length === 0 && <span className={styles.hint}>該当するメニューがありません</span>}
+          </div>
         </div>
 
         <div className={styles.fieldRow}>
@@ -146,16 +315,14 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
             </select>
           </div>
           <div className={styles.field}>
-            <label htmlFor="pd">時間（分）</label>
-            <input
-              id="pd"
-              className={styles.input}
-              type="number"
-              min={clinic.slotMin}
-              step={clinic.slotMin}
-              value={dur}
-              onChange={(e) => setDuration(Math.max(clinic.slotMin, Number(e.target.value) || clinic.slotMin))}
-            />
+            <label htmlFor="pd">時間</label>
+            <select id="pd" className={styles.input} value={dur} onChange={(e) => setDuration(Number(e.target.value))}>
+              {durationOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}分
+                </option>
+              ))}
+            </select>
           </div>
           <div className={styles.field}>
             <label htmlFor="pl">レーン</label>
@@ -168,24 +335,14 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
             </select>
           </div>
         </div>
-
-        <div className={styles.field}>
-          <span>施術（複数可）</span>
-          <div className={styles.treatPicker}>
-            {bundle.treatments.map((t) => (
-              <button
-                type="button"
-                key={t.id}
-                className={styles.treatChip}
-                style={{ ["--c" as string]: t.color }}
-                data-active={treatmentIds.includes(t.id) || undefined}
-                onClick={() => toggleTreatment(t.id)}
-              >
-                {t.name} <small>{t.durationMin}分</small>
-              </button>
+        {(durationWarning || laneWarnings.length > 0) && (
+          <ul className={styles.warnings}>
+            {durationWarning && <li>{durationWarning}</li>}
+            {laneWarnings.map((w) => (
+              <li key={w}>{w}</li>
             ))}
-          </div>
-        </div>
+          </ul>
+        )}
 
         <div className={styles.field}>
           <label htmlFor="pm">メモ</label>
@@ -205,4 +362,8 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
       </form>
     </dialog>
   );
+}
+
+function fitsLane(m: Menu, laneId: string): boolean {
+  return m.laneIds.length === 0 || m.laneIds.includes(laneId);
 }

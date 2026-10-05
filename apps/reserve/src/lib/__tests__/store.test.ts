@@ -74,7 +74,7 @@ describe("reminder feed", () => {
     expect(feed.items.length).toBeGreaterThan(0);
     const item = feed.items[0];
     expect(Object.keys(item).sort()).toEqual(
-      ["endAt", "laneName", "patient", "reminderStatus", "reservationId", "startAt", "treatmentNames", "version"].sort(),
+      ["endAt", "laneName", "menuNames", "patient", "reminderStatus", "reservationId", "startAt", "version"].sort(),
     );
     expect(Object.keys(item.patient).sort()).toEqual(["email", "id", "lineUserId", "name", "phone"]);
     expect(item.startAt).toMatch(/^2026-10-07T\d{2}:\d{2}:00\+09:00$/);

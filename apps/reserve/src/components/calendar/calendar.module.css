@@ -810,3 +810,59 @@ button.treatChip[data-active] {
     flex-wrap: wrap;
   }
 }
+
+/* ===== 予約登録：患者・メニュー ===== */
+.pickedSub {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.newPatient {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px 6px;
+  background: var(--bg-subtle);
+}
+
+.linkBtn {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--accent);
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.menuList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 168px;
+  overflow: auto;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.menuList .treatChip,
+.treatPicker .treatChip {
+  min-height: 30px;
+  color: var(--text);
+  text-align: left;
+}
+
+.treatChip[data-other-lane] {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.warnings {
+  margin: -4px 0 10px;
+  padding: 6px 10px 6px 24px;
+  border-radius: var(--radius);
+  background: #fff7e6;
+  color: #8a5300;
+  font-size: 12px;
+}
