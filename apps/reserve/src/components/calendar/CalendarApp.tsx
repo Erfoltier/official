@@ -137,6 +137,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     save(r, { version: r.version, memo }, { ...r, memo });
   };
 
+  const onRequestId = (r: Reservation, requestId: string) => {
+    save(r, { version: r.version, requestId }, { ...r, requestId: requestId || undefined });
+  };
+
   const selected = bundle?.reservations.find((r) => r.id === selectedId) ?? null;
   const isToday = date === now.date;
   const activeCount = bundle?.reservations.filter((r) => r.status !== "cancelled" && r.status !== "no_show").length ?? 0;
@@ -321,6 +325,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onClose={() => setSelectedId(null)}
             onStatus={(s) => onStatus(selected, s)}
             onMemo={(m) => onMemo(selected, m)}
+            onRequestId={(v) => onRequestId(selected, v)}
             onEditPatient={() => setEditPatientId(selected.patientId)}
           />
         )}

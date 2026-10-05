@@ -25,6 +25,8 @@ export interface ReminderItem {
   endAt: string;
   laneName: string;
   menuNames: string[];
+  /** LINE予約フォームの予約申請ID */
+  requestId: string | null;
   patient: {
     id: string;
     name: string;
@@ -54,6 +56,7 @@ export function buildReminderFeed(date: string): ReminderFeed {
         endAt: r.endAt,
         laneName: lanes.get(r.laneId)?.name ?? "",
         menuNames: r.menuIds.map((id) => menus.get(id)?.name ?? ""),
+        requestId: r.requestId ?? null,
         patient: {
           id: p.id,
           name: p.name,

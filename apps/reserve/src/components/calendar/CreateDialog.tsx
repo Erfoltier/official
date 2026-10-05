@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Menu, Patient, Reservation } from "@/lib/domain/types";
 import { formatDateJa, formatHm, toIso } from "@/lib/domain/time";
 import { searchKey } from "@/lib/domain/text";
+import { REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/domain/bookingRequest";
 import { ApiError, createPatient, postReservation, searchPatients } from "./api";
 import { durationLabel } from "./menuFormat";
 import styles from "./calendar.module.css";
@@ -17,12 +18,21 @@ interface Props {
   onCreated: (r: Reservation) => void;
 }
 
+interface NewPatientForm {
+  name: string;
+  kana: string;
+  nameAlt: string;
+  phone: string;
+  m3ChartNo: string;
+  birthDate: string;
+}
+
 export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClose, onCreated }: Props) {
   const { clinic } = bundle;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Patient[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [newPatient, setNewPatient] = useState<{ name: string; kana: string; nameAlt: string; phone: string; m3ChartNo: string } | null>(
+  const [newPatient, setNewPatient] = useState<NewPatientForm | null>(
     null,
   );
   const [laneId, setLaneId] = useState(initialLane);
@@ -31,6 +41,12 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   const [menuQuery, setMenuQuery] = useState("");
   const [duration, setDuration] = useState<number | null>(null);
   const [memo, setMemo] = useState("");
+  const [requestId, setRequestId] = useState("");
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
+  /** 貼り付けた予約申請（「新しい患者として登録」を押したときに使う） */
+  const [parsed, setParsed] = useState<BookingRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -92,8 +108,46 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
     setDuration(null);
   };
 
+  /** LINE予約申請の文面を読み取り、患者・予約申請ID・メモを入れる */
+  const applyRequest = async () => {
+    const r = parseBookingRequest(pasteText);
+    if (!r.requestId && !r.name && !r.phone) {
+      setPasteNote("予約申請の文面を読み取れませんでした（「項目名：内容」の形の文面を貼り付けてください）");
+      return;
+    }
+    setParsed(r);
+    if (r.requestId) setRequestId(r.requestId);
+    if (r.memo) setMemo(r.memo);
+    const notes: string[] = [];
+    if (r.desiredDate && r.desiredDate !== date) {
+      notes.push(`希望日は ${formatDateJa(r.desiredDate)}${r.desiredTime ? ` ${r.desiredTime}` : ""} です（この予約は ${formatDateJa(date)} に入ります）`);
+    }
+    // 同じ電話番号の患者を探す。氏名かフリガナも一致すればその患者を選ぶ
+    const found = r.phone ? await searchPatients(r.phone).catch(() => [] as Patient[]) : [];
+    const same = found.filter(
+      (p) => (r.kana && searchKey(p.kana) === searchKey(r.kana)) || (r.name && searchKey(p.name) === searchKey(r.name)),
+    );
+    if (same.length === 1) {
+      setPatient(same[0]);
+      setNewPatient(null);
+      notes.push(`登録済みの患者「${same[0].name}」（診察券 ${same[0].chartNo}）を選びました`);
+    } else if (found.length > 0) {
+      setPatient(null);
+      setNewPatient(null);
+      setQuery(r.phone ?? "");
+      notes.push("同じ電話番号の患者がいます。同じ方なら選び、違う方なら「新しい患者として登録」を押してください");
+    } else {
+      setPatient(null);
+      setNewPatient({ name: "", kana: "", nameAlt: "", phone: "", m3ChartNo: "", birthDate: "", ...fromRequest(r) });
+      notes.push("新しい患者として入力しました。内容を確かめて登録してください");
+    }
+    setPasteNote(notes.join("\n"));
+    setPasteOpen(false);
+  };
+
   const submit = async () => {
     setError(null);
+    if (requestId && !REQUEST_ID_RE.test(requestId)) return setError("予約申請IDは英数字・ハイフンで入力してください");
     if (!patient && !newPatient) return setError("患者を選ぶか、新しい患者として登録してください");
     if (menuIds.length === 0) return setError("メニューを選んでください");
     if (start + dur > clinic.dayEndMin) return setError("診療時間を超えています");
@@ -107,6 +161,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
           nameAlt: newPatient.nameAlt || undefined,
           phone: newPatient.phone || undefined,
           m3ChartNo: newPatient.m3ChartNo || undefined,
+          birthDate: newPatient.birthDate || undefined,
         });
         setPatient(p);
         setNewPatient(null);
@@ -118,6 +173,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
         startAt: toIso(date, start),
         endAt: toIso(date, start + dur),
         memo: memo || undefined,
+        requestId: requestId || undefined,
       });
       onCreated(r);
     } catch (err) {
@@ -140,6 +196,38 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="閉じる">
             ×
           </button>
+        </div>
+
+        <div className={styles.pasteBox}>
+          {pasteOpen ? (
+            <>
+              <label htmlFor="paste" className={styles.sectionLabel}>
+                LINE予約申請の文面を貼り付け
+              </label>
+              <textarea
+                id="paste"
+                className={styles.memo}
+                rows={6}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder={"【美容皮膚科・初診予約申請】\n漢字氏名：…\nカナ氏名：…\n電話番号：…\n予約申請ID：R2026…"}
+                autoFocus
+              />
+              <div className={styles.pasteActions}>
+                <button type="button" className={styles.btn} onClick={() => setPasteOpen(false)}>
+                  閉じる
+                </button>
+                <button type="button" className={styles.primaryBtn} onClick={applyRequest} disabled={!pasteText.trim()}>
+                  読み取って入力
+                </button>
+              </div>
+            </>
+          ) : (
+            <button type="button" className={styles.pasteBtn} onClick={() => setPasteOpen(true)}>
+              📋 LINE予約申請を貼り付けて入力
+            </button>
+          )}
+          {pasteNote && <p className={styles.pasteNote}>{pasteNote}</p>}
         </div>
 
         <div className={styles.field}>
@@ -211,6 +299,16 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
               </div>
               <div className={styles.fieldRow}>
                 <div className={styles.field}>
+                  <label htmlFor="np-birth">生年月日</label>
+                  <input
+                    id="np-birth"
+                    className={styles.input}
+                    type="date"
+                    value={newPatient.birthDate}
+                    onChange={(e) => setNewPatient({ ...newPatient, birthDate: e.target.value })}
+                  />
+                </div>
+                <div className={styles.field}>
                   <label htmlFor="np-m3">M3カルテ番号</label>
                   <input
                     id="np-m3"
@@ -236,7 +334,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                 className={styles.input}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="氏名・フリガナ・ローマ字・診察券／M3番号・電話"
+                placeholder="氏名・フリガナ・ローマ字・診察券／M3番号・電話・予約申請ID"
                 autoComplete="off"
                 autoFocus
               />
@@ -267,6 +365,8 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                     nameAlt: "",
                     phone: /^[\d\s-]+$/.test(query) ? query.trim() : "",
                     m3ChartNo: "",
+                    birthDate: "",
+                    ...(parsed && fromRequest(parsed)),
                   })
                 }
               >
@@ -363,7 +463,21 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
 
         <div className={styles.field}>
           <label htmlFor="pm">メモ</label>
-          <input id="pm" className={styles.input} value={memo} maxLength={500} onChange={(e) => setMemo(e.target.value)} />
+          <textarea id="pm" className={styles.memo} rows={memo.includes("\n") ? 4 : 1} value={memo} maxLength={500} onChange={(e) => setMemo(e.target.value)} />
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="prid">予約申請ID（LINE予約フォーム）</label>
+          <input
+            id="prid"
+            className={styles.input}
+            value={requestId}
+            maxLength={40}
+            placeholder="例：R2026100506574020A34A8B"
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => setRequestId(e.target.value.normalize("NFKC").replace(/\s/g, ""))}
+          />
         </div>
 
         {error && <p className={styles.error}>{error}</p>}
@@ -379,6 +493,16 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
       </form>
     </dialog>
   );
+}
+
+/** 予約申請から新規患者の入力欄に入れる値 */
+function fromRequest(r: BookingRequest): Partial<NewPatientForm> {
+  return {
+    ...(r.name && { name: r.name }),
+    ...(r.kana && { kana: r.kana }),
+    ...(r.phone && { phone: r.phone }),
+    ...(r.birthDate && { birthDate: r.birthDate }),
+  };
 }
 
 function fitsLane(m: Menu, laneId: string): boolean {

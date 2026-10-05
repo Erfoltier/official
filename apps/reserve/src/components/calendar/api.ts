@@ -44,7 +44,7 @@ export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle>
 
 export function patchReservation(
   id: string,
-  body: Partial<Pick<Reservation, "laneId" | "startAt" | "endAt" | "status" | "memo" | "menuIds">> & {
+  body: Partial<Pick<Reservation, "laneId" | "startAt" | "endAt" | "status" | "memo" | "menuIds" | "requestId">> & {
     version: number;
   },
 ): Promise<Reservation> {
@@ -61,6 +61,7 @@ export function postReservation(body: {
   startAt: string;
   endAt: string;
   memo?: string;
+  requestId?: string;
 }): Promise<Reservation> {
   return call(`/api/v1/reservations`, { method: "POST", body: JSON.stringify(body) });
 }
@@ -77,6 +78,7 @@ export function createPatient(body: {
   phone?: string;
   chartNo?: string;
   m3ChartNo?: string;
+  birthDate?: string;
 }): Promise<Patient> {
   return call(`/api/v1/patients`, { method: "POST", body: JSON.stringify(body) });
 }

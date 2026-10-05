@@ -110,6 +110,15 @@ final class V
         return $v;
     }
 
+    /** 予約申請ID（英数字・ハイフン・下線、40文字まで） */
+    public static function requestId(mixed $v): string
+    {
+        if (!is_string($v) || !preg_match('/^[A-Za-z0-9_-]{1,40}$/', $v)) {
+            throw new InputError();
+        }
+        return $v;
+    }
+
     public static function date(mixed $v): string
     {
         if (!is_date_string($v)) {
@@ -207,6 +216,7 @@ final class Schema
             'startAt' => [V::class, 'iso'],
             'endAt' => [V::class, 'iso'],
             'memo?' => fn($x) => V::str($x, 500),
+            'requestId?' => [V::class, 'requestId'],
         ], false);
     }
 
@@ -220,7 +230,18 @@ final class Schema
             'status?' => fn($x) => V::enum($x, Store::STATUSES),
             'menuIds?' => fn($x) => V::ids($x, 1, 5),
             'memo?' => fn($x) => V::str($x, 500),
+            'requestId?' => fn($x) => $x === '' ? '' : V::requestId($x),
         ]);
+    }
+
+    public static function integrationRequestId(mixed $v): string
+    {
+        return V::shape($v, ['requestId' => [V::class, 'requestId']])['requestId'];
+    }
+
+    public static function integrationM3(mixed $v): string
+    {
+        return V::shape($v, ['m3ChartNo' => fn($x) => V::str($x, 30)])['m3ChartNo'];
     }
 
     public static function reminderResult(mixed $v): array

@@ -226,6 +226,14 @@ export function searchPatients(query: string, limit = 20): Patient[] {
   }
   const digits = query.replace(/\D/g, "");
   const out: Patient[] = [];
+  // 予約申請ID（例：R2026100506574020A34A8B）で探す
+  const rid = query.normalize("NFKC").trim().toUpperCase();
+  if (looksLikeRequestId(rid)) {
+    for (const r of state().reservations.values()) {
+      const p = r.requestId?.toUpperCase() === rid ? state().patients.get(r.patientId) : undefined;
+      if (p && !p.deleted && !out.includes(p)) out.push(p);
+    }
+  }
   for (const p of state().patients.values()) {
     if (p.deleted) continue;
     const hay = searchKey(`${p.name}|${p.kana}|${p.nameAlt ?? ""}|${p.chartNo}|${p.m3ChartNo ?? ""}`);
@@ -234,6 +242,11 @@ export function searchPatients(query: string, limit = 20): Patient[] {
     if (out.length >= limit) break;
   }
   return out;
+}
+
+/** 予約申請IDらしい文字列か（英数字8文字以上で、数字と英字を両方含む） */
+function looksLikeRequestId(s: string): boolean {
+  return /^[A-Z0-9_-]{8,40}$/.test(s) && /\d/.test(s) && /[A-Z]/.test(s);
 }
 
 export function getPatient(id: string): Patient | undefined {
@@ -269,6 +282,7 @@ export interface CreateReservationInput {
   startAt: string;
   endAt: string;
   memo?: string;
+  requestId?: string;
 }
 
 export function createReservation(input: CreateReservationInput, by?: Actor): Reservation {
@@ -291,6 +305,7 @@ export function createReservation(input: CreateReservationInput, by?: Actor): Re
     endAt: normalizeIso(input.endAt),
     status: "booked",
     memo: input.memo,
+    ...(input.requestId && { requestId: input.requestId }),
     reminder: { status: "pending" },
     ...(by && { createdBy: by, updatedBy: by }),
     version: 1,
@@ -311,6 +326,8 @@ export interface UpdateReservationInput {
   status?: ReservationStatus;
   menuIds?: string[];
   memo?: string;
+  /** 空文字で削除 */
+  requestId?: string;
 }
 
 export function updateReservation(id: string, input: UpdateReservationInput, by?: Actor): Reservation {
@@ -345,6 +362,10 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
     version: cur.version + 1,
     updatedAt: new Date().toISOString(),
   };
+  if (input.requestId !== undefined) {
+    if (input.requestId) next.requestId = input.requestId;
+    else delete next.requestId;
+  }
   st.reservations.set(id, next);
   if (by) {
     const what = [
@@ -353,6 +374,7 @@ export function updateReservation(id: string, input: UpdateReservationInput, by?
       input.status !== undefined ? `状態→${STATUS_LABEL[input.status]}` : null,
       input.menuIds !== undefined ? "メニュー" : null,
       input.memo !== undefined ? "メモ" : null,
+      input.requestId !== undefined ? "予約申請ID" : null,
     ].filter(Boolean);
     audit(by, `予約を変更（${what.join("・")}）`, id);
   }
@@ -372,6 +394,23 @@ export function setReminderStatus(id: string, status: ReminderStatus): Reservati
   };
   st.reservations.set(id, next);
   return next;
+}
+
+/** 外部連携（自動入力）で書き込んだときの記録上の名前 */
+const INTEGRATION_ACTOR: Actor = { id: "integration", name: "外部連携" };
+
+/** 外部連携：LINE予約フォームなどから予約申請IDを書き込む */
+export function setReservationRequestId(id: string, requestId: string): Reservation {
+  const cur = state().reservations.get(id);
+  if (!cur) throw new StoreError("not_found", "予約が見つかりません");
+  return updateReservation(id, { version: cur.version, requestId }, INTEGRATION_ACTOR);
+}
+
+/** 外部連携：電子カルテ（M3）などからカルテ番号を書き込む */
+export function setPatientM3ChartNo(id: string, m3ChartNo: string): Patient {
+  const cur = state().patients.get(id);
+  if (!cur) throw new StoreError("not_found", "患者が見つかりません");
+  return updatePatient(id, { version: cur.version, m3ChartNo }, INTEGRATION_ACTOR);
 }
 
 /** どんな形のISO文字列でも日本時間の "YYYY-MM-DDTHH:mm:ss+09:00" にそろえる */
@@ -612,6 +651,7 @@ function reservationSummary(r: Reservation): VisitRow["reservations"][number] {
     menuNames: r.menuIds.map((mid) => st.menus.get(mid)?.name ?? ""),
     laneName: st.lanes.get(r.laneId)?.name ?? "",
     ...(r.memo && { memo: r.memo }),
+    ...(r.requestId && { requestId: r.requestId }),
   };
 }
 

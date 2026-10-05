@@ -819,3 +819,9 @@ details.section[open] > summary.sectionTitle {
 .todayChip {
   background: var(--grad);
 }
+
+.reqId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}

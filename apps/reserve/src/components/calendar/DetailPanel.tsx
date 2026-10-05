@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { DayBundle, Reservation, ReservationStatus } from "@/lib/domain/types";
+import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { STATUS_LABEL } from "@/lib/domain/types";
 import { formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
 import { displayName } from "./names";
@@ -23,14 +24,17 @@ interface Props {
   onClose: () => void;
   onStatus: (s: ReservationStatus) => void;
   onMemo: (memo: string) => void;
+  onRequestId: (requestId: string) => void;
   onEditPatient: () => void;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo, onEditPatient }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onMemo, onRequestId, onEditPatient }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
   const [memo, setMemo] = useState(r.memo ?? "");
+  const [requestId, setRequestId] = useState(r.requestId ?? "");
+  const requestIdValid = requestId === "" || REQUEST_ID_RE.test(requestId);
   const start = minutesOfDay(r.startAt);
   const end = minutesOfDay(r.endAt);
 
@@ -163,6 +167,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           onBlur={() => memo !== (r.memo ?? "") && onMemo(memo)}
           placeholder="施術の注意点など"
         />
+      </div>
+
+      <div className={styles.panelSection}>
+        <label className={styles.sectionLabel} htmlFor="request-id">
+          予約申請ID（LINE予約フォーム）
+        </label>
+        <input
+          id="request-id"
+          className={styles.input}
+          value={requestId}
+          maxLength={40}
+          placeholder="例：R2026100506574020A34A8B"
+          autoComplete="off"
+          spellCheck={false}
+          aria-invalid={!requestIdValid || undefined}
+          onChange={(e) => setRequestId(e.target.value.normalize("NFKC").replace(/\s/g, ""))}
+          onBlur={() => requestIdValid && requestId !== (r.requestId ?? "") && onRequestId(requestId)}
+        />
+        {!requestIdValid && <p className={styles.error}>英数字・ハイフンで入力してください</p>}
       </div>
 
       <p className={styles.hint}>予約枠をドラッグで時間・レーン変更、下端のつまみで長さ変更（5分刻み）</p>

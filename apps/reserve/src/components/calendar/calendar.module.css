@@ -989,3 +989,40 @@ button.treatChip[data-active] {
 .hourLabel {
   color: #7a6a99;
 }
+
+/* ===== LINE予約申請の貼り付け ===== */
+.pasteBox {
+  margin-bottom: 10px;
+}
+
+.pasteBtn {
+  width: 100%;
+  height: 38px;
+  border: 1px dashed #c4b2ec;
+  border-radius: 8px;
+  background: var(--grad-soft);
+  color: var(--accent-strong);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pasteBtn:hover {
+  border-style: solid;
+}
+
+.pasteActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pasteNote {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 12px;
+  white-space: pre-line;
+}

@@ -247,6 +247,20 @@ final class Store
         }
         $digits = digits_only($query);
         $out = [];
+        // 予約申請ID（例：R2026100506574020A34A8B）で探す
+        $rid = strtoupper(js_trim(normalize_width($query)));
+        if (preg_match('/^[A-Z0-9_-]{8,40}$/', $rid) && preg_match('/\d/', $rid) && preg_match('/[A-Z]/', $rid)) {
+            $patients = self::patients();
+            foreach (Db::i()->all('reservation') as $r) {
+                if (strtoupper($r['requestId'] ?? '') !== $rid) {
+                    continue;
+                }
+                $p = $patients[$r['patientId']] ?? null;
+                if ($p && empty($p['deleted']) && !in_array($p, $out, true)) {
+                    $out[] = $p;
+                }
+            }
+        }
         foreach ($all as $p) {
             $hay = search_key("{$p['name']}|{$p['kana']}|" . ($p['nameAlt'] ?? '') . "|{$p['chartNo']}|" . ($p['m3ChartNo'] ?? ''));
             $phoneHit = strlen($digits) >= 4 && str_contains(digits_only($p['phone'] ?? ''), $digits);
@@ -311,6 +325,9 @@ final class Store
         if (isset($input['memo'])) {
             $r['memo'] = $input['memo'];
         }
+        if (!empty($input['requestId'])) {
+            $r['requestId'] = $input['requestId'];
+        }
         $r['reminder'] = ['status' => 'pending'];
         if ($by) {
             $r['createdBy'] = $by;
@@ -365,6 +382,13 @@ final class Store
         }
         $next['version'] = $cur['version'] + 1;
         $next['updatedAt'] = now_iso();
+        if (array_key_exists('requestId', $input)) {
+            if ($input['requestId'] !== '') {
+                $next['requestId'] = $input['requestId'];
+            } else {
+                unset($next['requestId']);
+            }
+        }
         self::putReservation($next);
         if ($by) {
             $what = array_filter([
@@ -373,10 +397,27 @@ final class Store
                 isset($input['status']) ? '状態→' . self::STATUS_LABEL[$input['status']] : null,
                 isset($input['menuIds']) ? 'メニュー' : null,
                 isset($input['memo']) ? 'メモ' : null,
+                isset($input['requestId']) ? '予約申請ID' : null,
             ]);
             Auth::audit($by, '予約を変更（' . implode('・', $what) . '）', $id);
         }
         return $next;
+    }
+
+    private const INTEGRATION_ACTOR = ['id' => 'integration', 'name' => '外部連携'];
+
+    /** 外部連携：LINE予約フォームなどから予約申請IDを書き込む */
+    public static function setReservationRequestId(string $id, string $requestId): array
+    {
+        $cur = self::reservation($id);
+        return self::updateReservation($id, ['version' => $cur['version'], 'requestId' => $requestId], self::INTEGRATION_ACTOR);
+    }
+
+    /** 外部連携：電子カルテ（M3）などからカルテ番号を書き込む */
+    public static function setPatientM3ChartNo(string $id, string $m3ChartNo): array
+    {
+        $cur = self::patient($id);
+        return self::updatePatient($id, ['version' => $cur['version'], 'm3ChartNo' => $m3ChartNo], self::INTEGRATION_ACTOR);
     }
 
     /** 外部の送信プログラムがリマインドの結果を書き戻す */
@@ -408,6 +449,7 @@ final class Store
                 'endAt' => $r['endAt'],
                 'laneName' => $lanes[$r['laneId']]['name'] ?? '',
                 'menuNames' => array_map(fn($id) => $menus[$id]['name'] ?? '', $r['menuIds']),
+                'requestId' => $r['requestId'] ?? null,
                 'patient' => [
                     'id' => $p['id'],
                     'name' => $p['name'],
@@ -648,6 +690,9 @@ final class Store
         ];
         if (!empty($r['memo'])) {
             $out['memo'] = $r['memo'];
+        }
+        if (!empty($r['requestId'])) {
+            $out['requestId'] = $r['requestId'];
         }
         return $out;
     }

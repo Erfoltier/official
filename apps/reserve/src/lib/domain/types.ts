@@ -194,6 +194,7 @@ export interface VisitRow {
     menuNames: string[];
     laneName: string;
     memo?: string;
+    requestId?: string;
   }[];
   note: string;
   skincare: string[];
@@ -259,6 +260,8 @@ export interface Reservation {
   endAt: string;
   status: ReservationStatus;
   memo?: string;
+  /** LINE予約フォームの予約申請ID（例：R2026100506574020A34A8B） */
+  requestId?: string;
   /** 登録・最終更新したスタッフ */
   createdBy?: Actor;
   updatedBy?: Actor;

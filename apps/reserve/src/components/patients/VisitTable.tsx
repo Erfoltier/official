@@ -117,6 +117,7 @@ export function VisitTable({ visits, suggestions, onSave, readOnly }: Props) {
                         <span>{r.menuNames.join("、")}</span>
                         {r.status !== "done" && <span className={styles.status}>{STATUS_LABEL[r.status]}</span>}
                         {r.memo && <div className={styles.resMemo}>予約メモ：{r.memo}</div>}
+                        {r.requestId && <div className={styles.resMemo}>予約申請ID：{r.requestId}</div>}
                       </div>
                     ))}
                   </td>
@@ -323,6 +324,7 @@ export function UpcomingTable({ items }: { items: VisitRow["reservations"] }) {
           <th>レーン</th>
           <th>状態</th>
           <th>予約メモ</th>
+          <th>予約申請ID</th>
         </tr>
       </thead>
       <tbody>
@@ -344,6 +346,7 @@ export function UpcomingTable({ items }: { items: VisitRow["reservations"] }) {
               <td data-label="レーン">{r.laneName}</td>
               <td data-label="状態">{STATUS_LABEL[r.status]}</td>
               <td data-label="予約メモ">{r.memo ?? <span className={styles.muted}>—</span>}</td>
+              <td data-label="予約申請ID" className={styles.reqId}>{r.requestId ?? <span className={styles.muted}>—</span>}</td>
             </tr>
           );
         })}

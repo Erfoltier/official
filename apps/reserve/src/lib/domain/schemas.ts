@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { RESERVATION_STATUSES } from "@/lib/domain/types";
 import { isDateString } from "@/lib/domain/time";
+import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
+
+const requestId = z.string().regex(REQUEST_ID_RE);
 
 const id = z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/);
 const isoDateTime = z.iso.datetime({ offset: true });
@@ -17,6 +20,7 @@ export const createReservationSchema = z.object({
   startAt: isoDateTime,
   endAt: isoDateTime,
   memo: z.string().max(500).optional(),
+  requestId: requestId.optional(),
 });
 
 export const updateReservationSchema = z
@@ -28,8 +32,16 @@ export const updateReservationSchema = z
     status: z.enum(RESERVATION_STATUSES).optional(),
     menuIds: z.array(id).min(1).max(5).optional(),
     memo: z.string().max(500).optional(),
+    /** 空文字で削除 */
+    requestId: z.union([requestId, z.literal("")]).optional(),
   })
   .strict();
+
+/** 外部連携：予約申請IDの書き込み */
+export const integrationRequestIdSchema = z.object({ requestId }).strict();
+
+/** 外部連携：M3カルテ番号の書き込み（空文字で削除） */
+export const integrationM3Schema = z.object({ m3ChartNo: z.string().max(30) }).strict();
 
 export const reminderResultSchema = z
   .object({ status: z.enum(["sent", "skipped", "failed"]) })
