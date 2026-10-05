@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Estimate, EstimateLine, Menu, PriceItem, Product } from "@/lib/domain/types";
-import { DEFAULT_ESTIMATE_VALID_DAYS, PRODUCT_CATEGORY_LABEL, taxIncluded } from "@/lib/domain/types";
+import { DEFAULT_ESTIMATE_VALID_DAYS, taxIncluded } from "@/lib/domain/types";
+import { skincareOptions } from "@/lib/domain/skincare";
 import { addDays, nowInClinic } from "@/lib/domain/time";
 import { ApiError, createEstimate, estimatePrintUrl, fetchPrices, fetchSettings, updateEstimate } from "@/components/calendar/api";
 import { searchKey } from "@/lib/domain/text";
@@ -163,19 +164,19 @@ export function EstimateDialog(props: Props) {
     const list: { id: string; name: string; price: number | null; sub?: string; text?: string }[] =
       tab === "price"
         ? (prices ?? []).map((p) => ({ id: p.id, name: lineName(p), price: p.priceYen, sub: p.category, text: p.priceText }))
-        : products.map((p) => ({ id: p.id, name: p.name, price: p.priceYen, sub: PRODUCT_CATEGORY_LABEL[p.category] }));
+        : // 患者画面のスキンケア＆内服と同じ候補（料金表のゼオ・内服外用・外用剤など＋設定で足した商品）
+          skincareOptions(prices ?? [], products).map((o) => ({ id: `sk:${o.name}`, name: o.name, price: o.priceYen, sub: o.group }));
     return key ? list.filter((x) => searchKey(`${x.sub ?? ""} ${x.name}`).includes(key)) : list;
   }, [tab, q, products, prices]);
 
-  /** 料金表の項目は「自由入力の行」として入れる（見積書には名前と値段を写して残す） */
+  /** 料金表・スキンケア＆内服の項目は「自由入力の行」として入れる（見積書には名前と値段を写して残す） */
   const add = (tab0: "price" | "product", id: string, name: string, price: number | null) => {
-    const kind = tab0 === "price" ? "custom" : tab0;
     const p = tab0 === "price" ? prices?.find((x) => x.id === id) : undefined;
     const cat: LineCat = tab0 === "product" ? "product" : p ? priceCat(p) : "treatment";
     setRows((rs) => {
-      const same = rs.find((r) => (kind === "custom" ? r.kind === "custom" && r.name === name : r.kind === kind && r.refId === id));
+      const same = rs.find((r) => r.kind === "custom" && r.name === name);
       if (same) return rs.map((r) => (r === same ? { ...r, qty: Math.min(99, r.qty + 1) } : r));
-      return [...rs, { key: nextKey(), kind, ...(kind !== "custom" && { refId: id }), name, unit: price === null ? "" : String(price), qty: 1, cat, picked: true }];
+      return [...rs, { key: nextKey(), kind: "custom", name, unit: price === null ? "" : String(price), qty: 1, cat, picked: true }];
     });
   };
   const patchDiscount = (key: number, p: Partial<Discount>) => setDiscounts((ds) => ds.map((d) => (d.key === key ? { ...d, ...p } : d)));
@@ -278,13 +279,13 @@ export function EstimateDialog(props: Props) {
               </div>
             )}
             <div className={styles.chips}>
-              {tab === "price" && prices === null && <span className={styles.muted}>読み込み中…</span>}
-              {(tab !== "price" || prices !== null) && candidates.length === 0 && (
+              {prices === null && <span className={styles.muted}>読み込み中…</span>}
+              {prices !== null && candidates.length === 0 && (
                 <span className={styles.muted}>{tab === "price" && !q ? "料金表が空です（設定 → 料金表）" : "見つかりません"}</span>
               )}
               {candidates.map((c) => (
                 <button key={c.id} type="button" className={styles.chip} onClick={() => add(tab, c.id, c.name, c.price)} title={c.text ? `${c.name}：${c.text}` : "押すと見積に追加"}>
-                  {tab === "price" && c.sub && <small>{c.sub}</small>}
+                  {c.sub && <small>{c.sub}</small>}
                   <span>{c.name}</span>
                   <b>{c.price === null ? c.text || "値段未設定" : yen(c.price)}</b>
                 </button>
