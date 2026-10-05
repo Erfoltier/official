@@ -1279,3 +1279,183 @@ button.treatChip[data-active] {
   max-width: 100%;
   font-size: 11px;
 }
+
+/* ===== 受付一覧（M3の受付画面のような、その日の予約の時刻順一覧） ===== */
+.reception {
+  width: 300px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, #fbf8ff 0%, #ffffff 140px);
+}
+
+.receptionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.receptionHead b {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.receptionCount {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-right: auto;
+}
+
+.receptionHead .select {
+  max-width: 7.5em;
+}
+
+.receptionEmpty {
+  margin: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.receptionRows {
+  list-style: none;
+  margin: 0;
+  padding: 4px 6px 12px;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.receptionRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 3.2em minmax(0, 1fr);
+  grid-template-areas: "time main" "time stage";
+  gap: 2px 8px;
+  align-items: center;
+  text-align: left;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border: 1px solid transparent;
+  border-left: 4px solid var(--c);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(60 30 90 / 0.06);
+}
+
+.receptionRow:hover {
+  background: color-mix(in srgb, var(--c) 7%, #fff);
+}
+
+.receptionRow[data-selected] {
+  border-color: color-mix(in srgb, var(--c) 60%, #fff);
+  border-left-color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, #fff);
+}
+
+.receptionRow[data-dim] {
+  opacity: 0.55;
+}
+
+.receptionRow[data-past]:not([data-selected]) .receptionTime {
+  color: var(--text-muted);
+}
+
+.receptionTime {
+  grid-area: time;
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.receptionTime small {
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receptionMain {
+  grid-area: main;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.receptionName {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receptionMenu {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: auto;
+  flex: none;
+  max-width: 45%;
+}
+
+.receptionStage {
+  grid-area: stage;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+
+.receptionStage .stagePill {
+  margin-left: 0;
+  max-width: 100%;
+}
+
+/* タブレット：少し細く */
+@media (max-width: 1099px) {
+  .reception {
+    width: 260px;
+  }
+}
+
+.receptionBackdrop {
+  display: none;
+}
+
+/* スマホ：画面の左から重ねて出す */
+@media (max-width: 760px) {
+  .receptionBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgb(0 0 0 / 0.25);
+  }
+  .reception {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    width: min(86vw, 320px);
+    background: #fff;
+    box-shadow: 8px 0 30px rgb(0 0 0 / 0.2);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

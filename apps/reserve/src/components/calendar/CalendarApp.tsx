@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
-import { addDays, formatDateJa, nowInClinic, toIso } from "@/lib/domain/time";
+import { addDays, formatDateJa, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
 import { ApiError, fetchDay, fetchMe, logout, patchReservation } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
 import { DatePicker } from "./DatePicker";
+import { ReceptionList } from "./ReceptionList";
 import { ChevronDown } from "./Chevron";
 import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
@@ -40,6 +41,19 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [maskNames, setMaskNames] = usePref("maskNames", false, isBoolean);
   const [showCancelled, setShowCancelled] = usePref("showCancelled", false, isBoolean);
   const [laneFilter, setLaneFilter] = usePref("laneFilter", ALL_LANES, isString);
+  const [receptionLane, setReceptionLane] = usePref("receptionLane", ALL_LANES, isString);
+  /** 受付一覧：自分で開閉するまでは端末に合わせる（パソコンは開く・スマホ/タブレットはたたむ） */
+  const [receptionPref, setReceptionPref] = usePref("reception", "auto", isString);
+  const [wideScreen, setWideScreen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1100px) and (pointer: fine)");
+    const on = () => setWideScreen(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  const receptionOpen = receptionPref === "auto" ? wideScreen : receptionPref === "open";
+  const setReceptionOpen = (open: boolean) => setReceptionPref(open ? "open" : "closed");
 
   const gridRef = useRef<DayGridHandle>(null);
   const busyRef = useRef(false);
@@ -196,6 +210,15 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     <div className={styles.app} data-panel-open={selected ? true : undefined}>
       <header className={styles.toolbar}>
         <div className={styles.group}>
+          <button
+            className={styles.btn}
+            data-active={receptionOpen || undefined}
+            onClick={() => setReceptionOpen(!receptionOpen)}
+            aria-pressed={receptionOpen}
+            title="その日の予約と状態を時刻順に一覧（受付一覧）"
+          >
+            ☰<span className={styles.long}> 受付一覧</span>
+          </button>
           <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, -1))} aria-label="前の日">
             ‹
           </button>
@@ -346,6 +369,25 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
       <main className={styles.main}>
         {loadError && !bundle && <div className={styles.empty}>{loadError}</div>}
         {!bundle && !loadError && <div className={styles.empty}>読み込み中…</div>}
+        {bundle && receptionOpen && (
+          <ReceptionList
+            bundle={bundle}
+            laneFilter={receptionLane}
+            onLaneFilter={setReceptionLane}
+            maskNames={maskNames}
+            showCancelled={showCancelled}
+            selectedId={selectedId}
+            nowMinutes={isToday ? now.minutes : null}
+            onSelect={(id) => {
+              setSelectedId(id);
+              const r = bundle.reservations.find((x) => x.id === id);
+              if (r) gridRef.current?.scrollToMinute(minutesOfDay(r.startAt) - 30);
+              // 狭い画面では一覧が重なるので、選んだら閉じて詳細を見せる
+              if (window.matchMedia("(max-width: 760px)").matches) setReceptionOpen(false);
+            }}
+            onClose={() => setReceptionOpen(false)}
+          />
+        )}
         {bundle && (
           <DayGrid
             ref={gridRef}
