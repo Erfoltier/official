@@ -48,3 +48,4 @@ next-env.d.ts
 # PHP版の設定（暗号鍵など）とデータ
 /php/config.php
 /php/data/*.db*
+php/data/
