@@ -44,6 +44,12 @@ function setup() {
   sendQuestionnaires();
 }
 
+/** 過去の回答も全部送る（最初の1回だけ手で実行。送り済みの回答は予約カレンダー側で飛ばすので二重にならない） */
+function sendAllPast() {
+  DAYS = 36500;
+  sendQuestionnaires();
+}
+
 function sendQuestionnaires() {
   var props = PropertiesService.getScriptProperties();
   var url = props.getProperty("RESERVE_URL");
