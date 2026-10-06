@@ -427,7 +427,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
                 window.location.replace(withBase("/login/"));
               }}
             >
-              {me.name} ⇄
+              <span className={styles.staffName}>{me.name}</span> ⇄
             </button>
           )}
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">

@@ -222,6 +222,31 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     // iOS Safari 独自のジェスチャーイベント（ページ全体の拡大）を止める
     const stopGesture = (e: Event) => e.preventDefault();
 
+    // マウスで空いているところをつかんで動かすと、カレンダーを上下左右にスクロールする（指では元からできる）
+    let pan: { x: number; y: number; left: number; top: number; moved: boolean } | null = null;
+    const onPanDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      const t = e.target as HTMLElement;
+      if (t.closest("button, a, input, textarea, select, [data-block], [class*='block']")) return;
+      pan = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop, moved: false };
+    };
+    const onPanMove = (e: PointerEvent) => {
+      if (!pan || dragRef.current?.active) return;
+      const dx = e.clientX - pan.x;
+      const dy = e.clientY - pan.y;
+      if (!pan.moved && Math.hypot(dx, dy) < 6) return;
+      pan.moved = true;
+      el.scrollLeft = pan.left - dx;
+      el.scrollTop = pan.top - dy;
+    };
+    const onPanUp = () => {
+      // 動かしたときは、離したときのクリック（予約を作る）を起こさない
+      if (pan?.moved) suppressClickUntil.current = Date.now() + 300;
+      pan = null;
+    };
+    el.addEventListener("pointerdown", onPanDown);
+    window.addEventListener("pointermove", onPanMove);
+    window.addEventListener("pointerup", onPanUp);
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -231,6 +256,9 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     el.addEventListener("gesturechange", stopGesture);
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      el.removeEventListener("pointerdown", onPanDown);
+      window.removeEventListener("pointermove", onPanMove);
+      window.removeEventListener("pointerup", onPanUp);
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);

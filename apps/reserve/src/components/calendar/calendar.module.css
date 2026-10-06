@@ -1931,3 +1931,56 @@ button.stagePill[data-clickable]:disabled {
   flex: 1 1 10em;
   min-width: 0;
 }
+
+/* ===== スマホ：4レーンを横幅に収め、上部のボタンも画面の幅に収める ===== */
+@media (max-width: 760px) {
+  .scroller {
+    --lane-min: max(56px, calc((100vw - var(--time-col) - 4px) / 4));
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar {
+    gap: 4px 6px;
+    padding: 4px 6px;
+    padding-top: max(4px, env(safe-area-inset-top));
+  }
+  .group {
+    flex-wrap: wrap;
+    gap: 3px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .btn,
+  .select,
+  .dateBtn {
+    height: 30px;
+    padding: 0 7px;
+    font-size: 12px;
+  }
+  .iconBtn {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+  .dateBtn {
+    min-width: 0;
+  }
+  .select {
+    max-width: 7.5em;
+  }
+  .staffName {
+    display: inline-block;
+    max-width: 4.5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+  .laneHead {
+    padding: 4px 4px;
+    gap: 3px;
+  }
+  .laneCount {
+    font-size: 10px;
+  }
+}
