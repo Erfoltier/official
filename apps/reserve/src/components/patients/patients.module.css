@@ -1341,3 +1341,56 @@ details:not([open]) > summary.histTitle {
   white-space: nowrap;
   vertical-align: middle;
 }
+
+/* 今後の予約：予約メモ・申請ID に一番幅を取り、ほかは最小限 */
+.upTable .upDate {
+  width: 9em;
+}
+
+.upTable .upTime {
+  width: 7.6em;
+  white-space: nowrap;
+}
+
+.upTable .upMenu {
+  width: 10em;
+}
+
+.upTable .upLane {
+  width: 6.5em;
+}
+
+.upTable .upStatus {
+  width: 4.8em;
+}
+
+.upTable .changeBtn {
+  margin-top: 4px;
+}
+
+/* 患者画面の中央の窓：PCは広めに、スマホは画面いっぱい */
+.dialog.patientDialog {
+  width: min(1120px, calc(100vw - 40px));
+}
+
+@media (max-width: 640px) {
+  .dialog.patientDialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    padding: 10px 10px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* スマホは1件ずつのカード表示なので、列の幅は決めない */
+  .upTable .upDate,
+  .upTable .upTime,
+  .upTable .upMenu,
+  .upTable .upLane,
+  .upTable .upStatus {
+    width: auto;
+  }
+}

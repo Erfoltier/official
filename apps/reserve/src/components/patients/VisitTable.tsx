@@ -530,16 +530,15 @@ function UpcomingTable({
 }) {
   if (items.length === 0) return <p className={styles.muted}>今後の予約はありません</p>;
   return (
-    <table className={styles.visitTable}>
+    <table className={`${styles.visitTable} ${styles.upTable}`}>
       <thead>
         <tr>
-          <th className={styles.colDate}>日付</th>
-          <th className={styles.colTime}>時間</th>
-          <th className={styles.colMenu}>メニュー</th>
-          <th>レーン</th>
-          <th>状態</th>
+          <th className={styles.upDate}>日付</th>
+          <th className={styles.upTime}>時間</th>
+          <th className={styles.upMenu}>メニュー</th>
+          <th className={styles.upLane}>レーン</th>
+          <th className={styles.upStatus}>状態</th>
           <th>予約メモ・申請ID</th>
-          {onChange && <th aria-label="変更" />}
         </tr>
       </thead>
       <tbody>
@@ -547,32 +546,31 @@ function UpcomingTable({
           const date = clinicDateOf(r.startAt);
           return (
             <tr key={r.id} data-inactive={INACTIVE_STATUSES.has(r.status) || undefined}>
-              <td className={styles.colDate} data-label="日付">
+              <td className={styles.upDate} data-label="日付">
                 <a href={withBase(calendarPath(date))} className={styles.dateLink}>
                   {formatDateFull(date)}
                 </a>
+                {/* 変更は日付の2行目に（列を増やさず、予約メモの幅を広く取るため） */}
+                {onChange && !INACTIVE_STATUSES.has(r.status) && (
+                  <div>
+                    <button type="button" className={styles.changeBtn} onClick={() => onChange(r)}>
+                      変更
+                    </button>
+                  </div>
+                )}
               </td>
               <td data-label="時間" className={styles.time}>
                 {formatHm(minutesOfDay(r.startAt))}–{formatHm(minutesOfDay(r.endAt))}
               </td>
-              <td className={styles.colMenu} data-label="メニュー">
+              <td className={styles.upMenu} data-label="メニュー">
                 <MenuChips r={r} detail={detail} nth={nth} />
               </td>
-              <td data-label="レーン">{r.laneName}</td>
-              <td data-label="状態">{r.stageLabel ?? STATUS_LABEL[r.status]}</td>
+              <td className={styles.upLane} data-label="レーン">{r.laneName}</td>
+              <td className={styles.upStatus} data-label="状態">{r.stageLabel ?? STATUS_LABEL[r.status]}</td>
               <td data-label="予約メモ・申請ID">
                 {r.memo ? <RichText value={r.memo} inline /> : r.requestId ? null : <span className={styles.muted}>—</span>}
                 {r.requestId && <div className={styles.reqId}>申請ID：{r.requestId}</div>}
               </td>
-              {onChange && (
-                <td data-label="">
-                  {!INACTIVE_STATUSES.has(r.status) && (
-                    <button type="button" className={styles.changeBtn} onClick={() => onChange(r)}>
-                      変更
-                    </button>
-                  )}
-                </td>
-              )}
             </tr>
           );
         })}

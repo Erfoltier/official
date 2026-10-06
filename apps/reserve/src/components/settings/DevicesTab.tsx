@@ -64,7 +64,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   const serverUrl = typeof window === "undefined" ? "" : `${window.location.origin}${withBase("")}`.replace(/\/$/, "");
 
   return (
-    <section className={styles.clinic}>
+    <section className={`${styles.clinic} ${styles.devices}`}>
       <p className={styles.lead}>
         院で使っている機器と予約カレンダーをつなぎます。つないだ機器のデータは、患者の施術歴（その日の写真）に自動で入ります。
       </p>

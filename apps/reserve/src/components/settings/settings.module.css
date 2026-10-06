@@ -855,3 +855,14 @@ details.priceGroup > summary {
   border-radius: 8px;
   background: var(--bg-subtle);
 }
+
+/* 外部機器の連携：左に寄せず、左右の余白をそろえて広く使う */
+.devices {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.devices .clinicCard {
+  max-width: none;
+}
