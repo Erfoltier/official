@@ -237,35 +237,9 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       <DeletedBanner detail={detail} canManage={canManage} onChanged={afterManage} />
       {!readOnly && <DuplicateBanner detail={detail} canManage={canManage} onMerge={(o) => setMergeWith(o)} />}
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>施術歴</h2>
-        <TreatmentHistory
-          detail={detail}
-          onSave={saveVisitRow}
-          onFilesChanged={reloadHistory}
-          onReservationChanged={() => {
-            reloadHistory();
-            // カレンダーから開いたときは、カレンダーにも反映する
-            onSaved?.();
-          }}
-          readOnly={readOnly}
-          canManage={canManage}
-        />
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>同意書</h2>
-        <ConsentList patient={detail.patient} readOnly={readOnly} canManage={canManage} />
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>見積・会計</h2>
-        <EstimateList patientId={patientId} patientName={detail.patient.name} readOnly={readOnly} canManage={canManage} />
-      </section>
-
       {!readOnly && (
       <details className={styles.section} open={dirty || undefined}>
-        <summary className={styles.sectionTitle}>基本情報・注意事項を編集</summary>
+        <summary className={styles.sectionTitle}>基本情報の表示/編集</summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -398,6 +372,33 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       </form>
       </details>
       )}
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>施術歴</h2>
+        <TreatmentHistory
+          detail={detail}
+          onSave={saveVisitRow}
+          onFilesChanged={reloadHistory}
+          onReservationChanged={() => {
+            reloadHistory();
+            // カレンダーから開いたときは、カレンダーにも反映する
+            onSaved?.();
+          }}
+          readOnly={readOnly}
+          canManage={canManage}
+        />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>同意書</h2>
+        <ConsentList patient={detail.patient} readOnly={readOnly} canManage={canManage} />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>見積・会計</h2>
+        <EstimateList patientId={patientId} patientName={detail.patient.name} readOnly={readOnly} canManage={canManage} />
+      </section>
+
 
       {canManage && !readOnly && (
         <section className={styles.section}>

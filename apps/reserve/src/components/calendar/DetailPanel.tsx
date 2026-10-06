@@ -158,8 +158,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       </div>
 
       <div className={styles.panelLinks}>
-        <button type="button" className={styles.linkBtn} onClick={onEditPatient}>
-          患者情報を見る・編集する
+        <button type="button" className={styles.patientBtn} onClick={onEditPatient}>
+          患者情報の表示/編集
         </button>
         {patient && !patient.deleted && (
           <span className={styles.panelLinkBtns}>
