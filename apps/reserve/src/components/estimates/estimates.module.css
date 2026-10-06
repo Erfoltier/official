@@ -5,7 +5,7 @@
   border: none;
   border-radius: 14px;
   padding: 16px 18px;
-  box-shadow: 0 16px 50px rgb(40 20 80 / 0.28);
+  box-shadow: 0 16px 50px rgb(var(--shadow-rgb) / 0.28);
   color: var(--text);
 }
 
@@ -141,7 +141,7 @@
   gap: 6px;
   max-width: 100%;
   padding: 5px 10px;
-  border: 1px solid #ddd0f0;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
   font: inherit;
@@ -498,10 +498,10 @@
   flex: none;
   height: 24px;
   padding: 0 6px;
-  border: 1px solid #c4b5fd;
+  border: 1px solid var(--accent-line);
   border-radius: 6px;
-  background: #f5f3ff;
-  color: #5b21b6;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   font: inherit;
   font-size: 11px;
   cursor: pointer;
@@ -593,13 +593,13 @@
   margin: 2px 0 4px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--muted, #6b6880);
+  color: var(--text-muted);
 }
 
 .chips.allList {
   max-height: min(300px, 38vh);
   padding: 6px;
-  border: 1px solid #d9e3f0;
+  border: 1px solid var(--alt-line);
   border-radius: 8px;
-  background: #f1f5fb;
+  background: var(--alt-bg);
 }

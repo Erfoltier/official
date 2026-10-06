@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { ClinicSettings, PaperSize } from "@/lib/domain/types";
-import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS } from "@/lib/domain/types";
+import type { ClinicSettings, PaperSize, ThemeId } from "@/lib/domain/types";
+import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS, THEMES } from "@/lib/domain/types";
+import { applyTheme } from "@/lib/theme";
 import { formatHm } from "@/lib/domain/time";
 import { saveClinic } from "@/components/calendar/api";
 import styles from "./settings.module.css";
@@ -97,8 +98,67 @@ export function ClinicTab({
         )}
       </div>
 
+      <ThemeCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
     </section>
+  );
+}
+
+/** 画面の配色（院で1つ。押すとすぐ全員の画面に反映される） */
+function ThemeCard({
+  clinic,
+  canEdit,
+  onChanged,
+  notify,
+  fail,
+}: {
+  clinic: ClinicSettings;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  notify: (text: string) => void;
+  fail: (err: unknown) => void;
+}) {
+  const current: ThemeId = clinic.theme ?? "default";
+  const [busy, setBusy] = useState(false);
+  const pick = async (id: ThemeId) => {
+    if (id === current || busy) return;
+    setBusy(true);
+    applyTheme(id);
+    try {
+      await saveClinic({ theme: id });
+      await onChanged();
+      notify("配色を変えました。ほかの端末も、次に画面を開いたときに変わります");
+    } catch (err) {
+      applyTheme(current);
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>画面の配色</h3>
+      <p className={styles.hint}>院の好みに合わせて選べます。見積書・同意書など印刷する書類の色は変わりません。</p>
+      <div className={styles.themeList} role="radiogroup" aria-label="画面の配色">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="radio"
+            aria-checked={t.id === current}
+            className={styles.themeOpt}
+            disabled={!canEdit || busy}
+            onClick={() => pick(t.id)}
+          >
+            <span className={styles.themeSwatch} style={{ background: `linear-gradient(135deg, ${t.swatch[0]}, ${t.swatch[1]})` }} />
+            <span>
+              <b>{t.label}</b>
+              <small>{t.note}</small>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -273,7 +273,7 @@ export function getClinic(): ClinicSettings {
 }
 
 export type ClinicInput = Partial<
-  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper">
+  Pick<ClinicSettings, "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper" | "theme">
 >;
 
 /** 院名・診療時間（カレンダーに出す時間帯）・刻みを変更する */
@@ -299,6 +299,11 @@ export function updateClinic(input: ClinicInput, by?: Actor): ClinicSettings {
   if (input.estimateNote !== undefined) next.estimateNote = checkNote("見積書の注意書き", input.estimateNote, 2000);
   if (input.estimateValidDays !== undefined) next.estimateValidDays = input.estimateValidDays;
   if (input.estimatePaper !== undefined) next.estimatePaper = input.estimatePaper;
+  // 標準に戻すときは項目を消す
+  if (input.theme !== undefined) {
+    if (input.theme === "default") delete next.theme;
+    else next.theme = input.theme;
+  }
   if (next.dayStartMin % 5 !== 0 || next.dayEndMin % 5 !== 0) {
     throw new StoreError("invalid", "時刻は5分単位で指定してください");
   }

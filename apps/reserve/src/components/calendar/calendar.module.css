@@ -914,18 +914,18 @@ button.treatChip[data-active] {
 .btn:hover,
 .iconBtn:hover,
 .dateBtn:hover {
-  border-color: #b9a6e6;
+  border-color: var(--accent-line);
   background: var(--accent-soft);
 }
 
 .btn[data-active] {
   background: var(--grad-soft);
-  border-color: #b9a6e6;
+  border-color: var(--accent-line);
   color: var(--accent-strong);
 }
 
-.primaryBtn,
-.statusBtn[data-active] {
+/* グラデーションは決定・保存のボタンだけ。今の状態のような選択中の表示は単色で控えめに */
+.primaryBtn {
   background: var(--grad);
   border-color: transparent;
   color: #fff;
@@ -933,8 +933,8 @@ button.treatChip[data-active] {
 }
 
 .dateBtn {
-  border-color: #cdbfee;
-  background: linear-gradient(180deg, #ffffff 0%, #f6f1ff 100%);
+  border-color: var(--accent-line);
+  background: linear-gradient(180deg, #ffffff 0%, var(--accent-soft) 100%);
 }
 
 .dateBtn[data-open] {
@@ -944,12 +944,12 @@ button.treatChip[data-active] {
 
 .header {
   background: var(--grad-head);
-  border-bottom-color: #ddd3ee;
+  border-bottom-color: var(--line-strong);
 }
 
 .corner,
 .timeCol {
-  background: linear-gradient(90deg, #ffffff 0%, #fbf9ff 100%);
+  background: linear-gradient(90deg, #ffffff 0%, var(--tint) 100%);
 }
 
 .block {
@@ -971,23 +971,23 @@ button.treatChip[data-active] {
 }
 
 .panel {
-  background: linear-gradient(180deg, #fcfaff 0%, #ffffff 120px);
+  background: linear-gradient(180deg, var(--tint) 0%, #ffffff 120px);
 }
 
 .toolbar {
-  background: linear-gradient(90deg, #fbf8ff 0%, #ffffff 45%, #fff6fb 100%);
+  background: linear-gradient(90deg, var(--tint) 0%, #ffffff 45%, var(--tint) 100%);
 }
 
 .header {
-  background: linear-gradient(90deg, #f5efff 0%, #fbf3fd 55%, #fff1f7 100%);
+  background: var(--grad-soft);
 }
 
 .laneHead {
-  border-right-color: #e9def6;
+  border-right-color: var(--line-strong);
 }
 
 .hourLabel {
-  color: #7a6a99;
+  color: var(--text-muted);
 }
 
 /* ===== LINE予約申請の貼り付け ===== */
@@ -998,7 +998,7 @@ button.treatChip[data-active] {
 .pasteBtn {
   width: 100%;
   height: 38px;
-  border: 1px dashed #c4b2ec;
+  border: 1px dashed var(--accent-line);
   border-radius: 8px;
   background: var(--grad-soft);
   color: var(--accent-strong);
@@ -1048,7 +1048,7 @@ button.treatChip[data-active] {
 }
 
 .idBtn {
-  border: 1px dashed #c4b2ec;
+  border: 1px dashed var(--accent-line);
   background: var(--accent-soft);
   color: var(--accent-strong);
   cursor: pointer;
@@ -1073,7 +1073,7 @@ button.treatChip[data-active] {
   margin-left: 6px;
   height: 24px;
   padding: 0 8px;
-  border: 1px solid #cdbfee;
+  border: 1px solid var(--accent-line);
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -1085,7 +1085,7 @@ button.treatChip[data-active] {
 .reschedule {
   margin: 0 0 12px;
   padding: 10px;
-  border: 1px solid #e3d8f5;
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: var(--grad-soft);
 }
@@ -1178,7 +1178,7 @@ button.treatChip[data-active] {
   border-left: 4px solid var(--sc);
   border-radius: 8px;
   background: color-mix(in srgb, var(--sc) 8%, #fff);
-  color: color-mix(in srgb, var(--sc) 60%, #1f1630);
+  color: color-mix(in srgb, var(--sc) 60%, var(--text));
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -1288,7 +1288,7 @@ button.treatChip[data-active] {
   flex-direction: column;
   min-height: 0;
   border-right: 1px solid var(--line);
-  background: linear-gradient(180deg, #fbf8ff 0%, #ffffff 140px);
+  background: linear-gradient(180deg, var(--tint) 0%, #ffffff 140px);
 }
 
 .receptionHead {
@@ -1341,7 +1341,7 @@ button.treatChip[data-active] {
   border-left: 4px solid var(--c);
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 1px 2px rgb(60 30 90 / 0.06);
+  box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.06);
 }
 
 .receptionRow:hover {
@@ -1466,7 +1466,7 @@ button.stagePill[data-clickable]:disabled {
   padding: 2px 6px;
   border: 1px dashed transparent;
   border-radius: 6px;
-  background: #faf7fd;
+  background: var(--tint);
   color: var(--text);
   font: inherit;
   font-size: 11.5px;
@@ -1482,12 +1482,12 @@ button.stagePill[data-clickable]:disabled {
 }
 
 .receptionMemo:hover {
-  border-color: #c9b6e4;
+  border-color: var(--accent-line);
   background: #fff;
 }
 
 .receptionMemo[data-empty] {
-  color: #b9adc8;
+  color: var(--text-faint);
 }
 
 .receptionMemo[data-editing] {
@@ -1506,7 +1506,7 @@ button.stagePill[data-clickable]:disabled {
   font: inherit;
   font-size: 12px;
   padding: 4px 6px;
-  border: 1px solid #c9b6e4;
+  border: 1px solid var(--accent-line);
   border-radius: 6px;
   resize: vertical;
 }
@@ -1526,10 +1526,10 @@ button.stagePill[data-clickable]:disabled {
 .receptionPicker {
   margin: -1px 0 6px 4px;
   padding: 8px;
-  border: 1px solid #e4d8f3;
+  border: 1px solid var(--line-strong);
   border-top: 0;
   border-radius: 0 0 8px 8px;
-  background: #fcfaff;
+  background: var(--tint);
 }
 
 .receptionPickerHead {
@@ -1651,7 +1651,7 @@ button.stagePill[data-clickable]:disabled {
   margin: 0 0 16px;
   padding: 8px 12px;
   border-radius: 8px;
-  background: #f7f3fc;
+  background: var(--bg-subtle);
   font-size: 13px;
   line-height: 1.7;
   color: var(--text);
@@ -1671,29 +1671,29 @@ button.stagePill[data-clickable]:disabled {
 
 /* ===== カレンダー以外（上のバー・受付一覧・予約詳細）は薄く色をつけて、予定表と見分けやすくする ===== */
 .toolbar {
-  background: linear-gradient(90deg, #efe7fa 0%, #f3ecfa 50%, #faeaf3 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, #fff) 0%, color-mix(in srgb, var(--accent) 6%, #fff) 100%);
 }
 
 .reception,
 .panel {
-  background: #f5f0fb;
+  background: var(--bg-muted);
 }
 
 .receptionHead {
-  background: #ede4f8;
+  background: color-mix(in srgb, var(--accent) 11%, #fff);
 }
 
 .panel {
-  border-left: 1px solid #e2d6f2;
+  border-left: 1px solid var(--line-strong);
 }
 
 .reception {
-  border-right: 1px solid #e2d6f2;
+  border-right: 1px solid var(--line-strong);
 }
 
 @media (max-width: 760px) {
   .reception {
-    background: #f5f0fb;
+    background: var(--bg-muted);
   }
 }
 
@@ -1707,7 +1707,7 @@ button.stagePill[data-clickable]:disabled {
 .estimateBtn {
   height: 28px;
   padding: 0 10px;
-  border: 1px solid #d9c9f2;
+  border: 1px solid var(--accent-line);
   border-radius: 999px;
   background: #fff;
   color: var(--accent-strong);

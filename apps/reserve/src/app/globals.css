@@ -1,8 +1,18 @@
+/*
+ * 配色プリセット。:root が標準（華やか）で、<html data-theme="…"> で切り替える（設定 → 院の情報・診療時間）。
+ * 色はここの変数だけで決め、各画面はこの変数を使う。
+ *   --grad        決定・保存など、その画面でいちばん大事なボタンだけに使う
+ *   --accent-soft 何度も押す補助のボタン（撮影・選択中のタブなど）の地の色
+ */
 :root {
-  /* 美容皮膚科向けの配色：すみれ色 → 赤紫 → ローズのグラデーション */
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f1f5fb;
+  --alt-line: #d9e3f0;
+  /* 華やか（標準）：すみれ色 → 赤紫 → ローズのグラデーション */
   --bg: #ffffff;
   --bg-subtle: #f8f6fc;
   --bg-muted: #f0ecf7;
+  --tint: #fbf9ff;
   --line: #ebe6f2;
   --line-strong: #d6cee4;
   --text: #241f30;
@@ -10,18 +20,137 @@
   --text-faint: #968ea7;
   --accent: #7c3aed;
   --accent-strong: #6425d0;
+  --accent-deep: #3b1d78;
   --accent-soft: #f3edff;
+  --accent-line: #cdbfee;
   --danger: #d43c5a;
   --now: #ec4899;
   --grad: linear-gradient(135deg, #7c3aed 0%, #b23ad6 52%, #ec4899 100%);
   --grad-line: linear-gradient(90deg, #7c3aed 0%, #c026d3 50%, #f472b6 100%);
   --grad-soft: linear-gradient(135deg, #f6f0ff 0%, #fbf1fa 60%, #fff1f6 100%);
   --grad-head: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%);
+  --shadow-rgb: 40 20 80;
   --shadow-accent: 0 4px 14px rgb(124 58 237 / 24%);
   --shadow-card: 0 6px 24px rgb(64 30 120 / 8%);
   --radius: 6px;
   --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   color-scheme: light;
+}
+
+/* 落ち着き：青みのグレー。派手さを抑えた地味め */
+:root[data-theme="calm"] {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f5f3ef;
+  --alt-line: #e2ddd3;
+  --bg-subtle: #f6f7f9;
+  --bg-muted: #eceff3;
+  --tint: #f9fafb;
+  --line: #e3e7ec;
+  --line-strong: #cbd2db;
+  --text: #1f2933;
+  --text-muted: #56616d;
+  --text-faint: #8a949f;
+  --accent: #4a6585;
+  --accent-strong: #36506e;
+  --accent-deep: #22364c;
+  --accent-soft: #edf1f6;
+  --accent-line: #c3cfdd;
+  --danger: #c4424f;
+  --now: #d9534f;
+  --grad: linear-gradient(135deg, #3f5a7a 0%, #5a7797 100%);
+  --grad-line: linear-gradient(90deg, #4a6585 0%, #8aa0b8 100%);
+  --grad-soft: linear-gradient(135deg, #f3f5f8 0%, #f7f8fa 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f8f9fb 100%);
+  --shadow-rgb: 30 40 60;
+  --shadow-accent: 0 4px 14px rgb(54 80 110 / 18%);
+  --shadow-card: 0 6px 24px rgb(30 40 60 / 7%);
+}
+
+/* 厳か：濃紺と墨、差し色に控えめな金 */
+:root[data-theme="solemn"] {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f4f2ec;
+  --alt-line: #ddd8cc;
+  --bg-subtle: #f6f6f4;
+  --bg-muted: #ecebe6;
+  --tint: #fafaf8;
+  --line: #e4e2dc;
+  --line-strong: #c9c5bb;
+  --text: #1c1c22;
+  --text-muted: #54535b;
+  --text-faint: #87858d;
+  --accent: #2a3b63;
+  --accent-strong: #1d2c4f;
+  --accent-deep: #111a33;
+  --accent-soft: #eceff5;
+  --accent-line: #bfc7d8;
+  --danger: #a8323e;
+  --now: #a8323e;
+  --grad: linear-gradient(135deg, #18264a 0%, #2f4472 100%);
+  --grad-line: linear-gradient(90deg, #1d2c4f 0%, #3a4f7a 60%, #9c8250 100%);
+  --grad-soft: linear-gradient(135deg, #f2f3f6 0%, #f6f5f1 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f7f7f5 100%);
+  --shadow-rgb: 20 26 45;
+  --shadow-accent: 0 4px 14px rgb(24 38 74 / 22%);
+  --shadow-card: 0 6px 24px rgb(20 26 45 / 8%);
+}
+
+/* 上品（ゴールド）：当院のホームページのような金茶とクリーム */
+:root[data-theme="luxe"] {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f2f4f5;
+  --alt-line: #d8dee2;
+  --bg-subtle: #fbf9f4;
+  --bg-muted: #f3eee4;
+  --tint: #fffdf8;
+  --line: #ece4d6;
+  --line-strong: #d9cbb0;
+  --text: #2e251d;
+  --text-muted: #67584a;
+  --text-faint: #9a8b79;
+  --accent: #8f714a;
+  --accent-strong: #75593a;
+  --accent-deep: #5a4637;
+  --accent-soft: #f7f1e6;
+  --accent-line: #dccaa6;
+  --danger: #b04a3a;
+  --now: #b5523b;
+  --grad: linear-gradient(135deg, #75593a 0%, #9a7b52 55%, #b09470 100%);
+  --grad-line: linear-gradient(90deg, #8f714a 0%, #b09470 50%, #d8c39e 100%);
+  --grad-soft: linear-gradient(135deg, #fbf8f1 0%, #fdfaf5 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #fcfaf5 100%);
+  --shadow-rgb: 70 52 30;
+  --shadow-accent: 0 4px 14px rgb(117 89 58 / 22%);
+  --shadow-card: 0 6px 24px rgb(70 52 30 / 8%);
+}
+
+/* やさしい：くすんだ緑。ナチュラル */
+:root[data-theme="natural"] {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f4f2ee;
+  --alt-line: #e0dad0;
+  --bg-subtle: #f6f8f5;
+  --bg-muted: #ebf0e8;
+  --tint: #fafcf9;
+  --line: #e1e8de;
+  --line-strong: #c8d4c3;
+  --text: #1f2a22;
+  --text-muted: #55634f;
+  --text-faint: #8a9785;
+  --accent: #4d7a58;
+  --accent-strong: #3b6346;
+  --accent-deep: #25402d;
+  --accent-soft: #edf4ee;
+  --accent-line: #bfd3c3;
+  --danger: #bf4848;
+  --now: #d0703a;
+  --grad: linear-gradient(135deg, #3f6a4a 0%, #6a9468 100%);
+  --grad-line: linear-gradient(90deg, #4d7a58 0%, #9cbf8c 100%);
+  --grad-soft: linear-gradient(135deg, #f3f7f2 0%, #f8faf6 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f8faf7 100%);
+  --shadow-rgb: 30 50 35;
+  --shadow-accent: 0 4px 14px rgb(59 99 70 / 20%);
+  --shadow-card: 0 6px 24px rgb(30 50 35 / 7%);
 }
 
 * {

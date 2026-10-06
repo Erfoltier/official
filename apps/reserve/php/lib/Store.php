@@ -208,6 +208,14 @@ final class Store
         if (isset($input['estimatePaper'])) {
             $next['estimatePaper'] = $input['estimatePaper'];
         }
+        // 標準に戻すときは項目を消す
+        if (isset($input['theme'])) {
+            if ($input['theme'] === 'default') {
+                unset($next['theme']);
+            } else {
+                $next['theme'] = $input['theme'];
+            }
+        }
         if ($next['dayStartMin'] % 5 !== 0 || $next['dayEndMin'] % 5 !== 0) {
             throw new StoreError('invalid', '時刻は5分単位で指定してください');
         }

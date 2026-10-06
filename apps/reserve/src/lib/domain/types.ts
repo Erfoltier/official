@@ -602,7 +602,21 @@ export interface ClinicSettings {
   estimateValidDays?: number;
   /** 見積書の用紙（既定 A4）。印刷画面でも切り替えられる */
   estimatePaper?: PaperSize;
+  /** 画面の配色（なければ標準の「華やか」） */
+  theme?: ThemeId;
 }
+
+/** 画面の配色プリセット（色そのものは globals.css） */
+export const THEMES = [
+  { id: "default", label: "華やか（標準）", note: "すみれ色からローズのグラデーション", swatch: ["#7c3aed", "#ec4899"] },
+  { id: "calm", label: "落ち着き", note: "青みのグレー。地味めで目に優しい", swatch: ["#3f5a7a", "#8aa0b8"] },
+  { id: "solemn", label: "厳か", note: "濃紺と墨に、控えめな金", swatch: ["#18264a", "#9c8250"] },
+  { id: "luxe", label: "上品（ゴールド）", note: "金茶とクリーム。高級感のある配色", swatch: ["#75593a", "#d8c39e"] },
+  { id: "natural", label: "やさしい", note: "くすんだ緑のナチュラルな配色", swatch: ["#3f6a4a", "#9cbf8c"] },
+] as const;
+
+export type ThemeId = (typeof THEMES)[number]["id"];
+export const THEME_IDS = THEMES.map((t) => t.id) as [ThemeId, ...ThemeId[]];
 
 export type PaperSize = "A4" | "A5";
 

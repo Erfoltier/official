@@ -1,5 +1,6 @@
 import type { AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
+import { applyTheme } from "@/lib/theme";
 
 export class ApiError extends Error {
   constructor(
@@ -39,6 +40,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle> {
+  return fetchDayRaw(date, signal).then((d) => {
+    applyTheme(d.clinic.theme);
+    return d;
+  });
+}
+
+function fetchDayRaw(date: string, signal?: AbortSignal): Promise<DayBundle> {
   return call(`/api/v1/day?date=${encodeURIComponent(date)}`, { signal });
 }
 
@@ -94,7 +102,10 @@ export interface SettingsData {
 }
 
 export function fetchSettings(): Promise<SettingsData> {
-  return call(`/api/v1/settings`);
+  return call<SettingsData>(`/api/v1/settings`).then((s) => {
+    applyTheme(s.clinic.theme);
+    return s;
+  });
 }
 
 export function saveLane(id: string | null, body: Partial<Pick<Lane, "name" | "shortName" | "active">>): Promise<Lane> {
@@ -217,7 +228,7 @@ export function saveClinic(
   body: Partial<
     Pick<
       DayBundle["clinic"],
-      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper"
+      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper" | "theme"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

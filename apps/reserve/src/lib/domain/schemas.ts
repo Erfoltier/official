@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RESERVATION_STATUSES } from "@/lib/domain/types";
+import { RESERVATION_STATUSES, THEME_IDS } from "@/lib/domain/types";
 import { isDateString } from "@/lib/domain/time";
 import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 
@@ -155,6 +155,7 @@ export const clinicSchema = z
     estimateNote: z.string().max(3000).optional(),
     estimateValidDays: z.number().int().min(1).max(365).optional(),
     estimatePaper: z.enum(["A4", "A5"]).optional(),
+    theme: z.enum(THEME_IDS).optional(),
   })
   .strict();
 
