@@ -39,6 +39,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** 受付メモ（その日の進行状況など。患者情報のメモとは別）を書き換える（空で消す） */
+export function putReceptionNote(date: string, patientId: string, text: string): Promise<{ text: string }> {
+  return call(`/api/v1/reception-notes/${encodeURIComponent(date)}/${encodeURIComponent(patientId)}`, { method: "PUT", body: JSON.stringify({ text }) });
+}
+
 /** Todaysメモを書き換える（空で消す） */
 export function putDayNote(date: string, laneId: string, text: string): Promise<{ text: string }> {
   return call(`/api/v1/day-notes/${encodeURIComponent(date)}/${encodeURIComponent(laneId)}`, { method: "PUT", body: JSON.stringify({ text }) });

@@ -714,6 +714,8 @@ export interface DayBundle {
   stages: Stage[];
   /** Todaysメモ（レーンID → 本文）。書いてあるレーンだけ */
   dayNotes: Record<string, string>;
+  /** 受付メモ（患者ID → 本文）。その日の進行状況など。患者情報のメモとは別 */
+  receptionNotes: Record<string, string>;
 }
 
 /** Todaysメモ：日付×レーンごとの自由記載（担当スタッフ・その日の注意点など。患者の情報とは別） */

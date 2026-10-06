@@ -2096,3 +2096,17 @@ button.stagePill[data-clickable]:disabled {
   text-decoration: line-through;
   opacity: 0.55;
 }
+
+/* 同じ人のその日の何工程目か（2/4） */
+.stepBadge {
+  flex: none;
+  margin-left: 3px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--c, #888) 22%, #fff);
+  color: color-mix(in srgb, var(--c, #888) 75%, #222);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}

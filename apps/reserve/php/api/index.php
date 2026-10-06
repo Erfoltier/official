@@ -133,6 +133,13 @@ try {
         $me();
         Http::json(Store::getDayBundle(V::date($q('date'))));
     }
+    // ---- 受付メモ（日付×患者。スタッフ全員） ----
+    if ($p[0] === 'reception-notes' && $n === 3 && $method === 'PUT') {
+        $s = $me();
+        $in = Http::readJson(65_536);
+        Http::json(Store::setReceptionNote(V::date($p[1]), V::id($p[2]), V::str(is_array($in) ? ($in['text'] ?? null) : null, 8000), $actor($s)));
+    }
+
     // ---- Todaysメモ（日付×レーン。スタッフ全員） ----
     if ($p[0] === 'day-notes' && $n >= 2) {
         if ($method === 'GET' && $n === 2) {

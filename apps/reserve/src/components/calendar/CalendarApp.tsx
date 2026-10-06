@@ -6,7 +6,7 @@ import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } 
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
-import { ApiError, fetchDay, fetchMe, logout, patchReservation, putDayNote, updatePatient } from "./api";
+import { ApiError, fetchDay, fetchMe, logout, patchReservation, putDayNote, putReceptionNote, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
@@ -238,19 +238,24 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     }
   };
 
-  const onPatientMemo = async (p: Patient, memo: string) => {
-    busyRef.current = true;
+  /** 受付メモ（その日の進行状況など。患者情報のメモとは別）を受付一覧から保存する */
+  const onReceptionNote = async (p: Patient, text: string) => {
+    if (!bundle) return false;
+    const day = bundle.date;
     try {
-      const d = await updatePatient(p.id, { version: p.version, memo });
-      setBundle((b) => (b ? { ...b, patients: b.patients.map((x) => (x.id === p.id ? d.patient : x)) } : b));
-      showToast("メモを保存しました");
+      const saved = await putReceptionNote(day, p.id, text);
+      setBundle((b) => {
+        if (!b || b.date !== day) return b;
+        const receptionNotes = { ...b.receptionNotes };
+        if (saved.text) receptionNotes[p.id] = saved.text;
+        else delete receptionNotes[p.id];
+        return { ...b, receptionNotes };
+      });
+      showToast("受付メモを保存しました");
       return true;
     } catch (err) {
-      showToast(err instanceof ApiError ? err.message : "メモを保存できませんでした", "error");
-      if (err instanceof ApiError && err.status === 409) load(date);
+      showToast(err instanceof ApiError ? err.message : "受付メモを保存できませんでした", "error");
       return false;
-    } finally {
-      busyRef.current = false;
     }
   };
 
@@ -473,7 +478,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onClose={() => setReceptionOpen(false)}
             onStage={onStage}
             onStageTime={onStageTime}
-            onPatientMemo={onPatientMemo}
+            onReceptionNote={onReceptionNote}
           />
         )}
         {bundle && (

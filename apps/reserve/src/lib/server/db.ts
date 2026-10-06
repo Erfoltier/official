@@ -40,6 +40,7 @@ export type Kind =
   | "photoInbox"
   | "deviceRef"
   | "dayNote"
+  | "receptionNote"
   | "seededDate"
   | "meta";
 

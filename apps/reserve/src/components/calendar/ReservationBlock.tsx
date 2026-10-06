@@ -24,6 +24,8 @@ interface Props {
   endMin: number;
   maskNames: boolean;
   selected?: boolean;
+  /** 同じ日に同じ人の枠が複数あるとき「2/4」（何工程目か／その日の工程数） */
+  step?: string;
   conflict?: boolean;
   faded?: boolean;
   ghost?: boolean;
@@ -102,6 +104,7 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
           <div className={styles.blockTitle}>
             {patient?.caution && <span className={styles.caution} aria-label="注意事項あり">!</span>}
             <span className={styles.blockName}>{name}</span>
+            {props.step && <span className={styles.stepBadge}>{props.step}</span>}
             {patient?.lineUserId && <span className={styles.lineBadge}>LINE</span>}
             {h < 44 && pill}
           </div>
@@ -117,6 +120,7 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
         <div className={styles.blockLine}>
           {patient?.caution && <span className={styles.caution}>!</span>}
           <span className={styles.blockName}>{name}</span>
+          {props.step && <span className={styles.stepBadge}>{props.step}</span>}
           {info !== "name" && (
             <>
               <span className={styles.sep}>｜</span>

@@ -824,6 +824,7 @@ final class Store
             'patients' => array_values(array_filter(array_map(fn($id) => $patients[$id] ?? null, array_keys($pids)))),
             'stages' => self::sortedStages(),
             'dayNotes' => (object) self::dayNotesOn($date),
+            'receptionNotes' => (object) self::receptionNotesOn($date, array_keys($pids)),
         ];
     }
 
@@ -839,6 +840,46 @@ final class Store
             }
         }
         return $out;
+    }
+
+    // ---- 受付メモ（日付×患者。受付一覧に出す、その日の進行状況など。患者情報のメモとは別） ----
+
+    private static function receptionNotesOn(string $date, array $patientIds): array
+    {
+        $out = [];
+        foreach ($patientIds as $id) {
+            $n = Db::i()->get('receptionNote', "{$date}|{$id}");
+            if (is_array($n) && ($n['text'] ?? '') !== '') {
+                $out[$id] = $n['text'];
+            }
+        }
+        return $out;
+    }
+
+    /** 受付メモを書き換える（空で消す）。laneId の欄に患者IDを入れて保存する */
+    public static function setReceptionNote(string $date, string $patientId, string $text, ?array $by = null): array
+    {
+        self::init();
+        self::patient($patientId);
+        $v = self::checkNote('受付メモ', $text, 4000);
+        $note = ['date' => $date, 'laneId' => $patientId, 'text' => $v, 'updatedAt' => now_iso()];
+        if ($by) {
+            $note['updatedBy'] = $by['name'];
+        }
+        $id = "{$date}|{$patientId}";
+        $prev = Db::i()->get('receptionNote', $id);
+        if ((is_array($prev) ? ($prev['text'] ?? '') : '') === $v) {
+            return $note;
+        }
+        if ($v !== '') {
+            Db::i()->put('receptionNote', $id, $note);
+        } else {
+            Db::i()->delete('receptionNote', $id);
+        }
+        if ($by) {
+            Auth::audit($by, "受付メモ（{$date}）を" . ($v !== '' ? '変更' : '削除'), $patientId);
+        }
+        return $note;
     }
 
     public static function getDayNotes(string $date): array

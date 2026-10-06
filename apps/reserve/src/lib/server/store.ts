@@ -82,6 +82,7 @@ interface StoreState {
   photoInbox: Map<string, PhotoInboxItem>;
   deviceRefs: Map<string, { patientId: string; at: string }>;
   dayNotes: Map<string, DayNote>;
+  receptionNotes: Map<string, DayNote>;
   products: Map<string, Product>;
   stages: Map<string, Stage>;
   snapshots: Map<string, SettingsSnapshot>;
@@ -147,6 +148,7 @@ function state(): StoreState {
         photoInbox: new PersistentMap<PhotoInboxItem>("photoInbox"),
         deviceRefs: new PersistentMap<{ patientId: string; at: string }>("deviceRef"),
         dayNotes: new PersistentMap<DayNote>("dayNote"),
+        receptionNotes: new PersistentMap<DayNote>("receptionNote"),
         stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
@@ -262,6 +264,7 @@ export function getDayBundle(date: string): DayBundle {
     patients: [...patientIds].map((id) => st.patients.get(id)!).filter(Boolean),
     stages: sortedStages(),
     dayNotes: dayNotesOn(date),
+    receptionNotes: receptionNotesOn(date, patientIds),
   };
 }
 
@@ -296,6 +299,32 @@ export function setDayNote(date: string, laneId: string, text: string, by?: Acto
   if (v) st.dayNotes.set(id, note);
   else st.dayNotes.delete(id);
   if (by) audit(by, `Todaysメモ（${date} ${lane.name}）を${v ? "変更" : "削除"}`);
+  return note;
+}
+
+// ---- 受付メモ（日付×患者。受付一覧に出す、その日の進行状況など。患者情報のメモとは別） ----
+
+function receptionNotesOn(date: string, patientIds: Iterable<string>): Record<string, string> {
+  const st = state();
+  const out: Record<string, string> = {};
+  for (const id of patientIds) {
+    const n = st.receptionNotes.get(`${date}|${id}`);
+    if (n?.text) out[id] = n.text;
+  }
+  return out;
+}
+
+/** 受付メモを書き換える（空で消す）。laneId の欄に患者IDを入れて保存する */
+export function setReceptionNote(date: string, patientId: string, text: string, by?: Actor): DayNote {
+  const st = state();
+  if (!st.patients.has(patientId)) throw new StoreError("not_found", "患者が見つかりません");
+  const v = checkNote("受付メモ", text, 4000);
+  const note: DayNote = { date, laneId: patientId, text: v, updatedAt: new Date().toISOString(), ...(by && { updatedBy: by.name }) };
+  const id = `${date}|${patientId}`;
+  if ((st.receptionNotes.get(id)?.text ?? "") === v) return note;
+  if (v) st.receptionNotes.set(id, note);
+  else st.receptionNotes.delete(id);
+  if (by) audit(by, `受付メモ（${date}）を${v ? "変更" : "削除"}`, patientId);
   return note;
 }
 

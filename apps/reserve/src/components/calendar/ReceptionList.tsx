@@ -31,8 +31,8 @@ interface Props {
   onStage(r: Reservation, stageId: string, min?: number): void;
   /** 状態はそのままで、変えた時刻だけ直す */
   onStageTime(r: Reservation, min: number): void;
-  /** 患者情報のメモを保存（患者画面のメモと同じもの） */
-  onPatientMemo(patient: Patient, memo: string): Promise<boolean>;
+  /** 受付メモ（その日の進行状況など。患者情報のメモとは別）を保存 */
+  onReceptionNote(patient: Patient, text: string): Promise<boolean>;
 }
 
 /** M3の受付画面のような、その日の予約を時刻順に並べた一覧（現在の状態つき） */
@@ -170,7 +170,13 @@ export function ReceptionList(props: Props) {
                     )}
                   </span>
                   {patient && (
-                    <MemoCell key={`${patient.id}:${patient.version}`} patient={patient} masked={maskNames} onSave={props.onPatientMemo} />
+                    <MemoCell
+                      key={`${patient.id}:${bundle.receptionNotes?.[patient.id] ?? ""}`}
+                      patient={patient}
+                      memo={bundle.receptionNotes?.[patient.id] ?? ""}
+                      masked={maskNames}
+                      onSave={props.onReceptionNote}
+                    />
                   )}
                 </div>
                 {open && (
@@ -246,10 +252,9 @@ function StagePicker(props: {
 }
 
 /** 患者情報のメモ（患者画面と同じもの）。押すとその場で書ける */
-function MemoCell({ patient, masked, onSave }: { patient: Patient; masked: boolean; onSave: Props["onPatientMemo"] }) {
+function MemoCell({ patient, memo, masked, onSave }: { patient: Patient; memo: string; masked: boolean; onSave: Props["onReceptionNote"] }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const memo = patient.memo ?? "";
 
   const save = async () => {
     if (draft === null || busy) return;
@@ -277,8 +282,8 @@ function MemoCell({ patient, masked, onSave }: { patient: Patient; masked: boole
             if (e.key === "Escape") setDraft(null);
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) save();
           }}
-          ariaLabel="患者メモ"
-          placeholder="患者メモ（患者情報のメモと同じ）"
+          ariaLabel="受付メモ"
+          placeholder="受付メモ（当日の進行状況など）"
         />
         <div className={styles.receptionMemoBtns}>
           <button type="button" className={styles.btn} onMouseDown={(e) => e.preventDefault()} onClick={() => setDraft(null)} disabled={busy}>
@@ -297,9 +302,9 @@ function MemoCell({ patient, masked, onSave }: { patient: Patient; masked: boole
       className={styles.receptionMemo}
       data-empty={!memo || undefined}
       onClick={() => setDraft(memo)}
-      title={masked ? "患者メモ（押すと書けます）" : richToPlain(memo) || "押すと患者メモを書けます"}
+      title={masked ? "受付メモ（押すと書けます）" : richToPlain(memo) || "押すと受付メモ（当日の進行状況など）を書けます"}
     >
-      {masked ? (memo ? "（メモあり）" : "") : memo ? <RichText value={memo} inline /> : "メモ"}
+      {masked ? (memo ? "（メモあり）" : "") : memo ? <RichText value={memo} inline /> : "受付メモ"}
     </button>
   );
 }

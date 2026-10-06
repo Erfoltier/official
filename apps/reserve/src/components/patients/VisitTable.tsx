@@ -326,13 +326,42 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
 
 function Row({ v, detail, nth, today, readOnly, priceOf, editing, onEdit, onFilesChanged, onChange, chartsOf, onChart }: RowProps & { v: VisitRow }) {
   const dayCharts = chartsOf(v.date);
+  // 予約の変更は日付の横に1つだけ。その日に予約が複数あるときは、押すと「予約①・予約②…」から選ぶ
+  const changeable = onChange && v.date >= today ? v.reservations.filter((r) => !INACTIVE_STATUSES.has(r.status)) : [];
+  const [picking, setPicking] = useState(false);
   return (
     <tr data-today={v.date === today || undefined}>
       <td className={styles.colDate} data-label="日付">
         <a href={withBase(calendarPath(v.date))} className={styles.dateLink}>
           {formatDateFull(v.date)}
         </a>
-        {v.date === today && <span className={styles.todayChip}>今日</span>}
+        {onChange && changeable.length > 0 && (
+          <button
+            type="button"
+            className={styles.changeBtn}
+            aria-expanded={changeable.length > 1 ? picking : undefined}
+            onClick={() => (changeable.length === 1 ? onChange(changeable[0]) : setPicking((x) => !x))}
+          >
+            予約変更
+          </button>
+        )}
+        {picking && changeable.length > 1 && (
+          <div className={styles.changePick} role="group" aria-label="変更する予約を選ぶ">
+            {changeable.map((r, i) => (
+              <button
+                key={r.id}
+                type="button"
+                className={styles.changePickBtn}
+                onClick={() => {
+                  setPicking(false);
+                  onChange?.(r);
+                }}
+              >
+                <b>予約{"①②③④⑤⑥⑦⑧⑨⑩"[i] ?? i + 1}</b> {formatHm(minutesOfDay(r.startAt))} {r.menuNames.join("・") || "—"}
+              </button>
+            ))}
+          </div>
+        )}
         {/* メモ・カルテ・撮影・ファイルの4つのボタン（2×2）と、その日の写真 */}
         <div className={styles.actGrid}>
           {!readOnly && (
@@ -356,11 +385,7 @@ function Row({ v, detail, nth, today, readOnly, priceOf, editing, onEdit, onFile
             <span className={styles.time}>{formatHm(minutesOfDay(r.startAt))}</span>
             <MenuChips r={r} detail={detail} nth={nth} />
             {r.status !== "done" && <span className={styles.status}>{r.stageLabel ?? STATUS_LABEL[r.status]}</span>}
-            {onChange && v.date >= today && !INACTIVE_STATUSES.has(r.status) && (
-              <button type="button" className={styles.changeBtn} onClick={() => onChange(r)}>
-                変更
-              </button>
-            )}
+            {changeable.length > 1 && changeable.includes(r) && <span className={styles.resNo}>予約{"①②③④⑤⑥⑦⑧⑨⑩"[changeable.indexOf(r)] ?? changeable.indexOf(r) + 1}</span>}
             {r.memo && (
               <div className={styles.resMemo}>
                 予約メモ：<RichText value={r.memo} inline />

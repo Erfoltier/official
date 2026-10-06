@@ -270,6 +270,23 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
   }, [zoomAt]);
 
   const patients = useMemo(() => new Map<string, Patient>(bundle.patients.map((p) => [p.id, p])), [bundle.patients]);
+  /** 同じ日に同じ人の枠が複数あるとき、何工程目か（予約ID → "2/4"）。取り消した枠は数えない */
+  const steps = useMemo(() => {
+    const byPatient = new Map<string, Reservation[]>();
+    for (const r of bundle.reservations) {
+      if (INACTIVE_STATUSES.has(r.status)) continue;
+      const list = byPatient.get(r.patientId);
+      if (list) list.push(r);
+      else byPatient.set(r.patientId, [r]);
+    }
+    const out = new Map<string, string>();
+    for (const list of byPatient.values()) {
+      if (list.length < 2) continue;
+      list.sort((a, b) => a.startAt.localeCompare(b.startAt) || a.id.localeCompare(b.id));
+      list.forEach((r, i) => out.set(r.id, `${i + 1}/${list.length}`));
+    }
+    return out;
+  }, [bundle.reservations]);
   const menus = useMemo(
     () => new Map<string, Menu>(bundle.menus.map((t) => [t.id, t])),
     [bundle.menus],
@@ -520,6 +537,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
                   maskNames={maskNames}
                   info={blockInfo}
                   selected={selectedId === r.id}
+                  step={maskNames ? undefined : steps.get(r.id)}
                   conflict={conflicts.has(r.id)}
                   faded={!!isDragged}
                   onPointerDown={(e, mode) => beginPointer(e, r, mode)}
