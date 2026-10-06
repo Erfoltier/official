@@ -270,7 +270,7 @@
   height: 22px;
   padding: 0 6px;
   border-left: 3px solid var(--c);
-  background: color-mix(in srgb, var(--c) 15%, #fff);
+  background: color-mix(in srgb, var(--c) 15%, var(--surface));
   border-radius: 3px;
   font-size: 12px;
   font-weight: 700;
@@ -576,7 +576,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .importBox h3 {

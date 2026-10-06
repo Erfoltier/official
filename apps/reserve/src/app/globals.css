@@ -10,6 +10,8 @@
   --alt-line: #d9e3f0;
   /* 華やか（標準）：すみれ色 → 赤紫 → ローズのグラデーション */
   --bg: #ffffff;
+  /* カード・ボタン・入力欄など「白い面」。白を使わない配色ではここを生成りにする */
+  --surface: #ffffff;
   --bg-subtle: #f8f6fc;
   --bg-muted: #f0ecf7;
   --tint: #fbf9ff;
@@ -35,6 +37,36 @@
   --radius: 6px;
   --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   color-scheme: light;
+}
+
+/* ピンクベージュ：「たるみ治療」のページの色。ピンクベージュ・ベージュ・アイボリーの濃淡と淡いグラデーション。白は使わない */
+:root[data-theme="blush"] {
+  --alt-bg: #f2ebe2;
+  --alt-line: #e0d3c3;
+  --bg: #f5e8e4;
+  --surface: #f9efec;
+  --bg-subtle: #f2e1dc;
+  --bg-muted: #e9d2cc;
+  --tint: #f3e3de;
+  --line: #e6d0ca;
+  --line-strong: #d6b6b0;
+  --text: #3e2f2c;
+  --text-muted: #765f5a;
+  --text-faint: #a68f8a;
+  --accent: #a7767d;
+  --accent-strong: #8c5e66;
+  --accent-deep: #5d4039;
+  --accent-soft: #f0dcd8;
+  --accent-line: #dcbfc0;
+  --danger: #b2505b;
+  --now: #c06f79;
+  --grad: linear-gradient(135deg, #a7767d 0%, #b98f95 50%, #c9a98a 100%);
+  --grad-line: linear-gradient(90deg, #b98f95 0%, #dcbfc0 50%, #ceb484 100%);
+  --grad-soft: linear-gradient(135deg, #f3e2dd 0%, #f7eae5 55%, #f3e7dc 100%);
+  --grad-head: linear-gradient(180deg, #f8ebe7 0%, #efdcd6 100%);
+  --shadow-rgb: 95 62 56;
+  --shadow-accent: 0 4px 14px rgb(167 118 125 / 24%);
+  --shadow-card: 0 6px 24px rgb(95 62 56 / 9%);
 }
 
 /* 落ち着き：青みのグレー。派手さを抑えた地味め */
@@ -97,31 +129,33 @@
 
 /* 上品（ゴールド）：当院のホームページのような金茶とクリーム */
 :root[data-theme="luxe"] {
-  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
-  --alt-bg: #f2f4f5;
-  --alt-line: #d8dee2;
-  --bg-subtle: #fbf9f4;
-  --bg-muted: #f3eee4;
-  --tint: #fffdf8;
-  --line: #ece4d6;
-  --line-strong: #d9cbb0;
-  --text: #2e251d;
-  --text-muted: #67584a;
-  --text-faint: #9a8b79;
-  --accent: #8f714a;
-  --accent-strong: #75593a;
+  /* 上品（ゴールド）：ホテルのロビー。アイボリーとミルクティーベージュに、金のグラデーションの線。白は使わない */
+  --alt-bg: #efe8dd;
+  --alt-line: #ddd0bd;
+  --bg: #f6f0e6;
+  --surface: #faf5ec;
+  --bg-subtle: #f2eadd;
+  --bg-muted: #e9ddca;
+  --tint: #f4ede1;
+  --line: #e4d8c3;
+  --line-strong: #d2bf9c;
+  --text: #3a2e22;
+  --text-muted: #6d5c49;
+  --text-faint: #9c8a72;
+  --accent: #a88860;
+  --accent-strong: #8a6d47;
   --accent-deep: #5a4637;
-  --accent-soft: #f7f1e6;
-  --accent-line: #dccaa6;
-  --danger: #b04a3a;
-  --now: #b5523b;
-  --grad: linear-gradient(135deg, #75593a 0%, #9a7b52 55%, #b09470 100%);
-  --grad-line: linear-gradient(90deg, #8f714a 0%, #b09470 50%, #d8c39e 100%);
-  --grad-soft: linear-gradient(135deg, #fbf8f1 0%, #fdfaf5 100%);
-  --grad-head: linear-gradient(180deg, #ffffff 0%, #fcfaf5 100%);
-  --shadow-rgb: 70 52 30;
-  --shadow-accent: 0 4px 14px rgb(117 89 58 / 22%);
-  --shadow-card: 0 6px 24px rgb(70 52 30 / 8%);
+  --accent-soft: #f0e6d4;
+  --accent-line: #d8c39e;
+  --danger: #a94b3c;
+  --now: #b0663f;
+  --grad: linear-gradient(135deg, #8a6d47 0%, #b09470 52%, #d8c39e 100%);
+  --grad-line: linear-gradient(90deg, #a88860 0%, #d8c39e 30%, #efdfb9 50%, #d8c39e 70%, #a88860 100%);
+  --grad-soft: linear-gradient(135deg, #f3eadc 0%, #f8f1e6 60%, #f1e6d3 100%);
+  --grad-head: linear-gradient(180deg, #f9f3e9 0%, #efe5d4 100%);
+  --shadow-rgb: 90 70 45;
+  --shadow-accent: 0 4px 14px rgb(138 109 71 / 24%);
+  --shadow-card: 0 6px 24px rgb(90 70 45 / 10%);
 }
 
 /* やさしい：くすんだ緑。ナチュラル */

@@ -40,7 +40,7 @@
   padding: 0 14px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 13px;
@@ -103,7 +103,7 @@
   padding: 0 12px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -143,7 +143,7 @@
   padding: 5px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 12.5px;
   text-align: left;
@@ -236,7 +236,7 @@
   height: 28px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   font-size: 15px;
   cursor: pointer;
 }
@@ -456,7 +456,7 @@
   height: 32px;
   padding: 0 14px;
   border: 0;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -535,7 +535,7 @@
   border-radius: 6px;
   font: inherit;
   font-size: 13px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .lines .discountEdit .discountLabel {
@@ -559,7 +559,7 @@
   padding: 0 8px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 12px;
   cursor: pointer;

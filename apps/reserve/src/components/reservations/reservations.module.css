@@ -74,7 +74,7 @@
   padding: 0 8px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 14px;
   color: var(--text);
@@ -92,7 +92,7 @@
   padding: 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -116,7 +116,7 @@
   padding: 3px 4px 3px 10px;
   border-radius: 8px;
   border-left: 4px solid var(--c);
-  background: color-mix(in srgb, var(--c) 14%, #fff);
+  background: color-mix(in srgb, var(--c) 14%, var(--surface));
   font-size: 13px;
   font-weight: 600;
 }
@@ -133,7 +133,7 @@
 }
 
 .menuChip button:hover {
-  background: #fff;
+  background: var(--surface);
   color: var(--danger);
 }
 
@@ -171,7 +171,7 @@
 }
 
 .candidate:hover {
-  background: color-mix(in srgb, var(--c) 10%, #fff);
+  background: color-mix(in srgb, var(--c) 10%, var(--surface));
 }
 
 .preview {
@@ -219,7 +219,7 @@
   padding: 0 16px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 14px;
@@ -290,7 +290,7 @@
   padding: 4px 10px;
   border: 1px dashed var(--line-strong);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-strong);
   font: inherit;
   font-size: 12px;

@@ -249,7 +249,7 @@
 .picker {
   border-color: var(--line-strong);
   box-shadow: 0 14px 40px rgb(var(--shadow-rgb) / 18%);
-  background: linear-gradient(180deg, var(--tint) 0%, #ffffff 90px);
+  background: linear-gradient(180deg, var(--tint) 0%, var(--surface) 90px);
 }
 
 .picker::before {

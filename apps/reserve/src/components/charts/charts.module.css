@@ -40,7 +40,7 @@
   padding: 0 14px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 13px;
@@ -102,7 +102,7 @@
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .card[data-compact] {
@@ -211,7 +211,7 @@
   padding: 7px 9px;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface);
   min-width: 0;
 }
 
@@ -230,7 +230,7 @@ textarea.input {
   padding: 2px 10px;
   border: 1px solid var(--accent-line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -349,7 +349,7 @@ textarea.input {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 6px 10px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .historyBox summary {
@@ -367,7 +367,7 @@ textarea.input {
   padding: 2px 10px;
   border: 1px dashed var(--line-strong);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-strong);
   font: inherit;
   font-size: 12px;
@@ -387,7 +387,7 @@ textarea.input {
   padding: 4px 12px;
   border: 1px dashed var(--line-strong);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-strong);
   font: inherit;
   font-size: 13px;

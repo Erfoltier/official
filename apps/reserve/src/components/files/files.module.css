@@ -43,7 +43,7 @@
 
 .pickBtn {
   border: 1px solid var(--accent-line);
-  background: #fff;
+  background: var(--surface);
   color: var(--accent-strong);
 }
 
@@ -228,7 +228,7 @@
   max-width: 420px;
   padding: 14px 16px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   color: var(--danger);
   font-size: 14px;
   text-align: center;
