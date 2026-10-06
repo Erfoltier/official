@@ -20,21 +20,30 @@ def delete(path, name):
     assert v.startswith("/" + path + name), v
     s.post(B + "/file/delete/", data={"delFile": v})
 
-# ロリポップの「アクセス制限」（Basic認証）が .htaccess に書き足した行。反映のたびに引き継ぐ
+# 入口の鍵（Basic認証）の設定。サーバー上の reserve/.htaccess の先頭にあり、反映のたびに引き継ぐ。
+# （鍵ファイルの場所にアカウント名が入るので、リポジトリには置かない）
+AUTH_BEGIN, AUTH_END = "# BEGIN reserve-auth", "# END reserve-auth"
 AUTH_LINE = re.compile(r"^\s*(AuthType|AuthName|AuthUserFile|AuthGroupFile|Require|Satisfy)\b", re.I)
 
-def keep_auth(local, tmpdir):
-    """サーバー上の reserve/.htaccess にある Basic認証の行を、手元の .htaccess の先頭に付けた一時ファイルを返す"""
-    cur = read(BASE + ".htaccess") or ""
-    auth = [l for l in cur.splitlines() if AUTH_LINE.match(l)]
-    if not auth:
-        return local, 0
+def auth_block(cur):
+    """サーバー上の .htaccess から鍵の設定を取り出す（目印の間。なければロリポップの画面で足された行）"""
+    if AUTH_BEGIN in cur and AUTH_END in cur:
+        return cur[cur.index(AUTH_BEGIN):cur.index(AUTH_END) + len(AUTH_END)]
+    lines = [l for l in cur.splitlines() if AUTH_LINE.match(l)]
+    return AUTH_BEGIN + "\n" + "\n".join(lines) + "\n" + AUTH_END if lines else ""
+
+def with_auth(block, local, tmpdir):
     out = os.path.join(tmpdir, ".htaccess")
     with open(local, encoding="utf-8") as f:
         body = f.read()
     with open(out, "w", encoding="utf-8") as f:
-        f.write("# ---- ロリポップのアクセス制限（Basic認証）。sync.py が引き継ぐ ----\n" + "\n".join(auth) + "\n# ----\n\n" + body)
-    return out, len(auth)
+        f.write(block + "\n\n" + body)
+    return out
+
+def keep_auth(local, tmpdir):
+    """サーバー上の鍵の設定を、手元の .htaccess の先頭に付けた一時ファイルを返す"""
+    block = auth_block(read(BASE + ".htaccess") or "")
+    return (with_auth(block, local, tmpdir), 1) if block else (local, 0)
 
 def sync(files):
     """files: [(サーバー上の相対パス, 手元のファイル, 置き換えるか)]"""
