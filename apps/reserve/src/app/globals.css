@@ -82,6 +82,12 @@
   --btn-line: #c99f98;
   --btn-shadow: 0 1px 2px rgb(95 62 56 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fefaf7;
+  /* つまみ：面のきらめき（カットした石を上から見たような放射状の光） */
+  --gem: radial-gradient(circle at 34% 28%, rgb(255 255 255 / 95%) 0 9%, rgb(255 255 255 / 0%) 26%),
+    radial-gradient(circle at 66% 80%, rgb(255 255 255 / 55%) 0 5%, rgb(255 255 255 / 0%) 20%),
+    radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0%) 45%, rgb(0 0 0 / 28%) 100%),
+    conic-gradient(from 15deg, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 30%, #fff), var(--accent-strong), color-mix(in srgb, var(--accent) 55%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 45%, #fff));
+  --gem-shadow: 0 0 0 1.5px #e9e4d6, 0 0 0 2.5px #9c9478, 0 2px 5px rgb(0 0 0 / 35%), inset 0 0 2px rgb(0 0 0 / 30%);
 }
 
 /* 爽やか：Re2O（リジュー）のページの色。涼しい水色の濃淡と、くすんだ青・紺 */
@@ -116,6 +122,12 @@
   --btn-line: #93bdd3;
   --btn-shadow: 0 1px 2px rgb(18 63 93 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fbfeff;
+  /* つまみ：面のきらめき（カットした石を上から見たような放射状の光） */
+  --gem: radial-gradient(circle at 34% 28%, rgb(255 255 255 / 95%) 0 9%, rgb(255 255 255 / 0%) 26%),
+    radial-gradient(circle at 66% 80%, rgb(255 255 255 / 55%) 0 5%, rgb(255 255 255 / 0%) 20%),
+    radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0%) 45%, rgb(0 0 0 / 28%) 100%),
+    conic-gradient(from 15deg, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 30%, #fff), var(--accent-strong), color-mix(in srgb, var(--accent) 55%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 45%, #fff));
+  --gem-shadow: 0 0 0 1.5px #e9e4d6, 0 0 0 2.5px #9c9478, 0 2px 5px rgb(0 0 0 / 35%), inset 0 0 2px rgb(0 0 0 / 30%);
 }
 
 /* 厳か：濃紺と墨、差し色に控えめな金 */
