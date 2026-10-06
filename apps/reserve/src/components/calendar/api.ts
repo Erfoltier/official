@@ -436,6 +436,11 @@ export function syncPricesNow(): Promise<PriceList> {
   return call(`/api/v1/prices/sync`, { method: "POST" });
 }
 
+/** 料金表（スプレッドシート）の読み込み元。url を空にすると止める。key は変えるときだけ送る */
+export function savePriceSheetSource(url: string, key?: string): Promise<{ url: string; hasKey: boolean }> {
+  return call(`/api/v1/price-sheet-source`, { method: "POST", body: JSON.stringify({ url, ...(key ? { key } : {}) }) });
+}
+
 export function savePriceUrls(urls: string[]): Promise<PriceList> {
   return call(`/api/v1/prices/urls`, { method: "POST", body: JSON.stringify({ urls }) });
 }

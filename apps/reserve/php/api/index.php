@@ -447,6 +447,16 @@ try {
             Http::json(Store::setConsentTemplateMenus(V::id($p[1]), Schema::consentTemplateMenus(Http::readJson()), $actor($s)));
         }
     }
+    if ($p[0] === 'price-sheet-source' && $n === 1) {
+        if ($method === 'GET') {
+            $me(STAFF_ADMIN);
+            Http::json(Store::priceSheetSourceInfo());
+        }
+        if ($method === 'POST') {
+            $s = $me(STAFF_ADMIN);
+            Http::json(Store::setPriceSheetSource(Schema::consentSource(Http::readJson()), $actor($s)));
+        }
+    }
     if ($p[0] === 'consent-source' && $n === 1) {
         if ($method === 'GET') {
             $me(STAFF_ADMIN);

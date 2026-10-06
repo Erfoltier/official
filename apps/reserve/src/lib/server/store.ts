@@ -2608,7 +2608,44 @@ export function getPriceList(): PriceList {
   const sheets = Object.entries(getMeta<Record<string, { at: string; count: number }>>("priceSheets") ?? {})
     .map(([name, v]) => ({ name, at: v.at, count: v.count }))
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  return { items: sortedPrices(), urls: priceUrls(), ...(sync && { syncedAt: sync.at }), results: sync?.results ?? [], sheets };
+  const pull = getMeta<NonNullable<PriceList["sheetPull"]>>("priceSheetPull");
+  return {
+    items: sortedPrices(),
+    urls: priceUrls(),
+    ...(sync && { syncedAt: sync.at }),
+    results: sync?.results ?? [],
+    sheets,
+    sheetSource: priceSheetSourceInfo(),
+    ...(pull && { sheetPull: pull }),
+  };
+}
+
+// ---- スプレッドシートの読み込み元（Apps Script のウェブアプリ。「今すぐ取り込む」でこちらから読みに行く） ----
+
+export function priceSheetSource(): ConsentSource | null {
+  state();
+  const s = getMeta<ConsentSource>("priceSheetSource");
+  return s && s.url ? s : null;
+}
+
+export function priceSheetSourceInfo(): { url: string; hasKey: boolean } {
+  const s = priceSheetSource();
+  return { url: s?.url ?? "", hasKey: !!s?.key };
+}
+
+export function setPriceSheetSource(input: { url: string; key?: string }, by?: Actor): { url: string; hasKey: boolean } {
+  const url = input.url.trim();
+  if (url && !/^(https:\/\/[^\s/]+|http:\/\/127\.0\.0\.1(:\d+)?)(\/\S*)?$/.test(url)) throw new StoreError("invalid", "読み込み元のアドレスは https:// で始まるものにしてください");
+  const cur = priceSheetSource();
+  const key = input.key !== undefined ? input.key.trim() : (cur?.key ?? "");
+  if (url && !key) throw new StoreError("invalid", "合言葉（キー）を入れてください");
+  setMeta("priceSheetSource", url ? { url, key } : null);
+  if (by) audit(by, "料金表（スプレッドシート）の読み込み元を変更");
+  return priceSheetSourceInfo();
+}
+
+export function notePriceSheetPull(r: { ok: boolean; count: number; error?: string }): void {
+  setMeta("priceSheetPull", { at: new Date().toISOString(), ...r });
 }
 
 /** 料金表を開いたときに取り込み直すか（1日1回。失敗していたら1時間後） */

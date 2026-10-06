@@ -2493,6 +2493,11 @@ final class Store
         }
         usort($sheets, fn($a, $b) => strcmp($a['name'], $b['name']));
         $out['sheets'] = $sheets;
+        $out['sheetSource'] = self::priceSheetSourceInfo();
+        $pull = Db::i()->meta('priceSheetPull');
+        if ($pull) {
+            $out['sheetPull'] = $pull;
+        }
         return $out;
     }
 
@@ -2633,6 +2638,7 @@ final class Store
     public static function syncPrices(?array $by = null): array
     {
         self::init();
+        self::pullSheetPrices();
         $pages = array_map([self::class, 'fetchPricePage'], self::priceUrls());
         Db::i()->transaction(function () use ($pages) {
             $db = Db::i();
@@ -2692,6 +2698,78 @@ final class Store
             Auth::audit($by, '料金表をホームページから取り込み');
         }
         return self::getPriceList();
+    }
+
+    // ---- スプレッドシートの読み込み元（Apps Script のウェブアプリ。「今すぐ取り込む」でこちらから読みに行く） ----
+
+    public static function priceSheetSource(): ?array
+    {
+        self::init();
+        $s = Db::i()->meta('priceSheetSource');
+        return $s && !empty($s['url']) ? $s : null;
+    }
+
+    public static function priceSheetSourceInfo(): array
+    {
+        $s = self::priceSheetSource();
+        return ['url' => $s['url'] ?? '', 'hasKey' => !empty($s['key'])];
+    }
+
+    public static function setPriceSheetSource(array $input, ?array $by = null): array
+    {
+        $url = js_trim($input['url']);
+        if ($url !== '' && !preg_match('#^(https://[^\s/]+|http://127\.0\.0\.1(:\d+)?)(/\S*)?$#', $url)) {
+            throw new StoreError('invalid', '読み込み元のアドレスは https:// で始まるものにしてください');
+        }
+        $cur = self::priceSheetSource();
+        $key = isset($input['key']) ? js_trim($input['key']) : ($cur['key'] ?? '');
+        if ($url !== '' && $key === '') {
+            throw new StoreError('invalid', '合言葉（キー）を入れてください');
+        }
+        Db::i()->setMeta('priceSheetSource', $url !== '' ? ['url' => $url, 'key' => $key] : null);
+        if ($by) {
+            Auth::audit($by, '料金表（スプレッドシート）の読み込み元を変更');
+        }
+        return self::priceSheetSourceInfo();
+    }
+
+    /** スプレッドシート（Apps Script のウェブアプリ）から料金を読みに行く。読み込み元が無ければ何もしない */
+    private static function pullSheetPrices(): void
+    {
+        $src = self::priceSheetSource();
+        if (!$src) {
+            return;
+        }
+        $note = fn(bool $ok, int $count, ?string $error = null) => Db::i()->setMeta('priceSheetPull', ['at' => now_iso(), 'ok' => $ok, 'count' => $count] + ($error ? ['error' => $error] : []));
+        $sep = str_contains($src['url'], '?') ? '&' : '?';
+        $ch = curl_init($src['url'] . $sep . http_build_query(['key' => $src['key'], 'action' => 'prices']));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        $body = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        if (!is_string($body) || $status < 200 || $status >= 300) {
+            $note(false, 0, $status ? "読み込めませんでした（{$status}）" : '読み込めませんでした（通信エラー）');
+            return;
+        }
+        if (strlen($body) > 3_000_000) {
+            $note(false, 0, '大きすぎます');
+            return;
+        }
+        try {
+            $in = Schema::integrationPrices(json_decode($body, true, 32, JSON_THROW_ON_ERROR));
+        } catch (Throwable) {
+            $note(false, 0, '合言葉が違うか、形が正しくありません');
+            return;
+        }
+        self::receiveSheetPrices($in['sheet'], $in['items']);
+        $note(true, count($in['items']));
     }
 
     public static function syncPricesIfDue(): void

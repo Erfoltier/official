@@ -174,6 +174,10 @@ export interface PriceList {
   results: PriceSyncResult[];
   /** スプレッドシートから送られてきた料金（シート名・受け取った日時・件数） */
   sheets: { name: string; at: string; count: number }[];
+  /** スプレッドシートの読み込み元（「今すぐ取り込む」でこちらから読みに行く。キーは出さない） */
+  sheetSource?: { url: string; hasKey: boolean };
+  /** 最後にスプレッドシートを読みに行った結果 */
+  sheetPull?: { at: string; ok: boolean; count: number; error?: string };
 }
 
 /**

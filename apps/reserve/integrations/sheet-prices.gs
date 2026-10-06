@@ -9,6 +9,11 @@
  *        BASIC_USER    ロリポップのアクセス制限の ID
  *        BASIC_PASS    ロリポップのアクセス制限の パスワード
  *   2. 関数「setup」を1回実行（毎朝6時と、シートを変えたときに自動で送るようになる）
+ *   3. （任意）予約カレンダーの「今すぐ取り込む」でもこのシートを読めるようにするには：
+ *        スクリプト プロパティに KEY（合言葉。長めの英数字）を足し、
+ *        ［デプロイ］→［新しいデプロイ］→ 種類「ウェブアプリ」、実行するユーザー「自分」、アクセスできるユーザー「全員」でデプロイ。
+ *        出てきた URL と KEY を、予約カレンダーの「設定 → 料金表 → スプレッドシートの読み込み元」に入れる。
+ *        （合言葉を知らない人には何も返さない。値段だけを返し、患者の情報は扱わない）
  * 以後はシートの値段を直すだけで、ソフトの料金表が入れ替わる。手動で送るときはメニュー［料金表］→［ソフトに送る］。
  *
  * 取り込む表（スタッフ用シートと旧価格の列は送らない）
@@ -54,15 +59,30 @@ function sendIfQuiet() {
   sendPrices();
 }
 
+/** シートから送る料金を読む */
+function readItems() {
+  var ss = SpreadsheetApp.getActive();
+  var main = ss.getSheetByName("ゼオなど値段");
+  var special = ss.getSheetByName("特殊メニュー");
+  return collectPrices(main ? main.getDataRange().getValues() : [], special ? special.getDataRange().getValues() : []);
+}
+
+/** ウェブアプリ：予約カレンダーの「今すぐ取り込む」から ?key=合言葉&action=prices で呼ばれ、値段を返す */
+function doGet(e) {
+  var key = PropertiesService.getScriptProperties().getProperty("KEY");
+  var out = function (obj) {
+    return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  };
+  if (!key || !e || !e.parameter || e.parameter.key !== key) return out({ error: "unauthorized" });
+  return out({ sheet: SHEET_LABEL, items: readItems() });
+}
+
 function sendPrices() {
   var props = PropertiesService.getScriptProperties();
   var url = props.getProperty("RESERVE_URL");
   var token = props.getProperty("TOKEN");
   if (!url || !token) throw new Error("スクリプト プロパティ RESERVE_URL と TOKEN を設定してください");
-  var ss = SpreadsheetApp.getActive();
-  var main = ss.getSheetByName("ゼオなど値段");
-  var special = ss.getSheetByName("特殊メニュー");
-  var items = collectPrices(main ? main.getDataRange().getValues() : [], special ? special.getDataRange().getValues() : []);
+  var items = readItems();
   if (items.length === 0) throw new Error("料金が1件も見つかりませんでした。シートの形が変わっていないか確認してください");
   var headers = { "X-Integration-Token": token };
   var user = props.getProperty("BASIC_USER");

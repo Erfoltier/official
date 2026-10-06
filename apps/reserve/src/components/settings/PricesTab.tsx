@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PriceItem, PriceList } from "@/lib/domain/types";
-import { deletePriceItem, fetchPrices, savePriceItem, savePriceUrls, syncPricesNow } from "@/components/calendar/api";
+import { deletePriceItem, fetchPrices, savePriceItem, savePriceSheetSource, savePriceUrls, syncPricesNow } from "@/components/calendar/api";
 import { searchKey } from "@/lib/domain/text";
 import styles from "./settings.module.css";
 
@@ -23,6 +23,8 @@ export function PricesTab({ canEdit, isAdmin, notify, fail }: { canEdit: boolean
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
   const [urls, setUrls] = useState("");
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetKey, setSheetKey] = useState("");
   const [cat, setCat] = useState("");
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -33,6 +35,7 @@ export function PricesTab({ canEdit, isAdmin, notify, fail }: { canEdit: boolean
       const l = await fetchPrices();
       setList(l);
       setUrls(l.urls.join("\n"));
+      setSheetUrl(l.sheetSource?.url ?? "");
     } catch (err) {
       fail(err);
     }
@@ -96,13 +99,53 @@ export function PricesTab({ canEdit, isAdmin, notify, fail }: { canEdit: boolean
             スプレッドシート「{s.name}」：{stamp(s.at)} に {s.count}件 受け取り
           </span>
         ))}
+        {list.sheetPull && !list.sheetPull.ok && (
+          <span className={styles.priceSource}>✕ スプレッドシート：{list.sheetPull.error}（{stamp(list.sheetPull.at)}）</span>
+        )}
         {canEdit && (
-          <button className={styles.primary} disabled={busy || list.urls.length === 0} onClick={() => run(syncPricesNow, "ホームページから取り込みました")}>
+          <button
+            className={styles.primary}
+            disabled={busy || (list.urls.length === 0 && !list.sheetSource?.url)}
+            onClick={() => run(syncPricesNow, list.sheetSource?.url ? "ホームページとスプレッドシートから取り込みました" : "ホームページから取り込みました")}
+          >
             {busy ? "取り込み中…" : "今すぐ取り込む"}
           </button>
         )}
       </div>
       {failed.length > 0 && <p className={styles.hint} data-invalid>読めなかったページの料金は、前回取り込んだ内容のまま使います。</p>}
+
+      {isAdmin && (
+        <details className={styles.priceUrls}>
+          <summary>スプレッドシートの読み込み元（「今すぐ取り込む」でスプレッドシートも読みに行く）</summary>
+          <p className={styles.hint}>
+            料金表のスプレッドシートの Apps Script を「ウェブアプリ」としてデプロイし、出てきた URL（https://script.google.com/macros/s/…/exec）と、スクリプト プロパティの KEY に入れた合言葉を入れます。
+            入れなくても、シートを直したときや毎朝6時にはスプレッドシート側から送られてきます。
+          </p>
+          <input className={styles.input} value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="https://script.google.com/macros/s/…/exec" aria-label="スプレッドシートの読み込み元" />
+          <input
+            className={styles.input}
+            type="password"
+            value={sheetKey}
+            onChange={(e) => setSheetKey(e.target.value)}
+            placeholder={list.sheetSource?.hasKey ? "合言葉（変えるときだけ入力）" : "合言葉（KEY）"}
+            aria-label="合言葉"
+            autoComplete="off"
+          />
+          <button
+            className={styles.primary}
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                await savePriceSheetSource(sheetUrl.trim(), sheetKey.trim() || undefined);
+                setSheetKey("");
+                return syncPricesNow();
+              }, "読み込み元を保存して取り込みました")
+            }
+          >
+            保存して取り込む
+          </button>
+        </details>
+      )}
 
       {isAdmin && (
         <details className={styles.priceUrls}>
