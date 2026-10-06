@@ -189,6 +189,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           <div className={styles.title}>
             {p.caution && <span className={styles.caution}>!</span>}
             {p.name}
+            {p.cautionNote && <span className={styles.nameCaution}>{p.cautionNote}</span>}
           </div>
           <div className={styles.sub}>
             {[
@@ -203,7 +204,6 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
               .join("・")}
             {p.lineUserId && <span className={styles.lineBadge}>LINE</span>}
           </div>
-          {p.caution && p.cautionNote && <div className={styles.cautionBox}>注意：{p.cautionNote}</div>}
         </div>
         {onClose && (
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="閉じる">

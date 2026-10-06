@@ -108,7 +108,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <div>
           <div className={styles.panelName}>
             {patient?.caution && <span className={styles.caution}>!</span>}
-            {displayName(patient, maskNames)}
+            <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
+            {!maskNames && patient?.cautionNote && <span className={styles.nameCaution}>{patient.cautionNote}</span>}
           </div>
           {!maskNames && patient && (
             <>
@@ -117,7 +118,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                 {patient.nameAlt && ` / ${patient.nameAlt}`}
               </div>
               <div className={styles.idLine}>
-                <span>診察券 {patient.chartNo}</span>
+                {patient.chartNo && <span>診察券 {patient.chartNo}</span>}
                 {patient.m3ChartNo && <span>M3 {patient.m3ChartNo}</span>}
                 {editingRequestId ? (
                   <span className={styles.idEdit}>
@@ -151,12 +152,6 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         </button>
       </div>
 
-      {!maskNames && patient?.caution && patient.cautionNote && (
-        <div className={styles.cautionNote}>
-          <span className={styles.caution}>!</span>
-          {patient.cautionNote}
-        </div>
-      )}
       <div className={styles.panelLinks}>
         <button type="button" className={styles.linkBtn} onClick={onEditPatient}>
           患者情報を見る・編集する

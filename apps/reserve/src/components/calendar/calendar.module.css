@@ -1895,3 +1895,19 @@ button.stagePill[data-clickable]:disabled {
     animation: none;
   }
 }
+
+/* 注意事項（アレルギー・アルコール綿禁止など）は名前のすぐ横に赤で */
+.nameCaution {
+  margin-left: 10px;
+  color: #c62828;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  vertical-align: middle;
+}
+
+.nameText {
+  white-space: nowrap;
+}
