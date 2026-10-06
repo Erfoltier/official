@@ -6,6 +6,10 @@ DirectoryIndex index.html
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  # http で開かれたら https に転送する（患者情報を暗号化なしで流さない）
+  RewriteCond %{HTTPS} !on
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
   # 設定・プログラム・データの直接表示を禁止
   RewriteRule ^(lib|data|seed)(/|$) - [F,L]
   RewriteRule ^config(\.sample)?\.php$ - [F,L]
@@ -18,15 +22,11 @@ DirectoryIndex index.html
   RewriteCond %{HTTP:Authorization} .
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-  # http で開かれたら https に転送する（ロリポップは手前の中継で https を受けることがあるので、その印も見る）
-  RewriteCond %{HTTPS} !on
-  RewriteCond %{HTTP:X-Forwarded-Proto} !https
-  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 </IfModule>
 
 <IfModule mod_headers.c>
-  # https だけで開かせる（1年）。PHP の版は外に見せない
-  Header always set Strict-Transport-Security "max-age=31536000"
+  # 一度 https で開いたブラウザには、以後 http で開かせない（半年）
+  Header always set Strict-Transport-Security "max-age=15552000"
   Header always unset X-Powered-By
   Header unset X-Powered-By
   Header always set X-Content-Type-Options "nosniff"
