@@ -2110,3 +2110,21 @@ button.stagePill[data-clickable]:disabled {
   line-height: 1.4;
   letter-spacing: -0.02em;
 }
+
+/* 名前の右の「＋注意事項」「＋申請ID」：入りきらないときは上下2段に */
+.nameSide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nameSide .idSlot {
+  white-space: nowrap;
+}
+
+.nameSide .idSlot {
+  margin-left: 10px;
+}

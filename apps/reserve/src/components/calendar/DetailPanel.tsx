@@ -113,31 +113,33 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           <div className={styles.panelName}>
             {patient?.caution && <span className={styles.caution}>!</span>}
             <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
-            {!maskNames && patient && <CautionInline note={patient.cautionNote} onSave={onCaution} />}
             {!maskNames && patient && (
-              <span className={styles.idSlot}>
-                {editingRequestId ? (
-                  <span className={styles.idEdit}>
-                    <input
-                      className={styles.idInput}
-                      value={requestId}
-                      maxLength={40}
-                      placeholder="予約申請ID"
-                      autoComplete="off"
-                      spellCheck={false}
-                      autoFocus
-                      aria-label="予約申請ID"
-                      aria-invalid={!requestIdValid || undefined}
-                      onChange={(e) => setRequestId(e.target.value.normalize("NFKC").replace(/\s/g, ""))}
-                      onKeyDown={(e) => e.key === "Enter" && saveRequestId()}
-                      onBlur={saveRequestId}
-                    />
-              </span>
-            ) : (
-              <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・変更">
-                {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
-              </button>
-            )}
+              <span className={styles.nameSide}>
+                <CautionInline note={patient.cautionNote} onSave={onCaution} />
+                <span className={styles.idSlot}>
+                  {editingRequestId ? (
+                    <span className={styles.idEdit}>
+                      <input
+                        className={styles.idInput}
+                        value={requestId}
+                        maxLength={40}
+                        placeholder="予約申請ID"
+                        autoComplete="off"
+                        spellCheck={false}
+                        autoFocus
+                        aria-label="予約申請ID"
+                        aria-invalid={!requestIdValid || undefined}
+                        onChange={(e) => setRequestId(e.target.value.normalize("NFKC").replace(/\s/g, ""))}
+                        onKeyDown={(e) => e.key === "Enter" && saveRequestId()}
+                        onBlur={saveRequestId}
+                      />
+                    </span>
+                  ) : (
+                    <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・変更">
+                      {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
+                    </button>
+                  )}
+                </span>
               </span>
             )}
           </div>

@@ -26,6 +26,7 @@
 
 .add {
   margin-left: 10px;
+  white-space: nowrap;
   padding: 1px 6px;
   border: 1px dashed #e0a3a3;
   border-radius: 4px;

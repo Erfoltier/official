@@ -38,6 +38,15 @@ export interface VisitSave {
 
 type Res = VisitRow["reservations"][number];
 
+/** 患者画面では、Airリザーブから移したときの「Air予約番号:…」の行は出さない（予約メモそのものには残す） */
+function withoutAirNo(memo?: string): string {
+  return (memo ?? "")
+    .split("\n")
+    .filter((l) => !/^\s*Air予約番号\s*[:：]/.test(l.replace(/<[^>]*>/g, "")))
+    .join("\n")
+    .trim();
+}
+
 const PAGE = 15;
 
 function formatStamp(iso: string): string {
@@ -384,11 +393,10 @@ function Row({ v, detail, nth, today, readOnly, priceOf, editing, onEdit, onFile
           <div key={r.id} className={styles.resLine} data-inactive={INACTIVE_STATUSES.has(r.status) || undefined}>
             <span className={styles.time}>{formatHm(minutesOfDay(r.startAt))}</span>
             <MenuChips r={r} detail={detail} nth={nth} />
-            {r.status !== "done" && <span className={styles.status}>{r.stageLabel ?? STATUS_LABEL[r.status]}</span>}
-            {changeable.length > 1 && changeable.includes(r) && <span className={styles.resNo}>予約{"①②③④⑤⑥⑦⑧⑨⑩"[changeable.indexOf(r)] ?? changeable.indexOf(r) + 1}</span>}
-            {r.memo && (
+            {r.status !== "done" && r.status !== "booked" && <span className={styles.status}>{r.stageLabel ?? STATUS_LABEL[r.status]}</span>}
+            {withoutAirNo(r.memo) && (
               <div className={styles.resMemo}>
-                予約メモ：<RichText value={r.memo} inline />
+                予約メモ：<RichText value={withoutAirNo(r.memo)} inline />
               </div>
             )}
             {r.requestId && <div className={styles.resMemo}>申請ID：{r.requestId}</div>}
@@ -593,7 +601,7 @@ function UpcomingTable({
               <td className={styles.upLane} data-label="レーン">{r.laneName}</td>
               <td className={styles.upStatus} data-label="状態">{r.stageLabel ?? STATUS_LABEL[r.status]}</td>
               <td data-label="予約メモ・申請ID">
-                {r.memo ? <RichText value={r.memo} inline /> : r.requestId ? null : <span className={styles.muted}>—</span>}
+                {withoutAirNo(r.memo) ? <RichText value={withoutAirNo(r.memo)} inline /> : r.requestId ? null : <span className={styles.muted}>—</span>}
                 {r.requestId && <div className={styles.reqId}>申請ID：{r.requestId}</div>}
               </td>
             </tr>
