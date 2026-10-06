@@ -38,6 +38,7 @@ export type Kind =
   | "accessLog"
   | "deviceLink"
   | "photoInbox"
+  | "deviceRef"
   | "seededDate"
   | "meta";
 

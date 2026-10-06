@@ -1460,6 +1460,29 @@ final class Store
     }
 
     /**
+     * 機器の顧客番号（ネオボワールの番号など）で覚えた患者を先に使い、なければ名前で探す。
+     * 一度結びついた番号は覚えておくので、次からは同姓同名でも取り違えない
+     */
+    private static function matchPhoto(string $source, string $ref, string $name): array
+    {
+        if ($ref !== '') {
+            $m = Db::i()->get('deviceRef', "{$source}:{$ref}");
+            $p = $m ? (self::patients()[$m['patientId']] ?? null) : null;
+            if ($p && empty($p['deleted'])) {
+                return ['id' => $p['id'], 'reason' => null];
+            }
+        }
+        return self::matchByName($name);
+    }
+
+    private static function rememberRef(string $source, string $ref, string $patientId): void
+    {
+        if ($ref !== '') {
+            Db::i()->put('deviceRef', "{$source}:{$ref}", ['patientId' => $patientId, 'at' => now_iso()]);
+        }
+    }
+
+    /**
      * 機器から写真を受け取る。同じ写真（中身が同じ）は2回目以降は受け取らない。
      * 名前で患者が1人に決まればその患者の写真（撮った日の記録）に、決まらなければ「照合待ち」に置く
      */
@@ -1486,16 +1509,22 @@ final class Store
         $takenAt = isset($input['takenAt']) && is_iso_datetime($input['takenAt']) ? normalize_iso($input['takenAt']) : null;
         $date = clinic_date_of($takenAt ?? now_iso());
         $fileName = self::cleanFileName($input['fileName'] ?? '', $type);
-        $match = self::matchByName($patientName);
+        $ref = is_string($input['ref'] ?? null) && preg_match('/^[A-Za-z0-9_-]{1,40}$/', $input['ref']) ? $input['ref'] : '';
+        $match = self::matchPhoto($link['source'], $ref, $patientName);
         $by = ['id' => 'device:' . $link['id'], 'name' => $link['name']];
-        $out = $db->transaction(function () use ($db, $id, $bytes, $type, $date, $fileName, $patientName, $takenAt, $match, $link, $by) {
+        $out = $db->transaction(function () use ($db, $id, $bytes, $type, $date, $fileName, $patientName, $takenAt, $match, $link, $by, $ref) {
             $db->putBlob($id, $bytes);
             $base = ['id' => $id];
             if ($match['id'] !== null) {
                 $meta = $base + ['patientId' => $match['id'], 'date' => $date, 'name' => $fileName, 'type' => $type, 'kind' => 'image', 'size' => strlen($bytes), 'createdAt' => now_iso(), 'createdBy' => $by, 'source' => $link['source']];
                 $db->put('file', $id, $meta);
+                self::rememberRef($link['source'], $ref, $match['id']);
             } else {
-                $item = $base + ['source' => $link['source'], 'patientName' => $patientName, 'date' => $date];
+                $item = $base + ['source' => $link['source'], 'patientName' => $patientName];
+                if ($ref !== '') {
+                    $item['ref'] = $ref;
+                }
+                $item['date'] = $date;
                 if ($takenAt !== null) {
                     $item['takenAt'] = $takenAt;
                 }
@@ -1540,9 +1569,10 @@ final class Store
             throw new StoreError('invalid', '削除された患者には結びつけられません');
         }
         $meta = self::inboxToFile($item, $patientId, $by);
-        $db->transaction(function () use ($db, $id, $meta) {
+        $db->transaction(function () use ($db, $id, $meta, $item, $patientId) {
             $db->put('file', $id, $meta);
             $db->delete('photoInbox', $id);
+            self::rememberRef($item['source'], $item['ref'] ?? '', $patientId);
         });
         Auth::audit($by, '機器の写真を患者に結びつけ', $patientId);
         return $meta;
@@ -1573,7 +1603,7 @@ final class Store
         $db = Db::i();
         $matched = 0;
         foreach (self::listPhotoInbox() as $item) {
-            $m = self::matchByName($item['patientName']);
+            $m = self::matchPhoto($item['source'], $item['ref'] ?? '', $item['patientName']);
             if ($m['id'] === null) {
                 if (($item['reason'] ?? null) !== $m['reason']) {
                     $db->put('photoInbox', $item['id'], [...$item, 'reason' => $m['reason']]);
@@ -1581,9 +1611,10 @@ final class Store
                 continue;
             }
             $meta = self::inboxToFile($item, $m['id'], ['id' => 'system', 'name' => '名前照合']);
-            $db->transaction(function () use ($db, $item, $meta) {
+            $db->transaction(function () use ($db, $item, $meta, $m) {
                 $db->put('file', $item['id'], $meta);
                 $db->delete('photoInbox', $item['id']);
+                self::rememberRef($item['source'], $item['ref'] ?? '', $m['id']);
             });
             $matched++;
         }

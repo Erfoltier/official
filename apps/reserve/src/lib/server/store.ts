@@ -78,6 +78,7 @@ export function demoEnabled(): boolean {
 interface StoreState {
   deviceLinks: Map<string, DeviceLink & { tokenHash: string }>;
   photoInbox: Map<string, PhotoInboxItem>;
+  deviceRefs: Map<string, { patientId: string; at: string }>;
   products: Map<string, Product>;
   stages: Map<string, Stage>;
   snapshots: Map<string, SettingsSnapshot>;
@@ -141,6 +142,7 @@ function state(): StoreState {
         snapshots: new PersistentMap<SettingsSnapshot>("settingsSnapshot"),
         deviceLinks: new PersistentMap<DeviceLink & { tokenHash: string }>("deviceLink"),
         photoInbox: new PersistentMap<PhotoInboxItem>("photoInbox"),
+        deviceRefs: new PersistentMap<{ patientId: string; at: string }>("deviceRef"),
         stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
@@ -735,12 +737,30 @@ function matchByName(name: string): { id?: string; reason?: PhotoInboxItem["reas
 }
 
 /**
+ * 機器の顧客番号（ネオボワールの番号など）で覚えた患者を先に使い、なければ名前で探す。
+ * 一度結びついた番号は覚えておくので、次からは同姓同名でも取り違えない
+ */
+function matchPhoto(source: DeviceSource, ref: string | undefined, name: string): { id?: string; reason?: PhotoInboxItem["reason"] } {
+  const st = state();
+  if (ref) {
+    const m = st.deviceRefs.get(`${source}:${ref}`);
+    const p = m && st.patients.get(m.patientId);
+    if (p && !p.deleted) return { id: p.id };
+  }
+  return matchByName(name);
+}
+
+function rememberRef(source: DeviceSource, ref: string | undefined, patientId: string): void {
+  if (ref) state().deviceRefs.set(`${source}:${ref}`, { patientId, at: new Date().toISOString() });
+}
+
+/**
  * 機器から写真を受け取る。同じ写真（中身が同じ）は2回目以降は受け取らない。
  * 名前で患者が1人に決まればその患者の写真（撮った日の記録）に、決まらなければ「照合待ち」に置く
  */
 export function receiveDevicePhoto(
   link: DeviceLink,
-  input: { patientName: string; fileName: string; takenAt?: string; bytes: Uint8Array },
+  input: { patientName: string; fileName: string; takenAt?: string; ref?: string; bytes: Uint8Array },
 ): { status: "saved" | "inbox" | "duplicate"; id: string; matched?: boolean } {
   const st = state();
   if (input.bytes.length === 0) throw new StoreError("invalid", "ファイルが空です");
@@ -753,18 +773,21 @@ export function receiveDevicePhoto(
   const takenAt = input.takenAt && ISO_DATETIME.test(input.takenAt) && !Number.isNaN(Date.parse(input.takenAt)) ? normalizeIso(input.takenAt) : undefined;
   const date = clinicDateOf(takenAt ?? new Date().toISOString());
   const name = cleanFileName(input.fileName, type);
-  const m = matchByName(patientName);
+  const ref = input.ref && /^[A-Za-z0-9_-]{1,40}$/.test(input.ref) ? input.ref : undefined;
+  const m = matchPhoto(link.source, ref, patientName);
   const by = { id: `device:${link.id}`, name: link.name };
   return transaction(() => {
     putBlob(id, input.bytes);
     const now = new Date().toISOString();
     if (m.id) {
       st.files.set(id, { id, patientId: m.id, date, name, type, kind: "image", size: input.bytes.length, createdAt: now, createdBy: by, source: link.source });
+      rememberRef(link.source, ref, m.id);
     } else {
       st.photoInbox.set(id, {
         id,
         source: link.source,
         patientName,
+        ...(ref && { ref }),
         date,
         ...(takenAt && { takenAt }),
         name,
@@ -808,6 +831,7 @@ export function assignPhotoInbox(id: string, patientId: string, by: Actor): Pati
   transaction(() => {
     st.files.set(id, meta);
     st.photoInbox.delete(id);
+    rememberRef(item.source, item.ref, patientId);
   });
   audit(by, "機器の写真を患者に結びつけ", patientId);
   return meta;
@@ -828,7 +852,7 @@ export function rematchPhotoInbox(by: Actor): { matched: number; remaining: numb
   const st = state();
   let matched = 0;
   for (const item of listPhotoInbox()) {
-    const m = matchByName(item.patientName);
+    const m = matchPhoto(item.source, item.ref, item.patientName);
     if (!m.id) {
       if (item.reason !== m.reason) st.photoInbox.set(item.id, { ...item, reason: m.reason ?? "not_found" });
       continue;
@@ -837,6 +861,7 @@ export function rematchPhotoInbox(by: Actor): { matched: number; remaining: numb
     transaction(() => {
       st.files.set(item.id, meta);
       st.photoInbox.delete(item.id);
+      rememberRef(item.source, item.ref, m.id!);
     });
     matched++;
   }

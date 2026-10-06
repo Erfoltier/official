@@ -70,9 +70,9 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           ネオボワール（肌診断機）の写真 <span className={styles.optionBadge}>オプション</span>
         </h3>
         <p className={styles.hint}>
-          ネオボワールのパソコンに「取り込み係」を置くと、撮った写真を5分ごとに予約カレンダーへ送ります。
-          写真のフォルダ名（またはファイル名）の<b>氏名</b>で患者を探し、1人に決まればその日の施術歴に入ります。
-          同じ名前の人が2人以上いる・見つからないときは、下の「照合待ちの写真」に入ります。
+          ネオボワールの写真が見られるパソコン（親機または子機）に「取り込み係」を置くと、撮った写真を5分ごとに予約カレンダーへ送ります。
+          写真のファイル名の<b>氏名</b>で患者を探し、1人に決まればその日の施術歴に入ります。ファイル名の<b>顧客番号</b>は一度結びつくと覚えるので、次からは同姓同名でも確実です。
+          同じ名前の人が2人以上いる・見つからないときは、下の「照合待ちの写真」に入ります（送るのは撮影したままの写真だけで、解析の画像は送りません）。
         </p>
 
         {isAdmin && status && (
@@ -153,10 +153,10 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                 <li>
                   スタートメニューで「PowerShell」を開き、次を入力します（ファイルの場所に合わせて）。
                   <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;%USERPROFILE%\Documents\neovoir-agent.ps1&quot; -Setup</code>
-                  聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、ネオボワールの写真が保存されるフォルダ、氏名を読む場所、何日前の写真から送るかを入れます。
+                  聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
                 </li>
                 <li>
-                  <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どのフォルダから、どんな氏名を読むか」を確かめられます。氏名が正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
+                  <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どの写真から、どんな氏名・顧客番号を読むか」をそのパソコンの画面で確かめられます（患者さんの名前が出るので、チャットなどには貼らないでください）。正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
                 </li>
               </ol>
               <p className={styles.hint}>

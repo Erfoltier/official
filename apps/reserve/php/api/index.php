@@ -107,6 +107,9 @@ try {
             if ($q('takenAt') !== null) {
                 $in['takenAt'] = $q('takenAt');
             }
+            if ($q('ref') !== null) {
+                $in['ref'] = $q('ref');
+            }
             $in['bytes'] = Http::readBytes(Store::MAX_FILE_BYTES);
             Http::json(Store::receiveDevicePhoto($link, $in));
         }

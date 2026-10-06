@@ -380,6 +380,8 @@ export interface PhotoInboxItem {
   id: string;
   source: DeviceSource;
   patientName: string;
+  /** 機器の顧客番号（ネオボワールのファイル名の先頭の番号など） */
+  ref?: string;
   date: string;
   takenAt?: string;
   name: string;
