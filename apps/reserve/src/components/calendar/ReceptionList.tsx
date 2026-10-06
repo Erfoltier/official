@@ -59,6 +59,24 @@ export function ReceptionList(props: Props) {
     [bundle.reservations, showCancelled, laneFilter, laneOf],
   );
 
+  /**
+   * 1人が同じ日に複数の枠（例：ネオボ撮影→脱毛説明→脱毛→注射）にまたがるときは1行にまとめる。
+   * 行の状態は代表の枠（いま・次に行う枠）のもので、状態は全部の枠でそろえて変わる
+   */
+  const groups = useMemo(() => {
+    const byPatient = new Map<string, Reservation[]>();
+    for (const r of rows) {
+      const list = byPatient.get(r.patientId);
+      if (list) list.push(r);
+      else byPatient.set(r.patientId, [r]);
+    }
+    return [...byPatient.values()].map((list) => {
+      const active = list.filter((x) => !INACTIVE_STATUSES.has(x.status));
+      const upcoming = active.find((x) => nowMinutes === null || minutesOfDay(x.endAt) > nowMinutes);
+      return { list, main: upcoming ?? active[0] ?? list[0] };
+    });
+  }, [rows, nowMinutes]);
+
   return (
     <>
       {/* スマホで一覧の外を押したら閉じる */}
@@ -66,7 +84,7 @@ export function ReceptionList(props: Props) {
       <aside className={styles.reception} data-ui-zoom aria-label="受付一覧" data-enter={animate || undefined}>
         <div className={styles.receptionHead}>
           <b>受付一覧</b>
-          <span className={styles.receptionCount}>{rows.length}件</span>
+          <span className={styles.receptionCount}>{groups.length}人</span>
           <select
             className={styles.select}
             value={laneFilter}
@@ -86,10 +104,13 @@ export function ReceptionList(props: Props) {
         </div>
         {rows.length === 0 && <p className={styles.receptionEmpty}>予約はありません</p>}
         <ol className={styles.receptionRows}>
-          {rows.map((r) => {
-            const start = minutesOfDay(r.startAt);
-            const end = minutesOfDay(r.endAt);
+          {groups.map(({ list, main: r }) => {
+            const start = minutesOfDay(list[0].startAt);
+            const end = Math.max(...list.map((x) => minutesOfDay(x.endAt)));
             const ms = r.menuIds.map((id) => menus.get(id)).filter((m): m is Menu => !!m);
+            const steps = list.flatMap((x) =>
+              (x.menuIds.length ? x.menuIds : [""]).map((id, i) => ({ key: `${x.id}:${i}`, menu: menus.get(id), off: INACTIVE_STATUSES.has(x.status) })),
+            );
             const lane = laneOf.get(r.laneId);
             const patient = patients.get(r.patientId);
             const sv = stageOf(r, bundle.stages);
@@ -101,7 +122,7 @@ export function ReceptionList(props: Props) {
               <li key={r.id}>
                 <div
                   className={styles.receptionRow}
-                  data-selected={r.id === selectedId || undefined}
+                  data-selected={list.some((x) => x.id === selectedId) || undefined}
                   data-dim={inactive || done || undefined}
                   data-past={past || undefined}
                   style={{ "--c": ms[0]?.color ?? "#94a3b8" } as CSSProperties}
@@ -113,7 +134,18 @@ export function ReceptionList(props: Props) {
                     </span>
                     <span className={styles.receptionMain}>
                       <span className={styles.receptionName}>{displayName(patient, maskNames)}</span>
-                      <span className={styles.receptionMenu}>{ms.map((m) => m.abbr).join("+") || "—"}</span>
+                      {list.length === 1 ? (
+                        <span className={styles.receptionMenu}>{ms.map((m) => m.abbr).join("+") || "—"}</span>
+                      ) : (
+                        <span className={styles.receptionSteps} title={steps.map((s) => s.menu?.name ?? "—").join(" → ")}>
+                          {steps.map((s, i) => (
+                            <span key={s.key} className={styles.stepChip} data-off={s.off || undefined} style={{ "--c": s.menu?.color ?? "#94a3b8" } as CSSProperties}>
+                              {i > 0 && <i aria-hidden>›</i>}
+                              {s.menu?.abbr ?? "—"}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </span>
                   </button>
                   <span className={styles.receptionStage}>

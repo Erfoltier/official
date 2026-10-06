@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
+import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
 import { ApiError, fetchDay, fetchMe, logout, patchReservation, putDayNote, updatePatient } from "./api";
@@ -200,17 +201,27 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     save(r, { version: r.version, status }, { ...r, status });
   };
 
-  /** 院で決めた状態を選ぶ。段階（status）と変えた時刻も合わせて変わる */
+  /**
+   * 同じ日の同じ患者の、ほかの予約（取り消し・無断キャンセルを除く）。
+   * 1人が複数の枠（例：ネオボ撮影→脱毛説明→脱毛→注射）にまたがるとき、状態は全部の枠でそろえる
+   */
+  const siblingsOf = (r: Reservation) =>
+    (bundle?.reservations ?? []).filter((x) => x.patientId === r.patientId && x.id !== r.id && !INACTIVE_STATUSES.has(x.status));
+
+  /** 院で決めた状態を選ぶ。段階（status）と変えた時刻も合わせて変わる。同じ人のほかの枠にもそろえる（取り消し系はその枠だけ） */
   const onStage = (r: Reservation, stageId: string, min?: number) => {
     const st = bundle?.stages.find((s) => s.id === stageId);
     if (!st) return;
     const stageAt = min !== undefined ? toIso(date, min) : new Date().toISOString();
-    save(r, { version: r.version, stageId, ...(min !== undefined && { stageMin: min }) }, { ...r, stageId, status: st.phase, stageAt });
+    const targets = INACTIVE_STATUSES.has(st.phase) || INACTIVE_STATUSES.has(r.status) ? [r] : [r, ...siblingsOf(r)];
+    for (const t of targets) {
+      save(t, { version: t.version, stageId, ...(min !== undefined && { stageMin: min }) }, { ...t, stageId, status: st.phase, stageAt });
+    }
   };
 
-  /** 状態はそのままで、変えた時刻だけ直す */
+  /** 状態はそのままで、変えた時刻だけ直す（同じ人のほかの枠にもそろえる） */
   const onStageTime = (r: Reservation, min: number) => {
-    save(r, { version: r.version, stageMin: min }, { ...r, stageAt: toIso(date, min) });
+    for (const t of [r, ...siblingsOf(r)]) save(t, { version: t.version, stageMin: min }, { ...t, stageAt: toIso(date, min) });
   };
 
   /** 患者情報のメモ（患者画面のメモと同じ）を受付一覧から保存する */
@@ -245,7 +256,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   /** 自由入力の一言（状態とは別に出す。空で消す） */
   const onFreeNote = (r: Reservation, text: string) => {
-    save(r, { version: r.version, stageText: text }, { ...r, stageText: text || undefined });
+    for (const t of [r, ...siblingsOf(r)]) save(t, { version: t.version, stageText: text }, { ...t, stageText: text || undefined });
   };
 
   const onMemo = (r: Reservation, memo: string) => {
