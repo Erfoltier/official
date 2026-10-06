@@ -1232,6 +1232,8 @@ export interface PatientInput {
   nameAlt?: string;
   phone?: string;
   email?: string;
+  postalCode?: string;
+  address?: string;
   chartNo?: string;
   m3ChartNo?: string;
   birthDate?: string;
@@ -1280,6 +1282,12 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
     }
     out.email = opt(email);
   }
+  if (input.postalCode !== undefined) {
+    const digits = input.postalCode.normalize("NFKC").replace(/[〒\s\-‐‑–—―−ーｰ]/g, "");
+    if (digits && !/^\d{7}$/.test(digits)) throw new StoreError("invalid", "郵便番号は7桁の数字で入力してください");
+    out.postalCode = opt(digits && `${digits.slice(0, 3)}-${digits.slice(3)}`);
+  }
+  if (input.address !== undefined) out.address = opt(checkText("住所", input.address, 200, false));
   if (input.chartNo !== undefined) {
     const chartNo = input.chartNo.normalize("NFKC").trim();
     // 空欄でもよい（まだ診察券を作っていない患者）。入れるときは英数字で、ほかの患者と重ならないこと
@@ -1345,6 +1353,8 @@ const FIELD_LABEL: Record<string, string> = {
   nameAlt: "別の表記",
   phone: "電話",
   email: "メール",
+  postalCode: "郵便番号",
+  address: "住所",
   chartNo: "診察券番号",
   m3ChartNo: "M3カルテ番号",
   birthDate: "生年月日",
@@ -1850,7 +1860,7 @@ export function restorePatient(id: string, version: number, by?: Actor): Patient
   return next;
 }
 
-const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "birthDate", "m3ChartNo"];
+const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "postalCode", "address", "birthDate", "m3ChartNo"];
 
 function mergeTargets(keepId: string, dupId: string): { keep: Patient; dup: Patient } {
   const st = state();

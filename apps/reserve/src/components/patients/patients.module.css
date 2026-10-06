@@ -384,6 +384,37 @@ details.section[open] > summary.sectionTitle {
   padding: 0 4px;
 }
 
+.contactBox {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.contactBox[open] {
+  padding-bottom: 10px;
+}
+
+.contactSummary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.contactPeek {
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.contactBox[open] .contactPeek {
+  display: none;
+}
+
+.contactBox[open] .contactSummary {
+  margin-bottom: 6px;
+}
+
 .cautionBox {
   margin-top: 6px;
   padding: 6px 10px;

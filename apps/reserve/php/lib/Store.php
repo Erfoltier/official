@@ -15,11 +15,11 @@ final class Store
         'done' => '完了', 'cancelled' => 'キャンセル', 'no_show' => '無断キャンセル',
     ];
     private const FIELD_LABEL = [
-        'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール',
+        'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール', 'postalCode' => '郵便番号', 'address' => '住所',
         'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
         'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'lineUserId' => 'LINE紐付け',
     ];
-    private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'birthDate', 'm3ChartNo'];
+    private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'postalCode', 'address', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
     public const MAX_ACTIVE_LANES = 30;
     private const MAX_TOTAL_LANES = 100;
@@ -1161,6 +1161,16 @@ final class Store
                 throw new StoreError('invalid', 'メールアドレスの形式が正しくありません');
             }
             $out['email'] = $opt($email);
+        }
+        if (isset($input['postalCode'])) {
+            $digits = preg_replace('/[〒\s\-‐‑–—―−ーｰ]/u', '', normalize_width($input['postalCode']));
+            if ($digits !== '' && !preg_match('/^\d{7}$/', $digits)) {
+                throw new StoreError('invalid', '郵便番号は7桁の数字で入力してください');
+            }
+            $out['postalCode'] = $opt($digits === '' ? '' : substr($digits, 0, 3) . '-' . substr($digits, 3));
+        }
+        if (isset($input['address'])) {
+            $out['address'] = $opt(self::checkText('住所', $input['address'], 200, false));
         }
         if (isset($input['chartNo'])) {
             $chartNo = js_trim(normalize_width($input['chartNo']));

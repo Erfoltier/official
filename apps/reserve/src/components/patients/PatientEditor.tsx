@@ -34,6 +34,8 @@ function toForm(d: PatientDetail): Form {
     birthDate: p.birthDate ?? "",
     phone: p.phone ?? "",
     email: p.email ?? "",
+    postalCode: p.postalCode ?? "",
+    address: p.address ?? "",
     caution: !!p.caution,
     cautionNote: p.cautionNote ?? "",
     memo: p.memo ?? "",
@@ -191,7 +193,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             {[
               p.kana,
               p.nameAlt,
-              `診察券 ${p.chartNo}`,
+              p.chartNo ? `診察券 ${p.chartNo}` : null,
               p.m3ChartNo ? `M3 ${p.m3ChartNo}` : null,
               ageOf(p.birthDate ?? "") !== null ? `${ageOf(p.birthDate ?? "")}歳` : null,
               p.phone,
@@ -271,7 +273,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             <input className={styles.input} value={form.nameAlt} onChange={(e) => set("nameAlt", e.target.value)} maxLength={60} />
           </Field>
           <Field label="診察券番号" changed={changedKeys.includes("chartNo")}>
-            <input className={styles.input} value={form.chartNo} onChange={(e) => set("chartNo", e.target.value)} maxLength={20} required />
+            <input className={styles.input} value={form.chartNo} onChange={(e) => set("chartNo", e.target.value)} maxLength={20} />
           </Field>
           <Field label="M3カルテ番号" hint="電子カルテ（M3）の患者番号。カルテとの突き合わせに使います" changed={changedKeys.includes("m3ChartNo")}>
             <input
@@ -292,13 +294,35 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
               onChange={(e) => set("birthDate", e.target.value)}
             />
           </Field>
-          <Field label="電話" changed={changedKeys.includes("phone")}>
-            <input className={styles.input} type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} />
-          </Field>
-          <Field label="メール" changed={changedKeys.includes("email")}>
-            <input className={styles.input} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} maxLength={200} />
-          </Field>
         </div>
+        <details className={styles.contactBox}>
+          <summary className={styles.contactSummary}>
+            連絡先情報
+            <span className={styles.contactPeek}>{[form.phone, form.address && "住所あり"].filter(Boolean).join("・")}</span>
+          </summary>
+          <div className={styles.grid2}>
+            <Field label="電話" changed={changedKeys.includes("phone")}>
+              <input className={styles.input} type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} />
+            </Field>
+            <Field label="メール" changed={changedKeys.includes("email")}>
+              <input className={styles.input} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} maxLength={200} />
+            </Field>
+            <Field label="郵便番号" changed={changedKeys.includes("postalCode")}>
+              <input
+                className={styles.input}
+                value={form.postalCode}
+                onChange={(e) => set("postalCode", e.target.value)}
+                maxLength={10}
+                inputMode="numeric"
+                placeholder="123-4567"
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="住所" changed={changedKeys.includes("address")}>
+              <input className={styles.input} value={form.address} onChange={(e) => set("address", e.target.value)} maxLength={200} placeholder="都道府県から" autoComplete="off" />
+            </Field>
+          </div>
+        </details>
       </fieldset>
 
       <fieldset className={styles.subSection}>

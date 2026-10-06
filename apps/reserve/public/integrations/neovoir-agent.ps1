@@ -15,14 +15,16 @@
     3. あとは5分ごとに自動で送ります（Windows の「タスク スケジューラ」に登録）
     過去の写真も送る        powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Backfill
     止める                  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Uninstall
+    入口の鍵だけ入れ直す    powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -SetBasic
 
   どの光源（NL・PL・SL・UV）を送るか、縮小するかは、予約カレンダーの「設定 → 外部機器の連携」で選びます
   （取り込み係は起きるたびにそれを読みにいきます）。
 
+  ・予約カレンダーの入口にブラウザの鍵（ID・パスワード）が掛かっているときは、それも一緒に送ります
   ・鍵はこのパソコンの、このWindowsユーザーだけが読める形で保存します（ほかの人・ほかのパソコンでは使えません）
   ・送るのは写真と、照合に使う氏名・撮影日時・ファイル名だけです。記録はこのパソコンの中にだけ残します
 #>
-param([switch]$Setup, [switch]$Preview, [switch]$Backfill, [switch]$Uninstall, [switch]$Once)
+param([switch]$Setup, [switch]$Preview, [switch]$Backfill, [switch]$Uninstall, [switch]$Once, [switch]$SetBasic)
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -48,9 +50,25 @@ function Write-Log([string]$msg) {
 function Load-Config {
   if (-not (Test-Path $ConfigFile)) { throw '準備がまだです。-Setup を付けて実行してください' }
   $c = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
-  $secure = ConvertTo-SecureString $c.TokenProtected
-  $c | Add-Member -NotePropertyName Token -NotePropertyValue ([Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)))
+  $c | Add-Member -NotePropertyName Token -NotePropertyValue (Unprotect-Text $c.TokenProtected)
+  $basic = ''
+  if ($c.PSObject.Properties['BasicProtected'] -and $c.BasicProtected) { $basic = Unprotect-Text $c.BasicProtected }
+  $c | Add-Member -NotePropertyName Basic -NotePropertyValue $basic -Force
   return $c
+}
+
+function Unprotect-Text([string]$protected) {
+  $secure = ConvertTo-SecureString $protected
+  return [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+}
+
+# 入口の鍵（ブラウザで聞かれる ID・パスワード）を聞いて、このWindowsユーザーだけが読める形にする。なければ空
+function Read-BasicProtected {
+  $id = Read-Host '予約カレンダーを開くときにブラウザで聞かれる ID（聞かれないなら、そのまま Enter）'
+  if (-not $id) { return '' }
+  $pw = Read-Host 'そのパスワード' -AsSecureString
+  $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pw))
+  return ConvertFrom-SecureString (ConvertTo-SecureString ($id.Trim() + ':' + $plain) -AsPlainText -Force)
 }
 
 # ネオボワールのファイル名「顧客番号_回_向き_光_氏名[_解析の種類…]」を分ける。形が違えば $null
@@ -102,7 +120,10 @@ function Get-Photos($c, $opt) {
 
 function Invoke-Api($c, [string]$path, [string]$method = 'GET', [string]$inFile = $null, [string]$contentType = $null) {
   $uri = $c.ServerUrl.TrimEnd('/') + '/api/v1/integration/photos' + $path
-  $p = @{ Uri = $uri; Method = $method; Headers = @{ Authorization = 'Bearer ' + $c.Token }; UseBasicParsing = $true; TimeoutSec = 120 }
+  # 機器の鍵は X-Device-Token で送る。Authorization は入口の鍵（Basic）に使い、なければ従来どおり Bearer
+  $h = @{ 'X-Device-Token' = $c.Token }
+  if ($c.Basic) { $h.Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($c.Basic)) } else { $h.Authorization = 'Bearer ' + $c.Token }
+  $p = @{ Uri = $uri; Method = $method; Headers = $h; UseBasicParsing = $true; TimeoutSec = 120 }
   if ($inFile) { $p.InFile = $inFile; $p.ContentType = $contentType }
   return (Invoke-WebRequest @p).Content | ConvertFrom-Json
 }
@@ -149,6 +170,7 @@ if ($Setup) {
   Write-Host '=== ネオボワール → 予約カレンダー 取り込み係の準備 ==='
   $url = Read-Host '予約カレンダーのアドレス（例 https://ishidahihuka.jp/reserve）'
   $token = Read-Host '接続用の鍵（設定 → 外部機器の連携 で発行したもの）' -AsSecureString
+  $basicProtected = Read-BasicProtected
   $folder = Read-Host "ネオボワールの写真が保存されるフォルダ（そのまま Enter で $DefaultFolder）"
   if (-not $folder) { $folder = $DefaultFolder }
   if (-not (Test-Path $folder)) {
@@ -163,7 +185,7 @@ if ($Setup) {
   if (-not ($days -match '^\d+$')) { $days = 0 }
   $cfg = [ordered]@{
     ServerUrl = $url.Trim(); WatchFolder = $folder; NameFrom = $nameFrom; NamePattern = ''; IncludeAnalysis = 'No'
-    Since = (Get-Date).Date.AddDays(-[int]$days).ToString('s'); TokenProtected = (ConvertFrom-SecureString $token)
+    Since = (Get-Date).Date.AddDays(-[int]$days).ToString('s'); TokenProtected = (ConvertFrom-SecureString $token); BasicProtected = $basicProtected
   }
   $cfg | ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
   $c = Load-Config
@@ -173,6 +195,17 @@ if ($Setup) {
   $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
   Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Description '予約カレンダーへネオボワールの写真を送る' -Force | Out-Null
   Write-Host '5分ごとに自動で送るよう登録しました。まず -Preview で、読み取る氏名が正しいか確かめてください'
+  exit 0
+}
+
+if ($SetBasic) {
+  if (-not (Test-Path $ConfigFile)) { throw '準備がまだです。-Setup を付けて実行してください' }
+  $raw = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
+  $raw | Add-Member -NotePropertyName BasicProtected -NotePropertyValue (Read-BasicProtected) -Force
+  $raw | ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
+  $c = Load-Config
+  $pong = Invoke-Api $c '/ping'
+  Write-Host "接続できました：$($pong.name)（5分ごとの自動送信もこのまま続きます）"
   exit 0
 }
 
@@ -213,7 +246,7 @@ if (Test-Path $SentFile) { Get-Content $SentFile -Encoding UTF8 | ForEach-Object
 $ok = 0; $inbox = 0; $dup = 0; $skip = 0; $err = 0
 try { $opt = Get-Options $c } catch {
   $code = $_.Exception.Response.StatusCode.value__
-  if ($code -eq 401) { Write-Log '鍵が使えません（設定で止められたか、違う鍵です）。-Setup をやり直してください' } else { Write-Log ('予約カレンダーにつながりません：' + $_.Exception.Message) }
+  if ($code -eq 401) { Write-Log '鍵が使えません（設定で止められたか、違う鍵か、入口の ID・パスワードが変わりました）。-Setup か -SetBasic をやり直してください' } else { Write-Log ('予約カレンダーにつながりません：' + $_.Exception.Message) }
   exit 1
 }
 foreach ($f in Get-Photos $c $opt) {
@@ -233,7 +266,7 @@ foreach ($f in Get-Photos $c $opt) {
   } catch {
     $err++
     $code = $_.Exception.Response.StatusCode.value__
-    if ($code -eq 401) { Write-Log '鍵が使えません（設定で止められたか、違う鍵です）。-Setup をやり直してください'; break }
+    if ($code -eq 401) { Write-Log '鍵が使えません（設定で止められたか、違う鍵か、入口の ID・パスワードが変わりました）。-Setup か -SetBasic をやり直してください'; break }
     if ($code -eq 400) { Add-Content $SentFile $key -Encoding UTF8 }
   } finally {
     if ($send -and $send -ne $f.FullName) { Remove-Item $send -ErrorAction SilentlyContinue }

@@ -127,7 +127,7 @@ export async function reorder(kind: "lanes" | "menus" | "products" | "stages", i
 export type PatientUpdate = Partial<
   Pick<
     Patient,
-    "name" | "kana" | "nameAlt" | "phone" | "email" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications"
+    "name" | "kana" | "nameAlt" | "phone" | "email" | "postalCode" | "address" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications"
   >
 >;
 

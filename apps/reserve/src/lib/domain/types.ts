@@ -82,6 +82,10 @@ export interface Patient {
   nameAlt?: string;
   phone?: string;
   email?: string;
+  /** 郵便番号（123-4567） */
+  postalCode?: string;
+  /** 住所（都道府県から） */
+  address?: string;
   /**
    * LINEのユーザーID。患者本人がQRコードで紐付けを完了したときだけ入る。
    * 電話番号や氏名の一致で自動的に入れてはいけない（誤送信防止）。

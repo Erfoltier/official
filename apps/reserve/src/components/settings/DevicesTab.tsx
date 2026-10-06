@@ -156,7 +156,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                 <li>
                   スタートメニューで「PowerShell」を<b>普通に</b>開き（「管理者として実行」では親機の共有フォルダが見えないことがあります）、次を入力します（ファイルの場所に合わせて）。
                   <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;$env:USERPROFILE\Documents\neovoir-agent.ps1&quot; -Setup</code>
-                  聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
+                  聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、入口のID・パスワード（予約カレンダーをブラウザで開くときに聞かれるもの。聞かれないなら Enter）、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
                 </li>
                 <li>
                   <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どの写真から、どんな氏名・顧客番号を読むか」をそのパソコンの画面で確かめられます（患者さんの名前が出るので、チャットなどには貼らないでください）。正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
@@ -165,6 +165,9 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                   過去に撮った写真も入れるときは、<b>Airリザーブからの患者の移行が終わってから</b>、<code>-Setup</code> を <code>-Backfill</code> に変えて実行し、何日前の分から送るかを入れます（そのまま Enter で全部）。上の「取り込む写真」の設定のとおりに、5分ごとの自動送信で順に送ります。
                 </li>
               </ol>
+              <p className={styles.hint}>
+                入口のID・パスワードを変えたときは、<code>-Setup</code> を <code>-SetBasic</code> に変えて実行し、入れ直してください。
+              </p>
               <p className={styles.hint}>
                 鍵はそのパソコンのWindowsユーザーだけが読める形で保存されます。パソコンを入れ替えるときや鍵が漏れたかもしれないときは、上の「この鍵を止める」で止めて、新しい鍵を作り直してください。
               </p>
