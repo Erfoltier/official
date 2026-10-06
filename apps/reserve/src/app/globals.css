@@ -53,13 +53,13 @@
 :root[data-theme="blush"] {
   --alt-bg: #f2ebe2;
   --alt-line: #e0d3c3;
-  --bg: #faf6f2;
-  --surface: #fcf9f6;
-  --bg-subtle: #f2ebe4;
-  --bg-muted: #e3d8ce;
-  --tint: #f3ebe5;
-  --line: #e6dbd2;
-  --line-strong: #cdbcb0;
+  --bg: #fbf5f1;
+  --surface: #fdf8f5;
+  --bg-subtle: #f5e9e3;
+  --bg-muted: #ead3cc;
+  --tint: #f4e4de;
+  --line: #e9d6cf;
+  --line-strong: #d3aea7;
   --text: #3e2f2c;
   --text-muted: #765f5a;
   --text-faint: #a68f8a;
@@ -72,13 +72,13 @@
   --now: #c06f79;
   --grad: linear-gradient(135deg, #a7767d 0%, #b98f95 50%, #c9a98a 100%);
   --grad-line: linear-gradient(90deg, #b98f95 0%, #dcbfc0 50%, #ceb484 100%);
-  --grad-soft: linear-gradient(135deg, #efe5dc 0%, #f7f0ea 55%, #efe1dc 100%);
-  --grad-head: linear-gradient(180deg, #f6efe8 0%, #e9ded4 100%);
+  --grad-soft: linear-gradient(135deg, #f3e2dd 0%, #f7eae5 55%, #f3e7dc 100%);
+  --grad-head: linear-gradient(180deg, #f8ebe7 0%, #efdcd6 100%);
   --shadow-rgb: 95 62 56;
   --shadow-accent: 0 4px 14px rgb(167 118 125 / 24%);
   --shadow-card: 0 6px 24px rgb(95 62 56 / 9%);
   --btn-bg: linear-gradient(180deg, #fefbf8 0%, #f7ebe5 100%);
-  --btn-line: #c4ada4;
+  --btn-line: #c99f98;
   --btn-shadow: 0 1px 2px rgb(95 62 56 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fefaf7;
 }
@@ -266,10 +266,10 @@ button {
 :root[data-theme="blush"] body,
 :root[data-theme="blush"] dialog {
   background:
-    radial-gradient(900px 560px at 10% -8%, #ebdcd3 0%, transparent 58%),
-    radial-gradient(800px 640px at 105% 105%, #ddd2c6 0%, transparent 55%),
-    radial-gradient(600px 460px at 70% 30%, #f6ece6 0%, transparent 60%),
-    #f6f0ea;
+    radial-gradient(1100px 620px at 12% -8%, #f5e3dd 0%, transparent 58%),
+    radial-gradient(900px 700px at 105% 105%, #f6ebe0 0%, transparent 55%),
+    radial-gradient(700px 500px at 70% 30%, #fdf8f4 0%, transparent 60%),
+    #faf3ee;
 }
 
 :root[data-theme="luxe"] body,
