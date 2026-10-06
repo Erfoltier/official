@@ -114,17 +114,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             {patient?.caution && <span className={styles.caution}>!</span>}
             <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
             {!maskNames && patient && <CautionInline note={patient.cautionNote} onSave={onCaution} />}
-          </div>
-          {!maskNames && patient && (
-            <>
-              <div className={styles.panelSub}>
-                {patient.kana}
-                {patient.nameAlt && ` / ${patient.nameAlt}`}
-                {ageSexText(patient) && <span className={styles.nameAge}>{ageSexText(patient)}</span>}
-              </div>
-              <div className={styles.idLine}>
-                {patient.chartNo && <span>診察券 {patient.chartNo}</span>}
-                {patient.m3ChartNo && <span>M3 {patient.m3ChartNo}</span>}
+            {!maskNames && patient && (
+              <span className={styles.idSlot}>
                 {editingRequestId ? (
                   <span className={styles.idEdit}>
                     <input
@@ -141,12 +132,23 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                       onKeyDown={(e) => e.key === "Enter" && saveRequestId()}
                       onBlur={saveRequestId}
                     />
-                  </span>
-                ) : (
-                  <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・変更">
-                    {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
-                  </button>
-                )}
+              </span>
+            ) : (
+              <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・変更">
+                {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
+              </button>
+            )}
+              </span>
+            )}
+          </div>
+          {!maskNames && patient && (
+            <>
+              <div className={styles.panelSub}>
+                {patient.kana}
+                {patient.nameAlt && ` / ${patient.nameAlt}`}
+                {ageSexText(patient) && <span className={styles.subGap}>{ageSexText(patient)}</span>}
+                {patient.chartNo && <span className={styles.subGap}>診察券 {patient.chartNo}</span>}
+                {patient.m3ChartNo && patient.m3ChartNo !== patient.chartNo && <span className={styles.subGap}>M3 {patient.m3ChartNo}</span>}
               </div>
               {!requestIdValid && <p className={styles.error}>予約申請IDは英数字・ハイフンで入力してください</p>}
             </>

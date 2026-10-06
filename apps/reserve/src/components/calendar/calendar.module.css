@@ -2024,3 +2024,32 @@ button.stagePill[data-clickable]:disabled {
   padding: 0 12px;
   font-size: 12.5px;
 }
+
+/* フリガナの行に並べる「42歳・男性」「診察券」：フリガナと同じ文字の形で、少し間をあける */
+.subGap {
+  margin-left: 12px;
+}
+
+/* 名前の行の「＋申請ID」 */
+.idSlot {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* 名前の行：名前と「＋申請ID」は折り返さず、注意事項の文字の方を折り返す */
+.panelName {
+  flex-wrap: nowrap;
+}
+
+.panelName > * {
+  min-width: 0;
+}
+
+.panelName .nameText,
+.panelName .idSlot,
+.panelName .caution {
+  flex: none;
+}
