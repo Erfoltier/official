@@ -2271,7 +2271,10 @@ final class Store
 
     // ---- 患者の削除（論理削除）・復元・統合 ----
 
-    /** 統合してよいかの確認：姓名・セイメイ・生年月日がすべて一致すること。一致しない項目を返す */
+    /**
+     * 統合してよいかの確認：姓名・セイメイ・生年月日がすべて一致すること。一致しない項目を返す。
+     * ただし生年月日が両方とも未入力なら、姓名とセイメイの一致で統合してよい（院長の決定。Airリザーブには生年月日がほぼ無いため）
+     */
     public static function identityMismatch(array $a, array $b): array
     {
         $out = [];
@@ -2284,8 +2287,11 @@ final class Store
         } elseif (!$same($a['kana'], $b['kana'])) {
             $out[] = 'セイメイ';
         }
+        if (empty($a['birthDate']) && empty($b['birthDate'])) {
+            return $out;
+        }
         if (empty($a['birthDate']) || empty($b['birthDate'])) {
-            $out[] = '生年月日（未入力）';
+            $out[] = '生年月日（片方だけ未入力）';
         } elseif ($a['birthDate'] !== $b['birthDate']) {
             $out[] = '生年月日';
         }

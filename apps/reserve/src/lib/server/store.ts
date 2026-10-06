@@ -1860,6 +1860,7 @@ function digits(s?: string): string {
 /** 重複の可能性：フリガナ・氏名・電話番号・生年月日＋フリガナの一致 */
 /**
  * 統合してよいかの確認：姓名・セイメイ（フリガナ）・生年月日がすべて一致すること。
+ * ただし生年月日が両方とも未入力なら、姓名とセイメイの一致で統合してよい（院長の決定。Airリザーブには生年月日がほぼ無いため）。
  * 表記の揺れ（空白・全角半角・ひらがな／カタカナ）は同じとみなす。一致しない項目を返す
  */
 export function identityMismatch(a: Patient, b: Patient): string[] {
@@ -1868,7 +1869,8 @@ export function identityMismatch(a: Patient, b: Patient): string[] {
   if (!same(a.name, b.name)) out.push("姓名");
   if (!a.kana || !b.kana) out.push("セイメイ（未入力）");
   else if (!same(a.kana, b.kana)) out.push("セイメイ");
-  if (!a.birthDate || !b.birthDate) out.push("生年月日（未入力）");
+  if (!a.birthDate && !b.birthDate) return out;
+  if (!a.birthDate || !b.birthDate) out.push("生年月日（片方だけ未入力）");
   else if (a.birthDate !== b.birthDate) out.push("生年月日");
   return out;
 }

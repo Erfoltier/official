@@ -93,13 +93,23 @@ describe("重複患者の統合", () => {
     expect(JSON.stringify(staff.listAudit())).not.toContain("山田");
   });
 
+  it("生年月日が両方とも未入力なら、姓名とセイメイの一致で統合できる（Airリザーブから移した患者）", async () => {
+    const s = await import("@/lib/server/store");
+    const a = s.createPatient({ name: "鈴木 花", kana: "スズキ ハナ" });
+    const b = s.createPatient({ name: "鈴木　花", kana: "すずき はな" });
+    const c = s.createPatient({ name: "鈴木 花" });
+    expect(s.previewMerge(a.id, b.id)).toMatchObject({ identical: true, mismatch: [] });
+    expect(s.previewMerge(a.id, c.id).mismatch).toEqual(["セイメイ（未入力）"]);
+    expect(s.mergePatients({ keepId: a.id, dupId: b.id, keepVersion: a.version, dupVersion: b.version }).id).toBe(a.id);
+  });
+
   it("姓名・セイメイ・生年月日のどれかが違う（未入力を含む）と統合できない", async () => {
     const s = await import("@/lib/server/store");
     const a = s.createPatient({ name: "佐藤 花", kana: "サトウ ハナ", birthDate: "1995-05-05", phone: "090-5555-0000" });
     const b = s.createPatient({ name: "佐藤 華", kana: "サトウ ハナ", birthDate: "1995-05-05", phone: "090-5555-0000" });
     const c = s.createPatient({ name: "佐藤 花", kana: "サトウ ハナ", phone: "090-5555-0000" });
     expect(s.previewMerge(a.id, b.id)).toMatchObject({ identical: false, mismatch: ["姓名"] });
-    expect(s.previewMerge(a.id, c.id).mismatch).toEqual(["生年月日（未入力）"]);
+    expect(s.previewMerge(a.id, c.id).mismatch).toEqual(["生年月日（片方だけ未入力）"]);
     expect(() => s.mergePatients({ keepId: a.id, dupId: b.id, keepVersion: a.version, dupVersion: b.version })).toThrow(/一致しない項目：姓名/);
     // 重複の候補には出るが、統合できないことが分かる
     const cand = s.getPatientDetail(a.id).duplicates;
