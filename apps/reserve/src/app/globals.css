@@ -143,37 +143,37 @@
 
 /* 上品（ゴールド）：当院のホームページのような金茶とクリーム */
 :root[data-theme="luxe"] {
-  /* 上品（ゴールド）：ホテルのロビー。アイボリーとミルクティーベージュに、金のグラデーションの線。白は使わない */
-  --alt-bg: #efe8dd;
-  --alt-line: #ddd0bd;
-  --bg: #fbf7f0;
-  --surface: #fdfaf4;
-  --bg-subtle: #f4ecdf;
-  --bg-muted: #e8dbc5;
-  --tint: #f5ede0;
-  --line: #e7dcc9;
-  --line-strong: #cfb995;
-  --text: #3a2e22;
-  --text-muted: #6d5c49;
-  --text-faint: #9c8a72;
-  --accent: #a88860;
-  --accent-strong: #8a6d47;
-  --accent-deep: #5a4637;
-  --accent-soft: #f0e6d4;
-  --accent-line: #d8c39e;
-  --danger: #a94b3c;
-  --now: #b0663f;
-  --grad: linear-gradient(135deg, #8a6d47 0%, #b09470 52%, #d8c39e 100%);
-  --grad-line: linear-gradient(90deg, #a88860 0%, #d8c39e 30%, #efdfb9 50%, #d8c39e 70%, #a88860 100%);
-  --grad-soft: linear-gradient(135deg, #f3eadc 0%, #f8f1e6 60%, #f1e6d3 100%);
-  --grad-head: linear-gradient(180deg, #f9f3e9 0%, #efe5d4 100%);
-  --shadow-rgb: 90 70 45;
-  --shadow-accent: 0 4px 14px rgb(138 109 71 / 24%);
-  --shadow-card: 0 6px 24px rgb(90 70 45 / 10%);
-  --btn-bg: linear-gradient(180deg, #fefcf7 0%, #f5ecdc 100%);
-  --btn-line: #c2a77a;
-  --btn-shadow: 0 1px 2px rgb(90 70 45 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
-  --field-bg: #fefcf8;
+  /* 上品（ゴールド）：ホテルのロビー。アイボリーとグレージュに、シャンパンゴールド（くすんだ金）のグラデーションの線。白は使わない */
+  --alt-bg: #efede4;
+  --alt-line: #d9d4c2;
+  --bg: #f9f8f3;
+  --surface: #fcfbf7;
+  --bg-subtle: #f1efe6;
+  --bg-muted: #e4e0d1;
+  --tint: #f3f1e9;
+  --line: #e1ddcd;
+  --line-strong: #c6bfa6;
+  --text: #34312a;
+  --text-muted: #666052;
+  --text-faint: #9a9482;
+  --accent: #958b68;
+  --accent-strong: #776e51;
+  --accent-deep: #4d493a;
+  --accent-soft: #eeebdf;
+  --accent-line: #cdc6aa;
+  --danger: #a24b3e;
+  --now: #a8673f;
+  --grad: linear-gradient(135deg, #6c6547 0%, #9e9573 38%, #d6d0b8 62%, #a39a78 82%, #7d7555 100%);
+  --grad-line: linear-gradient(90deg, #857d5e 0%, #c3bc9f 30%, #e4e0cd 50%, #c3bc9f 70%, #857d5e 100%);
+  --grad-soft: linear-gradient(135deg, #f0eee4 0%, #f8f7f1 60%, #ebe8db 100%);
+  --grad-head: linear-gradient(180deg, #f8f7f1 0%, #ebe8dc 100%);
+  --shadow-rgb: 70 66 48;
+  --shadow-accent: 0 4px 14px rgb(108 101 71 / 26%);
+  --shadow-card: 0 6px 24px rgb(70 66 48 / 10%);
+  --btn-bg: linear-gradient(180deg, #fdfdf9 0%, #efece1 100%);
+  --btn-line: #b7af92;
+  --btn-shadow: 0 1px 2px rgb(70 66 48 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  --field-bg: #fdfcf9;
 }
 
 /* やさしい：くすんだ緑。ナチュラル */
@@ -269,10 +269,10 @@ button {
 :root[data-theme="luxe"] body,
 :root[data-theme="luxe"] dialog {
   background:
-    radial-gradient(1000px 600px at 88% -12%, #f4e9d3 0%, transparent 58%),
-    radial-gradient(900px 640px at -5% 108%, #f0e6d6 0%, transparent 58%),
-    radial-gradient(700px 500px at 40% 40%, #fdfaf4 0%, transparent 62%),
-    #faf6ee;
+    radial-gradient(1000px 600px at 88% -12%, #ece9dc 0%, transparent 58%),
+    radial-gradient(900px 640px at -5% 108%, #eeebe1 0%, transparent 58%),
+    radial-gradient(700px 500px at 40% 40%, #fdfcf8 0%, transparent 62%),
+    #f8f7f2;
 }
 
 :root[data-theme="calm"] body,

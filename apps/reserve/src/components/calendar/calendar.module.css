@@ -123,9 +123,58 @@
   margin-left: 4px;
 }
 
+/* 拡大縮小バー：溝（くぼみ）・色つき部分（光沢）・つまみ（ふくらみ）をそれぞれ立体に */
 .zoomRange {
+  --fill: 50%;
+  --track: linear-gradient(180deg, rgb(255 255 255 / 50%) 0%, rgb(255 255 255 / 0%) 50%, rgb(0 0 0 / 8%) 100%),
+    linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) var(--fill), color-mix(in srgb, var(--accent-deep) 60%, transparent) var(--fill), var(--bg-muted) calc(var(--fill) + 1px));
   width: 110px;
-  accent-color: var(--accent);
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.zoomRange::-webkit-slider-runnable-track {
+  height: 8px;
+  border: 1px solid var(--btn-line);
+  border-radius: 999px;
+  background: var(--track);
+  box-shadow: inset 0 1px 2px rgb(var(--shadow-rgb) / 30%), 0 1px 0 rgb(255 255 255 / 60%);
+}
+
+.zoomRange::-moz-range-track {
+  height: 8px;
+  border: 1px solid var(--btn-line);
+  border-radius: 999px;
+  background: var(--track);
+  box-shadow: inset 0 1px 2px rgb(var(--shadow-rgb) / 30%), 0 1px 0 rgb(255 255 255 / 60%);
+}
+
+.zoomRange::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff 0%, var(--surface) 30%, color-mix(in srgb, var(--accent) 30%, var(--surface)) 100%);
+  box-shadow: 0 2px 4px rgb(var(--shadow-rgb) / 35%), inset 0 -2px 2px rgb(var(--shadow-rgb) / 18%);
+  -webkit-appearance: none;
+}
+
+.zoomRange::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff 0%, var(--surface) 30%, color-mix(in srgb, var(--accent) 30%, var(--surface)) 100%);
+  box-shadow: 0 2px 4px rgb(var(--shadow-rgb) / 35%), inset 0 -2px 2px rgb(var(--shadow-rgb) / 18%);
+}
+
+.zoomRange:hover::-webkit-slider-thumb {
+  box-shadow: 0 2px 6px rgb(var(--shadow-rgb) / 45%), inset 0 -2px 2px rgb(var(--shadow-rgb) / 18%);
 }
 
 .main {
@@ -2162,33 +2211,33 @@ button.stagePill[data-clickable]:disabled {
   background: radial-gradient(520px 260px at 105% -5%, #eacdc6 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #f2e3d6 0%, transparent 65%), radial-gradient(420px 360px at 55% 45%, #f9f1ea 0%, transparent 70%), #f5eae2;
 }
 :global(:root[data-theme="luxe"]) .toolbar {
-  background: radial-gradient(520px 130px at 50% -40%, #f2e2bf 0%, transparent 72%), radial-gradient(420px 120px at 5% 130%, #ebdfcb 0%, transparent 70%), linear-gradient(90deg, #f1e7d6 0%, #f8f2e7 50%, #efe4d1 100%);
+  background: radial-gradient(520px 130px at 50% -40%, #e6e2d2 0%, transparent 72%), radial-gradient(420px 120px at 5% 130%, #e7e4d9 0%, transparent 70%), linear-gradient(90deg, #efede4 0%, #f8f7f1 50%, #ecebe1 100%);
 }
 
 :global(:root[data-theme="luxe"]) .header {
-  background: linear-gradient(180deg, #eee1cb 0%, #f5ede0 100%);
+  background: linear-gradient(180deg, #e9e6d8 0%, #f4f2ea 100%);
 }
 
 :global(:root[data-theme="luxe"]) .corner,
 :global(:root[data-theme="luxe"]) .timeCol {
-  background: linear-gradient(90deg, #f3eadb 0%, #ebdfca 100%);
+  background: linear-gradient(90deg, #f3f1e9 0%, #e8e5d8 100%);
 }
 
 :global(:root[data-theme="luxe"]) .body {
-  background: radial-gradient(900px 600px at 80% 0%, #fefbf6 0%, transparent 60%), radial-gradient(800px 700px at 0% 100%, #f6efe3 0%, transparent 60%), #fbf7f0;
+  background: radial-gradient(900px 600px at 80% 0%, #fdfcf8 0%, transparent 60%), radial-gradient(800px 700px at 0% 100%, #f2f0e8 0%, transparent 60%), #f9f8f3;
 }
 
 :global(:root[data-theme="luxe"]) .reception {
-  background: radial-gradient(420px 320px at -10% -5%, #e6d6bb 0%, transparent 70%), radial-gradient(380px 420px at 110% 60%, #eadfcd 0%, transparent 70%), radial-gradient(360px 300px at 40% 108%, #e2d0b2 0%, transparent 70%), #ece1cf;
+  background: radial-gradient(420px 320px at -10% -5%, #dfdbc9 0%, transparent 70%), radial-gradient(380px 420px at 110% 60%, #e6e3d7 0%, transparent 70%), radial-gradient(360px 300px at 40% 108%, #d9d4bf 0%, transparent 70%), #e8e5d9;
 }
 
 :global(:root[data-theme="luxe"]) .receptionRow {
-  background: linear-gradient(150deg, #fefcf7 0%, #f8f0e3 100%);
-  box-shadow: 0 1px 3px rgb(90 70 45 / 12%);
+  background: linear-gradient(150deg, #fdfdf9 0%, #f4f2ea 100%);
+  box-shadow: 0 1px 3px rgb(70 66 48 / 12%);
 }
 
 :global(:root[data-theme="luxe"]) .panel {
-  background: radial-gradient(520px 280px at 105% -8%, #eedcb8 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #ebe0ce 0%, transparent 65%), radial-gradient(420px 360px at 50% 45%, #faf5ec 0%, transparent 70%), #f4ece0;
+  background: radial-gradient(520px 280px at 105% -8%, #e2ddc9 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #e8e5da 0%, transparent 65%), radial-gradient(420px 360px at 50% 45%, #faf9f4 0%, transparent 70%), #f0eee6;
 }
 :global(:root[data-theme="calm"]) .toolbar {
   background: radial-gradient(520px 130px at 15% -40%, #c9e6f3 0%, transparent 72%), radial-gradient(460px 120px at 95% 130%, #d9e5ee 0%, transparent 70%), linear-gradient(90deg, #e6f3f9 0%, #f3fafd 50%, #e3eff6 100%);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
@@ -294,6 +294,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const isToday = date === now.date;
   const activeCount = bundle?.reservations.filter((r) => r.status !== "cancelled" && r.status !== "no_show").length ?? 0;
   const zoomPercent = Math.round((scale / DEFAULT_PX_PER_MIN) * 100);
+  // 拡大縮小バーの色つき部分の長さ（つまみの位置まで）
+  const zoomFill = ((Math.log(scale) - Math.log(MIN_PX_PER_MIN)) / (Math.log(MAX_PX_PER_MIN) - Math.log(MIN_PX_PER_MIN))) * 100;
 
   return (
     <div className={styles.app} data-panel-open={selected ? true : undefined}>
@@ -367,6 +369,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             value={Math.log(scale)}
             onChange={(e) => setScale(clampScale(Math.exp(Number(e.target.value))))}
             aria-label={`拡大率 ${zoomPercent}%`}
+            style={{ "--fill": `${zoomFill}%` } as CSSProperties}
           />
           <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1.25)} aria-label="拡大">
             ＋
