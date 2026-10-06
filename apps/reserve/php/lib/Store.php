@@ -165,8 +165,64 @@ final class Store
             }
             $db->setMeta('sheetPricesSeeded', true);
         }
+        // 削除済みのサンプル患者（試作で入れた p-0001〜・カルテ番号10001〜・電話0120-000-…）を、予約・記録ごと完全に消す（1回だけ）
+        if (!$db->meta('samplePatientsPurged')) {
+            self::purgeSamplePatients();
+        }
         // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
         self::ensureBaseline();
+    }
+
+    /** 試作のサンプル患者か（削除済みで、カルテ番号10001〜10120・電話0120-000-xxx の両方がそろうものだけ） */
+    public static function isDeletedSamplePatient(array $p): bool
+    {
+        $no = (string) ($p['chartNo'] ?? '');
+        return !empty($p['deleted'])
+            && preg_match('/^0120-000-\d{3}$/', (string) ($p['phone'] ?? ''))
+            && preg_match('/^1\d{4}$/', $no) && (int) $no >= 10001 && (int) $no <= 10120;
+    }
+
+    /**
+     * 削除済みのサンプル患者を、予約・施術メモ・ファイル（中身も）・見積・同意書・カルテ・変更履歴ごと消す。
+     * 問診票の回答は Google から来た本物の回答なので消さず、結びつきだけ外す。消した人数だけを操作ログに残す
+     * @return array{patients: int, records: int}
+     */
+    public static function purgeSamplePatients(): array
+    {
+        $db = Db::i();
+        $out = $db->transaction(function () use ($db) {
+            $patients = 0;
+            $records = 0;
+            foreach ($db->all('patient') as $id => $p) {
+                if (!self::isDeletedSamplePatient($p)) {
+                    continue;
+                }
+                $id = (string) $id;
+                foreach (['reservation', 'visitNote', 'file', 'estimate', 'consent', 'chart'] as $kind) {
+                    foreach ($db->where($kind, 'k2', $id) as $rid => $rec) {
+                        if ($kind === 'file') {
+                            $db->deleteBlob((string) $rid);
+                        }
+                        $db->delete($kind, (string) $rid);
+                        $records++;
+                    }
+                }
+                foreach ($db->where('questionnaire', 'k2', $id) as $qid => $q) {
+                    unset($q['patientId']);
+                    $db->put('questionnaire', (string) $qid, $q);
+                }
+                $db->delete('patientHistory', $id);
+                $db->delete('patient', $id);
+                $patients++;
+            }
+            $db->setMeta('samplePatientsPurged', ['at' => now_iso(), 'patients' => $patients, 'records' => $records]);
+            if ($patients > 0) {
+                Auth::audit(['id' => 'system', 'name' => 'システム'], "削除済みのサンプル患者{$patients}人を、予約・記録{$records}件ごと完全に削除");
+            }
+            return ['patients' => $patients, 'records' => $records];
+        });
+        self::$patients = null;
+        return $out;
     }
 
     /** 院の設定（院名・診療時間・刻み）。画面から変更したものがあればそれを使う */

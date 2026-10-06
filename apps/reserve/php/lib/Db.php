@@ -253,6 +253,11 @@ final class Db
         $this->pdo->prepare('DELETE FROM docs WHERE kind = ? AND id = ?')->execute([$kind, $id]);
     }
 
+    public function deleteBlob(string $id): void
+    {
+        $this->pdo->prepare('DELETE FROM blobs WHERE id = ?')->execute([$id]);
+    }
+
     public function meta(string $id): mixed
     {
         return $this->get('meta', $id);
