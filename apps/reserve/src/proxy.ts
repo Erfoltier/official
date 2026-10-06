@@ -10,6 +10,9 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 export function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/api/v1/integration/")) return NextResponse.next();
+  if (request.nextUrl.pathname.startsWith("/api/v1/") && crossSiteWrite(request)) {
+    return NextResponse.json({ error: "forbidden", message: "この操作は受け付けられません" }, { status: 403 });
+  }
 
   const expected = process.env.STAFF_BASIC_AUTH;
   if (!expected) {
@@ -33,6 +36,26 @@ export function proxy(request: NextRequest) {
     status: 401,
     headers: { "WWW-Authenticate": 'Basic realm="reserve", charset="UTF-8"' },
   });
+}
+
+/**
+ * 変更の操作（GET 以外）が、ほかのサイト・ほかのページから送られてきたものか（CSRF の多重防御。PHP 版と同じ決まり）。
+ * ブラウザが付ける Origin・Sec-Fetch-Site で見分け、付いていなければ通す
+ */
+function crossSiteWrite(request: NextRequest): boolean {
+  if (request.method === "GET" || request.method === "HEAD") return false;
+  const origin = request.headers.get("origin");
+  if (origin) {
+    let host = "";
+    try {
+      host = new URL(origin).host;
+    } catch {
+      return true;
+    }
+    if (host !== request.headers.get("host")) return true;
+  }
+  const site = request.headers.get("sec-fetch-site");
+  return !!site && site !== "same-origin" && site !== "none";
 }
 
 function constantTimeEqual(a: string, b: string): boolean {

@@ -11,6 +11,9 @@ final class Auth
     public const ROLES = ['admin', 'doctor', 'nurse', 'reception'];
     private const MAX_FAILS = 5;
     private const LOCK_MS = 5 * 60_000;
+    private const MAX_LOCK_MS = 24 * 60 * 60_000;
+    private const IP_MAX_FAILS = 20;
+    private const IP_WINDOW_MS = 15 * 60_000;
     public const PIN_ITERATIONS = 210_000;
     private const COOKIE = 'rsv_staff';
     private const SESSION_HOURS = 12;
@@ -79,8 +82,8 @@ final class Auth
 
     private static function checkPinFormat(string $pin): void
     {
-        if (!preg_match('/^\d{4,8}$/', $pin)) {
-            throw new AuthError('invalid', 'PINは4〜8桁の数字にしてください');
+        if (!preg_match('/^\d{6,8}$/', $pin)) {
+            throw new AuthError('invalid', 'PINは6〜8桁の数字にしてください');
         }
     }
 
@@ -109,32 +112,81 @@ final class Auth
         return $out;
     }
 
-    /** @return array{staff: array, sessionVersion: int} */
+    /** 失敗の回数 → ロックする長さ（ミリ秒）。5回目からロックし、間違えるたびに倍に（最長1日）。0 はロックしない */
+    public static function lockMsFor(int $fails): int
+    {
+        return $fails < self::MAX_FAILS ? 0 : (int) min(self::LOCK_MS * 2 ** ($fails - self::MAX_FAILS), self::MAX_LOCK_MS);
+    }
+
+    /**
+     * PINを確かめる。成功すればセッションに入れる sessionVersion を返す。
+     * 同時にたくさん送られても回数の数え漏れが出ないよう、書き込みの鍵を取ってから最新の記録で数える
+     * @return array{staff: array, sessionVersion: int}
+     */
     public static function verifyPin(string $staffId, string $pin, ?int $now = null): array
     {
         $now ??= (int) floor(microtime(true) * 1000);
-        $s = self::all()[$staffId] ?? null;
-        if (!$s || !$s['active']) {
-            throw new AuthError('invalid_pin', 'スタッフまたはPINが違います');
-        }
-        if ($s['lockedUntil'] > $now) {
-            $min = (int) ceil(($s['lockedUntil'] - $now) / 60_000);
-            throw new AuthError('locked', "PINを続けて間違えたため、{$min}分ほどログインできません");
-        }
-        if (!self::pinMatches($s, $pin)) {
-            $fails = $s['failedCount'] + 1;
-            if ($fails >= self::MAX_FAILS) {
-                self::save([...$s, 'failedCount' => 0, 'lockedUntil' => $now + self::LOCK_MS]);
-                self::audit(['id' => $s['id'], 'name' => $s['name']], 'PIN入力の失敗が続いたためロック');
-                throw new AuthError('locked', 'PINを続けて間違えたため、5分間ログインできません');
+        $db = Db::i();
+        $out = $db->transaction(function () use ($db, $staffId, $pin, $now) {
+            self::bootstrap();
+            $s = $db->get('staff', $staffId);
+            // 存在しない・停止中のスタッフも、同じ文言で断る
+            if (!$s || !$s['active']) {
+                return ['error' => new AuthError('invalid_pin', 'スタッフまたはPINが違います')];
             }
-            self::save([...$s, 'failedCount' => $fails]);
-            throw new AuthError('invalid_pin', 'スタッフまたはPINが違います');
+            if ($s['lockedUntil'] > $now) {
+                $min = (int) ceil(($s['lockedUntil'] - $now) / 60_000);
+                return ['error' => new AuthError('locked', "PINを続けて間違えたため、{$min}分ほどログインできません")];
+            }
+            if (!self::pinMatches($s, $pin)) {
+                // 失敗の回数はログインに成功するまで戻さない
+                $fails = $s['failedCount'] + 1;
+                $lockMs = self::lockMsFor($fails);
+                if ($lockMs > 0) {
+                    self::save([...$s, 'failedCount' => $fails, 'lockedUntil' => $now + $lockMs]);
+                    self::audit(['id' => $s['id'], 'name' => $s['name']], 'PIN入力の失敗が続いたためロック');
+                    $min = (int) round($lockMs / 60_000);
+                    return ['error' => new AuthError('locked', "PINを続けて間違えたため、{$min}分間ログインできません")];
+                }
+                self::save([...$s, 'failedCount' => $fails]);
+                return ['error' => new AuthError('invalid_pin', 'スタッフまたはPINが違います')];
+            }
+            if ($s['failedCount'] !== 0 || $s['lockedUntil'] !== 0) {
+                self::save([...$s, 'failedCount' => 0, 'lockedUntil' => 0]);
+            }
+            return ['ok' => ['staff' => self::toPublic($s), 'sessionVersion' => $s['sessionVersion']]];
+        });
+        // 失敗の記録を確定させてから断る（中で投げると取り消されてしまう）
+        if (isset($out['error'])) {
+            throw $out['error'];
         }
-        if ($s['failedCount'] !== 0 || $s['lockedUntil'] !== 0) {
-            self::save([...$s, 'failedCount' => 0, 'lockedUntil' => 0]);
+        return $out['ok'];
+    }
+
+    /**
+     * 同じ接続元からのPINの失敗が多すぎないか（15分で20回まで）。スタッフを変えての総当たりや、全員をロックさせる妨害を抑える。
+     * 接続元はハッシュにして保存する
+     */
+    public static function checkLoginRate(string $ip, ?int $now = null): void
+    {
+        $now ??= (int) floor(microtime(true) * 1000);
+        $rec = Db::i()->get('loginIp', hash('sha256', $ip)) ?? ['fails' => []];
+        $recent = array_values(array_filter($rec['fails'], fn($t) => $t > $now - self::IP_WINDOW_MS));
+        if (count($recent) >= self::IP_MAX_FAILS) {
+            throw new AuthError('locked', 'この端末・回線からのPINの失敗が多いため、しばらくログインできません');
         }
-        return ['staff' => self::toPublic($s), 'sessionVersion' => $s['sessionVersion']];
+    }
+
+    public static function noteLoginFailure(string $ip, ?int $now = null): void
+    {
+        $now ??= (int) floor(microtime(true) * 1000);
+        $id = hash('sha256', $ip);
+        Db::i()->transaction(function () use ($id, $now) {
+            $rec = Db::i()->get('loginIp', $id) ?? ['fails' => []];
+            $recent = array_values(array_filter($rec['fails'], fn($t) => $t > $now - self::IP_WINDOW_MS));
+            $recent[] = $now;
+            Db::i()->put('loginIp', $id, ['fails' => array_slice($recent, -self::IP_MAX_FAILS)]);
+        });
     }
 
     private static function checkName(string $name): string
@@ -271,6 +323,9 @@ final class Auth
         if (!is_array($data) || !is_int($data['exp'] ?? null) || $data['exp'] < $now) {
             return null;
         }
+        if (Db::i()->get('revokedSession', hash('sha256', $mac)) !== null) {
+            return null;
+        }
         $s = self::all()[(string) ($data['sid'] ?? '')] ?? null;
         if (!$s || !$s['active'] || $s['sessionVersion'] !== ($data['v'] ?? null)) {
             return null;
@@ -278,10 +333,49 @@ final class Auth
         return self::toPublic($s);
     }
 
+    /**
+     * 閲覧の記録（誰がどの患者・ファイル・同意書を見たか）。画面の変更履歴とは分けて残し、
+     * 同じスタッフ・同じ対象は1時間に1件にまとめる（最後に見た時刻）。患者の中身は残さない
+     */
+    public static function noteAccess(array $s, string $action, string $target): void
+    {
+        $at = now_iso();
+        $id = hash('sha256', $s['id'] . '|' . $target . '|' . substr($at, 0, 13));
+        Db::i()->put('accessLog', $id, ['at' => $at, 'staffId' => $s['id'], 'staffName' => $s['name'], 'action' => $action, 'target' => $target]);
+    }
+
+    /** ログアウト：この Cookie を期限まで使えなくする（盗まれた・端末に残った Cookie 対策） */
+    public static function revokeSessionToken(?string $token, ?int $now = null): void
+    {
+        $now ??= (int) floor(microtime(true) * 1000);
+        if (!$token || !self::readSessionToken($token, $now)) {
+            return;
+        }
+        [$payload, $mac] = explode('.', $token);
+        $exp = (int) (json_decode((string) b64url_decode($payload), true)['exp'] ?? 0);
+        $db = Db::i();
+        $db->transaction(function () use ($db, $mac, $exp, $now) {
+            foreach ($db->all('revokedSession') as $id => $r) {
+                if (($r['exp'] ?? 0) < $now) {
+                    $db->delete('revokedSession', (string) $id);
+                }
+            }
+            $db->put('revokedSession', hash('sha256', $mac), ['exp' => $exp]);
+        });
+    }
+
+    /** Cookie の中のトークン */
+    public static function sessionToken(): ?string
+    {
+        return isset($_COOKIE[self::COOKIE]) ? (string) $_COOKIE[self::COOKIE] : null;
+    }
+
     private static function cookieAttrs(): string
     {
         $path = rtrim((string) (config()['base_path'] ?? ''), '/') . '/';
-        return "Path={$path}; HttpOnly; SameSite=Strict" . (is_https() ? '; Secure' : '');
+        // 本番は常に Secure（https の判定に失敗しても平文で流さない）。手元の http での試験だけ外す
+        $local = preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', (string) ($_SERVER['HTTP_HOST'] ?? ''));
+        return "Path={$path}; HttpOnly; SameSite=Strict" . (is_https() || !$local ? '; Secure' : '');
     }
 
     public static function sessionCookie(string $token): string

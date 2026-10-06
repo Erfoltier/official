@@ -26,6 +26,11 @@ try {
     $p = $path;
     $n = count($p);
 
+    // ---- 変更の操作は、このサイトの画面から送られたものだけ受け付ける（CSRF の多重防御。外部連携は別のトークン認証） ----
+    if (!in_array($method, ['GET', 'HEAD'], true) && ($p[0] ?? '') !== 'integration' && Http::crossSiteWrite()) {
+        Http::json(['error' => 'forbidden', 'message' => 'この操作は受け付けられません'], 403);
+    }
+
     // ---- 動作確認（設置直後の確認用。中身は返さない） ----
     if ($route === 'GET health') {
         Db::i()->count('lane');
@@ -38,7 +43,15 @@ try {
     }
     if ($route === 'POST auth/login') {
         $in = Schema::login(Http::readJson());
-        $r = Auth::verifyPin($in['staffId'], $in['pin']);
+        // 同じ接続元からの失敗が多すぎれば、PINを確かめる前に断る
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        Auth::checkLoginRate($ip);
+        try {
+            $r = Auth::verifyPin($in['staffId'], $in['pin']);
+        } catch (AuthError $e) {
+            Auth::noteLoginFailure($ip);
+            throw $e;
+        }
         Auth::audit(['id' => $r['staff']['id'], 'name' => $r['staff']['name']], 'ログイン');
         Http::json($r['staff'], 200, ['Set-Cookie: ' . Auth::sessionCookie(Auth::createSessionToken($r['staff']['id'], $r['sessionVersion']))]);
     }
@@ -46,6 +59,7 @@ try {
         $s = Auth::currentStaff();
         if ($s) {
             Auth::audit(Auth::actorOf($s), 'ログアウト');
+            Auth::revokeSessionToken(Auth::sessionToken());
         }
         Http::noContent(['Set-Cookie: ' . Auth::clearSessionCookie()]);
     }
@@ -155,8 +169,10 @@ try {
     }
     if ($p[0] === 'patients' && $n >= 2 && $p[1] !== 'merge') {
         if ($method === 'GET' && $n === 2) {
-            $me();
-            Http::json(Store::getPatientDetail(V::id($p[1])));
+            $s = $me();
+            $d = Store::getPatientDetail(V::id($p[1]));
+            Auth::noteAccess($s, '患者を表示', 'patient:' . $p[1]);
+            Http::json($d);
         }
         if ($method === 'PATCH' && $n === 2) {
             $s = $me();
@@ -273,8 +289,9 @@ try {
     // ---- ファイル ----
     if ($p[0] === 'files' && $n >= 2) {
         if ($method === 'GET' && $n === 2) {
-            $me();
+            $s = $me();
             [$meta, $bytes] = Store::getFile(V::id($p[1]));
+            Auth::noteAccess($s, 'ファイルを表示', 'file:' . $p[1]);
             Http::file($meta, $bytes);
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
@@ -313,8 +330,10 @@ try {
     }
     if ($p[0] === 'consents' && $n >= 2) {
         if ($method === 'GET' && $n === 2) {
-            $me();
-            Http::json(Store::getConsentView(V::id($p[1])));
+            $s = $me();
+            $c = Store::getConsentView(V::id($p[1]));
+            Auth::noteAccess($s, '同意書を表示', 'consent:' . $p[1]);
+            Http::json($c);
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
             $s = $manager();

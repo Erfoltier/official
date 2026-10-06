@@ -113,7 +113,7 @@ export function StaffTab({ notify, fail }: Props) {
                 <button
                   className={styles.btn}
                   onClick={() => {
-                    const next = window.prompt(`${s.name} の新しいPIN（4〜8桁の数字）`);
+                    const next = window.prompt(`${s.name} の新しいPIN（6〜8桁の数字）`);
                     if (next) update(s.id, { pin: next }, "PINを変更しました");
                   }}
                 >
@@ -140,7 +140,7 @@ export function StaffTab({ notify, fail }: Props) {
                 className={styles.input}
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                placeholder="初期PIN（4〜8桁）"
+                placeholder="初期PIN（6〜8桁）"
                 inputMode="numeric"
                 aria-label="初期PIN"
               />

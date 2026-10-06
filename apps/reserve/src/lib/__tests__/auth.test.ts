@@ -28,11 +28,12 @@ describe("スタッフのログイン", () => {
     const admin = { id: "staff-admin", name: "院長（デモ）" };
     const { sessionVersion } = staff.verifyPin("staff-rc1", "1234");
     const token = session.createSessionToken("staff-rc1", sessionVersion);
-    staff.updateStaff(admin, "staff-rc1", { pin: "5678" });
+    staff.updateStaff(admin, "staff-rc1", { pin: "567890" });
+    expect(() => staff.updateStaff(admin, "staff-rc1", { pin: "5678" })).toThrow(/6〜8桁/);
     expect(session.readSessionToken(token)).toBeNull();
     expect(() => staff.verifyPin("staff-rc1", "1234")).toThrow(/違います/);
     staff.updateStaff(admin, "staff-rc1", { active: false });
-    expect(() => staff.verifyPin("staff-rc1", "5678")).toThrow(/違います/);
+    expect(() => staff.verifyPin("staff-rc1", "567890")).toThrow(/違います/);
   });
 
   it("PINを5回続けて間違えると5分ロック", async () => {
@@ -41,6 +42,29 @@ describe("スタッフのログイン", () => {
     expect(() => staff.verifyPin("staff-dr", "0000")).toThrow(/5分間/);
     expect(() => staff.verifyPin("staff-dr", "1234")).toThrow(/ログインできません/);
     expect(staff.verifyPin("staff-dr", "1234", Date.now() + 6 * 60_000).staff.id).toBe("staff-dr");
+  });
+
+  it("ロックが明けても失敗の回数は戻らず、間違えるたびにロックが倍になる（最長1日）", async () => {
+    const staff = await import("@/lib/server/staff");
+    const t0 = Date.now();
+    for (let i = 0; i < 5; i++) expect(() => staff.verifyPin("staff-dr", "0000", t0)).toThrow();
+    expect(() => staff.verifyPin("staff-dr", "0000", t0 + 6 * 60_000)).toThrow(/10分間/);
+    expect(() => staff.verifyPin("staff-dr", "1234", t0 + 12 * 60_000)).toThrow(/ログインできません/);
+    expect(staff.lockMsFor(4)).toBe(0);
+    expect(staff.lockMsFor(20)).toBe(24 * 3600_000);
+  });
+
+  it("ログアウトした Cookie は、期限内でも使えない", async () => {
+    const staff = await import("@/lib/server/staff");
+    const session = await import("@/lib/server/session");
+    const { sessionVersion } = staff.verifyPin("staff-ns1", "1234");
+    const token = session.createSessionToken("staff-ns1", sessionVersion);
+    const other = session.createSessionToken("staff-ns1", sessionVersion, Date.now() - 1000);
+    const req = new Request("http://x/", { headers: { cookie: `rsv_staff=${token}` } });
+    session.revokeCurrentSession(req);
+    expect(session.readSessionToken(token)).toBeNull();
+    // ほかの端末のログインはそのまま
+    expect(session.readSessionToken(other)?.id).toBe("staff-ns1");
   });
 
   it("管理者がいなくなる変更はできない", async () => {

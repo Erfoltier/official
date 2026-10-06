@@ -1,6 +1,6 @@
 import "server-only";
 
-import { pbkdf2Sync, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, pbkdf2Sync, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { Actor, AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { staffCanManage } from "@/lib/domain/types";
 import { cleanName, hasForbiddenChars } from "@/lib/domain/text";
@@ -41,6 +41,10 @@ export class AuthError extends Error {
 
 const MAX_FAILS = 5;
 const LOCK_MS = 5 * 60_000;
+const MAX_LOCK_MS = 24 * 60 * 60_000;
+
+/** 失敗の回数 → ロックする長さ（ミリ秒）。0 はロックしない */
+export const lockMsFor = (fails: number) => (fails < MAX_FAILS ? 0 : Math.min(LOCK_MS * 2 ** (fails - MAX_FAILS), MAX_LOCK_MS));
 
 /** 試作用の初期スタッフ。PINはすべて 1234（運用前に必ず変更する） */
 const DEMO_STAFF: { id: string; name: string; role: StaffRole }[] = [
@@ -55,6 +59,8 @@ export const DEMO_PIN = "1234";
 interface StaffState {
   staff: Map<string, StaffRecord>;
   seq: number;
+  /** ログアウトしたセッション（署名のハッシュ → 期限）。期限までは使えなくする */
+  revoked: PersistentMap<{ exp: number }>;
 }
 
 const g = globalThis as unknown as { __reserveStaff?: StaffState };
@@ -91,7 +97,7 @@ function st(): StaffState {
   if (!g.__reserveStaff) {
     g.__reserveStaff = transaction(() => {
       bootstrapStaff();
-      return { staff: new PersistentMap<StaffRecord>("staff"), seq: count("staff") };
+      return { staff: new PersistentMap<StaffRecord>("staff"), seq: count("staff"), revoked: new PersistentMap<{ exp: number }>("revokedSession") };
     });
   }
   return g.__reserveStaff;
@@ -119,7 +125,7 @@ function pinMatches(rec: StaffRecord, pin: string): boolean {
 }
 
 function checkPinFormat(pin: string): void {
-  if (!/^\d{4,8}$/.test(pin)) throw new AuthError("invalid", "PINは4〜8桁の数字にしてください");
+  if (!/^\d{6,8}$/.test(pin)) throw new AuthError("invalid", "PINは6〜8桁の数字にしてください");
 }
 
 const toPublic = ({ id, name, role, active, manage }: StaffRecord): StaffPublic => ({ id, name, role, active, canManage: staffCanManage(role, manage) });
@@ -144,11 +150,13 @@ export function verifyPin(staffId: string, pin: string, now = Date.now()): { sta
   const ok = pinMatches(s, pin);
   const save = (patch: Partial<StaffRecord>) => st().staff.set(s.id, { ...s, ...patch });
   if (!ok) {
+    // 失敗の回数はログインに成功するまで戻さない。5回目からはロックし、間違えるたびにロックを倍に（最長1日）
     const fails = s.failedCount + 1;
-    if (fails >= MAX_FAILS) {
-      save({ failedCount: 0, lockedUntil: now + LOCK_MS });
+    const lockMs = lockMsFor(fails);
+    if (lockMs > 0) {
+      save({ failedCount: fails, lockedUntil: now + lockMs });
       audit({ id: s.id, name: s.name }, "PIN入力の失敗が続いたためロック");
-      throw new AuthError("locked", "PINを続けて間違えたため、5分間ログインできません");
+      throw new AuthError("locked", `PINを続けて間違えたため、${Math.round(lockMs / 60_000)}分間ログインできません`);
     }
     save({ failedCount: fails });
     throw new AuthError("invalid_pin", "スタッフまたはPINが違います");
@@ -225,4 +233,31 @@ export function audit(actor: Actor, action: string, target?: string): void {
 
 export function listAudit(limit = 200): AuditEntry[] {
   return loadAudit<AuditEntry>(limit);
+}
+
+// ---- ログアウトしたセッション ----
+
+const revokedId = (mac: string) => createHash("sha256").update(mac).digest("hex");
+
+/** ログアウトした Cookie を、期限が来るまで使えなくする（盗まれた・端末に残った Cookie 対策） */
+export function revokeSession(mac: string, exp: number, now = Date.now()): void {
+  const m = st().revoked;
+  transaction(() => {
+    for (const [id, r] of [...m]) if (r.exp < now) m.delete(id);
+    m.set(revokedId(mac), { exp });
+  });
+}
+
+export function isSessionRevoked(mac: string): boolean {
+  return st().revoked.has(revokedId(mac));
+}
+
+/**
+ * 閲覧の記録（誰がどの患者・ファイル・同意書を見たか）。画面の変更履歴とは分けて残し、
+ * 同じスタッフ・同じ対象は1時間に1件にまとめる（最後に見た時刻）。患者の中身は残さない（PHP 版と同じ）
+ */
+export function noteAccess(staff: { id: string; name: string }, action: string, target: string): void {
+  const at = new Date().toISOString();
+  const id = createHash("sha256").update(`${staff.id}|${target}|${at.slice(0, 13)}`).digest("hex");
+  put("accessLog", id, { at, staffId: staff.id, staffName: staff.name, action, target });
 }

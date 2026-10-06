@@ -34,6 +34,8 @@ export type Kind =
   | "reservation"
   | "visitNote"
   | "staff"
+  | "revokedSession"
+  | "accessLog"
   | "seededDate"
   | "meta";
 

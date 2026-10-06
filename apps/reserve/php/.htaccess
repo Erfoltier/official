@@ -18,12 +18,17 @@ DirectoryIndex index.html
   RewriteCond %{HTTP:Authorization} .
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-  # http で開かれたら https に転送する場合は、次の2行の先頭の # を外す
-  # RewriteCond %{HTTPS} !on
-  # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+  # http で開かれたら https に転送する（ロリポップは手前の中継で https を受けることがあるので、その印も見る）
+  RewriteCond %{HTTPS} !on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 </IfModule>
 
 <IfModule mod_headers.c>
+  # https だけで開かせる（1年）。PHP の版は外に見せない
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always unset X-Powered-By
+  Header unset X-Powered-By
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-Frame-Options "DENY"
   Header always set Referrer-Policy "no-referrer"

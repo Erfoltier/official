@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Actor, StaffPublic, StaffRole } from "@/lib/domain/types";
-import { AuthError, getStaff } from "@/lib/server/staff";
+import { AuthError, getStaff, isSessionRevoked, revokeSession } from "@/lib/server/staff";
 
 /**
  * スタッフのログイン状態（署名付きCookie）。
@@ -43,6 +43,7 @@ export function readSessionToken(token: string | undefined, now = Date.now()): S
   try {
     const { sid, v, exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (typeof exp !== "number" || exp < now) return null;
+    if (isSessionRevoked(mac)) return null;
     const staff = getStaff(String(sid));
     if (!staff || !staff.active || staff.sessionVersion !== v) return null;
     return { id: staff.id, name: staff.name, role: staff.role, active: staff.active, canManage: staff.canManage };
@@ -67,6 +68,15 @@ function cookieValue(request: Request, name: string): string | undefined {
     if (k === name) return v.join("=");
   }
   return undefined;
+}
+
+/** ログアウト：この Cookie を期限まで使えなくする */
+export function revokeCurrentSession(request: Request): void {
+  const token = cookieValue(request, SESSION_COOKIE);
+  if (!token || !readSessionToken(token)) return;
+  const [payload, mac] = token.split(".");
+  const { exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
+  revokeSession(mac, exp);
 }
 
 export function currentStaff(request: Request): StaffPublic | null {

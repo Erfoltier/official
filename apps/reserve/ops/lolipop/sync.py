@@ -64,6 +64,6 @@ if __name__ == "__main__":
             hashed = rel.startswith("_next/static/chunks/") or rel.startswith("_next/static/media/")
             files.append((rel, local, not hashed))
     libs = sorted("lib/" + f for f in os.listdir(APP + "/php/lib") if f.endswith(".php"))
-    for rel in libs + ["api/index.php", "seed/seed.json", ".htaccess"]:
+    for rel in libs + ["lib/.htaccess", "api/index.php", "seed/seed.json", "seed/.htaccess", ".htaccess"]:
         files.append((rel, APP + "/php/" + rel, True))
     print(sync(files))

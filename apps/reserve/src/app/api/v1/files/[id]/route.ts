@@ -1,6 +1,7 @@
 import { idParam } from "@/lib/domain/schemas";
 import { errorResponse } from "@/lib/server/http";
 import { requireStaff } from "@/lib/server/session";
+import { noteAccess } from "@/lib/server/staff";
 import { getFile } from "@/lib/server/store";
 
 /**
@@ -9,8 +10,10 @@ import { getFile } from "@/lib/server/store";
  */
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    requireStaff(request);
-    const { meta, bytes } = getFile(idParam.parse((await ctx.params).id));
+    const staff = requireStaff(request);
+    const id = idParam.parse((await ctx.params).id);
+    const { meta, bytes } = getFile(id);
+    noteAccess(staff, "ファイルを表示", `file:${id}`);
     const disposition = meta.kind === "doc" ? "attachment" : "inline";
     const headers: Record<string, string> = {
       "Content-Type": meta.type,

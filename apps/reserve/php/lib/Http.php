@@ -83,6 +83,24 @@ final class Http
     }
 
     /** 実際のメソッド。共用サーバーで PUT/PATCH/DELETE が通らないため、POST + X-HTTP-Method-Override も受け付ける */
+    /** ほかのサイト・ほかのページから送られてきた変更の操作か（ブラウザが付ける Origin・Sec-Fetch-Site で見分け、付いていなければ通す） */
+    public static function crossSiteWrite(): bool
+    {
+        $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
+        if ($origin !== '') {
+            $u = parse_url($origin);
+            if (!is_array($u) || !isset($u['host'])) {
+                return true;
+            }
+            $host = $u['host'] . (isset($u['port']) ? ':' . $u['port'] : '');
+            if (strtolower($host) !== strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''))) {
+                return true;
+            }
+        }
+        $site = (string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '');
+        return $site !== '' && $site !== 'same-origin' && $site !== 'none';
+    }
+
     public static function method(): string
     {
         $m = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
