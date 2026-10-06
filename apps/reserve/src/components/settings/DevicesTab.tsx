@@ -152,7 +152,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                 </li>
                 <li>
                   スタートメニューで「PowerShell」を<b>普通に</b>開き（「管理者として実行」では親機の共有フォルダが見えないことがあります）、次を入力します（ファイルの場所に合わせて）。
-                  <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;%USERPROFILE%\Documents\neovoir-agent.ps1&quot; -Setup</code>
+                  <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;$env:USERPROFILE\Documents\neovoir-agent.ps1&quot; -Setup</code>
                   聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
                 </li>
                 <li>
