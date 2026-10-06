@@ -286,6 +286,9 @@ final class Store
         return $next;
     }
 
+    /** 問診票の照合用：名前（整えたもの）→ 患者ID */
+    private static ?array $nameIndex = null;
+
     private static function &patients(): array
     {
         self::init();
@@ -3378,18 +3381,28 @@ final class Store
             return null;
         }
         $tel = digits_only($phone);
-        $hits = [];
-        foreach (self::patients() as $p) {
-            if (!empty($p['deleted'])) {
-                continue;
-            }
-            $nameHit = false;
-            foreach ([$p['name'], $p['kana'] ?? '', $p['nameAlt'] ?? ''] as $x) {
-                if ($x !== '' && in_array(search_key($x), $keys, true)) {
-                    $nameHit = true;
+        // 名前の索引は1回の受け取りにつき1回だけ作る（患者が多いと、回答ごとに全員の名前を整えると時間切れになるため）
+        if (self::$nameIndex === null) {
+            self::$nameIndex = [];
+            foreach (self::patients() as $p) {
+                if (!empty($p['deleted'])) {
+                    continue;
+                }
+                foreach ([$p['name'], $p['kana'] ?? '', $p['nameAlt'] ?? ''] as $x) {
+                    if ($x !== '') {
+                        self::$nameIndex[search_key($x)][$p['id']] = true;
+                    }
                 }
             }
-            if (!$nameHit) {
+        }
+        $ids = [];
+        foreach ($keys as $k) {
+            $ids += self::$nameIndex[$k] ?? [];
+        }
+        $hits = [];
+        foreach (array_keys($ids) as $id) {
+            $p = self::patients()[$id] ?? null;
+            if (!$p || !empty($p['deleted'])) {
                 continue;
             }
             if (($birthDate !== null && ($p['birthDate'] ?? null) === $birthDate) || (strlen($tel) >= 10 && digits_only($p['phone'] ?? '') === $tel)) {

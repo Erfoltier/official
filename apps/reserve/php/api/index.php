@@ -92,6 +92,8 @@ try {
     }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'questionnaires') {
         Http::checkIntegrationAuth();
+        // 過去の回答をまとめて受け取るときは時間がかかるので、許されていれば時間の上限を延ばす
+        @set_time_limit(120);
         Http::json(Store::receiveQuestionnaires(Schema::integrationQuestionnaires(Http::readJson(2_000_000))['responses']));
     }
     // 機器の連携（院のパソコンの取り込み係から。鍵は設定 → 外部機器の連携 で発行）
