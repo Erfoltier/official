@@ -820,7 +820,57 @@ final class Store
             'reservations' => $reservations,
             'patients' => array_values(array_filter(array_map(fn($id) => $patients[$id] ?? null, array_keys($pids)))),
             'stages' => self::sortedStages(),
+            'dayNotes' => (object) self::dayNotesOn($date),
         ];
+    }
+
+    // ---- Todaysメモ（日付×レーン。カレンダーの始業時間より上に出す自由記載） ----
+
+    private static function dayNotesOn(string $date): array
+    {
+        $out = [];
+        foreach (self::sortedLanes() as $l) {
+            $n = Db::i()->get('dayNote', "{$date}|{$l['id']}");
+            if (is_array($n) && ($n['text'] ?? '') !== '') {
+                $out[$l['id']] = $n['text'];
+            }
+        }
+        return $out;
+    }
+
+    public static function getDayNotes(string $date): array
+    {
+        self::init();
+        return ['date' => $date, 'notes' => (object) self::dayNotesOn($date)];
+    }
+
+    /** Todaysメモを書き換える（空で消す） */
+    public static function setDayNote(string $date, string $laneId, string $text, ?array $by = null): array
+    {
+        self::init();
+        $lane = self::lanes()[$laneId] ?? null;
+        if (!$lane) {
+            throw new StoreError('not_found', 'レーンが見つかりません');
+        }
+        $v = self::checkNote('Todaysメモ', $text, 1000);
+        $note = ['date' => $date, 'laneId' => $laneId, 'text' => $v, 'updatedAt' => now_iso()];
+        if ($by) {
+            $note['updatedBy'] = $by['name'];
+        }
+        $id = "{$date}|{$laneId}";
+        $prev = Db::i()->get('dayNote', $id);
+        if ((is_array($prev) ? ($prev['text'] ?? '') : '') === $v) {
+            return $note;
+        }
+        if ($v !== '') {
+            Db::i()->put('dayNote', $id, $note);
+        } else {
+            Db::i()->delete('dayNote', $id);
+        }
+        if ($by) {
+            Auth::audit($by, "Todaysメモ（{$date} {$lane['name']}）を" . ($v !== '' ? '変更' : '削除'));
+        }
+        return $note;
     }
 
     /** 月の日ごとの予約数（キャンセル・無断キャンセルを除く）。$month は "2026-10" */
@@ -1684,6 +1734,32 @@ final class Store
         $from = now_in_clinic()['date'];
         Auth::audit($by, "Airリザーブから移した{$from}以降の予約{$deleted}件を完全に削除（入れ直しのため）");
         return ['deleted' => $deleted, 'from' => $from];
+    }
+
+    // ---- 指定した患者の予約を過去・未来とも完全に消す（スタッフ予定などを誤って予約として移したときの片付け） ----
+
+    public static function countPatientReservations(string $patientId): array
+    {
+        self::init();
+        self::patient($patientId);
+        return ['patientId' => $patientId, 'count' => count(self::reservationsOf($patientId))];
+    }
+
+    public static function deletePatientReservations(string $patientId, array $by): array
+    {
+        self::init();
+        $p = self::patient($patientId);
+        $db = Db::i();
+        $deleted = $db->transaction(function () use ($db, $patientId) {
+            $n = 0;
+            foreach (self::reservationsOf($patientId) as $r) {
+                $db->delete('reservation', $r['id']);
+                $n++;
+            }
+            return $n;
+        });
+        Auth::audit($by, "{$p['name']} の予約{$deleted}件を完全に削除");
+        return ['patientId' => $patientId, 'deleted' => $deleted];
     }
 
     // ---- 患者 ----

@@ -24,6 +24,7 @@ import {
   tickStepFor,
 } from "@/lib/calendar/scale";
 import { ReservationBlock } from "./ReservationBlock";
+import { DayNoteCell } from "./DayNoteCell";
 import styles from "./calendar.module.css";
 import type { BlockInfo } from "@/lib/displayPrefs";
 
@@ -56,6 +57,8 @@ interface Props {
   onSelect: (id: string | null) => void;
   onMove: (r: Reservation, to: MoveTarget) => void;
   onCreateAt: (laneId: string, minute: number) => void;
+  /** Todaysメモを保存する（成功したら true） */
+  onSaveNote?: (laneId: string, text: string) => Promise<boolean>;
 }
 
 interface DragState {
@@ -96,6 +99,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     onSelect,
     onMove,
     onCreateAt,
+    onSaveNote,
   } = props;
   const { clinic } = bundle;
   // 診療時間の外に予約が入っていても見えるよう、表示する時間帯を1時間単位で広げる
@@ -429,6 +433,18 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
             <span className={styles.laneCount}>{activeCount}件</span>
           </div>
         ))}
+        <div className={styles.noteCorner}>
+          <span>Todays</span>
+          <span>メモ</span>
+        </div>
+        {laneData.map(({ lane }) => (
+          <DayNoteCell
+            key={`${bundle.date}|${lane.id}`}
+            laneName={lane.name}
+            text={bundle.dayNotes?.[lane.id] ?? ""}
+            onSave={onSaveNote ? (t) => onSaveNote(lane.id, t) : undefined}
+          />
+        ))}
       </div>
 
       <div ref={bodyRef} className={styles.body}>
@@ -511,3 +527,4 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     </div>
   );
 });
+

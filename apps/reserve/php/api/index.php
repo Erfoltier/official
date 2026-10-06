@@ -131,6 +131,18 @@ try {
         $me();
         Http::json(Store::getDayBundle(V::date($q('date'))));
     }
+    // ---- Todaysメモ（日付×レーン。スタッフ全員） ----
+    if ($p[0] === 'day-notes' && $n >= 2) {
+        if ($method === 'GET' && $n === 2) {
+            $me();
+            Http::json(Store::getDayNotes(V::date($p[1])));
+        }
+        if ($method === 'PUT' && $n === 3) {
+            $s = $me();
+            $in = Http::readJson();
+            Http::json(Store::setDayNote(V::date($p[1]), V::id($p[2]), V::str(is_array($in) ? ($in['text'] ?? null) : null, 2000), $actor($s)));
+        }
+    }
     if ($route === 'GET month') {
         $me();
         $month = $q('month');
@@ -319,6 +331,22 @@ try {
             $s = $me();
             $f = Store::deleteFile(V::id($p[1]), $actor($s));
             Http::json(['id' => $f['id'], 'deleted' => true]);
+        }
+    }
+
+    // ---- 指定した患者の予約を過去・未来とも完全に消す（院長・管理者。患者そのものは消さない） ----
+    if ($p[0] === 'reservations' && ($p[1] ?? '') === 'by-patient' && $n >= 3) {
+        if ($method === 'GET' && $n === 3) {
+            $me(STAFF_ADMIN);
+            Http::json(Store::countPatientReservations(V::id($p[2])));
+        }
+        if ($method === 'POST' && $n === 4 && $p[3] === 'delete') {
+            $s = $me(STAFF_ADMIN);
+            $in = Http::readJson();
+            if (!is_array($in) || ($in['confirm'] ?? null) !== 'DELETE') {
+                Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"DELETE"} を送ってください'], 400);
+            }
+            Http::json(Store::deletePatientReservations(V::id($p[2]), $actor($s)));
         }
     }
 

@@ -39,6 +39,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** Todaysメモを書き換える（空で消す） */
+export function putDayNote(date: string, laneId: string, text: string): Promise<{ text: string }> {
+  return call(`/api/v1/day-notes/${encodeURIComponent(date)}/${encodeURIComponent(laneId)}`, { method: "PUT", body: JSON.stringify({ text }) });
+}
+
 export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle> {
   return fetchDayRaw(date, signal).then((d) => {
     applyTheme(d.clinic.theme);

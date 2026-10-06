@@ -704,4 +704,15 @@ export interface DayBundle {
   patients: Patient[];
   /** 状態の一覧（非表示も含む。並び順） */
   stages: Stage[];
+  /** Todaysメモ（レーンID → 本文）。書いてあるレーンだけ */
+  dayNotes: Record<string, string>;
+}
+
+/** Todaysメモ：日付×レーンごとの自由記載（担当スタッフ・その日の注意点など。患者の情報とは別） */
+export interface DayNote {
+  date: string;
+  laneId: string;
+  text: string;
+  updatedAt: string;
+  updatedBy?: string;
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
 import type {
+  DayNote,
   DeviceOptions,
   DeviceLink,
   DeviceLinksStatus,
@@ -80,6 +81,7 @@ interface StoreState {
   deviceLinks: Map<string, DeviceLink & { tokenHash: string }>;
   photoInbox: Map<string, PhotoInboxItem>;
   deviceRefs: Map<string, { patientId: string; at: string }>;
+  dayNotes: Map<string, DayNote>;
   products: Map<string, Product>;
   stages: Map<string, Stage>;
   snapshots: Map<string, SettingsSnapshot>;
@@ -144,6 +146,7 @@ function state(): StoreState {
         deviceLinks: new PersistentMap<DeviceLink & { tokenHash: string }>("deviceLink"),
         photoInbox: new PersistentMap<PhotoInboxItem>("photoInbox"),
         deviceRefs: new PersistentMap<{ patientId: string; at: string }>("deviceRef"),
+        dayNotes: new PersistentMap<DayNote>("dayNote"),
         stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
@@ -258,7 +261,42 @@ export function getDayBundle(date: string): DayBundle {
     reservations,
     patients: [...patientIds].map((id) => st.patients.get(id)!).filter(Boolean),
     stages: sortedStages(),
+    dayNotes: dayNotesOn(date),
   };
+}
+
+// ---- Todaysメモ（日付×レーン。カレンダーの始業時間より上に出す自由記載） ----
+
+const dayNoteId = (date: string, laneId: string) => `${date}|${laneId}`;
+
+function dayNotesOn(date: string): Record<string, string> {
+  const st = state();
+  const out: Record<string, string> = {};
+  for (const l of sortedLanes()) {
+    const n = st.dayNotes.get(dayNoteId(date, l.id));
+    if (n?.text) out[l.id] = n.text;
+  }
+  return out;
+}
+
+export function getDayNotes(date: string): { date: string; notes: Record<string, string> } {
+  return { date, notes: dayNotesOn(date) };
+}
+
+/** Todaysメモを書き換える（空で消す） */
+export function setDayNote(date: string, laneId: string, text: string, by?: Actor): DayNote {
+  const st = state();
+  const lane = st.lanes.get(laneId);
+  if (!lane) throw new StoreError("not_found", "レーンが見つかりません");
+  const v = checkNote("Todaysメモ", text, 1000);
+  const note: DayNote = { date, laneId, text: v, updatedAt: new Date().toISOString(), ...(by && { updatedBy: by.name }) };
+  const id = dayNoteId(date, laneId);
+  const prev = st.dayNotes.get(id)?.text ?? "";
+  if (prev === v) return note;
+  if (v) st.dayNotes.set(id, note);
+  else st.dayNotes.delete(id);
+  if (by) audit(by, `Todaysメモ（${date} ${lane.name}）を${v ? "変更" : "削除"}`);
+  return note;
 }
 
 /**
@@ -706,6 +744,33 @@ export function deleteAirFutureReservations(by: Actor): { deleted: number; from:
   const from = nowInClinic().date;
   audit(by, `Airリザーブから移した${from}以降の予約${deleted}件を完全に削除（入れ直しのため）`);
   return { deleted, from };
+}
+
+// ---- 指定した患者の予約を過去・未来とも完全に消す（スタッフ予定などを誤って予約として移したときの片付け） ----
+
+function reservationsOfPatient(patientId: string): Reservation[] {
+  return [...state().reservations.values()].filter((r) => r.patientId === patientId);
+}
+
+export function countPatientReservations(patientId: string): { patientId: string; count: number } {
+  if (!state().patients.has(patientId)) throw new StoreError("not_found", "患者が見つかりません");
+  return { patientId, count: reservationsOfPatient(patientId).length };
+}
+
+export function deletePatientReservations(patientId: string, by: Actor): { patientId: string; deleted: number } {
+  const st = state();
+  const p = st.patients.get(patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  const deleted = transaction(() => {
+    let n = 0;
+    for (const r of reservationsOfPatient(patientId)) {
+      st.reservations.delete(r.id);
+      n++;
+    }
+    return n;
+  });
+  audit(by, `${p.name} の予約${deleted}件を完全に削除`);
+  return { patientId, deleted };
 }
 
 // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----

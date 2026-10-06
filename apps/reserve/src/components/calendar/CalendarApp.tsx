@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
-import { ApiError, fetchDay, fetchMe, logout, patchReservation, updatePatient } from "./api";
+import { ApiError, fetchDay, fetchMe, logout, patchReservation, putDayNote, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
@@ -154,6 +154,25 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   /** ドラッグで動かした予約（確認ダイアログで「はい」を押すまで保存しない） */
   const [pendingMove, setPendingMove] = useState<{ r: Reservation; to: MoveTarget } | null>(null);
+
+  const onSaveNote = async (laneId: string, text: string): Promise<boolean> => {
+    if (!bundle) return false;
+    const date = bundle.date;
+    try {
+      const saved = await putDayNote(date, laneId, text);
+      setBundle((b) => {
+        if (!b || b.date !== date) return b;
+        const dayNotes = { ...b.dayNotes };
+        if (saved.text) dayNotes[laneId] = saved.text;
+        else delete dayNotes[laneId];
+        return { ...b, dayNotes };
+      });
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "メモを保存できませんでした", "error");
+      return false;
+    }
+  };
 
   const onMove = (r: Reservation, to: MoveTarget) => {
     const same = to.laneId === r.laneId && toIso(date, to.startMin) === r.startAt && toIso(date, to.endMin) === r.endAt;
@@ -448,6 +467,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onSelect={setSelectedId}
             onMove={onMove}
             onCreateAt={(laneId, minute) => setCreateAt({ laneId, minute })}
+            onSaveNote={onSaveNote}
           />
         )}
         {bundle && selected && (
