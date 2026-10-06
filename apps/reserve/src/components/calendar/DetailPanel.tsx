@@ -113,7 +113,6 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           <div className={styles.panelName}>
             {patient?.caution && <span className={styles.caution}>!</span>}
             <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
-            {!maskNames && ageSexText(patient) && <span className={styles.nameAge}>{ageSexText(patient)}</span>}
             {!maskNames && patient && <CautionInline note={patient.cautionNote} onSave={onCaution} />}
           </div>
           {!maskNames && patient && (
@@ -121,6 +120,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               <div className={styles.panelSub}>
                 {patient.kana}
                 {patient.nameAlt && ` / ${patient.nameAlt}`}
+                {ageSexText(patient) && <span className={styles.nameAge}>{ageSexText(patient)}</span>}
               </div>
               <div className={styles.idLine}>
                 {patient.chartNo && <span>診察券 {patient.chartNo}</span>}

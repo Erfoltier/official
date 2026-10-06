@@ -201,12 +201,11 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           <div className={styles.title}>
             {p.caution && <span className={styles.caution}>!</span>}
             {p.name}
-            {ageSexText(p) && <span className={styles.nameAge}>{ageSexText(p)}</span>}
             <CautionInline note={p.cautionNote} onSave={readOnly ? undefined : saveCaution} />
           </div>
           <div className={styles.sub}>
             {[
-              p.kana,
+              [p.kana, ageSexText(p)].filter(Boolean).join("　"),
               p.nameAlt,
               p.chartNo ? `診察券 ${p.chartNo}` : null,
               p.m3ChartNo ? `M3 ${p.m3ChartNo}` : null,
