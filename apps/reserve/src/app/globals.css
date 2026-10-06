@@ -17,12 +17,11 @@
   --btn-line: var(--line-strong);
   --btn-shadow: none;
   --field-bg: var(--bg);
-  /* 拡大縮小バーのつまみ：テーマの色の宝石（面のきらめき・ハイライト・金属の台座） */
-  --gem: radial-gradient(ellipse 38% 26% at 38% 26%, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 0%) 100%),
-    radial-gradient(circle at 70% 36%, rgb(255 255 255 / 70%) 0 4%, rgb(255 255 255 / 0%) 10%),
-    radial-gradient(circle at 55% 78%, color-mix(in srgb, var(--accent) 35%, #fff) 0%, rgb(255 255 255 / 0%) 42%),
-    radial-gradient(circle at 45% 40%, color-mix(in srgb, var(--accent) 80%, #fff) 0%, var(--accent) 35%, var(--accent-strong) 62%, var(--accent-deep) 88%);
-  --gem-shadow: 0 0 0 1px #f3ecd3, 0 0 0 2px #a8956a, 0 2px 5px rgb(0 0 0 / 35%), inset 0 -1px 3px rgb(0 0 0 / 25%);
+  /* 拡大縮小バーのつまみ：淡い金属のつまみに、テーマの色の小さな石をはめ込んだ形（光沢は控えめ） */
+  --gem: radial-gradient(circle at 45% 42%, rgb(255 255 255 / 75%) 0 3%, rgb(255 255 255 / 0%) 8%),
+    radial-gradient(circle at 50% 50%, var(--accent) 0 20%, var(--accent-deep) 27%, rgb(0 0 0 / 0%) 30%),
+    linear-gradient(180deg, #fbfaf7 0%, #e9e6de 55%, #d3cec2 100%);
+  --gem-shadow: 0 1px 2px rgb(0 0 0 / 22%), inset 0 0 0 1px rgb(0 0 0 / 16%), inset 0 1px 0 rgb(255 255 255 / 85%);
   --bg-subtle: #f8f6fc;
   --bg-muted: #f0ecf7;
   --tint: #fbf9ff;
@@ -82,12 +81,6 @@
   --btn-line: #c99f98;
   --btn-shadow: 0 1px 2px rgb(95 62 56 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fefaf7;
-  /* つまみ：面のきらめき（カットした石を上から見たような放射状の光） */
-  --gem: radial-gradient(circle at 34% 28%, rgb(255 255 255 / 95%) 0 9%, rgb(255 255 255 / 0%) 26%),
-    radial-gradient(circle at 66% 80%, rgb(255 255 255 / 55%) 0 5%, rgb(255 255 255 / 0%) 20%),
-    radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0%) 45%, rgb(0 0 0 / 28%) 100%),
-    conic-gradient(from 15deg, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 30%, #fff), var(--accent-strong), color-mix(in srgb, var(--accent) 55%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 45%, #fff));
-  --gem-shadow: 0 0 0 1.5px #e9e4d6, 0 0 0 2.5px #9c9478, 0 2px 5px rgb(0 0 0 / 35%), inset 0 0 2px rgb(0 0 0 / 30%);
 }
 
 /* 爽やか：Re2O（リジュー）のページの色。涼しい水色の濃淡と、くすんだ青・紺 */
@@ -122,12 +115,6 @@
   --btn-line: #93bdd3;
   --btn-shadow: 0 1px 2px rgb(18 63 93 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fbfeff;
-  /* つまみ：面のきらめき（カットした石を上から見たような放射状の光） */
-  --gem: radial-gradient(circle at 34% 28%, rgb(255 255 255 / 95%) 0 9%, rgb(255 255 255 / 0%) 26%),
-    radial-gradient(circle at 66% 80%, rgb(255 255 255 / 55%) 0 5%, rgb(255 255 255 / 0%) 20%),
-    radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0%) 45%, rgb(0 0 0 / 28%) 100%),
-    conic-gradient(from 15deg, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 30%, #fff), var(--accent-strong), color-mix(in srgb, var(--accent) 55%, #fff), var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 45%, #fff));
-  --gem-shadow: 0 0 0 1.5px #e9e4d6, 0 0 0 2.5px #9c9478, 0 2px 5px rgb(0 0 0 / 35%), inset 0 0 2px rgb(0 0 0 / 30%);
 }
 
 /* 厳か：濃紺と墨、差し色に控えめな金 */
@@ -192,11 +179,10 @@
   --btn-line: #b7af92;
   --btn-shadow: 0 1px 2px rgb(70 66 48 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fdfcf9;
-  /* つまみは金のピアスの玉：上に強い光、下に照り返し、縁は濃い金 */
-  --gem: radial-gradient(circle at 35% 27%, #fffdf3 0%, #fbf3d6 8%, rgb(240 228 186 / 0%) 24%),
-    radial-gradient(circle at 62% 84%, rgb(246 236 200 / 85%) 0%, rgb(246 236 200 / 0%) 26%),
-    radial-gradient(circle at 40% 35%, #efe2b4 0%, #cdb97f 28%, #a08c55 55%, #6e5f36 80%, #4a3f22 100%);
-  --gem-shadow: 0 2px 5px rgb(60 48 20 / 45%), 0 0 0 0.5px #4a3f22;
+  /* つまみは金のつまみ：つや消しの金に、細い彫りの輪 */
+  --gem: radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0%) 0 27%, rgb(70 58 28 / 35%) 30%, rgb(255 248 220 / 45%) 33%, rgb(0 0 0 / 0%) 37%),
+    linear-gradient(180deg, #f1e9cf 0%, #d3c497 48%, #ae9b66 100%);
+  --gem-shadow: 0 1px 2px rgb(60 48 20 / 30%), inset 0 0 0 1px rgb(90 75 40 / 40%), inset 0 1px 0 rgb(255 250 230 / 80%);
   --zoom-fill-shine: linear-gradient(180deg, rgb(255 250 225 / 60%) 0%, rgb(255 250 225 / 0%) 45%, rgb(60 50 25 / 18%) 100%);
 }
 
