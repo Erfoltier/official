@@ -334,6 +334,18 @@ try {
         }
     }
 
+    // ---- 整った控え（バックアップ）をサーバーの data/backups/ に作る（院長・管理者） ----
+    if ($route === 'POST admin/backup') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        if (!is_array($in) || ($in['confirm'] ?? null) !== 'BACKUP') {
+            Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"BACKUP"} を送ってください'], 400);
+        }
+        $r = Db::i()->backup();
+        Auth::audit($actor($s), '保存データの控えを作成：' . $r['file']);
+        Http::json($r);
+    }
+
     // ---- 指定した患者の予約を過去・未来とも完全に消す（院長・管理者。患者そのものは消さない） ----
     if ($p[0] === 'reservations' && ($p[1] ?? '') === 'by-patient' && $n >= 3) {
         if ($method === 'GET' && $n === 3) {

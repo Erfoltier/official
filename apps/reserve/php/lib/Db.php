@@ -50,6 +50,32 @@ final class Db
         }
     }
 
+    /**
+     * 整った控えを作る（使用中でも壊れない VACUUM INTO。中身は暗号化されたまま）。
+     * 保存先は DB と同じフォルダの backups/（外から見えない data/ の中）。直近 $keep 個を残す
+     */
+    public function backup(int $keep = 10): array
+    {
+        $dsn = (string) config()['db_dsn'];
+        if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
+            throw new RuntimeException('この保存方式では控えを作れません（SQLite のファイルだけ）');
+        }
+        $dir = dirname(substr($dsn, 7)) . '/backups';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0700, true);
+        }
+        $name = 'reserve-' . gmdate('Ymd-His') . '.db';
+        $out = "{$dir}/{$name}";
+        $this->pdo->prepare('VACUUM INTO ?')->execute([$out]);
+        @chmod($out, 0600);
+        $files = glob("{$dir}/reserve-*.db") ?: [];
+        rsort($files);
+        foreach (array_slice($files, $keep) as $old) {
+            @unlink($old);
+        }
+        return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out)];
+    }
+
     private function migrate(): void
     {
         if ($this->mysql) {
