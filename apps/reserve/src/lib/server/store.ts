@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
 import type {
+  DeviceOptions,
   DeviceLink,
   DeviceLinksStatus,
   DeviceSource,
@@ -39,7 +40,7 @@ import type {
   ReservationStatus,
   ReminderStatus,
 } from "@/lib/domain/types";
-import { DEFAULT_ESTIMATE_VALID_DAYS, INACTIVE_STATUSES, STATUS_LABEL } from "@/lib/domain/types";
+import { DEFAULT_DEVICE_OPTIONS, DEFAULT_ESTIMATE_VALID_DAYS, INACTIVE_STATUSES, NEOVOIR_LIGHTS, STATUS_LABEL } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, isDateString, minutesOfDay, nowInClinic, toIso, weekdayOf } from "@/lib/domain/time";
 import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
 import {
@@ -719,6 +720,20 @@ export function revokeDeviceLink(id: string, by: Actor): DeviceLink {
   audit(by, `機器の連携を止める：${l.name}`);
   return publicLink(next);
 }
+
+/** 取り込み方（光源・縮小）を変える。取り込み係は次に起きたときから従う */
+export function setDeviceOptions(id: string, options: DeviceOptions, by: Actor): DeviceLink {
+  const st = state();
+  const l = st.deviceLinks.get(id);
+  if (!l) throw new StoreError("not_found", "連携が見つかりません");
+  const lights = NEOVOIR_LIGHTS.filter((x) => options.lights.includes(x));
+  const next = { ...l, options: { lights, maxSide: options.maxSide } };
+  st.deviceLinks.set(id, next);
+  audit(by, `機器の取り込み方を変更：${l.name}（${lights.join("・")}、${options.maxSide ? `長い辺${options.maxSide}px に縮小` : "原寸"}）`);
+  return publicLink(next);
+}
+
+export const deviceOptionsOf = (l: DeviceLink): DeviceOptions => l.options ?? DEFAULT_DEVICE_OPTIONS;
 
 /** 鍵から連携を探す（止めたもの・違う鍵は undefined） */
 export function deviceLinkByToken(token: string): DeviceLink | undefined {

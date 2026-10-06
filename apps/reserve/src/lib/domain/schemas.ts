@@ -355,5 +355,13 @@ export const stageSchema = z
 /** 機器の連携の鍵を発行する */
 export const deviceLinkSchema = z.object({ source: z.enum(["neovoir"]), name: z.string().max(60).optional() }).strict();
 
+/** 機器の取り込み方（光源・縮小） */
+export const deviceOptionsSchema = z
+  .object({
+    lights: z.array(z.enum(["NL", "PL", "SL", "UV"])).min(1).max(4),
+    maxSide: z.union([z.literal(0), z.number().int().min(800).max(6000)]),
+  })
+  .strict();
+
 /** 照合待ちの写真を患者に結びつける */
 export const photoAssignSchema = z.object({ patientId: idParam }).strict();

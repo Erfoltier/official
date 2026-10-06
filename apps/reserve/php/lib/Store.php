@@ -1422,6 +1422,31 @@ final class Store
         return $l;
     }
 
+    private const NEOVOIR_LIGHTS = ['NL', 'PL', 'SL', 'UV'];
+    private const DEFAULT_DEVICE_OPTIONS = ['lights' => ['NL', 'SL'], 'maxSide' => 2000];
+
+    /** 取り込み方（光源・縮小）を変える。取り込み係は次に起きたときから従う */
+    public static function setDeviceOptions(string $id, array $options, array $by): array
+    {
+        $db = Db::i();
+        $l = $db->get('deviceLink', $id);
+        if (!$l) {
+            throw new StoreError('not_found', '連携が見つかりません');
+        }
+        $lights = array_values(array_filter(self::NEOVOIR_LIGHTS, fn($x) => in_array($x, $options['lights'], true)));
+        $l['options'] = ['lights' => $lights, 'maxSide' => $options['maxSide']];
+        $db->put('deviceLink', $id, $l);
+        $size = $options['maxSide'] ? "長い辺{$options['maxSide']}px に縮小" : '原寸';
+        Auth::audit($by, "機器の取り込み方を変更：{$l['name']}（" . implode('・', $lights) . "、{$size}）");
+        unset($l['tokenHash']);
+        return $l;
+    }
+
+    public static function deviceOptionsOf(array $link): array
+    {
+        return $link['options'] ?? self::DEFAULT_DEVICE_OPTIONS;
+    }
+
     /** 鍵から連携を探す（止めたもの・違う鍵は null） */
     public static function deviceLinkByToken(string $token): ?array
     {

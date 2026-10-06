@@ -13,12 +13,16 @@
     1. 準備（最初の1回）   powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Setup
     2. 確かめる（送らない） powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Preview
     3. あとは5分ごとに自動で送ります（Windows の「タスク スケジューラ」に登録）
+    過去の写真も送る        powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Backfill
     止める                  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Uninstall
+
+  どの光源（NL・PL・SL・UV）を送るか、縮小するかは、予約カレンダーの「設定 → 外部機器の連携」で選びます
+  （取り込み係は起きるたびにそれを読みにいきます）。
 
   ・鍵はこのパソコンの、このWindowsユーザーだけが読める形で保存します（ほかの人・ほかのパソコンでは使えません）
   ・送るのは写真と、照合に使う氏名・撮影日時・ファイル名だけです。記録はこのパソコンの中にだけ残します
 #>
-param([switch]$Setup, [switch]$Preview, [switch]$Uninstall, [switch]$Once)
+param([switch]$Setup, [switch]$Preview, [switch]$Backfill, [switch]$Uninstall, [switch]$Once)
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -55,7 +59,7 @@ function Split-NeoVoirName($file) {
   if ($parts.Count -lt 5 -or $parts[0] -notmatch '^\d+$' -or $parts[1] -notmatch '^\d+$' -or $parts[2] -notmatch '^[FLR]$' -or $parts[3] -notmatch '^(NL|PL|SL|UV)$') { return $null }
   # 撮影したままの写真は「…_氏名.jpg」。後ろに _M などが付いたものは加工・解析の画像、氏名の直後の BK は控え
   $backup = $parts[4] -cmatch 'BK$'
-  return @{ Ref = $parts[0]; Name = ($parts[4] -creplace 'BK$', '').Trim(); Original = ($parts.Count -eq 5 -and -not $backup) }
+  return @{ Ref = $parts[0]; Light = $parts[3]; Name = ($parts[4] -creplace 'BK$', '').Trim(); Original = ($parts.Count -eq 5 -and -not $backup) }
 }
 
 # 写真から、照合に使う氏名と顧客番号を取り出す
@@ -83,7 +87,7 @@ function Get-PatientName($file, $c) {
   return (($src -replace '[0-9０-９_\-\.\(\)（）\[\]【】#]', ' ') -replace '\s+', ' ').Trim()
 }
 
-function Get-Photos($c) {
+function Get-Photos($c, $opt) {
   $since = [datetime]::Parse($c.Since)
   Get-ChildItem -Path $c.WatchFolder -Recurse -File -ErrorAction SilentlyContinue |
     Where-Object { $Exts -contains $_.Extension.ToLower() -and $_.LastWriteTime -ge $since -and $_.LastWriteTime -lt (Get-Date).AddSeconds(-60) -and $_.FullName -notmatch $SkipDirs } |
@@ -91,7 +95,7 @@ function Get-Photos($c) {
       # ネオボワールの形のときは、撮影したままの写真だけ（解析の画像は IncludeAnalysis が Yes のときだけ）
       if ($c.NameFrom -ne 'neovoir') { return $true }
       $nv = Split-NeoVoirName $_
-      return ($nv -and ($nv.Original -or $c.IncludeAnalysis -eq 'Yes'))
+      return ($nv -and ($nv.Original -or $c.IncludeAnalysis -eq 'Yes') -and ($opt.lights -contains $nv.Light))
     } |
     Sort-Object LastWriteTime
 }
@@ -101,6 +105,37 @@ function Invoke-Api($c, [string]$path, [string]$method = 'GET', [string]$inFile 
   $p = @{ Uri = $uri; Method = $method; Headers = @{ Authorization = 'Bearer ' + $c.Token }; UseBasicParsing = $true; TimeoutSec = 120 }
   if ($inFile) { $p.InFile = $inFile; $p.ContentType = $contentType }
   return (Invoke-WebRequest @p).Content | ConvertFrom-Json
+}
+
+# 送る前に縮小する（長い辺を maxSide に。0 なら原寸のまま）。縮小したときは一時ファイルを返す
+Add-Type -AssemblyName System.Drawing
+function Get-SendFile($path, [int]$maxSide) {
+  if ($maxSide -le 0) { return $path }
+  $img = [Drawing.Image]::FromFile($path)
+  try {
+    $w = $img.Width; $h = $img.Height
+    $scale = [Math]::Min(1.0, $maxSide / [double][Math]::Max($w, $h))
+    if ($scale -ge 1.0) { return $path }
+    $nw = [int][Math]::Round($w * $scale); $nh = [int][Math]::Round($h * $scale)
+    $bmp = New-Object Drawing.Bitmap $nw, $nh
+    $g = [Drawing.Graphics]::FromImage($bmp)
+    $g.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.DrawImage($img, 0, 0, $nw, $nh); $g.Dispose()
+    $codec = [Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+    $ep = New-Object Drawing.Imaging.EncoderParameters 1
+    $ep.Param[0] = New-Object Drawing.Imaging.EncoderParameter ([Drawing.Imaging.Encoder]::Quality), ([long]85)
+    $tmp = Join-Path $env:TEMP ('nv_' + [guid]::NewGuid().ToString('N') + '.jpg')
+    $bmp.Save($tmp, $codec, $ep); $bmp.Dispose()
+    return $tmp
+  } finally { $img.Dispose() }
+}
+
+# 予約カレンダーの設定（取り込む光源・縮小）を読む
+function Get-Options($c) {
+  $pong = Invoke-Api $c '/ping'
+  $o = $pong.options
+  if (-not $o) { $o = [pscustomobject]@{ lights = @('NL', 'SL'); maxSide = 2000 } }
+  return $o
 }
 
 if ($Uninstall) {
@@ -143,8 +178,25 @@ if ($Setup) {
 
 $c = Load-Config
 
+if ($Backfill) {
+  Write-Host '過去に撮った写真も、予約カレンダーの設定（光源・縮小）のとおりに送ります。'
+  Write-Host 'Airリザーブからの患者の移行が終わってから行うと、患者さんに結びつきやすくなります。'
+  $d = Read-Host '何日前に撮った写真から送りますか？（そのまま Enter で全部）'
+  $since = if ($d -match '^\d+$') { (Get-Date).Date.AddDays(-[int]$d) } else { [datetime]'2000-01-01' }
+  $raw = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
+  $raw.Since = $since.ToString('s')
+  $raw | ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
+  $c = Load-Config
+  $opt = Get-Options $c
+  $n = @(Get-Photos $c $opt).Count
+  Write-Host ("{0} 以降の写真（送っていない分）を、5分ごとの自動送信で順に送ります。対象：最大 {1}枚（送り済みは飛ばします）" -f $since.ToString('yyyy-MM-dd'), $n)
+  exit 0
+}
+
 if ($Preview) {
-  $photos = @(Get-Photos $c)
+  $opt = Get-Options $c
+  Write-Host ("予約カレンダーの設定：光源 {0}・{1}" -f ($opt.lights -join '・'), $(if ([int]$opt.maxSide -gt 0) { "長い辺 $($opt.maxSide)px に縮小" } else { '原寸' }))
+  $photos = @(Get-Photos $c $opt)
   Write-Host "送る対象の写真：$($photos.Count)枚（このパソコンに表示するだけで、送りません。患者さんの名前が出るので、この画面をチャット等に貼らないでください）"
   $photos | Select-Object -Last 20 | ForEach-Object {
     $i = Get-PatientInfo $_ $c
@@ -159,15 +211,23 @@ if ($Preview) {
 $sent = New-Object 'System.Collections.Generic.HashSet[string]'
 if (Test-Path $SentFile) { Get-Content $SentFile -Encoding UTF8 | ForEach-Object { [void]$sent.Add($_) } }
 $ok = 0; $inbox = 0; $dup = 0; $skip = 0; $err = 0
-foreach ($f in Get-Photos $c) {
+try { $opt = Get-Options $c } catch {
+  $code = $_.Exception.Response.StatusCode.value__
+  if ($code -eq 401) { Write-Log '鍵が使えません（設定で止められたか、違う鍵です）。-Setup をやり直してください' } else { Write-Log ('予約カレンダーにつながりません：' + $_.Exception.Message) }
+  exit 1
+}
+foreach ($f in Get-Photos $c $opt) {
   $key = $f.FullName + '|' + $f.Length + '|' + $f.LastWriteTime.Ticks
   if ($sent.Contains($key)) { continue }
-  if ($f.Length -gt $MaxBytes) { $skip++; Add-Content $SentFile $key -Encoding UTF8; continue }
+  if ($f.Length -gt $MaxBytes -and [int]$opt.maxSide -le 0) { $skip++; Add-Content $SentFile $key -Encoding UTF8; continue }
   $info = Get-PatientInfo $f $c
   $q = '?name=' + [uri]::EscapeDataString($info.Name) + '&ref=' + [uri]::EscapeDataString($info.Ref) + '&file=' + [uri]::EscapeDataString($f.Name) + '&takenAt=' + [uri]::EscapeDataString($f.LastWriteTime.ToString('yyyy-MM-ddTHH:mm:sszzz'))
   $type = if ($f.Extension.ToLower() -eq '.png') { 'image/png' } else { 'image/jpeg' }
+  $send = $null
   try {
-    $r = Invoke-Api $c $q 'POST' $f.FullName $type
+    $send = Get-SendFile $f.FullName ([int]$opt.maxSide)
+    if ($send -ne $f.FullName) { $type = 'image/jpeg' }
+    $r = Invoke-Api $c $q 'POST' $send $type
     switch ($r.status) { 'saved' { $ok++ } 'inbox' { $inbox++ } default { $dup++ } }
     Add-Content $SentFile $key -Encoding UTF8
   } catch {
@@ -175,6 +235,8 @@ foreach ($f in Get-Photos $c) {
     $code = $_.Exception.Response.StatusCode.value__
     if ($code -eq 401) { Write-Log '鍵が使えません（設定で止められたか、違う鍵です）。-Setup をやり直してください'; break }
     if ($code -eq 400) { Add-Content $SentFile $key -Encoding UTF8 }
+  } finally {
+    if ($send -and $send -ne $f.FullName) { Remove-Item $send -ErrorAction SilentlyContinue }
   }
 }
 if ($ok + $inbox + $dup + $skip + $err -gt 0) { Write-Log "送信 患者に入った $ok / 照合待ち $inbox / 送信済み $dup / 大きすぎ $skip / 失敗 $err" }

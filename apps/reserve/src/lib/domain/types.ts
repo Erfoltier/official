@@ -356,10 +356,25 @@ export type DeviceSource = "neovoir";
 export const DEVICE_SOURCE_LABEL: Record<DeviceSource, string> = { neovoir: "ネオボワール" };
 
 /** 機器の連携（鍵そのものは保存せず、作ったときに1回だけ見せる） */
+/** ネオボワールの4つの光源（NL 通常光・PL 偏光・SL・UV 紫外線） */
+export const NEOVOIR_LIGHTS = ["NL", "PL", "SL", "UV"] as const;
+export type NeovoirLight = (typeof NEOVOIR_LIGHTS)[number];
+
+/** 取り込み方（院ごとに設定で選ぶ。取り込み係が毎回読みにくる） */
+export interface DeviceOptions {
+  /** 取り込む光源 */
+  lights: NeovoirLight[];
+  /** 長い辺をこのピクセルまで縮小して送る。0 は原寸のまま */
+  maxSide: number;
+}
+export const DEFAULT_DEVICE_OPTIONS: DeviceOptions = { lights: ["NL", "SL"], maxSide: 2000 };
+
 export interface DeviceLink {
   id: string;
   source: DeviceSource;
   name: string;
+  /** なければ DEFAULT_DEVICE_OPTIONS */
+  options?: DeviceOptions;
   createdAt: string;
   createdBy: Actor;
   received: number;

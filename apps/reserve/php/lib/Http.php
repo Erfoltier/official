@@ -412,6 +412,24 @@ final class Schema
         return V::shape($v, ['source' => fn($x) => V::enum($x, ['neovoir']), 'name?' => fn($x) => V::str($x, 60)]);
     }
 
+    public static function deviceOptions(mixed $v): array
+    {
+        return V::shape($v, [
+            'lights' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) < 1 || count($x) > 4) {
+                    throw new InputError();
+                }
+                return array_map(fn($l) => V::enum($l, ['NL', 'PL', 'SL', 'UV']), $x);
+            },
+            'maxSide' => function ($x) {
+                if ($x === 0) {
+                    return 0;
+                }
+                return V::int($x, 800, 6000);
+            },
+        ]);
+    }
+
     public static function photoAssign(mixed $v): array
     {
         return V::shape($v, ['patientId' => [V::class, 'id']]);

@@ -1,4 +1,4 @@
-import type { DeviceLink, DeviceLinksStatus, PhotoInboxItem, AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { DeviceLink, DeviceLinksStatus, DeviceOptions, PhotoInboxItem, AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 import { applyTheme } from "@/lib/theme";
 
@@ -516,4 +516,8 @@ export async function deletePhotoInbox(id: string): Promise<void> {
 
 export function rematchPhotoInbox(): Promise<{ matched: number; remaining: number }> {
   return call(`/api/v1/photo-inbox/rematch`, { method: "POST" });
+}
+
+export function saveDeviceOptions(id: string, options: DeviceOptions): Promise<DeviceLink> {
+  return call(`/api/v1/device-links/${encodeURIComponent(id)}/options`, { method: "POST", body: JSON.stringify(options) });
 }

@@ -98,7 +98,8 @@ try {
     if ($p[0] === 'integration' && ($p[1] ?? '') === 'photos') {
         $link = Http::deviceLink();
         if ($method === 'GET' && $n === 3 && $p[2] === 'ping') {
-            Http::json(['ok' => true, 'name' => $link['name'], 'source' => $link['source']]);
+            // 取り込み方（光源・縮小）も返す。取り込み係は毎回これに従う
+            Http::json(['ok' => true, 'name' => $link['name'], 'source' => $link['source'], 'options' => Store::deviceOptionsOf($link)]);
         }
         if ($method === 'POST' && $n === 2) {
             $name = (string) ($q('name') ?? '');
@@ -334,6 +335,10 @@ try {
         if ($method === 'POST' && $n === 3 && $p[2] === 'revoke') {
             $s = $me(STAFF_ADMIN);
             Http::json(Store::revokeDeviceLink(V::id($p[1]), $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'options') {
+            $s = $me(STAFF_ADMIN);
+            Http::json(Store::setDeviceOptions(V::id($p[1]), Schema::deviceOptions(Http::readJson()), $actor($s)));
         }
     }
     if ($p[0] === 'photo-inbox') {

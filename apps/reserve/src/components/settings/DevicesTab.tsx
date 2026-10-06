@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { DeviceLinksStatus, Patient, PhotoInboxItem } from "@/lib/domain/types";
+import type { DeviceLink, DeviceLinksStatus, DeviceOptions, NeovoirLight, Patient, PhotoInboxItem } from "@/lib/domain/types";
+import { DEFAULT_DEVICE_OPTIONS, NEOVOIR_LIGHTS } from "@/lib/domain/types";
 import {
   assignPhotoInbox,
   createDeviceLink,
@@ -11,6 +12,7 @@ import {
   photoInboxUrl,
   rematchPhotoInbox,
   revokeDeviceLink,
+  saveDeviceOptions,
   searchPatients,
 } from "@/components/calendar/api";
 import { withBase } from "@/lib/paths";
@@ -92,6 +94,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                 <small>
                   鍵を作った日 {stamp(l.createdAt)}（{l.createdBy.name}）・受け取り {l.received}枚・最後 {stamp(l.lastUsedAt)}
                 </small>
+                <OptionsEditor key={JSON.stringify(l.options ?? null)} link={l} busy={busy} onSave={(o) => run(() => saveDeviceOptions(l.id, o), "取り込み方を保存しました（取り込み係は5分以内に従います）")} />
                 <div>
                   <button
                     className={styles.btn}
@@ -157,6 +160,9 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                 </li>
                 <li>
                   <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どの写真から、どんな氏名・顧客番号を読むか」をそのパソコンの画面で確かめられます（患者さんの名前が出るので、チャットなどには貼らないでください）。正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
+                </li>
+                <li>
+                  過去に撮った写真も入れるときは、<b>Airリザーブからの患者の移行が終わってから</b>、<code>-Setup</code> を <code>-Backfill</code> に変えて実行し、何日前の分から送るかを入れます（そのまま Enter で全部）。上の「取り込む写真」の設定のとおりに、5分ごとの自動送信で順に送ります。
                 </li>
               </ol>
               <p className={styles.hint}>
@@ -258,6 +264,54 @@ function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDe
           削除
         </button>
       )}
+    </div>
+  );
+}
+
+const LIGHT_LABEL: Record<NeovoirLight, string> = { NL: "NL（通常光）", PL: "PL（偏光）", SL: "SL", UV: "UV（紫外線）" };
+const SIZES = [
+  { v: 2000, label: "縮小（長い辺 2000px・1枚0.5MB前後）" },
+  { v: 3000, label: "やや縮小（長い辺 3000px・1枚1MB前後）" },
+  { v: 0, label: "原寸のまま（1枚1.5〜2MB）" },
+];
+
+/** 取り込み方：どの光源を取り込むか・縮小するか（取り込み係が毎回読みにくる） */
+function OptionsEditor({ link, busy, onSave }: { link: DeviceLink; busy: boolean; onSave: (o: DeviceOptions) => void }) {
+  const cur = link.options ?? DEFAULT_DEVICE_OPTIONS;
+  const [lights, setLights] = useState<NeovoirLight[]>(cur.lights);
+  const [maxSide, setMaxSide] = useState(cur.maxSide);
+  const dirty = lights.join() !== cur.lights.join() || maxSide !== cur.maxSide;
+  const perShot = (lights.length * 3 * (maxSide === 0 ? 1.8 : maxSide >= 3000 ? 1 : 0.5)).toFixed(1);
+  return (
+    <div className={styles.optionsBox}>
+      <b>取り込む写真</b>
+      <div className={styles.segment}>
+        {NEOVOIR_LIGHTS.map((x) => (
+          <label key={x} className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={lights.includes(x)}
+              onChange={(e) => setLights((ls) => (e.target.checked ? NEOVOIR_LIGHTS.filter((y) => y === x || ls.includes(y)) : ls.filter((y) => y !== x)))}
+            />
+            {LIGHT_LABEL[x]}
+          </label>
+        ))}
+      </div>
+      <select className={styles.input} value={maxSide} onChange={(e) => setMaxSide(Number(e.target.value))} aria-label="写真の大きさ">
+        {SIZES.map((s) => (
+          <option key={s.v} value={s.v}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+      <small>
+        1回の撮影で {lights.length * 3}枚（正面・左・右 × {lights.length}種類）、およそ {perShot}MB。
+      </small>
+      <div>
+        <button className={styles.primary} disabled={busy || !dirty || lights.length === 0} onClick={() => onSave({ lights, maxSide })}>
+          取り込み方を保存
+        </button>
+      </div>
     </div>
   );
 }

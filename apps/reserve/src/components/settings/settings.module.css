@@ -845,3 +845,13 @@ details.priceGroup > summary {
   font-size: 12px;
   text-decoration: underline;
 }
+
+.optionsBox {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
