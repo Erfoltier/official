@@ -17,6 +17,12 @@
   --btn-line: var(--line-strong);
   --btn-shadow: none;
   --field-bg: var(--bg);
+  /* 拡大縮小バーのつまみ：テーマの色の宝石（面のきらめき・ハイライト・金属の台座） */
+  --gem: radial-gradient(ellipse 38% 26% at 38% 26%, rgb(255 255 255 / 95%) 0%, rgb(255 255 255 / 0%) 100%),
+    radial-gradient(circle at 70% 36%, rgb(255 255 255 / 70%) 0 4%, rgb(255 255 255 / 0%) 10%),
+    radial-gradient(circle at 55% 78%, color-mix(in srgb, var(--accent) 35%, #fff) 0%, rgb(255 255 255 / 0%) 42%),
+    radial-gradient(circle at 45% 40%, color-mix(in srgb, var(--accent) 80%, #fff) 0%, var(--accent) 35%, var(--accent-strong) 62%, var(--accent-deep) 88%);
+  --gem-shadow: 0 0 0 1px #f3ecd3, 0 0 0 2px #a8956a, 0 2px 5px rgb(0 0 0 / 35%), inset 0 -1px 3px rgb(0 0 0 / 25%);
   --bg-subtle: #f8f6fc;
   --bg-muted: #f0ecf7;
   --tint: #fbf9ff;
@@ -174,6 +180,12 @@
   --btn-line: #b7af92;
   --btn-shadow: 0 1px 2px rgb(70 66 48 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fdfcf9;
+  /* つまみは金のピアスの玉：上に強い光、下に照り返し、縁は濃い金 */
+  --gem: radial-gradient(circle at 35% 27%, #fffdf3 0%, #fbf3d6 8%, rgb(240 228 186 / 0%) 24%),
+    radial-gradient(circle at 62% 84%, rgb(246 236 200 / 85%) 0%, rgb(246 236 200 / 0%) 26%),
+    radial-gradient(circle at 40% 35%, #efe2b4 0%, #cdb97f 28%, #a08c55 55%, #6e5f36 80%, #4a3f22 100%);
+  --gem-shadow: 0 2px 5px rgb(60 48 20 / 45%), 0 0 0 0.5px #4a3f22;
+  --zoom-fill-shine: linear-gradient(180deg, rgb(255 250 225 / 60%) 0%, rgb(255 250 225 / 0%) 45%, rgb(60 50 25 / 18%) 100%);
 }
 
 /* やさしい：くすんだ緑。ナチュラル */
@@ -269,8 +281,8 @@ button {
 :root[data-theme="luxe"] body,
 :root[data-theme="luxe"] dialog {
   background:
-    radial-gradient(1000px 600px at 88% -12%, #ece9dc 0%, transparent 58%),
-    radial-gradient(900px 640px at -5% 108%, #eeebe1 0%, transparent 58%),
+    radial-gradient(1000px 600px at 88% -12%, #ddd5bb 0%, transparent 58%),
+    radial-gradient(900px 640px at -5% 108%, #d9d1b5 0%, transparent 58%),
     radial-gradient(700px 500px at 40% 40%, #fdfcf8 0%, transparent 62%),
     #f8f7f2;
 }
