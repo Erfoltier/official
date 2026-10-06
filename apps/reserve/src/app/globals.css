@@ -17,11 +17,11 @@
   --btn-line: var(--line-strong);
   --btn-shadow: none;
   --field-bg: var(--bg);
-  /* 拡大縮小バーのつまみ：淡い金属のつまみに、テーマの色の小さな石をはめ込んだ形（光沢は控えめ） */
-  --gem: radial-gradient(circle at 45% 42%, rgb(255 255 255 / 75%) 0 3%, rgb(255 255 255 / 0%) 8%),
-    radial-gradient(circle at 50% 50%, var(--accent) 0 20%, var(--accent-deep) 27%, rgb(0 0 0 / 0%) 30%),
-    linear-gradient(180deg, #fbfaf7 0%, #e9e6de 55%, #d3cec2 100%);
-  --gem-shadow: 0 1px 2px rgb(0 0 0 / 22%), inset 0 0 0 1px rgb(0 0 0 / 16%), inset 0 1px 0 rgb(255 255 255 / 85%);
+  /* 拡大縮小バーのつまみ：真珠（白い玉に柔らかな照り、テーマの色がほんのり映り込む） */
+  --gem: radial-gradient(circle at 35% 30%, #fff 0 10%, rgb(255 255 255 / 0%) 35%),
+    radial-gradient(circle at 70% 75%, color-mix(in srgb, var(--accent) 25%, #fff) 0%, rgb(255 255 255 / 0%) 50%),
+    radial-gradient(circle at 50% 45%, #fdfcfa 0%, #f1ede6 55%, #dcd6cb 100%);
+  --gem-shadow: 0 1px 3px rgb(0 0 0 / 25%);
   --bg-subtle: #f8f6fc;
   --bg-muted: #f0ecf7;
   --tint: #fbf9ff;
@@ -53,13 +53,13 @@
 :root[data-theme="blush"] {
   --alt-bg: #f2ebe2;
   --alt-line: #e0d3c3;
-  --bg: #fbf5f1;
-  --surface: #fdf8f5;
-  --bg-subtle: #f5e9e3;
-  --bg-muted: #ead3cc;
-  --tint: #f4e4de;
-  --line: #e9d6cf;
-  --line-strong: #d3aea7;
+  --bg: #faf6f2;
+  --surface: #fcf9f6;
+  --bg-subtle: #f2ebe4;
+  --bg-muted: #e3d8ce;
+  --tint: #f3ebe5;
+  --line: #e6dbd2;
+  --line-strong: #cdbcb0;
   --text: #3e2f2c;
   --text-muted: #765f5a;
   --text-faint: #a68f8a;
@@ -72,13 +72,13 @@
   --now: #c06f79;
   --grad: linear-gradient(135deg, #a7767d 0%, #b98f95 50%, #c9a98a 100%);
   --grad-line: linear-gradient(90deg, #b98f95 0%, #dcbfc0 50%, #ceb484 100%);
-  --grad-soft: linear-gradient(135deg, #f3e2dd 0%, #f7eae5 55%, #f3e7dc 100%);
-  --grad-head: linear-gradient(180deg, #f8ebe7 0%, #efdcd6 100%);
+  --grad-soft: linear-gradient(135deg, #efe5dc 0%, #f7f0ea 55%, #efe1dc 100%);
+  --grad-head: linear-gradient(180deg, #f6efe8 0%, #e9ded4 100%);
   --shadow-rgb: 95 62 56;
   --shadow-accent: 0 4px 14px rgb(167 118 125 / 24%);
   --shadow-card: 0 6px 24px rgb(95 62 56 / 9%);
   --btn-bg: linear-gradient(180deg, #fefbf8 0%, #f7ebe5 100%);
-  --btn-line: #c99f98;
+  --btn-line: #c4ada4;
   --btn-shadow: 0 1px 2px rgb(95 62 56 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
   --field-bg: #fefaf7;
 }
@@ -148,41 +148,37 @@
 
 /* 上品（ゴールド）：当院のホームページのような金茶とクリーム */
 :root[data-theme="luxe"] {
-  /* 上品（ゴールド）：ホテルのロビー。アイボリーとグレージュに、シャンパンゴールド（くすんだ金）のグラデーションの線。白は使わない */
-  --alt-bg: #efede4;
-  --alt-line: #d9d4c2;
-  --bg: #f9f8f3;
-  --surface: #fcfbf7;
-  --bg-subtle: #f1efe6;
-  --bg-muted: #e4e0d1;
-  --tint: #f3f1e9;
-  --line: #e1ddcd;
-  --line-strong: #c6bfa6;
-  --text: #34312a;
-  --text-muted: #666052;
-  --text-faint: #9a9482;
-  --accent: #958b68;
-  --accent-strong: #776e51;
-  --accent-deep: #4d493a;
-  --accent-soft: #eeebdf;
-  --accent-line: #cdc6aa;
+  /* 上品（ゴールド）：ホテルのロビー。アイボリーとグレージュに、マットなシャンパンゴールド（温かみのあるつや消しの金）のグラデーションの線。白は使わない */
+  --alt-bg: #f1ebe0;
+  --alt-line: #dccfb9;
+  --bg: #faf7f1;
+  --surface: #fcfaf6;
+  --bg-subtle: #f3ede2;
+  --bg-muted: #e6dac5;
+  --tint: #f5efe5;
+  --line: #e5dccb;
+  --line-strong: #cdb999;
+  --text: #3a3026;
+  --text-muted: #6c5d4b;
+  --text-faint: #a08f7a;
+  --accent: #ad9468;
+  --accent-strong: #8c7450;
+  --accent-deep: #5b4a33;
+  --accent-soft: #f1e9da;
+  --accent-line: #d6c39f;
   --danger: #a24b3e;
   --now: #a8673f;
-  --grad: linear-gradient(135deg, #6c6547 0%, #9e9573 38%, #d6d0b8 62%, #a39a78 82%, #7d7555 100%);
-  --grad-line: linear-gradient(90deg, #857d5e 0%, #c3bc9f 30%, #e4e0cd 50%, #c3bc9f 70%, #857d5e 100%);
-  --grad-soft: linear-gradient(135deg, #f0eee4 0%, #f8f7f1 60%, #ebe8db 100%);
-  --grad-head: linear-gradient(180deg, #f8f7f1 0%, #ebe8dc 100%);
-  --shadow-rgb: 70 66 48;
-  --shadow-accent: 0 4px 14px rgb(108 101 71 / 26%);
-  --shadow-card: 0 6px 24px rgb(70 66 48 / 10%);
-  --btn-bg: linear-gradient(180deg, #fdfdf9 0%, #efece1 100%);
-  --btn-line: #b7af92;
-  --btn-shadow: 0 1px 2px rgb(70 66 48 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
-  --field-bg: #fdfcf9;
-  /* つまみは金のつまみ：つや消しの金に、細い彫りの輪 */
-  --gem: radial-gradient(circle at 50% 50%, rgb(0 0 0 / 0%) 0 27%, rgb(70 58 28 / 35%) 30%, rgb(255 248 220 / 45%) 33%, rgb(0 0 0 / 0%) 37%),
-    linear-gradient(180deg, #f1e9cf 0%, #d3c497 48%, #ae9b66 100%);
-  --gem-shadow: 0 1px 2px rgb(60 48 20 / 30%), inset 0 0 0 1px rgb(90 75 40 / 40%), inset 0 1px 0 rgb(255 250 230 / 80%);
+  --grad: linear-gradient(135deg, #8c7450 0%, #b9a073 35%, #e6d7b6 55%, #c2aa7e 75%, #957c56 100%);
+  --grad-line: linear-gradient(90deg, #9c8460 0%, #cfb98f 28%, #f0e4c8 50%, #cfb98f 72%, #9c8460 100%);
+  --grad-soft: linear-gradient(135deg, #f2eadc 0%, #faf6ef 60%, #eee3d0 100%);
+  --grad-head: linear-gradient(180deg, #faf6ee 0%, #ece2cf 100%);
+  --shadow-rgb: 80 62 38;
+  --shadow-accent: 0 4px 14px rgb(140 116 80 / 28%);
+  --shadow-card: 0 6px 24px rgb(80 62 38 / 10%);
+  --btn-bg: linear-gradient(180deg, #fefcf8 0%, #f2eadc 100%);
+  --btn-line: #c2ab83;
+  --btn-shadow: 0 1px 2px rgb(80 62 38 / 18%), inset 0 1px 0 rgb(255 255 255 / 75%);
+  --field-bg: #fefcf9;
   --zoom-fill-shine: linear-gradient(180deg, rgb(255 250 225 / 60%) 0%, rgb(255 250 225 / 0%) 45%, rgb(60 50 25 / 18%) 100%);
 }
 
@@ -270,19 +266,19 @@ button {
 :root[data-theme="blush"] body,
 :root[data-theme="blush"] dialog {
   background:
-    radial-gradient(1100px 620px at 12% -8%, #f5e3dd 0%, transparent 58%),
-    radial-gradient(900px 700px at 105% 105%, #f6ebe0 0%, transparent 55%),
-    radial-gradient(700px 500px at 70% 30%, #fdf8f4 0%, transparent 60%),
-    #faf3ee;
+    radial-gradient(900px 560px at 10% -8%, #ebdcd3 0%, transparent 58%),
+    radial-gradient(800px 640px at 105% 105%, #ddd2c6 0%, transparent 55%),
+    radial-gradient(600px 460px at 70% 30%, #f6ece6 0%, transparent 60%),
+    #f6f0ea;
 }
 
 :root[data-theme="luxe"] body,
 :root[data-theme="luxe"] dialog {
   background:
-    radial-gradient(1000px 600px at 88% -12%, #ddd5bb 0%, transparent 58%),
-    radial-gradient(900px 640px at -5% 108%, #d9d1b5 0%, transparent 58%),
-    radial-gradient(700px 500px at 40% 40%, #fdfcf8 0%, transparent 62%),
-    #f8f7f2;
+    radial-gradient(1000px 600px at 88% -12%, #e3d3b3 0%, transparent 58%),
+    radial-gradient(900px 640px at -5% 108%, #dccbaa 0%, transparent 58%),
+    radial-gradient(700px 500px at 40% 40%, #fdfaf4 0%, transparent 62%),
+    #f7f2e9;
 }
 
 :root[data-theme="calm"] body,
