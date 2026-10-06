@@ -20,9 +20,28 @@ def delete(path, name):
     assert v.startswith("/" + path + name), v
     s.post(B + "/file/delete/", data={"delFile": v})
 
+# ロリポップの「アクセス制限」（Basic認証）が .htaccess に書き足した行。反映のたびに引き継ぐ
+AUTH_LINE = re.compile(r"^\s*(AuthType|AuthName|AuthUserFile|AuthGroupFile|Require|Satisfy)\b", re.I)
+
+def keep_auth(local, tmpdir):
+    """サーバー上の reserve/.htaccess にある Basic認証の行を、手元の .htaccess の先頭に付けた一時ファイルを返す"""
+    cur = read(BASE + ".htaccess") or ""
+    auth = [l for l in cur.splitlines() if AUTH_LINE.match(l)]
+    if not auth:
+        return local, 0
+    out = os.path.join(tmpdir, ".htaccess")
+    with open(local, encoding="utf-8") as f:
+        body = f.read()
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("# ---- ロリポップのアクセス制限（Basic認証）。sync.py が引き継ぐ ----\n" + "\n".join(auth) + "\n# ----\n\n" + body)
+    return out, len(auth)
+
 def sync(files):
     """files: [(サーバー上の相対パス, 手元のファイル, 置き換えるか)]"""
     login()
+    import tempfile
+    tmp = tempfile.mkdtemp()
+    files = [(rel, *keep_auth(local, tmp)[:1], rep) if rel == ".htaccess" else (rel, local, rep) for rel, local, rep in files]
     bydir = {}
     for rel, local, replace in files:
         d, n = os.path.split(rel)

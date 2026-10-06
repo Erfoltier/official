@@ -17,6 +17,12 @@ def listing(path):
     t = cd(path)
     return sorted(set(re.findall(r'href="/(?:dir|file/edit)/root/' + re.escape(path) + r'([^"/]+/?)"', t)))
 
+def read(path):  # path like "ishidahihuka.jp/reserve/.htaccess"。なければ None
+    import html
+    r = s.get(B + "/file/edit/root/" + path)
+    m = re.search(r'<textarea[^>]*name="body"[^>]*>(.*?)</textarea>', r.text, re.S)
+    return html.unescape(m.group(1)) if m else None
+
 def mkdir(name, perm="705"):
     t = s.get(B + "/dir/make/").text
     tok = re.search(r'name="id" value="([^"]*)"', t).group(1)
