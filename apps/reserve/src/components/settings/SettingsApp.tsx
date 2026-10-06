@@ -7,7 +7,7 @@ import { searchKey } from "@/lib/domain/text";
 import { ApiError, deleteLane, deleteMenu, fetchMe, fetchSettings, reorder, saveLane, type SettingsData } from "@/components/calendar/api";
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
-import { ClinicTab } from "./ClinicTab";
+import { ClinicTab, ThemeCard } from "./ClinicTab";
 import { PricesTab } from "./PricesTab";
 import { ConsentsTab } from "./ConsentsTab";
 import { QuestionnairesTab } from "./QuestionnairesTab";
@@ -19,7 +19,7 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "clinic", "staff", "audit", "restore"] as const;
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "clinic", "appearance", "staff", "audit", "restore"] as const;
 type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
@@ -99,6 +99,9 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
+          <button role="tab" aria-selected={tab === "appearance"} onClick={() => setTab("appearance")}>
+            画面の表示・配色
+          </button>
           {isAdmin && (
             <>
               <button role="tab" aria-selected={tab === "staff"} onClick={() => setTab("staff")}>
@@ -121,7 +124,7 @@ export function SettingsApp() {
         </div>
       )}
 
-      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic") && (
+      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic" || tab === "appearance") && (
         <p className={styles.lead}>このログインでは見るだけです。変更・削除は、院長・管理者と受付、または院長が「設定 → スタッフ」で許可したスタッフができます。</p>
       )}
       {tab === "staff" && isAdmin ? (
@@ -146,6 +149,11 @@ export function SettingsApp() {
         <ProductsTab products={data.products} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "clinic" ? (
         <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "appearance" ? (
+        <section className={styles.clinic}>
+          <p className={styles.lead}>画面の見た目の設定です。院で1つ選ぶと、すべての端末の画面に反映されます。</p>
+          <ThemeCard key={data.clinic.theme ?? "default"} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+        </section>
       ) : tab === "lanes" ? (
         <LanesTab lanes={data.lanes} onChanged={load} notify={notify} fail={fail} />
       ) : (

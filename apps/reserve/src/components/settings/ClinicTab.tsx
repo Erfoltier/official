@@ -98,14 +98,13 @@ export function ClinicTab({
         )}
       </div>
 
-      <ThemeCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
     </section>
   );
 }
 
-/** 画面の配色（院で1つ。押すとすぐ全員の画面に反映される） */
-function ThemeCard({
+/** 画面の配色（院で1つ。押すとすぐ全員の画面に反映される）。設定の「画面の表示・配色」タブに出す */
+export function ThemeCard({
   clinic,
   canEdit,
   onChanged,
