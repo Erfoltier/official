@@ -18,6 +18,7 @@ import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
 import styles from "./calendar.module.css";
 import { withBase } from "@/lib/paths";
+import { isBlockInfo, type BlockInfo } from "@/lib/displayPrefs";
 
 const POLL_MS = 20_000;
 const ALL_LANES = "all";
@@ -41,6 +42,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   const [scale, setScale] = usePref("scale", DEFAULT_PX_PER_MIN, isNumber);
   const [maskNames, setMaskNames] = usePref("maskNames", false, isBoolean);
+  const [blockInfo] = usePref<BlockInfo>("blockInfo", "all", isBlockInfo);
   const [showCancelled, setShowCancelled] = usePref("showCancelled", false, isBoolean);
   const [laneFilter, setLaneFilter] = usePref("laneFilter", ALL_LANES, isString);
   const [receptionLane, setReceptionLane] = usePref("receptionLane", ALL_LANES, isString);
@@ -247,7 +249,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   return (
     <div className={styles.app} data-panel-open={selected ? true : undefined}>
-      <header className={styles.toolbar}>
+      <header className={styles.toolbar} data-ui-zoom>
         <div className={styles.group}>
           <button
             className={styles.btn}
@@ -439,6 +441,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             scale={scale}
             onScaleChange={setScale}
             maskNames={maskNames}
+            blockInfo={blockInfo}
             showCancelled={showCancelled}
             selectedId={selectedId}
             nowMinutes={isToday ? now.minutes : null}

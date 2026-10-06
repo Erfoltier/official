@@ -7,8 +7,11 @@ import { formatHm } from "@/lib/domain/time";
 import { densityFor, lineFontSize } from "@/lib/calendar/scale";
 import { displayName } from "./names";
 import styles from "./calendar.module.css";
+import type { BlockInfo } from "@/lib/displayPrefs";
 
 interface Props {
+  /** 枠に出す情報（既定は名前・時刻・施術） */
+  info?: BlockInfo;
   reservation: Reservation;
   patient: Patient | undefined;
   menus: Menu[];
@@ -34,6 +37,8 @@ interface Props {
  */
 export const ReservationBlock = memo(function ReservationBlock(props: Props) {
   const { reservation: r, patient, menus, top, height, col, cols, startMin, endMin, maskNames } = props;
+  /** 枠に出す情報（設定 → 画面の表示・配色。端末ごと） */
+  const info = props.info ?? "all";
   const h = Math.max(3, height - 1);
   const density = densityFor(h);
   const name = displayName(patient, maskNames);
@@ -100,18 +105,24 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
             {patient?.lineUserId && <span className={styles.lineBadge}>LINE</span>}
             {h < 44 && pill}
           </div>
-          <div className={styles.blockMeta}>
-            <span>{time}</span>
-            <span className={styles.blockTreat}>{h >= 56 ? fullNames : abbr}</span>
-          </div>
+          {info !== "name" && (
+            <div className={styles.blockMeta}>
+              {info === "all" && <span>{time}</span>}
+              <span className={styles.blockTreat}>{h >= 56 ? fullNames : abbr}</span>
+            </div>
+          )}
           {h >= 44 && pill && <div className={styles.pillRow}>{pill}</div>}
         </>
       ) : density === "bar" ? null : (
         <div className={styles.blockLine}>
           {patient?.caution && <span className={styles.caution}>!</span>}
           <span className={styles.blockName}>{name}</span>
-          <span className={styles.sep}>｜</span>
-          <span className={styles.blockTreat}>{abbr}</span>
+          {info !== "name" && (
+            <>
+              <span className={styles.sep}>｜</span>
+              <span className={styles.blockTreat}>{abbr}</span>
+            </>
+          )}
           {pill}
         </div>
       )}

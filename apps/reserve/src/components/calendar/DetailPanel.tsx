@@ -98,6 +98,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   return (
     <aside
       className={styles.panel}
+      data-ui-zoom
       aria-label="予約の詳細"
       data-detail-panel
       data-enter={entering || undefined}

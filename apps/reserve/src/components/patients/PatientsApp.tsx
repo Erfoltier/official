@@ -22,7 +22,7 @@ export function PatientsApp() {
   }, [query]);
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-zoom>
       <header className={styles.pageHead}>
         <Link href="/" className={styles.back}>
           ← カレンダーへ

@@ -13,9 +13,9 @@ export function SignaturePad({ onDone, onCancel, busy }: { onDone(png: string): 
     const c = ref.current;
     if (!c) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const rect = c.getBoundingClientRect();
-    c.width = Math.round(rect.width * dpr);
-    c.height = Math.round(rect.height * dpr);
+    // 画面の拡大（文字の大きさ）に左右されないよう、CSS 上の大きさで描く
+    c.width = Math.round(c.offsetWidth * dpr);
+    c.height = Math.round(c.offsetHeight * dpr);
     const ctx = c.getContext("2d")!;
     ctx.scale(dpr, dpr);
     ctx.lineCap = "round";
@@ -25,8 +25,11 @@ export function SignaturePad({ onDone, onCancel, busy }: { onDone(png: string): 
   }, []);
 
   const pos = (e: React.PointerEvent) => {
-    const r = ref.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const c = ref.current!;
+    const r = c.getBoundingClientRect();
+    // 見た目の大きさと CSS 上の大きさの比（拡大表示のときは 1 でない）
+    const k = r.width ? c.offsetWidth / r.width : 1;
+    return { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k };
   };
 
   const clear = () => {

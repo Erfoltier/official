@@ -185,3 +185,21 @@ button {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/*
+ * 文字の大きさ（端末ごと。設定 → 画面の表示・配色）。
+ * カレンダーの予定表は指やマウスで時刻を動かすため拡大せず（上の＋−で拡大縮小）、
+ * まわりのバー・受付一覧・予約の詳細・ダイアログ・患者画面・設定などを拡大する
+ */
+:root[data-size="l"] {
+  --ui-zoom: 1.12;
+}
+
+:root[data-size="xl"] {
+  --ui-zoom: 1.25;
+}
+
+:root[data-size] dialog,
+:root[data-size] [data-ui-zoom] {
+  zoom: var(--ui-zoom);
+}

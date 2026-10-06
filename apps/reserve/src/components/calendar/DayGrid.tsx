@@ -25,6 +25,7 @@ import {
 } from "@/lib/calendar/scale";
 import { ReservationBlock } from "./ReservationBlock";
 import styles from "./calendar.module.css";
+import type { BlockInfo } from "@/lib/displayPrefs";
 
 export interface MoveTarget {
   laneId: string;
@@ -47,6 +48,8 @@ interface Props {
   scale: number;
   onScaleChange: (scale: number) => void;
   maskNames: boolean;
+  /** 予約の枠に出す情報（端末ごとの表示設定） */
+  blockInfo?: BlockInfo;
   showCancelled: boolean;
   selectedId: string | null;
   nowMinutes: number | null;
@@ -86,6 +89,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     scale,
     onScaleChange,
     maskNames,
+    blockInfo,
     showCancelled,
     selectedId,
     nowMinutes,
@@ -470,6 +474,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
                   startMin={start}
                   endMin={end}
                   maskNames={maskNames}
+                  info={blockInfo}
                   selected={selectedId === r.id}
                   conflict={conflicts.has(r.id)}
                   faded={!!isDragged}
@@ -491,6 +496,7 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
                 startMin={drag.startMin}
                 endMin={drag.endMin}
                 maskNames={maskNames}
+                info={blockInfo}
                 selected
                 ghost
               />

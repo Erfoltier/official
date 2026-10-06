@@ -7,7 +7,7 @@ import { THEME_IDS, type ThemeId } from "@/lib/domain/types";
 export const THEME_KEY = "rsv-theme";
 
 /** layout.tsx の <head> で最初に動かす（React より先に色を決める） */
-export const THEME_BOOT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t&&t!=="default"&&/^[a-z]+$/.test(t))document.documentElement.dataset.theme=t}catch(e){}`;
+export const THEME_BOOT = `try{var d=document.documentElement,t=localStorage.getItem("${THEME_KEY}");if(t&&t!=="default"&&/^[a-z]+$/.test(t))d.dataset.theme=t;var z=localStorage.getItem("reserve:pref:uiSize");if(z==='"l"'||z==='"xl"')d.dataset.size=JSON.parse(z)}catch(e){}`;
 
 export function applyTheme(theme: ThemeId | undefined): void {
   if (typeof document === "undefined") return;

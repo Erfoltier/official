@@ -8,6 +8,7 @@ import { ApiError, deleteLane, deleteMenu, fetchMe, fetchSettings, reorder, save
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab, ThemeCard } from "./ClinicTab";
+import { DisplayPrefsCard } from "./DisplayPrefsCard";
 import { PricesTab } from "./PricesTab";
 import { ConsentsTab } from "./ConsentsTab";
 import { QuestionnairesTab } from "./QuestionnairesTab";
@@ -65,7 +66,7 @@ export function SettingsApp() {
   const canEdit = !!me?.canManage;
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-zoom>
       <header className={styles.head}>
         <Link href="/" className={styles.back}>
           ← カレンダーへ
@@ -124,7 +125,7 @@ export function SettingsApp() {
         </div>
       )}
 
-      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic" || tab === "appearance") && (
+      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic") && (
         <p className={styles.lead}>このログインでは見るだけです。変更・削除は、院長・管理者と受付、または院長が「設定 → スタッフ」で許可したスタッフができます。</p>
       )}
       {tab === "staff" && isAdmin ? (
@@ -151,8 +152,9 @@ export function SettingsApp() {
         <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "appearance" ? (
         <section className={styles.clinic}>
-          <p className={styles.lead}>画面の見た目の設定です。院で1つ選ぶと、すべての端末の画面に反映されます。</p>
+          <p className={styles.lead}>画面の見た目の設定です。配色は院で1つ（すべての端末に反映）、その下の表示はこの端末ごとに選べます。</p>
           <ThemeCard key={data.clinic.theme ?? "default"} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+          <DisplayPrefsCard />
         </section>
       ) : tab === "lanes" ? (
         <LanesTab lanes={data.lanes} onChanged={load} notify={notify} fail={fail} />

@@ -63,7 +63,7 @@ export function ReceptionList(props: Props) {
     <>
       {/* スマホで一覧の外を押したら閉じる */}
       <div className={styles.receptionBackdrop} onClick={props.onClose} aria-hidden />
-      <aside className={styles.reception} aria-label="受付一覧" data-enter={animate || undefined}>
+      <aside className={styles.reception} data-ui-zoom aria-label="受付一覧" data-enter={animate || undefined}>
         <div className={styles.receptionHead}>
           <b>受付一覧</b>
           <span className={styles.receptionCount}>{rows.length}件</span>

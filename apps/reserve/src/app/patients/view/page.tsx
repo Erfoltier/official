@@ -15,7 +15,7 @@ export default function Page() {
     setId(new URLSearchParams(window.location.search).get("id"));
   }, []);
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-zoom>
       <header className={styles.pageHead}>
         <Link href="/patients/" className={styles.back}>
           ← 患者一覧
