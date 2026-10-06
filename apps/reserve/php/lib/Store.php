@@ -1164,10 +1164,11 @@ final class Store
         }
         if (isset($input['chartNo'])) {
             $chartNo = js_trim(normalize_width($input['chartNo']));
-            if (!preg_match('/^[A-Za-z0-9-]{1,20}$/', $chartNo)) {
+            // 空欄でもよい（まだ診察券を作っていない患者）。入れるときは英数字で、ほかの患者と重ならないこと
+            if ($chartNo !== '' && !preg_match('/^[A-Za-z0-9-]{1,20}$/', $chartNo)) {
                 throw new StoreError('invalid', '診察券番号は英数字で入力してください');
             }
-            foreach (self::patients() as $p) {
+            foreach ($chartNo === '' ? [] : self::patients() as $p) {
                 if ($p['chartNo'] === $chartNo && $p['id'] !== $selfId) {
                     throw new StoreError('invalid', 'この診察券番号は既に使われています');
                 }
@@ -1182,7 +1183,7 @@ final class Store
             if ($m3 !== '') {
                 foreach (self::patients() as $p) {
                     if (($p['m3ChartNo'] ?? null) === $m3 && $p['id'] !== $selfId && empty($p['deleted'])) {
-                        throw new StoreError('invalid', "このM3カルテ番号は 診察券{$p['chartNo']}（{$p['name']}）に登録されています");
+                        throw new StoreError('invalid', "このM3カルテ番号は " . ($p['chartNo'] !== '' ? "診察券{$p['chartNo']}（{$p['name']}）" : "{$p['name']} さん") . "に登録されています");
                     }
                 }
             }
@@ -1211,17 +1212,6 @@ final class Store
             $out['medications'] = $opt(self::checkNote('内服歴', $input['medications'], 2000));
         }
         return $out;
-    }
-
-    private static function nextChartNo(): string
-    {
-        $max = 10000;
-        foreach (self::patients() as $p) {
-            if (preg_match('/^\s*\d+\s*$/', $p['chartNo'])) {
-                $max = max($max, (int) $p['chartNo']);
-            }
-        }
-        return (string) ($max + 1);
     }
 
     // ---- ファイル（同意書のスキャン・写真・PDF・Word） ----
@@ -1649,6 +1639,43 @@ final class Store
         return ['matched' => $matched, 'remaining' => $db->count('photoInbox')];
     }
 
+    // ---- Airリザーブから移した「今日以降」の予約（入れ直しのために完全に消す） ----
+
+    private const AIR_MARK = 'Air予約番号';
+
+    /** 今日以降の予約のうち、メモに「Air予約番号」があるもの（今日より前の予約と患者には触れない） */
+    private static function airFutureReservations(): array
+    {
+        $today = now_in_clinic()['date'];
+        return array_values(array_filter(
+            Db::i()->between('reservation', 'k1', $today, '9999-12-31'),
+            fn($r) => clinic_date_of($r['startAt']) >= $today && str_contains((string) ($r['memo'] ?? ''), self::AIR_MARK),
+        ));
+    }
+
+    public static function countAirFutureReservations(): array
+    {
+        self::init();
+        return ['count' => count(self::airFutureReservations()), 'from' => now_in_clinic()['date']];
+    }
+
+    public static function deleteAirFutureReservations(array $by): array
+    {
+        self::init();
+        $db = Db::i();
+        $deleted = $db->transaction(function () use ($db) {
+            $n = 0;
+            foreach (self::airFutureReservations() as $r) {
+                $db->delete('reservation', $r['id']);
+                $n++;
+            }
+            return $n;
+        });
+        $from = now_in_clinic()['date'];
+        Auth::audit($by, "Airリザーブから移した{$from}以降の予約{$deleted}件を完全に削除（入れ直しのため）");
+        return ['deleted' => $deleted, 'from' => $from];
+    }
+
     // ---- 患者 ----
 
     public static function getPatient(string $id): ?array
@@ -1667,6 +1694,7 @@ final class Store
 
     public static function createPatient(array $input, ?array $by = null): array
     {
+        // 診察券番号は自動では振らない（入れなければ空欄のまま）
         $chartNoGiven = js_trim($input['chartNo'] ?? '') !== '';
         $in = ['kana' => '', ...$input];
         if (!$chartNoGiven) {
@@ -1676,7 +1704,7 @@ final class Store
         $now = now_iso();
         $p = drop_null([
             'id' => new_id('p-new'),
-            'chartNo' => $fields['chartNo'] ?? self::nextChartNo(),
+            'chartNo' => $fields['chartNo'] ?? '',
             'name' => $fields['name'],
             'kana' => $fields['kana'] ?? '',
             ...$fields,
@@ -2234,7 +2262,7 @@ final class Store
             throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
         }
         foreach (self::patients() as $p) {
-            if ($p['id'] !== $id && empty($p['deleted']) && $p['chartNo'] === $cur['chartNo']) {
+            if ($p['id'] !== $id && empty($p['deleted']) && $cur['chartNo'] !== '' && $p['chartNo'] === $cur['chartNo']) {
                 throw new StoreError('invalid', '同じ診察券番号の患者がいるため復元できません');
             }
         }
@@ -3354,7 +3382,7 @@ final class Store
         $q = self::liveQuestionnaire($id);
         $no = js_trim($chartNo);
         $found = null;
-        foreach (self::patients() as $p) {
+        foreach ($no === '' ? [] : self::patients() as $p) {
             if (empty($p['deleted']) && $p['chartNo'] === $no) {
                 $found = $p;
                 break;

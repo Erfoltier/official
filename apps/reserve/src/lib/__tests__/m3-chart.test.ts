@@ -27,7 +27,10 @@ describe("M3カルテ番号", () => {
   it("同じM3カルテ番号は別の患者に付けられない（どの患者かを示す）", async () => {
     const s = await store();
     s.createPatient({ name: "中村 ゆう", m3ChartNo: "5501" });
-    expect(() => s.createPatient({ name: "別の人", m3ChartNo: "5501" })).toThrow(/M3カルテ番号は 診察券\d+（中村 ゆう）/);
+    expect(() => s.createPatient({ name: "別の人", m3ChartNo: "5501" })).toThrow(/M3カルテ番号は 中村 ゆう さん/);
+    // 診察券番号があれば番号も示す
+    s.createPatient({ name: "番号 あり", chartNo: "7001", m3ChartNo: "5502" });
+    expect(() => s.createPatient({ name: "別の人", m3ChartNo: "5502" })).toThrow(/M3カルテ番号は 診察券7001（番号 あり）/);
     expect(() => s.createPatient({ name: "記号", m3ChartNo: "55#01" })).toThrow(/英数字/);
   });
 

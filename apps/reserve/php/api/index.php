@@ -322,6 +322,22 @@ try {
         }
     }
 
+    // ---- Airリザーブから移した今日以降の予約を完全に消す（院長・管理者。入れ直しのため） ----
+    if ($p[0] === 'reservations' && ($p[1] ?? '') === 'air-future') {
+        if ($method === 'GET' && $n === 2) {
+            $me(STAFF_ADMIN);
+            Http::json(Store::countAirFutureReservations());
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $me(STAFF_ADMIN);
+            $in = Http::readJson();
+            if (!is_array($in) || ($in['confirm'] ?? null) !== 'DELETE') {
+                Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"DELETE"} を送ってください'], 400);
+            }
+            Http::json(Store::deleteAirFutureReservations($actor($s)));
+        }
+    }
+
     // ---- 機器の連携の設定（院長・管理者）と、照合待ちの写真 ----
     if ($p[0] === 'device-links') {
         if ($method === 'GET' && $n === 1) {

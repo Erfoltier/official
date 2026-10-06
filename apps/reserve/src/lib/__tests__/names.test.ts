@@ -61,13 +61,17 @@ describe("患者・レーン・メニューの登録", () => {
     const s = await import("@/lib/server/store");
     const p = s.createPatient({ name: "  中村　Sophie ", kana: "なかむら そふぃー", nameAlt: "Nakamura Sophie" });
     expect(p.name).toBe("中村 Sophie");
-    expect(p.chartNo).toMatch(/^\d+$/);
+    // 診察券番号は自動では振らない
+    expect(p.chartNo).toBe("");
     expect(s.searchPatients("ナカムラソフィー").map((x) => x.id)).toContain(p.id);
     expect(s.searchPatients("sophie").map((x) => x.id)).toContain(p.id);
     expect(s.searchPatients("ＳＯＰＨＩＥ").map((x) => x.id)).toContain(p.id);
     expect(() => s.createPatient({ name: "  " })).toThrow(/氏名/);
     expect(() => s.createPatient({ name: "a\u0000b" })).toThrow(/使えない文字/);
-    expect(() => s.createPatient({ name: "x", chartNo: p.chartNo })).toThrow(/既に使われて/);
+    // 空欄どうしは重なってよいが、入れた番号は重ならないこと
+    expect(s.createPatient({ name: "空欄 二人目" }).chartNo).toBe("");
+    s.createPatient({ name: "番号 あり", chartNo: "9001" });
+    expect(() => s.createPatient({ name: "x", chartNo: "9001" })).toThrow(/既に使われて/);
   });
 
   it("レーンを追加・並べ替えでき、予約が残るレーンは非表示にできない", async () => {

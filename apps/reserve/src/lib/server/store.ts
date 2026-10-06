@@ -679,6 +679,35 @@ function randomId(): string {
   return randomBytes(4).toString("hex");
 }
 
+// ---- Airリザーブから移した「今日以降」の予約（入れ直しのために完全に消す） ----
+
+const AIR_MARK = "Air予約番号";
+
+/** 今日以降の予約のうち、メモに「Air予約番号」があるもの（今日より前の予約と患者には触れない） */
+function airFutureReservations(): Reservation[] {
+  const today = nowInClinic().date;
+  return [...state().reservations.values()].filter((r) => clinicDateOf(r.startAt) >= today && (r.memo ?? "").includes(AIR_MARK));
+}
+
+export function countAirFutureReservations(): { count: number; from: string } {
+  return { count: airFutureReservations().length, from: nowInClinic().date };
+}
+
+export function deleteAirFutureReservations(by: Actor): { deleted: number; from: string } {
+  const st = state();
+  const deleted = transaction(() => {
+    let n = 0;
+    for (const r of airFutureReservations()) {
+      st.reservations.delete(r.id);
+      n++;
+    }
+    return n;
+  });
+  const from = nowInClinic().date;
+  audit(by, `Airリザーブから移した${from}以降の予約${deleted}件を完全に削除（入れ直しのため）`);
+  return { deleted, from };
+}
+
 // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
 
 const DEVICE_SOURCES: Record<DeviceSource, string> = { neovoir: "ネオボワール" };
@@ -1253,9 +1282,12 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
   }
   if (input.chartNo !== undefined) {
     const chartNo = input.chartNo.normalize("NFKC").trim();
-    if (!/^[A-Za-z0-9-]{1,20}$/.test(chartNo)) throw new StoreError("invalid", "診察券番号は英数字で入力してください");
-    for (const p of st.patients.values()) {
-      if (p.chartNo === chartNo && p.id !== selfId) throw new StoreError("invalid", "この診察券番号は既に使われています");
+    // 空欄でもよい（まだ診察券を作っていない患者）。入れるときは英数字で、ほかの患者と重ならないこと
+    if (chartNo !== "" && !/^[A-Za-z0-9-]{1,20}$/.test(chartNo)) throw new StoreError("invalid", "診察券番号は英数字で入力してください");
+    if (chartNo !== "") {
+      for (const p of st.patients.values()) {
+        if (p.chartNo === chartNo && p.id !== selfId) throw new StoreError("invalid", "この診察券番号は既に使われています");
+      }
     }
     out.chartNo = chartNo;
   }
@@ -1265,7 +1297,7 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
     if (m3) {
       for (const p of st.patients.values()) {
         if (p.m3ChartNo === m3 && p.id !== selfId && !p.deleted) {
-          throw new StoreError("invalid", `このM3カルテ番号は 診察券${p.chartNo}（${p.name}）に登録されています`);
+          throw new StoreError("invalid", `このM3カルテ番号は ${p.chartNo ? `診察券${p.chartNo}（${p.name}）` : `${p.name} さん`}に登録されています`);
         }
       }
     }
@@ -1286,19 +1318,15 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
   return out;
 }
 
-function nextChartNo(): string {
-  const used = [...state().patients.values()].map((p) => Number(p.chartNo)).filter(Number.isFinite);
-  return String(Math.max(10000, ...used) + 1);
-}
-
 export function createPatient(input: CreatePatientInput, by?: Actor): Patient {
   const st = state();
+  // 診察券番号は自動では振らない（入れなければ空欄のまま）
   const chartNoGiven = (input.chartNo ?? "").trim() !== "";
   const fields = patientFields({ kana: "", ...input, chartNo: chartNoGiven ? input.chartNo : undefined }, null);
   const now = new Date().toISOString();
   const p = dropUndefined({
     id: `p-new-${Date.now().toString(36)}-${++st.seq}`,
-    chartNo: fields.chartNo ?? nextChartNo(),
+    chartNo: fields.chartNo ?? "",
     name: fields.name!,
     kana: fields.kana ?? "",
     ...fields,
@@ -1811,7 +1839,7 @@ export function restorePatient(id: string, version: number, by?: Actor): Patient
   if (cur.mergedInto) throw new StoreError("invalid", "統合された患者は復元できません");
   if (cur.version !== version) throw new StoreError("version_conflict", "他の端末で先に更新されました。画面を開き直してください");
   for (const p of st.patients.values()) {
-    if (p.id !== id && !p.deleted && p.chartNo === cur.chartNo) {
+    if (p.id !== id && !p.deleted && cur.chartNo !== "" && p.chartNo === cur.chartNo) {
       throw new StoreError("invalid", "同じ診察券番号の患者がいるため復元できません");
     }
   }
@@ -2220,7 +2248,7 @@ export function linkQuestionnaire(id: string, chartNo: string, by?: Actor): Ques
   const st = state();
   const q = liveQuestionnaire(id);
   const no = chartNo.trim();
-  const p = [...st.patients.values()].find((x) => !x.deleted && x.chartNo === no);
+  const p = no === "" ? undefined : [...st.patients.values()].find((x) => !x.deleted && x.chartNo === no);
   if (!p) throw new StoreError("invalid", "その診察券番号の患者が見つかりません");
   const next: Questionnaire = { ...q, patientId: p.id, ...(by && { linkedBy: by }) };
   st.questionnaires.set(id, next);
