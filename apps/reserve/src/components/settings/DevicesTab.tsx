@@ -138,20 +138,20 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
             )}
 
             <details className={styles.priceUrls}>
-              <summary>つなぎ方（ネオボワールのパソコンで行います）</summary>
+              <summary>つなぎ方（ネオボワールの写真が見られるパソコンで行います。親機・子機のどちらでも可）</summary>
               <ol className={styles.steps}>
                 <li>
                   上の「接続用の鍵を作る」を押し、表示された鍵を控えます。
                 </li>
                 <li>
-                  ネオボワールのパソコンで{" "}
+                  ネオボワールの写真が見られるパソコン（親機でも子機でも。診療中に電源が入っている時間が長いほうがおすすめ）で{" "}
                   <a href={withBase("/integrations/neovoir-agent.ps1")} download>
                     取り込み係（neovoir-agent.ps1）
                   </a>{" "}
                   をダウンロードし、分かりやすい場所（例：ドキュメント）に置きます。
                 </li>
                 <li>
-                  スタートメニューで「PowerShell」を開き、次を入力します（ファイルの場所に合わせて）。
+                  スタートメニューで「PowerShell」を<b>普通に</b>開き（「管理者として実行」では親機の共有フォルダが見えないことがあります）、次を入力します（ファイルの場所に合わせて）。
                   <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;%USERPROFILE%\Documents\neovoir-agent.ps1&quot; -Setup</code>
                   聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
                 </li>

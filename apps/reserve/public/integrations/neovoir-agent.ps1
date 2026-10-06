@@ -116,7 +116,11 @@ if ($Setup) {
   $token = Read-Host '接続用の鍵（設定 → 外部機器の連携 で発行したもの）' -AsSecureString
   $folder = Read-Host "ネオボワールの写真が保存されるフォルダ（そのまま Enter で $DefaultFolder）"
   if (-not $folder) { $folder = $DefaultFolder }
-  if (-not (Test-Path $folder)) { throw "フォルダが見つかりません：$folder" }
+  if (-not (Test-Path $folder)) {
+    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole('Administrators')
+    if ($admin) { throw "フォルダが見つかりません：$folder（「管理者として実行」した PowerShell では親機の共有フォルダが見えないことがあります。PowerShell を普通に開き直して、もう一度 -Setup を実行してください）" }
+    throw "フォルダが見つかりません：$folder（親機の電源・スリープを確かめ、エクスプローラーのアドレス欄にこの場所を入れて開けるか確かめてください）"
+  }
   Write-Host '氏名をどこから読みますか？  1) ネオボワールのファイル名（顧客番号_回_向き_光_氏名。既定）  2) 写真の入っているフォルダ名  3) その1つ上のフォルダ名  4) ファイル名'
   $choice = Read-Host '番号'
   $nameFrom = @{ '2' = 'folder'; '3' = 'folder2'; '4' = 'file' }[$choice]; if (-not $nameFrom) { $nameFrom = 'neovoir' }
