@@ -2350,6 +2350,22 @@ export function linkQuestionnaire(id: string, chartNo: string, by?: Actor): Ques
   return next;
 }
 
+/** 結びついている問診票を、患者の空いている欄へ写し直す（写す仕組みより前に結びついた回答のため。何度実行しても重ならない） */
+export function refillFromQuestionnaires(by: Actor): { questionnaires: number; patients: number } {
+  const st = state();
+  const qs = [...st.questionnaires.values()].filter((q) => q.patientId && !q.deleted).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+  const changed = new Set<string>();
+  transaction(() => {
+    for (const q of qs) {
+      const before = st.patients.get(q.patientId!)?.version;
+      fillPatientFromQuestionnaire(q.patientId!, q);
+      if (st.patients.get(q.patientId!)?.version !== before) changed.add(q.patientId!);
+    }
+  });
+  audit(by, `問診票を患者の基本情報へ写し直し（問診票${qs.length}件・患者${changed.size}名）`);
+  return { questionnaires: qs.length, patients: changed.size };
+}
+
 // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方）
 const Q_ADDRESS = /住所/;
 const Q_POSTAL = /郵便番号|〒/;
@@ -2386,8 +2402,9 @@ function fillPatientFromQuestionnaire(patientId: string, q: Questionnaire): void
     wanted.cautionNote = `アレルギー：${q.allergies}`.slice(0, 500);
   }
   const other = q.answers.filter((x) => !Q_KNOWN.test(x.q) && answered(x.a)).map((x) => `${x.q}：${x.a}`);
-  if (other.length) {
-    const block = `【問診票 ${q.submittedAt.slice(0, 10)}】\n${other.join("\n")}`;
+  const block = `【問診票 ${q.submittedAt.slice(0, 10)}】\n${other.join("\n")}`;
+  // 同じ回答をもう一度写しても重ならないように（写し直しの操作のため）
+  if (other.length && !(cur.questionnaireOther ?? "").includes(block)) {
     wanted.questionnaireOther = (cur.questionnaireOther ? `${cur.questionnaireOther}\n\n${block}` : block).slice(0, 8000);
   }
   // 形の合わない値（電話番号の形など）は、その項目だけ写さない

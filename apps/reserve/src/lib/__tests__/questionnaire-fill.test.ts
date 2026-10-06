@@ -51,3 +51,16 @@ describe("問診票の回答を患者の基本情報へ写す", () => {
     expect(u.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる\n\n【問診票 2026/11/01】\nその他のご相談事項：肝斑も");
   });
 });
+
+describe("問診票の写し直し", () => {
+  it("何度実行しても、その他の問診票情報が重ならない", async () => {
+    resetStores();
+    const s = await import("@/lib/server/store");
+    const p = s.createPatient({ name: "問診 はなこ", birthDate: "1990-01-02" });
+    s.receiveQuestionnaires([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", answers }]);
+    const by = { id: "staff-admin", name: "院長" };
+    s.refillFromQuestionnaires(by);
+    expect(s.refillFromQuestionnaires(by)).toEqual({ questionnaires: 1, patients: 0 });
+    expect(s.getPatientDetail(p.id).patient.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる");
+  });
+});

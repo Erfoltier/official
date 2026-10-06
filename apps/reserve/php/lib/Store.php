@@ -3517,6 +3517,26 @@ final class Store
         return $next;
     }
 
+    /** 結びついている問診票を、患者の空いている欄へ写し直す（写す仕組みより前に結びついた回答のため。何度実行しても重ならない） */
+    public static function refillFromQuestionnaires(array $by): array
+    {
+        self::init();
+        $qs = array_values(array_filter(Db::i()->all('questionnaire'), fn($q) => !empty($q['patientId']) && empty($q['deleted'])));
+        usort($qs, fn($a, $b) => strcmp($a['submittedAt'], $b['submittedAt']));
+        $changed = [];
+        Db::i()->transaction(function () use ($qs, &$changed) {
+            foreach ($qs as $q) {
+                $before = self::patients()[$q['patientId']]['version'] ?? null;
+                self::fillPatientFromQuestionnaire($q['patientId'], $q);
+                if ((self::patients()[$q['patientId']]['version'] ?? null) !== $before) {
+                    $changed[$q['patientId']] = true;
+                }
+            }
+        });
+        Auth::audit($by, '問診票を患者の基本情報へ写し直し（問診票' . count($qs) . '件・患者' . count($changed) . '名）');
+        return ['questionnaires' => count($qs), 'patients' => count($changed)];
+    }
+
     // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方。Node.js 版と同じ）
     private const Q_KNOWN = '/タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
     private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
@@ -3577,9 +3597,10 @@ final class Store
                 $other[] = "{$x['q']}：{$x['a']}";
             }
         }
-        if ($other) {
-            $block = '【問診票 ' . js_slice($q['submittedAt'], 10) . "】\n" . implode("\n", $other);
-            $prev = $cur['questionnaireOther'] ?? '';
+        $block = '【問診票 ' . js_slice($q['submittedAt'], 10) . "】\n" . implode("\n", $other);
+        $prev = $cur['questionnaireOther'] ?? '';
+        // 同じ回答をもう一度写しても重ならないように（写し直しの操作のため）
+        if ($other && !str_contains($prev, $block)) {
             $wanted['questionnaireOther'] = js_slice($prev !== '' ? "{$prev}\n\n{$block}" : $block, 8000);
         }
         // 形の合わない値（電話番号の形など）は、その項目だけ写さない

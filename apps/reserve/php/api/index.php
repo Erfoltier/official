@@ -334,6 +334,12 @@ try {
         }
     }
 
+    // ---- 結びついている問診票を、患者の空いている欄へ写し直す（院長・管理者） ----
+    if ($route === 'POST questionnaires/refill') {
+        $s = $me(STAFF_ADMIN);
+        Http::json(Store::refillFromQuestionnaires($actor($s)));
+    }
+
     // ---- 整った控え（バックアップ）をサーバーの data/backups/ に作る（院長・管理者） ----
     if ($route === 'POST admin/backup') {
         $s = $me(STAFF_ADMIN);
