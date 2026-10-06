@@ -130,23 +130,34 @@ function Invoke-Api($c, [string]$path, [string]$method = 'GET', [string]$inFile 
 
 # 送る前に縮小する（長い辺を maxSide に。0 なら原寸のまま）。縮小したときは一時ファイルを返す
 Add-Type -AssemblyName System.Drawing
+# 縮小するときは 1枚 約1MB 以内に収める（画質を少しずつ下げ、それでも大きければ寸法も縮める）
+$TargetBytes = 1MB
 function Get-SendFile($path, [int]$maxSide) {
   if ($maxSide -le 0) { return $path }
   $img = [Drawing.Image]::FromFile($path)
   try {
     $w = $img.Width; $h = $img.Height
-    $scale = [Math]::Min(1.0, $maxSide / [double][Math]::Max($w, $h))
-    if ($scale -ge 1.0) { return $path }
-    $nw = [int][Math]::Round($w * $scale); $nh = [int][Math]::Round($h * $scale)
-    $bmp = New-Object Drawing.Bitmap $nw, $nh
-    $g = [Drawing.Graphics]::FromImage($bmp)
-    $g.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.DrawImage($img, 0, 0, $nw, $nh); $g.Dispose()
+    $side = [Math]::Min($maxSide, [Math]::Max($w, $h))
+    if ($side -eq [Math]::Max($w, $h) -and (Get-Item $path).Length -le $TargetBytes) { return $path }
     $codec = [Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
-    $ep = New-Object Drawing.Imaging.EncoderParameters 1
-    $ep.Param[0] = New-Object Drawing.Imaging.EncoderParameter ([Drawing.Imaging.Encoder]::Quality), ([long]85)
     $tmp = Join-Path $env:TEMP ('nv_' + [guid]::NewGuid().ToString('N') + '.jpg')
-    $bmp.Save($tmp, $codec, $ep); $bmp.Dispose()
+    for ($round = 0; $round -lt 6; $round++) {
+      $scale = $side / [double][Math]::Max($w, $h)
+      $nw = [int][Math]::Round($w * $scale); $nh = [int][Math]::Round($h * $scale)
+      $bmp = New-Object Drawing.Bitmap $nw, $nh
+      $g = [Drawing.Graphics]::FromImage($bmp)
+      $g.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+      $g.DrawImage($img, 0, 0, $nw, $nh); $g.Dispose()
+      try {
+        foreach ($q in 85, 78, 70) {
+          $ep = New-Object Drawing.Imaging.EncoderParameters 1
+          $ep.Param[0] = New-Object Drawing.Imaging.EncoderParameter ([Drawing.Imaging.Encoder]::Quality), ([long]$q)
+          $bmp.Save($tmp, $codec, $ep)
+          if ((Get-Item $tmp).Length -le $TargetBytes) { return $tmp }
+        }
+      } finally { $bmp.Dispose() }
+      $side = [int]($side * 0.85)
+    }
     return $tmp
   } finally { $img.Dispose() }
 }

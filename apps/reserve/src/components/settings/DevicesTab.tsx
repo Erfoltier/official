@@ -273,8 +273,8 @@ function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDe
 
 const LIGHT_LABEL: Record<NeovoirLight, string> = { NL: "NL（通常光）", PL: "PL（偏光）", SL: "SL", UV: "UV（紫外線）" };
 const SIZES = [
-  { v: 2000, label: "縮小（長い辺 2000px・1枚0.5MB前後）" },
-  { v: 3000, label: "やや縮小（長い辺 3000px・1枚1MB前後）" },
+  { v: 2000, label: "縮小（長い辺 2000px まで・1枚 約1MB 以内）" },
+  { v: 3000, label: "やや縮小（長い辺 3000px まで・1枚 約1MB 以内）" },
   { v: 0, label: "原寸のまま（1枚1.5〜2MB）" },
 ];
 
@@ -284,7 +284,7 @@ function OptionsEditor({ link, busy, onSave }: { link: DeviceLink; busy: boolean
   const [lights, setLights] = useState<NeovoirLight[]>(cur.lights);
   const [maxSide, setMaxSide] = useState(cur.maxSide);
   const dirty = lights.join() !== cur.lights.join() || maxSide !== cur.maxSide;
-  const perShot = (lights.length * 3 * (maxSide === 0 ? 1.8 : maxSide >= 3000 ? 1 : 0.5)).toFixed(1);
+  const perShot = (lights.length * 3 * (maxSide === 0 ? 1.8 : 0.8)).toFixed(1);
   return (
     <div className={styles.optionsBox}>
       <b>取り込む写真</b>
