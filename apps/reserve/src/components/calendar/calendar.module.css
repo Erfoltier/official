@@ -2004,3 +2004,23 @@ button.stagePill[data-clickable]:disabled {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+
+/* 右の詳細のボタン（患者情報・予約を変更・カルテ・同意書・見積/会計）を同じ形に、2段で並べる */
+.panelLinks {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+
+.panelLinkBtns {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panelLinks .estimateBtn {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}

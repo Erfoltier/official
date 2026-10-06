@@ -158,9 +158,16 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       </div>
 
       <div className={styles.panelLinks}>
-        <button type="button" className={styles.patientBtn} onClick={onEditPatient}>
-          患者情報の表示/編集
-        </button>
+        <span className={styles.panelLinkBtns}>
+          <button type="button" className={styles.estimateBtn} onClick={onEditPatient}>
+            👤 患者情報の表示/編集
+          </button>
+          {!INACTIVE_STATUSES.has(r.status) && (
+            <button type="button" className={styles.estimateBtn} onClick={() => setEditOpen(true)}>
+              🗓 予約を変更
+            </button>
+          )}
+        </span>
         {patient && !patient.deleted && (
           <span className={styles.panelLinkBtns}>
             <button type="button" className={styles.estimateBtn} onClick={() => setChartOpen(true)}>
@@ -211,11 +218,6 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <dt>日時</dt>
         <dd>
           {formatDateJa(bundle.date)} {formatHm(start)}–{formatHm(end)}（{curDur}分）
-          {!INACTIVE_STATUSES.has(r.status) && (
-            <button type="button" className={styles.miniBtn} onClick={() => setEditOpen(true)}>
-              予約を変更
-            </button>
-          )}
         </dd>
         <dt>レーン</dt>
         <dd>{lane?.name}</dd>
