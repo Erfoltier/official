@@ -113,7 +113,6 @@ export function LoginApp() {
           </button>
         </form>
       )}
-      <p className={styles.note}>試作版：初期PINはすべて 1234 です。設定 → スタッフ から変更してください。</p>
     </main>
   );
 }

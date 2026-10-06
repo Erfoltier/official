@@ -13,8 +13,9 @@ export function json(data: unknown, status = 200): Response {
 
 export function errorResponse(err: unknown): Response {
   if (err instanceof AuthError) {
+    // ログイン切れ・PIN違いも 403（401 だと、入口に Basic認証を掛けたサーバーでブラウザが ID・パスワードの窓を出し直すため）
     const status =
-      err.code === "login_required" ? 401 : err.code === "forbidden" ? 403 : err.code === "locked" ? 429 : err.code === "invalid" ? 400 : 401;
+      err.code === "locked" ? 429 : err.code === "invalid" ? 400 : 403;
     return json({ error: err.code, message: err.message }, status);
   }
   if (err instanceof StoreError) {

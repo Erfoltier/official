@@ -27,7 +27,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   const body = res.status === 204 ? {} : await res.json().catch(() => ({}));
-  if (res.status === 401 && body.error === "login_required") {
+  if ((res.status === 401 || res.status === 403) && body.error === "login_required") {
     // ログインが切れていたらログイン画面へ（戻り先を付ける）
     const next = window.location.pathname + window.location.search;
     window.location.replace(withBase(`/login/?next=${encodeURIComponent(next)}`));

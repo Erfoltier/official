@@ -34,8 +34,10 @@ final class Http
     public static function error(Throwable $err): never
     {
         if ($err instanceof AuthError) {
+            // ログイン切れ・PIN違いも 403 で返す（401 にすると、入口の鍵（Basic認証）を掛けたサーバーでは
+            // ブラウザが ID・パスワードの窓を出し直し、覚えていた入口の鍵まで捨ててしまうため）
             $status = match ($err->codeName) {
-                'login_required' => 401, 'forbidden' => 403, 'locked' => 429, 'invalid' => 400, default => 401,
+                'forbidden', 'login_required' => 403, 'locked' => 429, 'invalid' => 400, default => 403,
             };
             self::json(['error' => $err->codeName, 'message' => $err->getMessage()], $status);
         }
