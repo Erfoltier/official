@@ -45,6 +45,8 @@ describe("見積の割引（掛け率）", () => {
     const list = [price("homepage", "シミ取り", "顔まとめ取り"), price("homepage", "シミ取り", "〜10mm"), price("homepage", "ほくろ除去", "1個")];
     expect(relatedPrices(["シミ4個まで/男性/75歳以上/説明済照射のみ/ゼオ不要"], list).map((p) => p.name)).toEqual(["顔まとめ取り", "〜10mm"]);
     expect(relatedPrices(["予約（メモに自由記載）"], list)).toEqual([]);
+    // 「ゼオ不要」ではゼオの料金を出さない
+    expect(relatedPrices(["シミ4個まで/ゼオ不要"], [...list, price("sheet", "内服・外用など", "Tcrゼオ美白やっている人")]).map((p) => p.name)).toEqual(["顔まとめ取り", "〜10mm"]);
   });
 });
 

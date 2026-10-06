@@ -134,7 +134,8 @@ export function PricesTab({ canEdit, isAdmin, notify, fail }: { canEdit: boolean
                   <tr key={p.id}>
                     <td>{p.name}</td>
                     <td className={styles.priceCol}>{p.priceYen === null ? "—" : `¥${p.priceYen.toLocaleString("ja-JP")}`}</td>
-                    <td className={styles.muted}>{p.priceText}</td>
+                    {/* 値段が決まっているものは税込価格だけ。「要相談」や「1本なら6,600円」のような補足があるときだけ表示の文字を出す */}
+                    <td className={styles.muted}>{extraText(p)}</td>
                   </tr>
                 ),
               )}
@@ -204,4 +205,12 @@ function ManualRow({ item, canEdit, onSave, onDelete }: { item: PriceItem; canEd
       </td>
     </tr>
   );
+}
+
+/** 表示の文字のうち、税込価格の繰り返しでない補足（なければ空） */
+function extraText(p: PriceItem): string {
+  const t = p.priceText.trim();
+  if (p.priceYen === null) return t;
+  const plain = t.replace(/[,，\s円¥￥]|税込|（税込）|\(税込\)/g, "");
+  return plain === String(p.priceYen) ? "" : t;
 }

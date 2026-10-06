@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { Product, ProductCategory } from "@/lib/domain/types";
+import { useEffect, useMemo, useState } from "react";
+import type { PriceItem, Product, ProductCategory } from "@/lib/domain/types";
 import { PRODUCT_CATEGORY_LABEL } from "@/lib/domain/types";
-import { deleteProduct, reorder, saveProduct } from "@/components/calendar/api";
+import { deleteProduct, fetchPrices, reorder, saveProduct } from "@/components/calendar/api";
+import { skincareOptions } from "@/lib/domain/skincare";
 import styles from "./settings.module.css";
 
 const yen = (n: number | null) => (n === null ? "" : String(n));
@@ -31,6 +32,20 @@ export function ProductsTab({
   const [category, setCategory] = useState<ProductCategory>("skincare");
   const [price, setPrice] = useState("");
   const priceVal = parseYen(price);
+  /** 料金表から自動で入っている商品（ここでは見るだけ。値段は料金表・スプレッドシートで直す） */
+  const [prices, setPrices] = useState<PriceItem[] | null>(null);
+  useEffect(() => {
+    fetchPrices().then(
+      (l) => setPrices(l.items),
+      () => setPrices([]),
+    );
+  }, []);
+  const fromPrices = useMemo(() => {
+    const groups = new Map<string, { name: string; priceYen: number | null }[]>();
+    for (const o of skincareOptions(prices ?? [], [])) groups.set(o.group, [...(groups.get(o.group) ?? []), o]);
+    return [...groups.entries()];
+  }, [prices]);
+  const fromCount = fromPrices.reduce((n, [, l]) => n + l.length, 0);
 
   const run = async (fn: () => Promise<unknown>, message?: string) => {
     try {
@@ -125,6 +140,34 @@ export function ProductsTab({
           )}
         </tbody>
       </table>
+
+      <h3 className={styles.subhead}>料金表から自動で入っている商品{prices ? `（${fromCount}件）` : ""}</h3>
+      <p className={styles.hint}>
+        施術歴・見積・会計の候補には、上で足した商品に加えて、次の商品が出ます。値段を直すときは、元のスプレッドシート・ホームページ（または「料金表」の自由入力）を直してください。
+      </p>
+      {!prices ? (
+        <p className={styles.muted}>読み込み中…</p>
+      ) : fromCount === 0 ? (
+        <p className={styles.muted}>まだありません（「料金表」に商品が入るとここに出ます）</p>
+      ) : (
+        fromPrices.map(([g, items]) => (
+          <details key={g} className={styles.priceGroup}>
+            <summary>
+              {g}（{items.length}件）
+            </summary>
+            <table className={styles.table}>
+              <tbody>
+                {items.map((o) => (
+                  <tr key={o.name}>
+                    <td>{o.name}</td>
+                    <td className={styles.priceCol}>{o.priceYen === null ? "—" : `¥${o.priceYen.toLocaleString("ja-JP")}`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        ))
+      )}
     </section>
   );
 }

@@ -161,9 +161,10 @@ export function EstimateDialog(props: Props) {
 
   const candidates = useMemo(() => {
     const key = searchKey(q);
-    const list: { id: string; name: string; price: number | null; sub?: string; text?: string }[] =
+    // name は見積の行に入る名前、label はボタンの表示（分類は小さく別に出すので繰り返さない）
+    const list: { id: string; name: string; label?: string; price: number | null; sub?: string; text?: string }[] =
       tab === "price"
-        ? (prices ?? []).map((p) => ({ id: p.id, name: lineName(p), price: p.priceYen, sub: p.category, text: p.priceText }))
+        ? (prices ?? []).map((p) => ({ id: p.id, name: lineName(p), label: p.name, price: p.priceYen, sub: p.category, text: p.priceText }))
         : // 患者画面のスキンケア＆内服と同じ候補（料金表のゼオ・内服外用・外用剤など＋設定で足した商品）
           skincareOptions(prices ?? [], products).map((o) => ({ id: `sk:${o.name}`, name: o.name, price: o.priceYen, sub: o.group }));
     return key ? list.filter((x) => searchKey(`${x.sub ?? ""} ${x.name}`).includes(key)) : list;
@@ -278,7 +279,8 @@ export function EstimateDialog(props: Props) {
                 </div>
               </div>
             )}
-            <div className={styles.chips}>
+            <span className={styles.allLabel}>{tab === "price" ? "全メニュー一覧" : "スキンケア＆内服の一覧"}</span>
+            <div className={`${styles.chips} ${styles.allList}`}>
               {prices === null && <span className={styles.muted}>読み込み中…</span>}
               {prices !== null && candidates.length === 0 && (
                 <span className={styles.muted}>{tab === "price" && !q ? "料金表が空です（設定 → 料金表）" : "見つかりません"}</span>
@@ -286,7 +288,7 @@ export function EstimateDialog(props: Props) {
               {candidates.map((c) => (
                 <button key={c.id} type="button" className={styles.chip} onClick={() => add(tab, c.id, c.name, c.price)} title={c.text ? `${c.name}：${c.text}` : "押すと見積に追加"}>
                   {c.sub && <small>{c.sub}</small>}
-                  <span>{c.name}</span>
+                  <span>{c.label ?? c.name}</span>
                   <b>{c.price === null ? c.text || "値段未設定" : yen(c.price)}</b>
                 </button>
               ))}

@@ -91,7 +91,9 @@ const RELATED: [RegExp, RegExp][] = [
 ];
 
 export function relatedPrices(menuNames: string[], prices: PriceItem[], limit = 24): PriceItem[] {
-  const res = RELATED.filter(([m]) => menuNames.some((n) => m.test(n))).map(([, p]) => p);
+  // 「ゼオ不要」「麻酔なし」のような打ち消しの書き足しでは引かない
+  const names = menuNames.map((n) => n.replace(/[^/／]*(不要|なし|無し|使用しない)[^/／]*/g, ""));
+  const res = RELATED.filter(([m]) => names.some((n) => m.test(n))).map(([, p]) => p);
   if (res.length === 0) return [];
   return prices.filter((p) => !p.removed && res.some((re) => re.test(`${p.category} ${p.name}`))).slice(0, limit);
 }

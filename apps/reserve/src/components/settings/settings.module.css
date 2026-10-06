@@ -646,3 +646,17 @@
     font-size: 13px;
   }
 }
+
+/* スキンケア・内服タブ：料金表から入っている商品（見るだけ） */
+.subhead {
+  margin: 24px 0 4px;
+  font-size: 15px;
+  color: var(--accent-strong);
+}
+
+details.priceGroup > summary {
+  cursor: pointer;
+  padding: 6px 0;
+  font-weight: 600;
+  color: var(--accent-strong);
+}

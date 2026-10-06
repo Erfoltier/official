@@ -586,3 +586,20 @@
     grid-area: del;
   }
 }
+
+/* 全メニュー一覧：上の「この予約のメニューに合う料金」と見分けやすいよう、見出しを付けて背景を変え、高さを広めに */
+.allLabel {
+  display: block;
+  margin: 2px 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #6b6880);
+}
+
+.chips.allList {
+  max-height: min(300px, 38vh);
+  padding: 6px;
+  border: 1px solid #d9e3f0;
+  border-radius: 8px;
+  background: #f1f5fb;
+}
