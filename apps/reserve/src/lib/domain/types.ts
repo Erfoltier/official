@@ -86,6 +86,8 @@ export interface Patient {
   postalCode?: string;
   /** 住所（都道府県から） */
   address?: string;
+  /** 性別 */
+  sex?: "female" | "male" | "other";
   /** その他の問診票情報（既往歴・内服歴・アレルギー・連絡先に当てはまらない問診票の回答。回答ごとに日付付きで足す） */
   questionnaireOther?: string;
   /**

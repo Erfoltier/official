@@ -15,11 +15,11 @@ final class Store
         'done' => '完了', 'cancelled' => 'キャンセル', 'no_show' => '無断キャンセル',
     ];
     private const FIELD_LABEL = [
-        'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール', 'postalCode' => '郵便番号', 'address' => '住所',
+        'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール', 'postalCode' => '郵便番号', 'address' => '住所', 'sex' => '性別',
         'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
         'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'questionnaireOther' => 'その他の問診票情報', 'lineUserId' => 'LINE紐付け',
     ];
-    private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'postalCode', 'address', 'birthDate', 'm3ChartNo'];
+    private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'postalCode', 'address', 'sex', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
     public const MAX_ACTIVE_LANES = 30;
     private const MAX_TOTAL_LANES = 100;
@@ -1175,6 +1175,22 @@ final class Store
     }
 
     /** 改行を許す長文（メモ等）の検査 */
+    /** 性別の入力・問診票の回答を female・male・other にそろえる（読めなければ null） */
+    private static function sexOf(string $v): ?string
+    {
+        $t = mb_strtolower(js_trim(normalize_width($v)));
+        if (preg_match('/^(female|f|女|女性|おんな)$/u', $t)) {
+            return 'female';
+        }
+        if (preg_match('/^(male|m|男|男性|おとこ)$/u', $t)) {
+            return 'male';
+        }
+        if (preg_match('/^(other|その他|回答しない|答えたくない)$/u', $t)) {
+            return 'other';
+        }
+        return null;
+    }
+
     private static function checkNote(string $label, string $value, int $max): string
     {
         $v = js_trim(str_replace(["\r\n", "\r"], "\n", normalize_nfc($value)));
@@ -1224,6 +1240,14 @@ final class Store
         }
         if (isset($input['address'])) {
             $out['address'] = $opt(self::checkText('住所', $input['address'], 200, false));
+        }
+        if (isset($input['sex'])) {
+            $v = js_trim(normalize_width($input['sex']));
+            $sex = self::sexOf($v);
+            if ($v !== '' && $sex === null) {
+                throw new StoreError('invalid', '性別は 女性・男性・その他 から選んでください');
+            }
+            $out['sex'] = $sex;
         }
         if (isset($input['chartNo'])) {
             $chartNo = js_trim(normalize_width($input['chartNo']));
@@ -3551,7 +3575,7 @@ final class Store
     }
 
     // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方。Node.js 版と同じ）
-    private const Q_KNOWN = '/タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
+    private const Q_KNOWN = '/性別|タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
     private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
 
     /** 「なし」などの回答は写さない */
@@ -3587,6 +3611,13 @@ final class Store
         $wanted = [];
         if (empty($cur['phone']) && !empty($q['phone'])) {
             $wanted['phone'] = $q['phone'];
+        }
+        if (empty($cur['birthDate']) && !empty($q['birthDate'])) {
+            $wanted['birthDate'] = $q['birthDate'];
+        }
+        $sexAnswer = $find('/性別/u');
+        if (empty($cur['sex']) && $sexAnswer !== null && self::sexOf($sexAnswer) !== null) {
+            $wanted['sex'] = $sexAnswer;
         }
         if (empty($cur['postalCode']) && $postal) {
             $wanted['postalCode'] = $postal;

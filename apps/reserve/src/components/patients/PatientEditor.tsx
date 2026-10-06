@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PatientDetail } from "@/lib/domain/types";
 import { nowInClinic } from "@/lib/domain/time";
+import { ageOf, ageSexText } from "@/lib/domain/age";
 import { ApiError, fetchMe, fetchPatient, saveVisit, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
 import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
@@ -32,6 +33,7 @@ function toForm(d: PatientDetail): Form {
     chartNo: p.chartNo,
     m3ChartNo: p.m3ChartNo ?? "",
     birthDate: p.birthDate ?? "",
+    sex: p.sex ?? "",
     phone: p.phone ?? "",
     email: p.email ?? "",
     postalCode: p.postalCode ?? "",
@@ -43,15 +45,6 @@ function toForm(d: PatientDetail): Form {
     medications: p.medications ?? "",
     questionnaireOther: p.questionnaireOther ?? "",
   };
-}
-
-/** 満年齢 */
-function ageOf(birthDate: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return null;
-  const today = nowInClinic().date;
-  let age = Number(today.slice(0, 4)) - Number(birthDate.slice(0, 4));
-  if (today.slice(5) < birthDate.slice(5)) age--;
-  return age >= 0 && age < 150 ? age : null;
 }
 
 function formatDateTime(iso: string): string {
@@ -189,6 +182,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           <div className={styles.title}>
             {p.caution && <span className={styles.caution}>!</span>}
             {p.name}
+            {ageSexText(p) && <span className={styles.nameAge}>{ageSexText(p)}</span>}
             {p.cautionNote && <span className={styles.nameCaution}>{p.cautionNote}</span>}
           </div>
           <div className={styles.sub}>
@@ -197,7 +191,6 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
               p.nameAlt,
               p.chartNo ? `診察券 ${p.chartNo}` : null,
               p.m3ChartNo ? `M3 ${p.m3ChartNo}` : null,
-              ageOf(p.birthDate ?? "") !== null ? `${ageOf(p.birthDate ?? "")}歳` : null,
               p.phone,
             ]
               .filter(Boolean)
@@ -294,6 +287,14 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
               max={today}
               onChange={(e) => set("birthDate", e.target.value)}
             />
+          </Field>
+          <Field label="性別" changed={changedKeys.includes("sex")}>
+            <select className={styles.input} value={form.sex} onChange={(e) => set("sex", e.target.value)}>
+              <option value="">未入力</option>
+              <option value="female">女性</option>
+              <option value="male">男性</option>
+              <option value="other">その他</option>
+            </select>
           </Field>
         </div>
         <details className={styles.contactBox}>

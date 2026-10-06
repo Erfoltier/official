@@ -64,3 +64,20 @@ describe("問診票の写し直し", () => {
     expect(s.getPatientDetail(p.id).patient.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる");
   });
 });
+
+describe("性別・生年月日", () => {
+  it("問診票の性別・生年月日を空欄に写し、性別の入力は女性・男性・その他にそろえる", async () => {
+    resetStores();
+    const s = await import("@/lib/server/store");
+    const p = s.createPatient({ name: "性別 はなこ", phone: "090-3333-4444" });
+    s.receiveQuestionnaires([
+      { key: "s1", submittedAt: "2026/10/06 10:00:00", name: "性別 はなこ", phone: "090-3333-4444", birthDate: "1991-02-03", answers: [{ q: "性別", a: "女" }] },
+    ]);
+    const u = s.getPatientDetail(p.id).patient;
+    expect(u.sex).toBe("female");
+    expect(u.birthDate).toBe("1991-02-03");
+    expect(u.questionnaireOther).toBeUndefined();
+    expect(s.updatePatient(p.id, { version: u.version, sex: "男性" }).sex).toBe("male");
+    expect(() => s.updatePatient(p.id, { version: u.version + 1, sex: "?" })).toThrow(/性別/);
+  });
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { ageSexText } from "@/lib/domain/age";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
@@ -109,6 +110,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           <div className={styles.panelName}>
             {patient?.caution && <span className={styles.caution}>!</span>}
             <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
+            {!maskNames && ageSexText(patient) && <span className={styles.nameAge}>{ageSexText(patient)}</span>}
             {!maskNames && patient?.cautionNote && <span className={styles.nameCaution}>{patient.cautionNote}</span>}
           </div>
           {!maskNames && patient && (

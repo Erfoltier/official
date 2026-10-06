@@ -1310,6 +1310,7 @@ export interface PatientInput {
   email?: string;
   postalCode?: string;
   address?: string;
+  sex?: string;
   chartNo?: string;
   m3ChartNo?: string;
   birthDate?: string;
@@ -1322,6 +1323,15 @@ export interface PatientInput {
 }
 
 export type CreatePatientInput = PatientInput & { name: string };
+
+/** 性別の入力・問診票の回答を女性・男性・その他にそろえる（読めなければ undefined） */
+function sexOf(v: string): Patient["sex"] {
+  const t = v.normalize("NFKC").trim().toLowerCase();
+  if (/^(female|f|女|女性|おんな)$/.test(t)) return "female";
+  if (/^(male|m|男|男性|おとこ)$/.test(t)) return "male";
+  if (/^(other|その他|回答しない|答えたくない)$/.test(t)) return "other";
+  return undefined;
+}
 
 function checkText(label: string, value: string, max: number, required: boolean): string {
   const v = cleanName(value);
@@ -1365,6 +1375,12 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
     out.postalCode = opt(digits && `${digits.slice(0, 3)}-${digits.slice(3)}`);
   }
   if (input.address !== undefined) out.address = opt(checkText("住所", input.address, 200, false));
+  if (input.sex !== undefined) {
+    const v = input.sex.normalize("NFKC").trim();
+    const sex = sexOf(v);
+    if (v && !sex) throw new StoreError("invalid", "性別は 女性・男性・その他 から選んでください");
+    out.sex = sex;
+  }
   if (input.chartNo !== undefined) {
     const chartNo = input.chartNo.normalize("NFKC").trim();
     // 空欄でもよい（まだ診察券を作っていない患者）。入れるときは英数字で、ほかの患者と重ならないこと
@@ -1433,6 +1449,7 @@ const FIELD_LABEL: Record<string, string> = {
   email: "メール",
   postalCode: "郵便番号",
   address: "住所",
+  sex: "性別",
   chartNo: "診察券番号",
   m3ChartNo: "M3カルテ番号",
   birthDate: "生年月日",
@@ -1941,7 +1958,7 @@ export function restorePatient(id: string, version: number, by?: Actor): Patient
   return next;
 }
 
-const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "postalCode", "address", "birthDate", "m3ChartNo"];
+const FILLABLE: (keyof Patient)[] = ["kana", "nameAlt", "phone", "email", "postalCode", "address", "sex", "birthDate", "m3ChartNo"];
 
 function mergeTargets(keepId: string, dupId: string): { keep: Patient; dup: Patient } {
   const st = state();
@@ -2369,7 +2386,7 @@ export function refillFromQuestionnaires(by: Actor): { questionnaires: number; p
 // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方）
 const Q_ADDRESS = /住所/;
 const Q_POSTAL = /郵便番号|〒/;
-const Q_KNOWN = /タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/i;
+const Q_KNOWN = /性別|タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/i;
 const Q_NONE = /^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/i;
 const QUESTIONNAIRE_ACTOR: Actor = { id: "questionnaire", name: "問診票（自動取り込み）" };
 
@@ -2393,6 +2410,9 @@ function fillPatientFromQuestionnaire(patientId: string, q: Questionnaire): void
   }
   const wanted: PatientInput = {};
   if (!cur.phone && q.phone) wanted.phone = q.phone;
+  if (!cur.birthDate && q.birthDate) wanted.birthDate = q.birthDate;
+  const sexAnswer = find(/性別/);
+  if (!cur.sex && sexAnswer && sexOf(sexAnswer)) wanted.sex = sexAnswer;
   if (!cur.postalCode && postal) wanted.postalCode = postal;
   if (!cur.address && answered(address)) wanted.address = address!.replace(/\s*\n\s*/g, " ");
   if (!cur.history && answered(q.history)) wanted.history = q.history;

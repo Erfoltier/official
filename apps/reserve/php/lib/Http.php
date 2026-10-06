@@ -358,7 +358,7 @@ final class Schema
     {
         $s = fn(int $max) => fn($x) => V::str($x, $max);
         return [
-            'kana?' => $s(120), 'nameAlt?' => $s(120), 'phone?' => $s(30), 'email?' => $s(200), 'postalCode?' => $s(10), 'address?' => $s(200), 'chartNo?' => $s(30), 'm3ChartNo?' => $s(30),
+            'kana?' => $s(120), 'nameAlt?' => $s(120), 'phone?' => $s(30), 'email?' => $s(200), 'postalCode?' => $s(10), 'address?' => $s(200), 'sex?' => $s(10), 'chartNo?' => $s(30), 'm3ChartNo?' => $s(30),
             'birthDate?' => $s(10), 'caution?' => [V::class, 'bool'], 'cautionNote?' => $s(1000), 'memo?' => $s(12000),
             'history?' => $s(4000), 'medications?' => $s(4000), 'questionnaireOther?' => $s(8000),
         ];

@@ -62,6 +62,7 @@ const patientFieldsSchema = {
   email: shortText(200).optional(),
   postalCode: shortText(10).optional(),
   address: shortText(200).optional(),
+  sex: shortText(10).optional(),
   chartNo: shortText(30).optional(),
   m3ChartNo: shortText(30).optional(),
   birthDate: shortText(10).optional(),

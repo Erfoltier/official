@@ -1331,3 +1331,13 @@ details:not([open]) > summary.histTitle {
   word-break: break-word;
   vertical-align: middle;
 }
+
+/* 名前の横の「34歳・女性」 */
+.nameAge {
+  margin-left: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
