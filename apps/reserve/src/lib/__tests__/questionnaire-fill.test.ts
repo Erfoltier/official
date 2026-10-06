@@ -10,7 +10,7 @@ const answers = [
   { q: "生年月日", a: "1990-01-02" },
   { q: "ご住所", a: "〒９００-０００１ 沖縄県那覇市港町1-1" },
   { q: "電話番号", a: "090-1111-2222" },
-  { q: "アレルギー", a: "ラテックス" },
+  { q: "アレルギー", a: "金属（ニッケル）" },
   { q: "既往歴", a: "なし" },
   { q: "その他のご相談事項", a: "シミが気になる" },
   { q: "来院のきっかけ", a: "特になし" },
@@ -25,7 +25,7 @@ describe("問診票の回答を患者の基本情報へ写す", () => {
     const s = await store();
     const p = s.createPatient({ name: "問診 はなこ", birthDate: "1990-01-02", history: "高血圧" });
     const r = s.receiveQuestionnaires([
-      { key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", history: "なし", allergies: "ラテックス", answers },
+      { key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", history: "なし", allergies: "金属（ニッケル）", answers },
     ]);
     expect(r.matched).toBe(1);
     const u = s.getPatientDetail(p.id).patient;
@@ -33,7 +33,7 @@ describe("問診票の回答を患者の基本情報へ写す", () => {
     expect(u.postalCode).toBe("900-0001");
     expect(u.address).toBe("沖縄県那覇市港町1-1");
     expect(u.caution).toBe(true);
-    expect(u.cautionNote).toBe("アレルギー：ラテックス");
+    expect(u.cautionNote).toBe("アレルギー：金属（ニッケル）");
     expect(u.history).toBe("高血圧");
     expect(u.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる");
   });
@@ -41,7 +41,7 @@ describe("問診票の回答を患者の基本情報へ写す", () => {
   it("入っている値は変えず、その他は2回目の問診票で足される", async () => {
     const s = await store();
     const p = s.createPatient({ name: "問診 はなこ", birthDate: "1990-01-02", phone: "080-0000-0000", cautionNote: "アルコール綿禁止" });
-    s.receiveQuestionnaires([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", allergies: "ラテックス", answers }]);
+    s.receiveQuestionnaires([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", allergies: "金属（ニッケル）", answers }]);
     s.receiveQuestionnaires([
       { key: "k2", submittedAt: "2026/11/01 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", answers: [{ q: "その他のご相談事項", a: "肝斑も" }] },
     ]);
@@ -88,14 +88,14 @@ describe("花粉症", () => {
     const s = await import("@/lib/server/store");
     const a = s.createPatient({ name: "花粉 いちこ", phone: "090-1000-0001" });
     const b = s.createPatient({ name: "花粉 にこ", phone: "090-1000-0002" });
-    const c = s.createPatient({ name: "花粉 さんこ", phone: "090-1000-0003", caution: true, cautionNote: "アレルギー：花粉症" });
+    const c = s.createPatient({ name: "花粉 さんこ", phone: "090-1000-0003", caution: true, cautionNote: "アレルギー：無し, 動物" });
     s.receiveQuestionnaires([
       { key: "h1", submittedAt: "2026/10/06", name: "花粉 いちこ", phone: "090-1000-0001", allergies: "花粉症", answers: [] },
-      { key: "h2", submittedAt: "2026/10/06", name: "花粉 にこ", phone: "090-1000-0002", allergies: "花粉症、ペニシリン", answers: [] },
-      { key: "h3", submittedAt: "2026/10/06", name: "花粉 さんこ", phone: "090-1000-0003", allergies: "花粉症", answers: [] },
+      { key: "h2", submittedAt: "2026/10/06", name: "花粉 にこ", phone: "090-1000-0002", allergies: "無し, 動物, 花粉症, 内服薬（ペニシリン）, アルコール", answers: [] },
+      { key: "h3", submittedAt: "2026/10/06", name: "花粉 さんこ", phone: "090-1000-0003", allergies: "無し, 動物", answers: [] },
     ]);
     expect(s.getPatientDetail(a.id).patient.cautionNote).toBeUndefined();
-    expect(s.getPatientDetail(b.id).patient.cautionNote).toBe("アレルギー：ペニシリン");
+    expect(s.getPatientDetail(b.id).patient.cautionNote).toBe("アレルギー：内服薬（ペニシリン）、アルコール");
     const cc = s.getPatientDetail(c.id).patient;
     expect(cc.cautionNote).toBeUndefined();
     expect(cc.caution).toBeFalsy();

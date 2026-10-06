@@ -1,0 +1,84 @@
+.text,
+.textBtn {
+  margin-left: 10px;
+  color: #c62828;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  vertical-align: middle;
+}
+
+.textBtn {
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.textBtn:hover {
+  background: #fdecec;
+}
+
+.add {
+  margin-left: 10px;
+  padding: 1px 6px;
+  border: 1px dashed #e0a3a3;
+  border-radius: 4px;
+  background: transparent;
+  color: #b04a4a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.edit {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 10px;
+  min-width: 14em;
+  flex: 1 1 14em;
+  vertical-align: top;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid #e0a3a3;
+  border-radius: 6px;
+  color: #c62828;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.save,
+.cancel {
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong, #ccc);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.save {
+  border-color: #c62828;
+  background: #c62828;
+  color: #fff;
+}

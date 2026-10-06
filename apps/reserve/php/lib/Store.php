@@ -3578,14 +3578,17 @@ final class Store
     private const Q_KNOWN = '/性別|タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
     private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
 
-    /** アレルギーの回答から花粉症（スギ花粉など）を外す。区切りは読点・カンマ・中黒・スラッシュ・改行・空白 */
-    private static function withoutHayFever(?string $v): string
+    /**
+     * アレルギーの回答から、施術で気をつけるものだけを拾う（院長の決定）：アルコール・外用薬・内服薬（薬の名前を含む）・化粧品成分・金属。
+     * 無し・動物・花粉症などは拾わない。区切りは読点・カンマ・中黒・スラッシュ・改行
+     */
+    private static function pickAllergies(?string $v): string
     {
-        if ($v === null || !str_contains($v, '花粉')) {
-            return $v ?? '';
+        if ($v === null || $v === '') {
+            return '';
         }
-        $parts = preg_split('/[、,，・\/／\n]+|\s{2,}/u', $v) ?: [];
-        $keep = array_filter(array_map('js_trim', $parts), fn($x) => $x !== '' && !str_contains($x, '花粉'));
+        $parts = preg_split('/[、,，・\/／\n]+/u', $v) ?: [];
+        $keep = array_filter(array_map('js_trim', $parts), fn($x) => $x !== '' && preg_match('/アルコール|外用|内服|薬|化粧品|金属/u', $x));
         return implode('、', $keep);
     }
 
@@ -3642,13 +3645,13 @@ final class Store
         if (empty($cur['medications']) && self::answered($q['medications'] ?? null)) {
             $wanted['medications'] = $q['medications'];
         }
-        // 花粉症はアレルギーとして注意事項に出さない（院長の決定）
-        $allergies = self::withoutHayFever($q['allergies'] ?? null);
+        // アルコール・外用・内服・化粧品成分・金属だけを注意事項に出す（院長の決定）
+        $allergies = self::pickAllergies($q['allergies'] ?? null);
         if (empty($cur['cautionNote']) && self::answered($allergies)) {
             $wanted['caution'] = true;
             $wanted['cautionNote'] = js_slice('アレルギー：' . $allergies, 500);
         }
-        // 以前に自動で写した「アレルギー：花粉症…」が手を加えられずに残っていれば、花粉症を外したものに直す
+        // 以前に自動で写した「アレルギー：…」が手を加えられずに残っていれば、拾い直したものに直す
         $autoNote = js_slice('アレルギー：' . ($q['allergies'] ?? ''), 500);
         if (!empty($cur['cautionNote']) && !empty($q['allergies']) && $cur['cautionNote'] === $autoNote && $allergies !== $q['allergies']) {
             if (self::answered($allergies)) {

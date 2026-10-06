@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 import { ageSexText } from "@/lib/domain/age";
+import { CautionInline } from "@/components/patients/CautionInline";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
 import { fetchFiles } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
@@ -44,11 +45,13 @@ interface Props {
   /** 「予約を変更」で日時・レーン・メニューを変えた、または取り消した */
   onChanged: (next: Reservation, kind: "changed" | "cancelled") => void;
   onEditPatient: () => void;
+  /** 注意事項を書き足す・直す（患者の基本情報の注意事項と同じ欄） */
+  onCaution?: (text: string) => Promise<boolean>;
   /** ファイルを削除できる（院長・管理者と受付） */
   canManage?: boolean;
 }
 
-export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onStageTime, onFreeNote, onMemo, onRequestId, onChanged, onEditPatient, canManage }: Props) {
+export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onStageTime, onFreeNote, onMemo, onRequestId, onChanged, onEditPatient, onCaution, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
@@ -111,7 +114,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             {patient?.caution && <span className={styles.caution}>!</span>}
             <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
             {!maskNames && ageSexText(patient) && <span className={styles.nameAge}>{ageSexText(patient)}</span>}
-            {!maskNames && patient?.cautionNote && <span className={styles.nameCaution}>{patient.cautionNote}</span>}
+            {!maskNames && patient && <CautionInline note={patient.cautionNote} onSave={onCaution} />}
           </div>
           {!maskNames && patient && (
             <>

@@ -214,6 +214,19 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   };
 
   /** 患者情報のメモ（患者画面のメモと同じ）を受付一覧から保存する */
+  const onPatientCaution = async (p: Patient, text: string) => {
+    try {
+      const d = await updatePatient(p.id, { version: p.version, cautionNote: text, caution: !!text });
+      setBundle((b) => (b ? { ...b, patients: b.patients.map((x) => (x.id === p.id ? d.patient : x)) } : b));
+      showToast("注意事項を保存しました");
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "注意事項を保存できませんでした", "error");
+      if (err instanceof ApiError && err.status === 409) load(date);
+      return false;
+    }
+  };
+
   const onPatientMemo = async (p: Patient, memo: string) => {
     busyRef.current = true;
     try {
@@ -486,6 +499,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onChanged={onChanged}
             canManage={!!me?.canManage}
             onEditPatient={() => setEditPatientId(selected.patientId)}
+            onCaution={(text) => {
+              const p = bundle.patients.find((x) => x.id === selected.patientId);
+              return p ? onPatientCaution(p, text) : Promise.resolve(false);
+            }}
           />
         )}
       </main>

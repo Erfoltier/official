@@ -10,6 +10,7 @@ import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./Pat
 import { TreatmentHistory, type VisitSave } from "./VisitTable";
 import { EstimateList } from "@/components/estimates/EstimateList";
 import { ConsentList } from "@/components/consents/ConsentList";
+import { CautionInline } from "./CautionInline";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { QuestionnaireAnswers } from "@/components/questionnaires/QuestionnaireAnswers";
 import styles from "./patients.module.css";
@@ -125,6 +126,24 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
     }
   };
 
+  /** 名前の横から注意事項を書き足す・直す（基本情報の注意事項と同じ欄。入力中の他の項目はそのまま） */
+  const saveCaution = async (text: string): Promise<boolean> => {
+    if (!detail) return false;
+    try {
+      const d = await updatePatient(patientId, { version: detail.patient.version, cautionNote: text, caution: !!text });
+      setDetail(d);
+      setForm((f) => (f ? { ...toForm(d), ...pickChanged(f, toForm(detail)), cautionNote: d.patient.cautionNote ?? "", caution: !!d.patient.caution } : f));
+      setNotice("注意事項を保存しました");
+      window.setTimeout(() => setNotice(null), 3000);
+      onSaved?.();
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setConflict(true);
+      setError(err instanceof ApiError ? err.message : "保存できませんでした");
+      return false;
+    }
+  };
+
   const unlink = async () => {
     if (!detail) return;
     if (!window.confirm("この患者とLINEの紐付けを解除します。LINEでの連絡・リマインドは届かなくなります。よろしいですか？")) return;
@@ -183,7 +202,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             {p.caution && <span className={styles.caution}>!</span>}
             {p.name}
             {ageSexText(p) && <span className={styles.nameAge}>{ageSexText(p)}</span>}
-            {p.cautionNote && <span className={styles.nameCaution}>{p.cautionNote}</span>}
+            <CautionInline note={p.cautionNote} onSave={readOnly ? undefined : saveCaution} />
           </div>
           <div className={styles.sub}>
             {[
