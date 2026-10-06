@@ -147,7 +147,7 @@ export function SettingsApp() {
       ) : tab === "imports" ? (
         <ImportsTab menus={data.menus} lanes={data.lanes} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "questionnaires" ? (
-        <QuestionnairesTab canEdit={canEdit} notify={notify} fail={fail} />
+        <QuestionnairesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : tab === "consents" ? (
         <ConsentsTab menus={data.menus} canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : tab === "stages" ? (

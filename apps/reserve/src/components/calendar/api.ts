@@ -44,6 +44,16 @@ export function putDayNote(date: string, laneId: string, text: string): Promise<
   return call(`/api/v1/day-notes/${encodeURIComponent(date)}/${encodeURIComponent(laneId)}`, { method: "PUT", body: JSON.stringify({ text }) });
 }
 
+/** 整った控え（バックアップ）をサーバーに作る（院長・管理者） */
+export function createBackup(): Promise<{ file: string; bytes: number; integrity: string }> {
+  return call(`/api/v1/admin/backup`, { method: "POST", body: JSON.stringify({ confirm: "BACKUP" }) });
+}
+
+/** 結びついている問診票を、患者の空いている欄へ写し直す（院長・管理者） */
+export function refillQuestionnaires(): Promise<{ questionnaires: number; patients: number }> {
+  return call(`/api/v1/questionnaires/refill`, { method: "POST", body: "{}" });
+}
+
 export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle> {
   return fetchDayRaw(date, signal).then((d) => {
     applyTheme(d.clinic.theme);
