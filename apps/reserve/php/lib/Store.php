@@ -3578,6 +3578,17 @@ final class Store
     private const Q_KNOWN = '/性別|タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
     private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
 
+    /** アレルギーの回答から花粉症（スギ花粉など）を外す。区切りは読点・カンマ・中黒・スラッシュ・改行・空白 */
+    private static function withoutHayFever(?string $v): string
+    {
+        if ($v === null || !str_contains($v, '花粉')) {
+            return $v ?? '';
+        }
+        $parts = preg_split('/[、,，・\/／\n]+|\s{2,}/u', $v) ?: [];
+        $keep = array_filter(array_map('js_trim', $parts), fn($x) => $x !== '' && !str_contains($x, '花粉'));
+        return implode('、', $keep);
+    }
+
     /** 「なし」などの回答は写さない */
     private static function answered(?string $v): bool
     {
@@ -3631,9 +3642,21 @@ final class Store
         if (empty($cur['medications']) && self::answered($q['medications'] ?? null)) {
             $wanted['medications'] = $q['medications'];
         }
-        if (empty($cur['cautionNote']) && self::answered($q['allergies'] ?? null)) {
+        // 花粉症はアレルギーとして注意事項に出さない（院長の決定）
+        $allergies = self::withoutHayFever($q['allergies'] ?? null);
+        if (empty($cur['cautionNote']) && self::answered($allergies)) {
             $wanted['caution'] = true;
-            $wanted['cautionNote'] = js_slice('アレルギー：' . $q['allergies'], 500);
+            $wanted['cautionNote'] = js_slice('アレルギー：' . $allergies, 500);
+        }
+        // 以前に自動で写した「アレルギー：花粉症…」が手を加えられずに残っていれば、花粉症を外したものに直す
+        $autoNote = js_slice('アレルギー：' . ($q['allergies'] ?? ''), 500);
+        if (!empty($cur['cautionNote']) && !empty($q['allergies']) && $cur['cautionNote'] === $autoNote && $allergies !== $q['allergies']) {
+            if (self::answered($allergies)) {
+                $wanted['cautionNote'] = js_slice('アレルギー：' . $allergies, 500);
+            } else {
+                $wanted['cautionNote'] = '';
+                $wanted['caution'] = false;
+            }
         }
         $other = [];
         foreach ($q['answers'] as $x) {

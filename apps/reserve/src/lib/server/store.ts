@@ -2390,6 +2390,16 @@ const Q_KNOWN = /性別|タイムスタンプ|timestamp|回答日時|お名前|�
 const Q_NONE = /^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/i;
 const QUESTIONNAIRE_ACTOR: Actor = { id: "questionnaire", name: "問診票（自動取り込み）" };
 
+/** アレルギーの回答から花粉症（スギ花粉など）を外す。区切りは読点・カンマ・中黒・スラッシュ・改行・空白 */
+function withoutHayFever(v?: string): string {
+  if (!v || !/花粉/.test(v)) return v ?? "";
+  return v
+    .split(/[、,，・\/／\n]+|\s{2,}/)
+    .map((x) => x.trim())
+    .filter((x) => x && !/花粉/.test(x))
+    .join("、");
+}
+
 /** 「なし」などの回答は写さない */
 const answered = (v?: string) => !!v && !Q_NONE.test(v.replace(/[\s　]/g, ""));
 
@@ -2417,9 +2427,20 @@ function fillPatientFromQuestionnaire(patientId: string, q: Questionnaire): void
   if (!cur.address && answered(address)) wanted.address = address!.replace(/\s*\n\s*/g, " ");
   if (!cur.history && answered(q.history)) wanted.history = q.history;
   if (!cur.medications && answered(q.medications)) wanted.medications = q.medications;
-  if (!cur.cautionNote && answered(q.allergies)) {
+  // 花粉症はアレルギーとして注意事項に出さない（院長の決定）
+  const allergies = withoutHayFever(q.allergies);
+  if (!cur.cautionNote && answered(allergies)) {
     wanted.caution = true;
-    wanted.cautionNote = `アレルギー：${q.allergies}`.slice(0, 500);
+    wanted.cautionNote = `アレルギー：${allergies}`.slice(0, 500);
+  }
+  // 以前に自動で写した「アレルギー：花粉症…」が手を加えられずに残っていれば、花粉症を外したものに直す
+  const autoNote = `アレルギー：${q.allergies ?? ""}`.slice(0, 500);
+  if (cur.cautionNote && q.allergies && cur.cautionNote === autoNote && allergies !== q.allergies) {
+    if (answered(allergies)) wanted.cautionNote = `アレルギー：${allergies}`.slice(0, 500);
+    else {
+      wanted.cautionNote = "";
+      wanted.caution = false;
+    }
   }
   const other = q.answers.filter((x) => !Q_KNOWN.test(x.q) && answered(x.a)).map((x) => `${x.q}：${x.a}`);
   const block = `【問診票 ${q.submittedAt.slice(0, 10)}】\n${other.join("\n")}`;

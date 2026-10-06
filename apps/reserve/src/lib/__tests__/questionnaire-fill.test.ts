@@ -81,3 +81,23 @@ describe("性別・生年月日", () => {
     expect(() => s.updatePatient(p.id, { version: u.version + 1, sex: "?" })).toThrow(/性別/);
   });
 });
+
+describe("花粉症", () => {
+  it("花粉症はアレルギーとして注意事項に出さず、ほかのアレルギーは残す。以前の自動の注意事項も直す", async () => {
+    resetStores();
+    const s = await import("@/lib/server/store");
+    const a = s.createPatient({ name: "花粉 いちこ", phone: "090-1000-0001" });
+    const b = s.createPatient({ name: "花粉 にこ", phone: "090-1000-0002" });
+    const c = s.createPatient({ name: "花粉 さんこ", phone: "090-1000-0003", caution: true, cautionNote: "アレルギー：花粉症" });
+    s.receiveQuestionnaires([
+      { key: "h1", submittedAt: "2026/10/06", name: "花粉 いちこ", phone: "090-1000-0001", allergies: "花粉症", answers: [] },
+      { key: "h2", submittedAt: "2026/10/06", name: "花粉 にこ", phone: "090-1000-0002", allergies: "花粉症、ペニシリン", answers: [] },
+      { key: "h3", submittedAt: "2026/10/06", name: "花粉 さんこ", phone: "090-1000-0003", allergies: "花粉症", answers: [] },
+    ]);
+    expect(s.getPatientDetail(a.id).patient.cautionNote).toBeUndefined();
+    expect(s.getPatientDetail(b.id).patient.cautionNote).toBe("アレルギー：ペニシリン");
+    const cc = s.getPatientDetail(c.id).patient;
+    expect(cc.cautionNote).toBeUndefined();
+    expect(cc.caution).toBeFalsy();
+  });
+});
