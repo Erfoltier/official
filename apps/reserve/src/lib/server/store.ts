@@ -2,6 +2,10 @@ import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
 import type {
+  DeviceLink,
+  DeviceLinksStatus,
+  DeviceSource,
+  PhotoInboxItem,
   Actor,
   Estimate,
   EstimateLine,
@@ -54,7 +58,7 @@ import { SLOT_MENUS } from "@/lib/seed/slot-menus";
 import { DEFAULT_STAGES, STAGE_FOR_STATUS } from "@/lib/seed/stages";
 import { SHEET_PRICES, SHEET_PRICES_LABEL } from "@/lib/seed/sheet-prices";
 import { AuthError, audit } from "@/lib/server/staff";
-import { PersistentMap, PersistentSet, count, getBlob, getMeta, loadAll, put, putBlob, setMeta, transaction } from "@/lib/server/db";
+import { PersistentMap, PersistentSet, count, deleteBlob, getBlob, getMeta, loadAll, put, putBlob, setMeta, transaction } from "@/lib/server/db";
 
 /**
  * 予約・患者・記録のストア。読み込みはメモリ上で行い、変更は1件ずつデータベース（db.ts）へ保存する。
@@ -72,6 +76,8 @@ export function demoEnabled(): boolean {
 }
 
 interface StoreState {
+  deviceLinks: Map<string, DeviceLink & { tokenHash: string }>;
+  photoInbox: Map<string, PhotoInboxItem>;
   products: Map<string, Product>;
   stages: Map<string, Stage>;
   snapshots: Map<string, SettingsSnapshot>;
@@ -133,6 +139,8 @@ function state(): StoreState {
       }
       return {
         snapshots: new PersistentMap<SettingsSnapshot>("settingsSnapshot"),
+        deviceLinks: new PersistentMap<DeviceLink & { tokenHash: string }>("deviceLink"),
+        photoInbox: new PersistentMap<PhotoInboxItem>("photoInbox"),
         stages: new PersistentMap<Stage>("stage"),
         products: new PersistentMap<Product>("product"),
         files: new PersistentMap<PatientFile>("file"),
@@ -666,6 +674,174 @@ export function deleteFile(id: string, by?: Actor): PatientFile {
 
 function randomId(): string {
   return randomBytes(4).toString("hex");
+}
+
+// ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
+
+const DEVICE_SOURCES: Record<DeviceSource, string> = { neovoir: "ネオボワール" };
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
+const publicLink = (l: DeviceLink & { tokenHash: string }): DeviceLink => {
+  const out: DeviceLink & { tokenHash?: string } = { ...l };
+  delete out.tokenHash;
+  return out;
+};
+
+/** 連携の一覧と受け取りの状況（鍵そのものは返さない） */
+export function deviceLinks(): DeviceLinksStatus {
+  const st = state();
+  const links = [...st.deviceLinks.values()].map(publicLink).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const last = links.reduce<string | undefined>((m, l) => (l.lastUsedAt && (!m || l.lastUsedAt > m) ? l.lastUsedAt : m), undefined);
+  return { links, inbox: st.photoInbox.size, received: links.reduce((n, l) => n + l.received, 0), ...(last && { lastReceivedAt: last }) };
+}
+
+/** 接続用の鍵を作る。鍵はこのときだけ返し、保存するのはハッシュだけ */
+export function createDeviceLink(input: { source: DeviceSource; name?: string }, by: Actor): { link: DeviceLink; token: string } {
+  const st = state();
+  if (!DEVICE_SOURCES[input.source]) throw new StoreError("invalid", "連携できない機器です");
+  const name = checkText("名前", input.name ?? "", 40, false) || DEVICE_SOURCES[input.source];
+  const token = `${input.source === "neovoir" ? "nv_" : ""}${randomBytes(20).toString("hex")}`;
+  const id = `dl-${Date.now().toString(36)}-${randomBytes(3).toString("hex")}`;
+  const link: DeviceLink = { id, source: input.source, name, createdAt: new Date().toISOString(), createdBy: by, received: 0 };
+  st.deviceLinks.set(id, { ...link, tokenHash: sha256(token) });
+  audit(by, `機器の連携を追加：${name}`);
+  return { link, token };
+}
+
+export function revokeDeviceLink(id: string, by: Actor): DeviceLink {
+  const st = state();
+  const l = st.deviceLinks.get(id);
+  if (!l) throw new StoreError("not_found", "連携が見つかりません");
+  const next = { ...l, revoked: { at: new Date().toISOString(), by } };
+  st.deviceLinks.set(id, next);
+  audit(by, `機器の連携を止める：${l.name}`);
+  return publicLink(next);
+}
+
+/** 鍵から連携を探す（止めたもの・違う鍵は undefined） */
+export function deviceLinkByToken(token: string): DeviceLink | undefined {
+  if (token.length < 20) return undefined;
+  const h = sha256(token);
+  const l = [...state().deviceLinks.values()].find((x) => x.tokenHash === h && !x.revoked);
+  return l && publicLink(l);
+}
+
+/** 名前で患者を探す（漢字・フリガナ・ローマ字のどれかが空白を除いて同じで、ちょうど1人のときだけ） */
+function matchByName(name: string): { id?: string; reason?: PhotoInboxItem["reason"] } {
+  const key = searchKey(name);
+  if (!key) return { reason: "not_found" };
+  const hits = [...state().patients.values()].filter((p) => !p.deleted && [p.name, p.kana, p.nameAlt].some((x) => x && searchKey(x) === key));
+  return hits.length === 1 ? { id: hits[0].id } : { reason: hits.length ? "ambiguous" : "not_found" };
+}
+
+/**
+ * 機器から写真を受け取る。同じ写真（中身が同じ）は2回目以降は受け取らない。
+ * 名前で患者が1人に決まればその患者の写真（撮った日の記録）に、決まらなければ「照合待ち」に置く
+ */
+export function receiveDevicePhoto(
+  link: DeviceLink,
+  input: { patientName: string; fileName: string; takenAt?: string; bytes: Uint8Array },
+): { status: "saved" | "inbox" | "duplicate"; id: string; matched?: boolean } {
+  const st = state();
+  if (input.bytes.length === 0) throw new StoreError("invalid", "ファイルが空です");
+  if (input.bytes.length > MAX_FILE_BYTES) throw new StoreError("invalid", "ファイルが大きすぎます（10MBまで）");
+  const type = sniffType(input.bytes);
+  if (!type || FILE_TYPES[type] !== "image") throw new StoreError("invalid", "受け取れるのは写真（JPEG・PNG・WebP・HEIC）だけです");
+  const id = `nv-${sha256(input.bytes).slice(0, 24)}`;
+  if (st.files.has(id) || st.photoInbox.has(id)) return { status: "duplicate", id };
+  const patientName = checkText("患者名", input.patientName, 60, false);
+  const takenAt = input.takenAt && ISO_DATETIME.test(input.takenAt) && !Number.isNaN(Date.parse(input.takenAt)) ? normalizeIso(input.takenAt) : undefined;
+  const date = clinicDateOf(takenAt ?? new Date().toISOString());
+  const name = cleanFileName(input.fileName, type);
+  const m = matchByName(patientName);
+  const by = { id: `device:${link.id}`, name: link.name };
+  return transaction(() => {
+    putBlob(id, input.bytes);
+    const now = new Date().toISOString();
+    if (m.id) {
+      st.files.set(id, { id, patientId: m.id, date, name, type, kind: "image", size: input.bytes.length, createdAt: now, createdBy: by, source: link.source });
+    } else {
+      st.photoInbox.set(id, {
+        id,
+        source: link.source,
+        patientName,
+        date,
+        ...(takenAt && { takenAt }),
+        name,
+        type,
+        size: input.bytes.length,
+        receivedAt: now,
+        reason: m.reason ?? "not_found",
+      });
+    }
+    const cur = st.deviceLinks.get(link.id)!;
+    st.deviceLinks.set(link.id, { ...cur, lastUsedAt: now, received: cur.received + 1 });
+    return m.id ? { status: "saved" as const, id, matched: true } : { status: "inbox" as const, id, matched: false };
+  });
+}
+
+/** 照合待ちの写真（新しい順） */
+export function listPhotoInbox(): PhotoInboxItem[] {
+  return [...state().photoInbox.values()].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt) || a.id.localeCompare(b.id));
+}
+
+export function photoInboxContent(id: string): { item: PhotoInboxItem; bytes: Buffer } {
+  const item = state().photoInbox.get(id);
+  const bytes = item && getBlob(id);
+  if (!item || !bytes) throw new StoreError("not_found", "写真が見つかりません");
+  return { item, bytes };
+}
+
+function inboxToFile(item: PhotoInboxItem, patientId: string, by: Actor): PatientFile {
+  return { id: item.id, patientId, date: item.date, name: item.name, type: item.type, kind: "image", size: item.size, createdAt: new Date().toISOString(), createdBy: by, source: item.source };
+}
+
+/** 照合待ちの写真を患者に結びつける（撮った日の記録に入る） */
+export function assignPhotoInbox(id: string, patientId: string, by: Actor): PatientFile {
+  const st = state();
+  const item = st.photoInbox.get(id);
+  if (!item) throw new StoreError("not_found", "写真が見つかりません");
+  const p = st.patients.get(patientId);
+  if (!p) throw new StoreError("not_found", "患者が見つかりません");
+  if (p.deleted) throw new StoreError("invalid", "削除された患者には結びつけられません");
+  const meta = inboxToFile(item, patientId, by);
+  transaction(() => {
+    st.files.set(id, meta);
+    st.photoInbox.delete(id);
+  });
+  audit(by, "機器の写真を患者に結びつけ", patientId);
+  return meta;
+}
+
+export function deletePhotoInbox(id: string, by: Actor): void {
+  const st = state();
+  if (!st.photoInbox.has(id)) throw new StoreError("not_found", "写真が見つかりません");
+  transaction(() => {
+    st.photoInbox.delete(id);
+    deleteBlob(id);
+  });
+  audit(by, "照合待ちの写真を削除");
+}
+
+/** 照合待ちの写真を、今の患者でもう一度名前照合する（Airリザーブからの移行のあとなど） */
+export function rematchPhotoInbox(by: Actor): { matched: number; remaining: number } {
+  const st = state();
+  let matched = 0;
+  for (const item of listPhotoInbox()) {
+    const m = matchByName(item.patientName);
+    if (!m.id) {
+      if (item.reason !== m.reason) st.photoInbox.set(item.id, { ...item, reason: m.reason ?? "not_found" });
+      continue;
+    }
+    const meta = inboxToFile(item, m.id, { id: "system", name: "名前照合" });
+    transaction(() => {
+      st.files.set(item.id, meta);
+      st.photoInbox.delete(item.id);
+    });
+    matched++;
+  }
+  if (matched > 0) audit(by, `照合待ちの写真${matched}枚を名前照合で患者に結びつけ`);
+  return { matched, remaining: st.photoInbox.size };
 }
 
 // ---- スキンケア・内服のプリセット ----

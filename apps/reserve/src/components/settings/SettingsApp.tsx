@@ -9,6 +9,7 @@ import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab, ThemeCard } from "./ClinicTab";
 import { DisplayPrefsCard } from "./DisplayPrefsCard";
+import { DevicesTab } from "./DevicesTab";
 import { PricesTab } from "./PricesTab";
 import { ConsentsTab } from "./ConsentsTab";
 import { QuestionnairesTab } from "./QuestionnairesTab";
@@ -20,7 +21,7 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "clinic", "appearance", "staff", "audit", "restore"] as const;
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "appearance", "staff", "audit", "restore"] as const;
 type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
@@ -97,6 +98,9 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "imports"} onClick={() => setTab("imports")}>
             取り込み
           </button>
+          <button role="tab" aria-selected={tab === "devices"} onClick={() => setTab("devices")}>
+            外部機器の連携
+          </button>
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
@@ -134,6 +138,8 @@ export function SettingsApp() {
         <AuditTab fail={fail} />
       ) : tab === "restore" && isAdmin ? (
         <RestoreTab onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "devices" ? (
+        <DevicesTab isAdmin={isAdmin} canEdit={canEdit} notify={notify} fail={fail} />
       ) : tab === "prices" ? (
         <PricesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : !data ? (

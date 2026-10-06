@@ -36,6 +36,8 @@ export type Kind =
   | "staff"
   | "revokedSession"
   | "accessLog"
+  | "deviceLink"
+  | "photoInbox"
   | "seededDate"
   | "meta";
 
@@ -182,6 +184,10 @@ function decryptBytes(blob: Uint8Array): Buffer {
 
 export function putBlob(id: string, bytes: Uint8Array): void {
   st().db.prepare("INSERT INTO blobs (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data").run(id, encryptBytes(bytes));
+}
+
+export function deleteBlob(id: string): void {
+  st().db.prepare("DELETE FROM blobs WHERE id = ?").run(id);
 }
 
 export function getBlob(id: string): Buffer | undefined {

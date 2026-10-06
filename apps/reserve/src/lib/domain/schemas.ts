@@ -351,3 +351,9 @@ export const stageSchema = z
     active: z.boolean().optional(),
   })
   .strict();
+
+/** 機器の連携の鍵を発行する */
+export const deviceLinkSchema = z.object({ source: z.enum(["neovoir"]), name: z.string().max(60).optional() }).strict();
+
+/** 照合待ちの写真を患者に結びつける */
+export const photoAssignSchema = z.object({ patientId: idParam }).strict();

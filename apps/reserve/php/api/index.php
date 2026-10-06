@@ -94,6 +94,23 @@ try {
         Http::checkIntegrationAuth();
         Http::json(Store::receiveQuestionnaires(Schema::integrationQuestionnaires(Http::readJson(2_000_000))['responses']));
     }
+    // 機器の連携（院のパソコンの取り込み係から。鍵は設定 → 外部機器の連携 で発行）
+    if ($p[0] === 'integration' && ($p[1] ?? '') === 'photos') {
+        $link = Http::deviceLink();
+        if ($method === 'GET' && $n === 3 && $p[2] === 'ping') {
+            Http::json(['ok' => true, 'name' => $link['name'], 'source' => $link['source']]);
+        }
+        if ($method === 'POST' && $n === 2) {
+            $name = (string) ($q('name') ?? '');
+            $file = (string) ($q('file') ?? '');
+            $in = ['patientName' => mb_check_encoding($name, 'UTF-8') ? $name : '', 'fileName' => mb_check_encoding($file, 'UTF-8') ? $file : ''];
+            if ($q('takenAt') !== null) {
+                $in['takenAt'] = $q('takenAt');
+            }
+            $in['bytes'] = Http::readBytes(Store::MAX_FILE_BYTES);
+            Http::json(Store::receiveDevicePhoto($link, $in));
+        }
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));
@@ -298,6 +315,46 @@ try {
             $s = $me();
             $f = Store::deleteFile(V::id($p[1]), $actor($s));
             Http::json(['id' => $f['id'], 'deleted' => true]);
+        }
+    }
+
+    // ---- 機器の連携の設定（院長・管理者）と、照合待ちの写真 ----
+    if ($p[0] === 'device-links') {
+        if ($method === 'GET' && $n === 1) {
+            $me(STAFF_ADMIN);
+            Http::json(Store::deviceLinks());
+        }
+        if ($method === 'POST' && $n === 1) {
+            $s = $me(STAFF_ADMIN);
+            Http::json(Store::createDeviceLink(Schema::deviceLink(Http::readJson()), $actor($s)), 201);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'revoke') {
+            $s = $me(STAFF_ADMIN);
+            Http::json(Store::revokeDeviceLink(V::id($p[1]), $actor($s)));
+        }
+    }
+    if ($p[0] === 'photo-inbox') {
+        if ($method === 'GET' && $n === 1) {
+            $me();
+            Http::json(['items' => Store::listPhotoInbox()]);
+        }
+        if ($method === 'POST' && $n === 2 && $p[1] === 'rematch') {
+            $s = $manager();
+            Http::json(Store::rematchPhotoInbox($actor($s)));
+        }
+        if ($method === 'GET' && $n === 3 && $p[2] === 'content') {
+            $me();
+            [$item, $bytes] = Store::photoInboxContent(V::id($p[1]));
+            Http::file(['kind' => 'image', 'type' => $item['type'], 'name' => $item['name']], $bytes);
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'assign') {
+            $s = $me();
+            Http::json(Store::assignPhotoInbox(V::id($p[1]), Schema::photoAssign(Http::readJson())['patientId'], $actor($s)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
+            $s = $manager();
+            Store::deletePhotoInbox(V::id($p[1]), $actor($s));
+            Http::json(['id' => $p[1], 'deleted' => true]);
         }
     }
 

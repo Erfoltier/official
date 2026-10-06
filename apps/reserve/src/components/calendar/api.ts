@@ -1,4 +1,4 @@
-import type { AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
+import type { DeviceLink, DeviceLinksStatus, PhotoInboxItem, AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 import { applyTheme } from "@/lib/theme";
 
@@ -482,4 +482,38 @@ export function fetchConsentSource(): Promise<{ url: string; hasKey: boolean }> 
 
 export function saveConsentSource(body: { url: string; key?: string }): Promise<{ url: string; hasKey: boolean }> {
   return call(`/api/v1/consent-source`, { method: "POST", body: JSON.stringify(body) });
+}
+
+// ---- 機器の連携（ネオボワールなど）と照合待ちの写真 ----
+
+export function fetchDeviceLinks(): Promise<DeviceLinksStatus> {
+  return call(`/api/v1/device-links`);
+}
+
+export function createDeviceLink(name: string): Promise<{ link: DeviceLink; token: string }> {
+  return call(`/api/v1/device-links`, { method: "POST", body: JSON.stringify({ source: "neovoir", ...(name.trim() && { name: name.trim() }) }) });
+}
+
+export function revokeDeviceLink(id: string): Promise<DeviceLink> {
+  return call(`/api/v1/device-links/${encodeURIComponent(id)}/revoke`, { method: "POST" });
+}
+
+export async function fetchPhotoInbox(): Promise<PhotoInboxItem[]> {
+  return (await call<{ items: PhotoInboxItem[] }>(`/api/v1/photo-inbox`)).items;
+}
+
+export function photoInboxUrl(id: string): string {
+  return apiUrl(`/api/v1/photo-inbox/${encodeURIComponent(id)}/content`);
+}
+
+export function assignPhotoInbox(id: string, patientId: string): Promise<PatientFile> {
+  return call(`/api/v1/photo-inbox/${encodeURIComponent(id)}/assign`, { method: "POST", body: JSON.stringify({ patientId }) });
+}
+
+export async function deletePhotoInbox(id: string): Promise<void> {
+  await call(`/api/v1/photo-inbox/${encodeURIComponent(id)}/delete`, { method: "POST" });
+}
+
+export function rematchPhotoInbox(): Promise<{ matched: number; remaining: number }> {
+  return call(`/api/v1/photo-inbox/rematch`, { method: "POST" });
 }

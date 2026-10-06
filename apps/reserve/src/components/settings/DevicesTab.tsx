@@ -1,0 +1,263 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import type { DeviceLinksStatus, Patient, PhotoInboxItem } from "@/lib/domain/types";
+import {
+  assignPhotoInbox,
+  createDeviceLink,
+  deletePhotoInbox,
+  fetchDeviceLinks,
+  fetchPhotoInbox,
+  photoInboxUrl,
+  rematchPhotoInbox,
+  revokeDeviceLink,
+  searchPatients,
+} from "@/components/calendar/api";
+import { withBase } from "@/lib/paths";
+import styles from "./settings.module.css";
+
+const stamp = (iso?: string) =>
+  iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+/**
+ * 外部機器の連携。いまはネオボワール（肌診断機）の写真の取り込み。
+ * 院のパソコンに置く「取り込み係」が写真フォルダを見張って送り、氏名で患者に結びつける。
+ */
+export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolean; canEdit: boolean; notify: (t: string) => void; fail: (e: unknown) => void }) {
+  const [status, setStatus] = useState<DeviceLinksStatus | null>(null);
+  const [inbox, setInbox] = useState<PhotoInboxItem[] | null>(null);
+  const [newToken, setNewToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      if (isAdmin) setStatus(await fetchDeviceLinks());
+      setInbox(await fetchPhotoInbox());
+    } catch (err) {
+      fail(err);
+    }
+  }, [isAdmin, fail]);
+  useEffect(() => {
+    // 開いたときに読む
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  const run = async (fn: () => Promise<unknown>, message?: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      if (message) notify(message);
+      await load();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const active = status?.links.filter((l) => !l.revoked) ?? [];
+  const serverUrl = typeof window === "undefined" ? "" : `${window.location.origin}${withBase("")}`.replace(/\/$/, "");
+
+  return (
+    <section className={styles.clinic}>
+      <p className={styles.lead}>
+        院で使っている機器と予約カレンダーをつなぎます。つないだ機器のデータは、患者の施術歴（その日の写真）に自動で入ります。
+      </p>
+
+      <div className={styles.clinicCard}>
+        <h3 className={styles.cardTitle}>
+          ネオボワール（肌診断機）の写真 <span className={styles.optionBadge}>オプション</span>
+        </h3>
+        <p className={styles.hint}>
+          ネオボワールのパソコンに「取り込み係」を置くと、撮った写真を5分ごとに予約カレンダーへ送ります。
+          写真のフォルダ名（またはファイル名）の<b>氏名</b>で患者を探し、1人に決まればその日の施術歴に入ります。
+          同じ名前の人が2人以上いる・見つからないときは、下の「照合待ちの写真」に入ります。
+        </p>
+
+        {isAdmin && status && (
+          <>
+            <div className={styles.priceStatus}>
+              {active.length === 0 ? (
+                <span>まだつながっていません</span>
+              ) : (
+                <span>
+                  つながっています：受け取り {status.received}枚・最後に受け取った日時 {stamp(status.lastReceivedAt)}
+                </span>
+              )}
+            </div>
+            {active.map((l) => (
+              <div key={l.id} className={styles.prefRow}>
+                <b>{l.name}</b>
+                <small>
+                  鍵を作った日 {stamp(l.createdAt)}（{l.createdBy.name}）・受け取り {l.received}枚・最後 {stamp(l.lastUsedAt)}
+                </small>
+                <div>
+                  <button
+                    className={styles.btn}
+                    disabled={busy}
+                    onClick={() => {
+                      if (window.confirm(`「${l.name}」の鍵を使えなくしますか？（取り込み係は写真を送れなくなります）`)) run(() => revokeDeviceLink(l.id), "連携を止めました");
+                    }}
+                  >
+                    この鍵を止める
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {newToken ? (
+              <div className={styles.importBox}>
+                <b>接続用の鍵（この画面を閉じると二度と表示されません）</b>
+                <code className={styles.tokenBox}>{newToken}</code>
+                <div className={styles.actions}>
+                  <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newToken).then(() => notify("鍵をコピーしました"), () => {})}>
+                    コピー
+                  </button>
+                  <button className={styles.btn} onClick={() => setNewToken(null)}>
+                    閉じる
+                  </button>
+                </div>
+                <p className={styles.hint}>取り込み係の準備（下の手順の 3）で、この鍵を貼り付けてください。チャットやメールには貼らないでください。</p>
+              </div>
+            ) : (
+              <div className={styles.actions}>
+                <button
+                  className={styles.primary}
+                  disabled={busy}
+                  onClick={() =>
+                    run(async () => {
+                      const r = await createDeviceLink("ネオボワール（受付のパソコン）");
+                      setNewToken(r.token);
+                    })
+                  }
+                >
+                  接続用の鍵を作る
+                </button>
+              </div>
+            )}
+
+            <details className={styles.priceUrls}>
+              <summary>つなぎ方（ネオボワールのパソコンで行います）</summary>
+              <ol className={styles.steps}>
+                <li>
+                  上の「接続用の鍵を作る」を押し、表示された鍵を控えます。
+                </li>
+                <li>
+                  ネオボワールのパソコンで{" "}
+                  <a href={withBase("/integrations/neovoir-agent.ps1")} download>
+                    取り込み係（neovoir-agent.ps1）
+                  </a>{" "}
+                  をダウンロードし、分かりやすい場所（例：ドキュメント）に置きます。
+                </li>
+                <li>
+                  スタートメニューで「PowerShell」を開き、次を入力します（ファイルの場所に合わせて）。
+                  <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;%USERPROFILE%\Documents\neovoir-agent.ps1&quot; -Setup</code>
+                  聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、ネオボワールの写真が保存されるフォルダ、氏名を読む場所、何日前の写真から送るかを入れます。
+                </li>
+                <li>
+                  <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どのフォルダから、どんな氏名を読むか」を確かめられます。氏名が正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
+                </li>
+              </ol>
+              <p className={styles.hint}>
+                鍵はそのパソコンのWindowsユーザーだけが読める形で保存されます。パソコンを入れ替えるときや鍵が漏れたかもしれないときは、上の「この鍵を止める」で止めて、新しい鍵を作り直してください。
+              </p>
+            </details>
+          </>
+        )}
+        {!isAdmin && <p className={styles.muted}>つなぐ設定は院長・管理者ができます。</p>}
+      </div>
+
+      <div className={styles.clinicCard}>
+        <h3 className={styles.cardTitle}>照合待ちの写真{inbox ? `（${inbox.length}枚）` : ""}</h3>
+        <p className={styles.hint}>
+          氏名で患者が1人に決まらなかった写真です。患者を選んで結びつけてください。Airリザーブから患者を移したあとなどは「もう一度名前で照合」でまとめて結びつけられます。
+        </p>
+        {canEdit && (
+          <div className={styles.actions}>
+            <button
+              className={styles.btn}
+              disabled={busy || !inbox?.length}
+              onClick={() =>
+                run(async () => {
+                  const r = await rematchPhotoInbox();
+                  notify(`${r.matched}枚を患者に結びつけました（残り${r.remaining}枚）`);
+                })
+              }
+            >
+              もう一度名前で照合
+            </button>
+          </div>
+        )}
+        {!inbox ? (
+          <p className={styles.muted}>読み込み中…</p>
+        ) : inbox.length === 0 ? (
+          <p className={styles.muted}>ありません</p>
+        ) : (
+          <div className={styles.inboxGrid}>
+            {inbox.map((item) => (
+              <InboxCard key={item.id} item={item} canDelete={canEdit} busy={busy} run={run} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDelete: boolean; busy: boolean; run: (fn: () => Promise<unknown>, message?: string) => Promise<void> }) {
+  const [q, setQ] = useState(item.patientName);
+  const [hits, setHits] = useState<Patient[] | null>(null);
+  return (
+    <div className={styles.inboxCard}>
+      <a href={photoInboxUrl(item.id)} target="_blank" rel="noopener">
+        {/* 照合待ちの写真（ログインしたスタッフだけが見られる） */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photoInboxUrl(item.id)} alt={item.name} loading="lazy" />
+      </a>
+      <div>
+        <b>{item.patientName || "（氏名なし）"}</b>
+        <small>
+          {item.date}・{item.reason === "ambiguous" ? "同じ名前が2人以上" : "その名前の患者がいない"}
+        </small>
+      </div>
+      <form
+        className={styles.inline}
+        onSubmit={(e) => {
+          e.preventDefault();
+          searchPatients(q).then(setHits, () => setHits([]));
+        }}
+      >
+        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="氏名・フリガナ・診察券番号" aria-label="患者をさがす" />
+        <button className={styles.btn} type="submit">
+          さがす
+        </button>
+      </form>
+      {hits && (
+        <ul className={styles.hitList}>
+          {hits.length === 0 && <li className={styles.muted}>見つかりません</li>}
+          {hits.slice(0, 6).map((p) => (
+            <li key={p.id}>
+              <button className={styles.btn} disabled={busy} onClick={() => run(() => assignPhotoInbox(item.id, p.id), `${p.name} さんの写真にしました`)}>
+                {p.name}
+                {p.chartNo && <small>（{p.chartNo}）</small>}
+                {p.birthDate && <small> {p.birthDate}</small>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {canDelete && (
+        <button
+          className={styles.linkDanger}
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm("この写真を削除しますか？（元に戻せません）")) run(() => deletePhotoInbox(item.id), "削除しました");
+          }}
+        >
+          削除
+        </button>
+      )}
+    </div>
+  );
+}

@@ -346,7 +346,48 @@ export interface PatientFile {
   size: number;
   createdAt: string;
   createdBy?: Actor;
+  /** 機器から届いた写真（ネオボワールなど） */
+  source?: DeviceSource;
   deleted?: { at: string; by?: Actor };
+}
+
+/** 写真を送ってくる機器（院のパソコンに置いた取り込み係から） */
+export type DeviceSource = "neovoir";
+export const DEVICE_SOURCE_LABEL: Record<DeviceSource, string> = { neovoir: "ネオボワール" };
+
+/** 機器の連携（鍵そのものは保存せず、作ったときに1回だけ見せる） */
+export interface DeviceLink {
+  id: string;
+  source: DeviceSource;
+  name: string;
+  createdAt: string;
+  createdBy: Actor;
+  received: number;
+  lastUsedAt?: string;
+  revoked?: { at: string; by: Actor };
+}
+
+export interface DeviceLinksStatus {
+  links: DeviceLink[];
+  /** 照合待ちの写真の枚数 */
+  inbox: number;
+  received: number;
+  lastReceivedAt?: string;
+}
+
+/** 名前で患者が1人に決まらなかった写真（照合待ち） */
+export interface PhotoInboxItem {
+  id: string;
+  source: DeviceSource;
+  patientName: string;
+  date: string;
+  takenAt?: string;
+  name: string;
+  type: string;
+  size: number;
+  receivedAt: string;
+  /** not_found：その名前の患者がいない／ambiguous：同じ名前が2人以上 */
+  reason: "not_found" | "ambiguous";
 }
 
 /** 予約の大まかな段階（キャンセル・無断キャンセル以外） */

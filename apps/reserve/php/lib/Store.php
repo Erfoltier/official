@@ -1363,6 +1363,236 @@ final class Store
         return $next;
     }
 
+    // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
+
+    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール'];
+
+    /** 連携の一覧と受け取りの状況（鍵そのものは返さない） */
+    public static function deviceLinks(): array
+    {
+        self::init();
+        $db = Db::i();
+        $links = [];
+        foreach ($db->all('deviceLink') as $l) {
+            unset($l['tokenHash']);
+            $links[] = $l;
+        }
+        usort($links, fn($a, $b) => strcmp($a['createdAt'], $b['createdAt']));
+        $last = null;
+        foreach ($links as $l) {
+            if (isset($l['lastUsedAt']) && ($last === null || $l['lastUsedAt'] > $last)) {
+                $last = $l['lastUsedAt'];
+            }
+        }
+        $out = ['links' => $links, 'inbox' => $db->count('photoInbox'), 'received' => array_sum(array_map(fn($l) => $l['received'], $links))];
+        if ($last !== null) {
+            $out['lastReceivedAt'] = $last;
+        }
+        return $out;
+    }
+
+    /** 接続用の鍵を作る。鍵はこのときだけ返し、保存するのはハッシュだけ */
+    public static function createDeviceLink(array $input, array $by): array
+    {
+        self::init();
+        $source = $input['source'];
+        if (!isset(self::DEVICE_SOURCES[$source])) {
+            throw new StoreError('invalid', '連携できない機器です');
+        }
+        $name = self::checkText('名前', $input['name'] ?? '', 40, false) ?: self::DEVICE_SOURCES[$source];
+        $token = $source === 'neovoir' ? 'nv_' . bin2hex(random_bytes(20)) : bin2hex(random_bytes(20));
+        $id = new_id('dl');
+        $link = ['id' => $id, 'source' => $source, 'name' => $name, 'createdAt' => now_iso(), 'createdBy' => $by, 'received' => 0];
+        Db::i()->put('deviceLink', $id, [...$link, 'tokenHash' => hash('sha256', $token)]);
+        Auth::audit($by, "機器の連携を追加：{$name}");
+        return ['link' => $link, 'token' => $token];
+    }
+
+    public static function revokeDeviceLink(string $id, array $by): array
+    {
+        $db = Db::i();
+        $l = $db->get('deviceLink', $id);
+        if (!$l) {
+            throw new StoreError('not_found', '連携が見つかりません');
+        }
+        $l['revoked'] = ['at' => now_iso(), 'by' => $by];
+        $db->put('deviceLink', $id, $l);
+        Auth::audit($by, "機器の連携を止める：{$l['name']}");
+        unset($l['tokenHash']);
+        return $l;
+    }
+
+    /** 鍵から連携を探す（止めたもの・違う鍵は null） */
+    public static function deviceLinkByToken(string $token): ?array
+    {
+        if (strlen($token) < 20) {
+            return null;
+        }
+        $h = hash('sha256', $token);
+        foreach (Db::i()->all('deviceLink') as $l) {
+            if (hash_equals($l['tokenHash'], $h) && empty($l['revoked'])) {
+                return $l;
+            }
+        }
+        return null;
+    }
+
+    /** 名前で患者を探す（漢字・フリガナ・ローマ字のどれかが空白を除いて同じで、ちょうど1人のときだけ） */
+    private static function matchByName(string $name): array
+    {
+        $key = search_key($name);
+        if ($key === '') {
+            return ['id' => null, 'reason' => 'not_found'];
+        }
+        $hits = [];
+        foreach (self::patients() as $p) {
+            if (!empty($p['deleted'])) {
+                continue;
+            }
+            foreach ([$p['name'], $p['kana'] ?? '', $p['nameAlt'] ?? ''] as $x) {
+                if ($x !== '' && search_key($x) === $key) {
+                    $hits[] = $p['id'];
+                    break;
+                }
+            }
+        }
+        return count($hits) === 1 ? ['id' => $hits[0], 'reason' => null] : ['id' => null, 'reason' => $hits ? 'ambiguous' : 'not_found'];
+    }
+
+    /**
+     * 機器から写真を受け取る。同じ写真（中身が同じ）は2回目以降は受け取らない。
+     * 名前で患者が1人に決まればその患者の写真（撮った日の記録）に、決まらなければ「照合待ち」に置く
+     */
+    public static function receiveDevicePhoto(array $link, array $input): array
+    {
+        self::init();
+        $bytes = $input['bytes'];
+        if ($bytes === '') {
+            throw new StoreError('invalid', 'ファイルが空です');
+        }
+        if (strlen($bytes) > self::MAX_FILE_BYTES) {
+            throw new StoreError('invalid', 'ファイルが大きすぎます（10MBまで）');
+        }
+        $type = self::sniffType($bytes);
+        if (!$type || (self::FILE_TYPES[$type] ?? null) !== 'image') {
+            throw new StoreError('invalid', '受け取れるのは写真（JPEG・PNG・WebP・HEIC）だけです');
+        }
+        $db = Db::i();
+        $id = 'nv-' . substr(hash('sha256', $bytes), 0, 24);
+        if ($db->get('file', $id) !== null || $db->get('photoInbox', $id) !== null) {
+            return ['status' => 'duplicate', 'id' => $id];
+        }
+        $patientName = self::checkText('患者名', $input['patientName'] ?? '', 60, false);
+        $takenAt = isset($input['takenAt']) && is_iso_datetime($input['takenAt']) ? normalize_iso($input['takenAt']) : null;
+        $date = clinic_date_of($takenAt ?? now_iso());
+        $fileName = self::cleanFileName($input['fileName'] ?? '', $type);
+        $match = self::matchByName($patientName);
+        $by = ['id' => 'device:' . $link['id'], 'name' => $link['name']];
+        $out = $db->transaction(function () use ($db, $id, $bytes, $type, $date, $fileName, $patientName, $takenAt, $match, $link, $by) {
+            $db->putBlob($id, $bytes);
+            $base = ['id' => $id];
+            if ($match['id'] !== null) {
+                $meta = $base + ['patientId' => $match['id'], 'date' => $date, 'name' => $fileName, 'type' => $type, 'kind' => 'image', 'size' => strlen($bytes), 'createdAt' => now_iso(), 'createdBy' => $by, 'source' => $link['source']];
+                $db->put('file', $id, $meta);
+            } else {
+                $item = $base + ['source' => $link['source'], 'patientName' => $patientName, 'date' => $date];
+                if ($takenAt !== null) {
+                    $item['takenAt'] = $takenAt;
+                }
+                $item += ['name' => $fileName, 'type' => $type, 'size' => strlen($bytes), 'receivedAt' => now_iso(), 'reason' => $match['reason']];
+                $db->put('photoInbox', $id, $item);
+            }
+            $cur = $db->get('deviceLink', $link['id']);
+            $db->put('deviceLink', $link['id'], [...$cur, 'lastUsedAt' => now_iso(), 'received' => $cur['received'] + 1]);
+            return $match['id'] !== null ? ['status' => 'saved', 'id' => $id, 'matched' => true] : ['status' => 'inbox', 'id' => $id, 'matched' => false];
+        });
+        return $out;
+    }
+
+    /** 照合待ちの写真（新しい順） */
+    public static function listPhotoInbox(): array
+    {
+        $items = array_values(Db::i()->all('photoInbox'));
+        usort($items, fn($a, $b) => strcmp($b['receivedAt'], $a['receivedAt']) ?: strcmp($a['id'], $b['id']));
+        return $items;
+    }
+
+    public static function photoInboxContent(string $id): array
+    {
+        $item = Db::i()->get('photoInbox', $id);
+        $bytes = $item ? Db::i()->getBlob($id) : null;
+        if (!$item || $bytes === null) {
+            throw new StoreError('not_found', '写真が見つかりません');
+        }
+        return [$item, $bytes];
+    }
+
+    /** 照合待ちの写真を患者に結びつける（撮った日の記録に入る） */
+    public static function assignPhotoInbox(string $id, string $patientId, array $by): array
+    {
+        $db = Db::i();
+        $item = $db->get('photoInbox', $id);
+        if (!$item) {
+            throw new StoreError('not_found', '写真が見つかりません');
+        }
+        $p = self::patient($patientId);
+        if (!empty($p['deleted'])) {
+            throw new StoreError('invalid', '削除された患者には結びつけられません');
+        }
+        $meta = self::inboxToFile($item, $patientId, $by);
+        $db->transaction(function () use ($db, $id, $meta) {
+            $db->put('file', $id, $meta);
+            $db->delete('photoInbox', $id);
+        });
+        Auth::audit($by, '機器の写真を患者に結びつけ', $patientId);
+        return $meta;
+    }
+
+    private static function inboxToFile(array $item, string $patientId, array $by): array
+    {
+        return ['id' => $item['id'], 'patientId' => $patientId, 'date' => $item['date'], 'name' => $item['name'], 'type' => $item['type'], 'kind' => 'image', 'size' => $item['size'], 'createdAt' => now_iso(), 'createdBy' => $by, 'source' => $item['source']];
+    }
+
+    public static function deletePhotoInbox(string $id, array $by): void
+    {
+        $db = Db::i();
+        if (!$db->get('photoInbox', $id)) {
+            throw new StoreError('not_found', '写真が見つかりません');
+        }
+        $db->transaction(function () use ($db, $id) {
+            $db->delete('photoInbox', $id);
+            $db->deleteBlob($id);
+        });
+        Auth::audit($by, '照合待ちの写真を削除');
+    }
+
+    /** 照合待ちの写真を、今の患者でもう一度名前照合する（Airリザーブからの移行のあとなど） */
+    public static function rematchPhotoInbox(array $by): array
+    {
+        self::init();
+        $db = Db::i();
+        $matched = 0;
+        foreach (self::listPhotoInbox() as $item) {
+            $m = self::matchByName($item['patientName']);
+            if ($m['id'] === null) {
+                if (($item['reason'] ?? null) !== $m['reason']) {
+                    $db->put('photoInbox', $item['id'], [...$item, 'reason' => $m['reason']]);
+                }
+                continue;
+            }
+            $meta = self::inboxToFile($item, $m['id'], ['id' => 'system', 'name' => '名前照合']);
+            $db->transaction(function () use ($db, $item, $meta) {
+                $db->put('file', $item['id'], $meta);
+                $db->delete('photoInbox', $item['id']);
+            });
+            $matched++;
+        }
+        if ($matched > 0) {
+            Auth::audit($by, "照合待ちの写真{$matched}枚を名前照合で患者に結びつけ");
+        }
+        return ['matched' => $matched, 'remaining' => $db->count('photoInbox')];
+    }
+
     // ---- 患者 ----
 
     public static function getPatient(string $id): ?array

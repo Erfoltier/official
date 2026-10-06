@@ -154,6 +154,18 @@ final class Http
         exit;
     }
 
+    /** 機器の連携（ネオボワールなど）の鍵。設定で発行したもので、止めたもの・違うものは 401 */
+    public static function deviceLink(): array
+    {
+        $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        $given = (string) ($_SERVER['HTTP_X_DEVICE_TOKEN'] ?? (str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : ''));
+        $link = Store::deviceLinkByToken($given);
+        if ($link === null) {
+            self::json(['error' => 'unauthorized'], 401);
+        }
+        return $link;
+    }
+
     /** 外部連携API（リマインド送信プログラム等）の認証。トークン未設定なら停止（503） */
     public static function checkIntegrationAuth(): void
     {
@@ -393,6 +405,16 @@ final class Schema
             'color?' => fn($x) => V::str($x, 7),
             'active?' => [V::class, 'bool'],
         ]);
+    }
+
+    public static function deviceLink(mixed $v): array
+    {
+        return V::shape($v, ['source' => fn($x) => V::enum($x, ['neovoir']), 'name?' => fn($x) => V::str($x, 60)]);
+    }
+
+    public static function photoAssign(mixed $v): array
+    {
+        return V::shape($v, ['patientId' => [V::class, 'id']]);
     }
 
     public static function clinic(mixed $v): array
