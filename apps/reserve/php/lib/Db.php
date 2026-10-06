@@ -73,7 +73,13 @@ final class Db
         foreach (array_slice($files, $keep) as $old) {
             @unlink($old);
         }
-        return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out)];
+        // できた控えをその場で開いて検査する（壊れていないか・中身の件数）
+        $chk = new PDO('sqlite:' . $out, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $integrity = (string) $chk->query('PRAGMA integrity_check')->fetchColumn();
+        $docs = (int) $chk->query('SELECT COUNT(*) FROM docs')->fetchColumn();
+        $live = (int) $this->pdo->query('SELECT COUNT(*) FROM docs')->fetchColumn();
+        $chk = null;
+        return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out), 'integrity' => $integrity, 'docs' => $docs, 'liveDocs' => $live];
     }
 
     private function migrate(): void
