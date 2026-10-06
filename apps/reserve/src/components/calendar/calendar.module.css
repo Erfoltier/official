@@ -29,8 +29,9 @@
 .primaryBtn,
 .select {
   height: 32px;
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   border-radius: var(--radius);
   padding: 0 10px;
   font-size: 13px;
@@ -689,9 +690,10 @@ button.treatChip[data-active] {
 .statusBtn {
   height: 30px;
   padding: 0 9px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--btn-line);
   border-radius: 15px;
-  background: var(--bg);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   font-size: 12px;
 }
 
@@ -719,7 +721,7 @@ button.treatChip[data-active] {
   border-radius: var(--radius);
   padding: 6px 8px;
   font-size: 14px;
-  background: var(--bg);
+  background: var(--field-bg);
 }
 
 .input {
@@ -2144,7 +2146,7 @@ button.stagePill[data-clickable]:disabled {
 }
 
 :global(:root[data-theme="blush"]) .body {
-  background: radial-gradient(900px 600px at 20% 10%, #f7eee6 0%, transparent 60%), radial-gradient(800px 700px at 95% 90%, #f1e1d5 0%, transparent 60%), #f5ebe2;
+  background: radial-gradient(900px 600px at 20% 10%, #fefaf7 0%, transparent 60%), radial-gradient(800px 700px at 95% 90%, #f8ede6 0%, transparent 60%), #fbf5f1;
 }
 
 :global(:root[data-theme="blush"]) .reception {
@@ -2152,7 +2154,8 @@ button.stagePill[data-clickable]:disabled {
 }
 
 :global(:root[data-theme="blush"]) .receptionRow {
-  background: linear-gradient(140deg, #faf3ec 0%, #f5e9e0 100%);
+  background: linear-gradient(140deg, #fefaf7 0%, #f9efe9 100%);
+  box-shadow: 0 1px 3px rgb(95 62 56 / 12%);
 }
 
 :global(:root[data-theme="blush"]) .panel {
@@ -2172,7 +2175,7 @@ button.stagePill[data-clickable]:disabled {
 }
 
 :global(:root[data-theme="luxe"]) .body {
-  background: radial-gradient(900px 600px at 80% 0%, #f6efe2 0%, transparent 60%), radial-gradient(800px 700px at 0% 100%, #efe5d4 0%, transparent 60%), #f4ede1;
+  background: radial-gradient(900px 600px at 80% 0%, #fefbf6 0%, transparent 60%), radial-gradient(800px 700px at 0% 100%, #f6efe3 0%, transparent 60%), #fbf7f0;
 }
 
 :global(:root[data-theme="luxe"]) .reception {
@@ -2180,7 +2183,8 @@ button.stagePill[data-clickable]:disabled {
 }
 
 :global(:root[data-theme="luxe"]) .receptionRow {
-  background: linear-gradient(150deg, #fbf6ed 0%, #f3eadb 100%);
+  background: linear-gradient(150deg, #fefcf7 0%, #f8f0e3 100%);
+  box-shadow: 0 1px 3px rgb(90 70 45 / 12%);
 }
 
 :global(:root[data-theme="luxe"]) .panel {
@@ -2200,7 +2204,7 @@ button.stagePill[data-clickable]:disabled {
 }
 
 :global(:root[data-theme="calm"]) .body {
-  background: radial-gradient(900px 600px at 15% 5%, #f3fafd 0%, transparent 60%), radial-gradient(800px 700px at 100% 95%, #e0edf5 0%, transparent 60%), #ecf6fa;
+  background: radial-gradient(900px 600px at 15% 5%, #fbfeff 0%, transparent 60%), radial-gradient(800px 700px at 100% 95%, #eaf3f8 0%, transparent 60%), #f5fafd;
 }
 
 :global(:root[data-theme="calm"]) .reception {
@@ -2208,7 +2212,8 @@ button.stagePill[data-clickable]:disabled {
 }
 
 :global(:root[data-theme="calm"]) .receptionRow {
-  background: linear-gradient(145deg, #f7fbfd 0%, #e9f4f9 100%);
+  background: linear-gradient(145deg, #fbfeff 0%, #eef6fb 100%);
+  box-shadow: 0 1px 3px rgb(18 63 93 / 12%);
 }
 
 :global(:root[data-theme="calm"]) .panel {

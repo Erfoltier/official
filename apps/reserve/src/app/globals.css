@@ -12,6 +12,11 @@
   --bg: #ffffff;
   /* カード・ボタン・入力欄など「白い面」。白を使わない配色ではここを生成りにする */
   --surface: #ffffff;
+  /* ボタンと入力欄の地・枠・影（落ち着いた配色ではまわりより一段明るく、枠と影で浮かせる） */
+  --btn-bg: var(--bg);
+  --btn-line: var(--line-strong);
+  --btn-shadow: none;
+  --field-bg: var(--bg);
   --bg-subtle: #f8f6fc;
   --bg-muted: #f0ecf7;
   --tint: #fbf9ff;
@@ -43,13 +48,13 @@
 :root[data-theme="blush"] {
   --alt-bg: #f2ebe2;
   --alt-line: #e0d3c3;
-  --bg: #f6ede5;
-  --surface: #f9f2eb;
-  --bg-subtle: #f3e8df;
-  --bg-muted: #e9d2cc;
-  --tint: #f1e2dc;
-  --line: #e6d0ca;
-  --line-strong: #d6b6b0;
+  --bg: #fbf5f1;
+  --surface: #fdf8f5;
+  --bg-subtle: #f5e9e3;
+  --bg-muted: #ead3cc;
+  --tint: #f4e4de;
+  --line: #e9d6cf;
+  --line-strong: #d3aea7;
   --text: #3e2f2c;
   --text-muted: #765f5a;
   --text-faint: #a68f8a;
@@ -67,19 +72,23 @@
   --shadow-rgb: 95 62 56;
   --shadow-accent: 0 4px 14px rgb(167 118 125 / 24%);
   --shadow-card: 0 6px 24px rgb(95 62 56 / 9%);
+  --btn-bg: linear-gradient(180deg, #fefbf8 0%, #f7ebe5 100%);
+  --btn-line: #c99f98;
+  --btn-shadow: 0 1px 2px rgb(95 62 56 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  --field-bg: #fefaf7;
 }
 
 /* 爽やか：Re2O（リジュー）のページの色。涼しい水色の濃淡と、くすんだ青・紺 */
 :root[data-theme="calm"] {
   --alt-bg: #eef2f5;
   --alt-line: #d5dee5;
-  --bg: #edf6fa;
-  --surface: #f6fbfd;
-  --bg-subtle: #e6f2f8;
-  --bg-muted: #d8eaf3;
-  --tint: #e3f1f8;
-  --line: #d2e5ee;
-  --line-strong: #b2d0e0;
+  --bg: #f5fafd;
+  --surface: #fafdfe;
+  --bg-subtle: #e8f3f9;
+  --bg-muted: #d4e8f2;
+  --tint: #e9f4fa;
+  --line: #d6e7f0;
+  --line-strong: #a9cbdd;
   --text: #15324a;
   --text-muted: #4b687e;
   --text-faint: #86a0b2;
@@ -97,6 +106,10 @@
   --shadow-rgb: 18 63 93;
   --shadow-accent: 0 4px 14px rgb(39 120 168 / 24%);
   --shadow-card: 0 6px 24px rgb(18 63 93 / 9%);
+  --btn-bg: linear-gradient(180deg, #fbfeff 0%, #e8f3f9 100%);
+  --btn-line: #93bdd3;
+  --btn-shadow: 0 1px 2px rgb(18 63 93 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  --field-bg: #fbfeff;
 }
 
 /* 厳か：濃紺と墨、差し色に控えめな金 */
@@ -133,13 +146,13 @@
   /* 上品（ゴールド）：ホテルのロビー。アイボリーとミルクティーベージュに、金のグラデーションの線。白は使わない */
   --alt-bg: #efe8dd;
   --alt-line: #ddd0bd;
-  --bg: #f6f0e6;
-  --surface: #faf5ec;
-  --bg-subtle: #f2eadd;
-  --bg-muted: #e9ddca;
-  --tint: #f4ede1;
-  --line: #e4d8c3;
-  --line-strong: #d2bf9c;
+  --bg: #fbf7f0;
+  --surface: #fdfaf4;
+  --bg-subtle: #f4ecdf;
+  --bg-muted: #e8dbc5;
+  --tint: #f5ede0;
+  --line: #e7dcc9;
+  --line-strong: #cfb995;
   --text: #3a2e22;
   --text-muted: #6d5c49;
   --text-faint: #9c8a72;
@@ -157,6 +170,10 @@
   --shadow-rgb: 90 70 45;
   --shadow-accent: 0 4px 14px rgb(138 109 71 / 24%);
   --shadow-card: 0 6px 24px rgb(90 70 45 / 10%);
+  --btn-bg: linear-gradient(180deg, #fefcf7 0%, #f5ecdc 100%);
+  --btn-line: #c2a77a;
+  --btn-shadow: 0 1px 2px rgb(90 70 45 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  --field-bg: #fefcf8;
 }
 
 /* やさしい：くすんだ緑。ナチュラル */
@@ -243,26 +260,26 @@ button {
 :root[data-theme="blush"] body,
 :root[data-theme="blush"] dialog {
   background:
-    radial-gradient(1100px 620px at 12% -8%, #efd8d1 0%, transparent 58%),
-    radial-gradient(900px 700px at 105% 105%, #f0e2d3 0%, transparent 55%),
-    radial-gradient(700px 500px at 70% 30%, #f8eee6 0%, transparent 60%),
-    #f5ebe3;
+    radial-gradient(1100px 620px at 12% -8%, #f5e3dd 0%, transparent 58%),
+    radial-gradient(900px 700px at 105% 105%, #f6ebe0 0%, transparent 55%),
+    radial-gradient(700px 500px at 70% 30%, #fdf8f4 0%, transparent 60%),
+    #faf3ee;
 }
 
 :root[data-theme="luxe"] body,
 :root[data-theme="luxe"] dialog {
   background:
-    radial-gradient(1000px 600px at 88% -12%, #efe0c3 0%, transparent 58%),
-    radial-gradient(900px 640px at -5% 108%, #e9dcc8 0%, transparent 58%),
-    radial-gradient(700px 500px at 40% 40%, #f9f3e9 0%, transparent 62%),
-    #f5eee3;
+    radial-gradient(1000px 600px at 88% -12%, #f4e9d3 0%, transparent 58%),
+    radial-gradient(900px 640px at -5% 108%, #f0e6d6 0%, transparent 58%),
+    radial-gradient(700px 500px at 40% 40%, #fdfaf4 0%, transparent 62%),
+    #faf6ee;
 }
 
 :root[data-theme="calm"] body,
 :root[data-theme="calm"] dialog {
   background:
-    radial-gradient(1000px 620px at 10% -10%, #d6edf7 0%, transparent 58%),
-    radial-gradient(900px 700px at 105% 100%, #dbe6ef 0%, transparent 55%),
-    radial-gradient(700px 520px at 65% 35%, #f3fafd 0%, transparent 60%),
-    #eaf4f9;
+    radial-gradient(1000px 620px at 10% -10%, #e2f2f9 0%, transparent 58%),
+    radial-gradient(900px 700px at 105% 100%, #e5eef5 0%, transparent 55%),
+    radial-gradient(700px 520px at 65% 35%, #fafdfe 0%, transparent 60%),
+    #f2f8fb;
 }

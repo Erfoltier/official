@@ -39,7 +39,7 @@
   border-radius: var(--radius);
   padding: 6px 8px;
   font-size: 15px;
-  background: var(--bg);
+  background: var(--field-bg);
 }
 
 .input {
@@ -216,8 +216,9 @@
   height: 36px;
   padding: 0 16px;
   border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   font-size: 14px;
   white-space: nowrap;
 }
@@ -561,8 +562,9 @@ details.section[open] > summary.sectionTitle {
   height: 30px;
   padding: 0 10px;
   border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -576,9 +578,10 @@ details.section[open] > summary.sectionTitle {
   width: 100%;
   margin-top: 6px;
   height: 34px;
-  border: 1px dashed var(--line-strong);
+  border: 1px dashed var(--btn-line);
   border-radius: var(--radius);
-  background: var(--bg);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   color: var(--accent);
   font-size: 13px;
 }

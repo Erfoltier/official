@@ -26,9 +26,10 @@
   flex-direction: column;
   gap: 4px;
   padding: 16px 10px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--btn-line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
 }
 
 .staffBtn:hover {
@@ -71,9 +72,10 @@
 .pad button {
   height: 56px;
   font-size: 22px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--btn-line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
 }
 
 .pad .ok {

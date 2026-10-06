@@ -25,8 +25,9 @@
 .today,
 .title {
   height: 32px;
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   border-radius: var(--radius);
   font: inherit;
   color: var(--text);
@@ -216,9 +217,10 @@
 .jumps button {
   flex: 1;
   height: 30px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--btn-line);
   border-radius: var(--radius);
-  background: var(--bg);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   font: inherit;
   font-size: 12px;
   cursor: pointer;

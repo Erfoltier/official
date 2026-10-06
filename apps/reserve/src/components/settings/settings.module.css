@@ -32,8 +32,9 @@
 .tabs button {
   height: 34px;
   padding: 0 16px;
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   border-radius: var(--radius);
   font-size: 14px;
 }
@@ -133,8 +134,9 @@
 .arrow {
   width: 26px;
   height: 26px;
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   border-radius: 4px;
   font-size: 10px;
   margin-right: 2px;
@@ -172,7 +174,7 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: 0 8px;
-  background: var(--bg);
+  background: var(--field-bg);
   font-size: 14px;
 }
 
@@ -181,8 +183,9 @@
   height: 34px;
   padding: 0 14px;
   border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
-  background: var(--bg);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -742,9 +745,10 @@ details.priceGroup > summary {
 .segment button {
   min-height: 32px;
   padding: 0 14px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--btn-line);
   border-radius: 999px;
-  background: var(--bg);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
   font-size: 13px;
 }
 
