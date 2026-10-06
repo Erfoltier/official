@@ -680,7 +680,7 @@ export interface ClinicSettings {
 export const THEMES = [
   { id: "default", label: "華やか（標準）", note: "すみれ色からローズのグラデーション", swatch: ["#7c3aed", "#ec4899"] },
   { id: "blush", label: "ピンクベージュ", note: "ピンクベージュ・ベージュ・アイボリーの淡いグラデーション。白を使わない", swatch: ["#b98f95", "#ead9d6"] },
-  { id: "calm", label: "落ち着き", note: "青みのグレー。地味めで目に優しい", swatch: ["#3f5a7a", "#8aa0b8"] },
+  { id: "calm", label: "爽やか", note: "涼しい水色の濃淡に、くすんだ青と紺", swatch: ["#2778a8", "#b3e0f1"] },
   { id: "solemn", label: "厳か", note: "濃紺と墨に、控えめな金", swatch: ["#18264a", "#9c8250"] },
   { id: "luxe", label: "上品（ゴールド）", note: "アイボリーとミルクティーベージュに金の線。ホテルのロビーのような配色", swatch: ["#a88860", "#efdfb9"] },
   { id: "natural", label: "やさしい", note: "くすんだ緑のナチュラルな配色", swatch: ["#3f6a4a", "#9cbf8c"] },

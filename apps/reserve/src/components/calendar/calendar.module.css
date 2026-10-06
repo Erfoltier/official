@@ -2128,3 +2128,89 @@ button.stagePill[data-clickable]:disabled {
 .nameSide .idSlot {
   margin-left: 10px;
 }
+
+/* ===== 配色ごとの面の表情（ブロックごとに色の差をつけ、単方向ではないふんわりしたグラデーション） ===== */
+:global(:root[data-theme="blush"]) .toolbar {
+  background: radial-gradient(520px 120px at 18% -30%, #ecccc5 0%, transparent 70%), radial-gradient(480px 120px at 92% 130%, #f0dfcf 0%, transparent 70%), linear-gradient(90deg, #f3e3dc 0%, #f6ece4 50%, #f2e3da 100%);
+}
+
+:global(:root[data-theme="blush"]) .header {
+  background: linear-gradient(180deg, #efd8d1 0%, #f3e6dd 100%);
+}
+
+:global(:root[data-theme="blush"]) .corner,
+:global(:root[data-theme="blush"]) .timeCol {
+  background: linear-gradient(90deg, #f3e4da 0%, #eddad2 100%);
+}
+
+:global(:root[data-theme="blush"]) .body {
+  background: radial-gradient(900px 600px at 20% 10%, #f7eee6 0%, transparent 60%), radial-gradient(800px 700px at 95% 90%, #f1e1d5 0%, transparent 60%), #f5ebe2;
+}
+
+:global(:root[data-theme="blush"]) .reception {
+  background: radial-gradient(420px 300px at -10% -5%, #e7c9c2 0%, transparent 70%), radial-gradient(380px 420px at 110% 55%, #f1e1d4 0%, transparent 70%), radial-gradient(360px 300px at 30% 105%, #ecd4cc 0%, transparent 70%), #eed9d1;
+}
+
+:global(:root[data-theme="blush"]) .receptionRow {
+  background: linear-gradient(140deg, #faf3ec 0%, #f5e9e0 100%);
+}
+
+:global(:root[data-theme="blush"]) .panel {
+  background: radial-gradient(520px 260px at 105% -5%, #eacdc6 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #f2e3d6 0%, transparent 65%), radial-gradient(420px 360px at 55% 45%, #f9f1ea 0%, transparent 70%), #f5eae2;
+}
+:global(:root[data-theme="luxe"]) .toolbar {
+  background: radial-gradient(520px 130px at 50% -40%, #f2e2bf 0%, transparent 72%), radial-gradient(420px 120px at 5% 130%, #ebdfcb 0%, transparent 70%), linear-gradient(90deg, #f1e7d6 0%, #f8f2e7 50%, #efe4d1 100%);
+}
+
+:global(:root[data-theme="luxe"]) .header {
+  background: linear-gradient(180deg, #eee1cb 0%, #f5ede0 100%);
+}
+
+:global(:root[data-theme="luxe"]) .corner,
+:global(:root[data-theme="luxe"]) .timeCol {
+  background: linear-gradient(90deg, #f3eadb 0%, #ebdfca 100%);
+}
+
+:global(:root[data-theme="luxe"]) .body {
+  background: radial-gradient(900px 600px at 80% 0%, #f6efe2 0%, transparent 60%), radial-gradient(800px 700px at 0% 100%, #efe5d4 0%, transparent 60%), #f4ede1;
+}
+
+:global(:root[data-theme="luxe"]) .reception {
+  background: radial-gradient(420px 320px at -10% -5%, #e6d6bb 0%, transparent 70%), radial-gradient(380px 420px at 110% 60%, #eadfcd 0%, transparent 70%), radial-gradient(360px 300px at 40% 108%, #e2d0b2 0%, transparent 70%), #ece1cf;
+}
+
+:global(:root[data-theme="luxe"]) .receptionRow {
+  background: linear-gradient(150deg, #fbf6ed 0%, #f3eadb 100%);
+}
+
+:global(:root[data-theme="luxe"]) .panel {
+  background: radial-gradient(520px 280px at 105% -8%, #eedcb8 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #ebe0ce 0%, transparent 65%), radial-gradient(420px 360px at 50% 45%, #faf5ec 0%, transparent 70%), #f4ece0;
+}
+:global(:root[data-theme="calm"]) .toolbar {
+  background: radial-gradient(520px 130px at 15% -40%, #c9e6f3 0%, transparent 72%), radial-gradient(460px 120px at 95% 130%, #d9e5ee 0%, transparent 70%), linear-gradient(90deg, #e6f3f9 0%, #f3fafd 50%, #e3eff6 100%);
+}
+
+:global(:root[data-theme="calm"]) .header {
+  background: linear-gradient(180deg, #d9edf6 0%, #ebf5fa 100%);
+}
+
+:global(:root[data-theme="calm"]) .corner,
+:global(:root[data-theme="calm"]) .timeCol {
+  background: linear-gradient(90deg, #eaf5fa 0%, #dcecf4 100%);
+}
+
+:global(:root[data-theme="calm"]) .body {
+  background: radial-gradient(900px 600px at 15% 5%, #f3fafd 0%, transparent 60%), radial-gradient(800px 700px at 100% 95%, #e0edf5 0%, transparent 60%), #ecf6fa;
+}
+
+:global(:root[data-theme="calm"]) .reception {
+  background: radial-gradient(420px 320px at -10% -5%, #c6e3f1 0%, transparent 70%), radial-gradient(380px 420px at 110% 55%, #d8e4ec 0%, transparent 70%), radial-gradient(360px 300px at 35% 108%, #bfd6e5 0%, transparent 70%), #dcecf4;
+}
+
+:global(:root[data-theme="calm"]) .receptionRow {
+  background: linear-gradient(145deg, #f7fbfd 0%, #e9f4f9 100%);
+}
+
+:global(:root[data-theme="calm"]) .panel {
+  background: radial-gradient(520px 280px at 105% -8%, #c9e5f2 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #dbe5ee 0%, transparent 65%), radial-gradient(420px 360px at 50% 45%, #f6fbfd 0%, transparent 70%), #e8f3f8;
+}
