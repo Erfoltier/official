@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
+import { DialogBackdropClose } from "@/components/DialogBackdropClose";
 
 export const metadata: Metadata = {
   title: "予約カレンダー",
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* 院の配色を、画面が描かれる前に当てる（中身は決まった文字列だけ） */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <DialogBackdropClose />
+      </body>
     </html>
   );
 }
