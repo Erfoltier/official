@@ -70,6 +70,7 @@ const patientFieldsSchema = {
   memo: shortText(12000).optional(),
   history: shortText(4000).optional(),
   medications: shortText(4000).optional(),
+  questionnaireOther: shortText(8000).optional(),
 };
 
 export const createPatientSchema = z.object({ name: shortText(120), ...patientFieldsSchema }).strict();
@@ -355,7 +356,7 @@ export const stageSchema = z
   .strict();
 
 /** 機器の連携の鍵を発行する */
-export const deviceLinkSchema = z.object({ source: z.enum(["neovoir"]), name: z.string().max(60).optional() }).strict();
+export const deviceLinkSchema = z.object({ source: z.enum(["neovoir", "google"]), name: z.string().max(60).optional() }).strict();
 
 /** 機器の取り込み方（光源・縮小） */
 export const deviceOptionsSchema = z

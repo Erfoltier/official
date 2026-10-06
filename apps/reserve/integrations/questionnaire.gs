@@ -13,7 +13,7 @@
  *   1. 回答のスプレッドシートを開き、［拡張機能］→［Apps Script］に、このファイルの中身をすべて貼り付けて保存
  *   2. ［プロジェクトの設定］→［スクリプト プロパティ］に次を入れる（コードには書かない）
  *        RESERVE_URL   https://（ドメイン）/reserve/api/v1/integration/questionnaires
- *        TOKEN         config.php の integration_token の値
+ *        TOKEN         予約カレンダーの「設定 → 外部機器の連携 → Googleの問診票・同意書・料金表の鍵」で作った鍵（config.php の integration_token でも可）
  *        BASIC_USER / BASIC_PASS   入口の鍵（Basic認証）を掛けている場合のID・パスワード
  *   3. 関数「setup」を1回実行して、許可を求められたら許可する（以後は自動）
  *

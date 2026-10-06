@@ -17,7 +17,7 @@ final class Store
     private const FIELD_LABEL = [
         'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール', 'postalCode' => '郵便番号', 'address' => '住所',
         'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
-        'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'lineUserId' => 'LINE紐付け',
+        'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'questionnaireOther' => 'その他の問診票情報', 'lineUserId' => 'LINE紐付け',
     ];
     private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'postalCode', 'address', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
@@ -1271,6 +1271,9 @@ final class Store
         if (isset($input['medications'])) {
             $out['medications'] = $opt(self::checkNote('内服歴', $input['medications'], 2000));
         }
+        if (isset($input['questionnaireOther'])) {
+            $out['questionnaireOther'] = $opt(self::checkNote('その他の問診票情報', $input['questionnaireOther'], 8000));
+        }
         return $out;
     }
 
@@ -1415,7 +1418,7 @@ final class Store
 
     // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
 
-    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール'];
+    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール', 'google' => 'Google連携（問診票・同意書・料金表）'];
 
     /** 連携の一覧と受け取りの状況（鍵そのものは返さない） */
     public static function deviceLinks(): array
@@ -1429,12 +1432,13 @@ final class Store
         }
         usort($links, fn($a, $b) => strcmp($a['createdAt'], $b['createdAt']));
         $last = null;
-        foreach ($links as $l) {
+        $devices = array_values(array_filter($links, fn($l) => $l['source'] === 'neovoir'));
+        foreach ($devices as $l) {
             if (isset($l['lastUsedAt']) && ($last === null || $l['lastUsedAt'] > $last)) {
                 $last = $l['lastUsedAt'];
             }
         }
-        $out = ['links' => $links, 'inbox' => $db->count('photoInbox'), 'received' => array_sum(array_map(fn($l) => $l['received'], $links))];
+        $out = ['links' => $links, 'inbox' => $db->count('photoInbox'), 'received' => array_sum(array_map(fn($l) => $l['received'], $devices))];
         if ($last !== null) {
             $out['lastReceivedAt'] = $last;
         }
@@ -1450,7 +1454,7 @@ final class Store
             throw new StoreError('invalid', '連携できない機器です');
         }
         $name = self::checkText('名前', $input['name'] ?? '', 40, false) ?: self::DEVICE_SOURCES[$source];
-        $token = $source === 'neovoir' ? 'nv_' . bin2hex(random_bytes(20)) : bin2hex(random_bytes(20));
+        $token = ($source === 'neovoir' ? 'nv_' : 'gi_') . bin2hex(random_bytes(20));
         $id = new_id('dl');
         $link = ['id' => $id, 'source' => $source, 'name' => $name, 'createdAt' => now_iso(), 'createdBy' => $by, 'received' => 0];
         Db::i()->put('deviceLink', $id, [...$link, 'tokenHash' => hash('sha256', $token)]);
@@ -1498,6 +1502,21 @@ final class Store
     }
 
     /** 鍵から連携を探す（止めたもの・違う鍵は null） */
+    /** 外部連携の受け取り口で使う「Google連携の鍵」。合えば最後に使った日時を残して true */
+    public static function acceptIntegrationLink(string $token): bool
+    {
+        $l = self::deviceLinkByToken($token);
+        if ($l === null || $l['source'] !== 'google') {
+            return false;
+        }
+        $db = Db::i();
+        $cur = $db->get('deviceLink', $l['id']);
+        if (is_array($cur) && (!isset($cur['lastUsedAt']) || strcmp($cur['lastUsedAt'], gmdate('Y-m-d\TH:i', time() - 60)) < 0)) {
+            $db->put('deviceLink', $l['id'], [...$cur, 'lastUsedAt' => now_iso()]);
+        }
+        return true;
+    }
+
     public static function deviceLinkByToken(string $token): ?array
     {
         if (strlen($token) < 20) {
@@ -3422,6 +3441,9 @@ final class Store
                 $q['receivedAt'] = now_iso();
                 $q = drop_null($q);
                 Db::i()->put('questionnaire', $q['id'], $q);
+                if ($patientId) {
+                    self::fillPatientFromQuestionnaire($patientId, $q);
+                }
                 $out['received']++;
                 $patientId ? $out['matched']++ : $out['unmatched']++;
             }
@@ -3485,7 +3507,89 @@ final class Store
         if ($by) {
             Auth::audit($by, '問診票を患者に結びつけ', $found['id']);
         }
+        self::fillPatientFromQuestionnaire($found['id'], $next);
         return $next;
+    }
+
+    // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方。Node.js 版と同じ）
+    private const Q_KNOWN = '/タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
+    private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
+
+    /** 「なし」などの回答は写さない */
+    private static function answered(?string $v): bool
+    {
+        return $v !== null && $v !== '' && !preg_match(self::Q_NONE, (string) preg_replace('/[\s　]/u', '', $v));
+    }
+
+    /**
+     * 結びついた問診票の回答を患者の基本情報へ写す（院長の決定：患者の欄が空のときだけ）。
+     * 住所・電話 → 連絡先情報、アレルギー → 注意事項、既往歴・内服歴、どれにも当てはまらない回答 → その他の問診票情報（日付付きで足す）
+     */
+    private static function fillPatientFromQuestionnaire(string $patientId, array $q): void
+    {
+        $cur = self::patients()[$patientId] ?? null;
+        if (!$cur || !empty($cur['deleted'])) {
+            return;
+        }
+        $find = function (string $re, ?string $not = null) use ($q): ?string {
+            foreach ($q['answers'] as $x) {
+                if (preg_match($re, $x['q']) && !($not && preg_match($not, $x['q']))) {
+                    return $x['a'];
+                }
+            }
+            return null;
+        };
+        $address = $find('/住所/u', '/メール|郵便/u');
+        $postal = $find('/郵便番号|〒/u', '/メール/u');
+        if ($address !== null && preg_match('/^〒?\s*([0-9０-９]{3}[-－ー‐]?[0-9０-９]{4})\s*/u', $address, $m)) {
+            $postal = $postal ?: $m[1];
+            $address = substr($address, strlen($m[0]));
+        }
+        $wanted = [];
+        if (empty($cur['phone']) && !empty($q['phone'])) {
+            $wanted['phone'] = $q['phone'];
+        }
+        if (empty($cur['postalCode']) && $postal) {
+            $wanted['postalCode'] = $postal;
+        }
+        if (empty($cur['address']) && self::answered($address)) {
+            $wanted['address'] = (string) preg_replace('/\s*\n\s*/u', ' ', $address);
+        }
+        if (empty($cur['history']) && self::answered($q['history'] ?? null)) {
+            $wanted['history'] = $q['history'];
+        }
+        if (empty($cur['medications']) && self::answered($q['medications'] ?? null)) {
+            $wanted['medications'] = $q['medications'];
+        }
+        if (empty($cur['cautionNote']) && self::answered($q['allergies'] ?? null)) {
+            $wanted['caution'] = true;
+            $wanted['cautionNote'] = js_slice('アレルギー：' . $q['allergies'], 500);
+        }
+        $other = [];
+        foreach ($q['answers'] as $x) {
+            if (!preg_match(self::Q_KNOWN, $x['q']) && self::answered($x['a'])) {
+                $other[] = "{$x['q']}：{$x['a']}";
+            }
+        }
+        if ($other) {
+            $block = '【問診票 ' . js_slice($q['submittedAt'], 10) . "】\n" . implode("\n", $other);
+            $prev = $cur['questionnaireOther'] ?? '';
+            $wanted['questionnaireOther'] = js_slice($prev !== '' ? "{$prev}\n\n{$block}" : $block, 8000);
+        }
+        // 形の合わない値（電話番号の形など）は、その項目だけ写さない
+        $ok = [];
+        foreach ($wanted as $k => $v) {
+            try {
+                self::patientFields([$k => $v], $patientId);
+                $ok[$k] = $v;
+            } catch (StoreError) {
+                // 写さない
+            }
+        }
+        if (!$ok) {
+            return;
+        }
+        self::updatePatient($patientId, [...$ok, 'version' => $cur['version']], ['id' => 'questionnaire', 'name' => '問診票（自動取り込み）']);
     }
 
     public static function deleteQuestionnaire(string $id, ?array $by = null): void
@@ -3734,6 +3838,7 @@ final class Store
             $next['memo'] = implode("\n", array_filter([$keep['memo'] ?? '', !empty($dup['memo']) ? "（統合元 診察券{$dup['chartNo']}）{$dup['memo']}" : ''])) ?: null;
             $next['history'] = implode("\n", array_filter([$keep['history'] ?? '', $dup['history'] ?? ''])) ?: null;
             $next['medications'] = implode("\n", array_filter([$keep['medications'] ?? '', $dup['medications'] ?? ''])) ?: null;
+            $next['questionnaireOther'] = implode("\n\n", array_filter([$keep['questionnaireOther'] ?? '', $dup['questionnaireOther'] ?? ''])) ?: null;
             $next['version'] = $keep['version'] + 1;
             $next['updatedAt'] = $at;
             self::putPatient(drop_null($next));

@@ -86,6 +86,8 @@ export interface Patient {
   postalCode?: string;
   /** 住所（都道府県から） */
   address?: string;
+  /** その他の問診票情報（既往歴・内服歴・アレルギー・連絡先に当てはまらない問診票の回答。回答ごとに日付付きで足す） */
+  questionnaireOther?: string;
   /**
    * LINEのユーザーID。患者本人がQRコードで紐付けを完了したときだけ入る。
    * 電話番号や氏名の一致で自動的に入れてはいけない（誤送信防止）。
@@ -356,8 +358,8 @@ export interface PatientFile {
 }
 
 /** 写真を送ってくる機器（院のパソコンに置いた取り込み係から） */
-export type DeviceSource = "neovoir";
-export const DEVICE_SOURCE_LABEL: Record<DeviceSource, string> = { neovoir: "ネオボワール" };
+export type DeviceSource = "neovoir" | "google";
+export const DEVICE_SOURCE_LABEL: Record<DeviceSource, string> = { neovoir: "ネオボワール", google: "Google連携" };
 
 /** 機器の連携（鍵そのものは保存せず、作ったときに1回だけ見せる） */
 /** ネオボワールの4つの光源（NL 通常光・PL 偏光・SL・UV 紫外線） */

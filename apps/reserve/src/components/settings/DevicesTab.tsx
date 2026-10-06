@@ -29,6 +29,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   const [status, setStatus] = useState<DeviceLinksStatus | null>(null);
   const [inbox, setInbox] = useState<PhotoInboxItem[] | null>(null);
   const [newToken, setNewToken] = useState<string | null>(null);
+  const [newGoogleKey, setNewGoogleKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -58,7 +59,8 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
     }
   };
 
-  const active = status?.links.filter((l) => !l.revoked) ?? [];
+  const active = status?.links.filter((l) => !l.revoked && l.source === "neovoir") ?? [];
+  const googleKeys = status?.links.filter((l) => !l.revoked && l.source === "google") ?? [];
   const serverUrl = typeof window === "undefined" ? "" : `${window.location.origin}${withBase("")}`.replace(/\/$/, "");
 
   return (
@@ -176,6 +178,26 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
         )}
         {!isAdmin && <p className={styles.muted}>つなぐ設定は院長・管理者ができます。</p>}
       </div>
+
+      {isAdmin && status && (
+        <GoogleKeysCard
+          keys={googleKeys}
+          serverUrl={serverUrl}
+          busy={busy}
+          onCreate={() =>
+            run(async () => {
+              const r = await createDeviceLink("Google連携（問診票・同意書・料金表）", "google");
+              setNewGoogleKey(r.token);
+            })
+          }
+          onRevoke={(l) => {
+            if (window.confirm(`「${l.name}」の鍵を使えなくしますか？（この鍵を入れたスクリプトは送れなくなります）`)) run(() => revokeDeviceLink(l.id), "鍵を止めました");
+          }}
+          newKey={newGoogleKey}
+          onCloseKey={() => setNewGoogleKey(null)}
+          notify={notify}
+        />
+      )}
 
       <div className={styles.clinicCard}>
         <h3 className={styles.cardTitle}>照合待ちの写真{inbox ? `（${inbox.length}枚）` : ""}</h3>
@@ -315,6 +337,80 @@ function OptionsEditor({ link, busy, onSave }: { link: DeviceLink; busy: boolean
           取り込み方を保存
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Google連携の鍵：問診票・同意書・料金表の Apps Script がこの予約カレンダーへ送るときの TOKEN */
+function GoogleKeysCard(props: {
+  keys: DeviceLink[];
+  serverUrl: string;
+  busy: boolean;
+  newKey: string | null;
+  onCreate: () => void;
+  onRevoke: (l: DeviceLink) => void;
+  onCloseKey: () => void;
+  notify: (t: string) => void;
+}) {
+  const { keys, serverUrl, busy, newKey, onCreate, onRevoke, onCloseKey, notify } = props;
+  const api = `${serverUrl}/api/v1/integration`;
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>Googleの問診票・同意書・料金表の鍵</h3>
+      <p className={styles.hint}>
+        Googleフォームの問診票・同意書のひな形・料金表（スプレッドシート）の Apps Script が、この予約カレンダーへ送るときに使う鍵です。
+        各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に入れます。
+      </p>
+      {keys.map((l) => (
+        <div key={l.id} className={styles.prefRow}>
+          <b>{l.name}</b>
+          <small>
+            鍵を作った日 {stamp(l.createdAt)}（{l.createdBy.name}）・最後に使われた日時 {stamp(l.lastUsedAt)}
+          </small>
+          <div>
+            <button className={styles.btn} disabled={busy} onClick={() => onRevoke(l)}>
+              この鍵を止める
+            </button>
+          </div>
+        </div>
+      ))}
+      {newKey ? (
+        <div className={styles.importBox}>
+          <b>鍵（この画面を閉じると二度と表示されません）</b>
+          <code className={styles.tokenBox}>{newKey}</code>
+          <div className={styles.actions}>
+            <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newKey).then(() => notify("鍵をコピーしました"), () => {})}>
+              コピー
+            </button>
+            <button className={styles.btn} onClick={onCloseKey}>
+              閉じる
+            </button>
+          </div>
+          <p className={styles.hint}>各スクリプトの TOKEN に貼り付けてください。チャットやメールには貼らないでください。</p>
+        </div>
+      ) : (
+        <div className={styles.actions}>
+          <button className={styles.primary} disabled={busy} onClick={onCreate}>
+            {keys.length ? "鍵をもう1つ作る" : "鍵を作る"}
+          </button>
+        </div>
+      )}
+      <details className={styles.priceUrls}>
+        <summary>スクリプト プロパティに入れるもの</summary>
+        <ul className={styles.steps}>
+          <li>
+            <code>TOKEN</code>：上で作った鍵（3つのスクリプトとも同じ鍵で構いません）
+          </li>
+          <li>
+            <code>RESERVE_URL</code>：問診票は <code>{api}/questionnaires</code>、同意書は <code>{api}/consent-templates</code>、料金表は <code>{api}/prices</code>
+          </li>
+          <li>
+            <code>BASIC_USER</code>・<code>BASIC_PASS</code>：予約カレンダーをブラウザで開くときに聞かれる ID・パスワード
+          </li>
+          <li>入れ終わったら、エディタで <code>setup</code> を1回実行します（自動で送る時刻の登録）。</li>
+        </ul>
+        <p className={styles.hint}>鍵が漏れたかもしれないときは「この鍵を止める」で止め、新しい鍵を作って各スクリプトに入れ直してください。</p>
+      </details>
     </div>
   );
 }

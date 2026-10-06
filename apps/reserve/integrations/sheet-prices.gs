@@ -5,7 +5,7 @@
  * 初回だけ：
  *   1. ［プロジェクトの設定］→［スクリプト プロパティ］に次の4つを入れる（コードには書かない）
  *        RESERVE_URL   https://（ドメイン）/reserve/api/v1/integration/prices
- *        TOKEN         config.php の integration_token の値
+ *        TOKEN         予約カレンダーの「設定 → 外部機器の連携 → Googleの問診票・同意書・料金表の鍵」で作った鍵（config.php の integration_token でも可）
  *        BASIC_USER    ロリポップのアクセス制限の ID
  *        BASIC_PASS    ロリポップのアクセス制限の パスワード
  *   2. 関数「setup」を1回実行（毎朝6時と、シートを変えたときに自動で送るようになる）

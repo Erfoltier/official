@@ -132,7 +132,7 @@ export async function reorder(kind: "lanes" | "menus" | "products" | "stages", i
 export type PatientUpdate = Partial<
   Pick<
     Patient,
-    "name" | "kana" | "nameAlt" | "phone" | "email" | "postalCode" | "address" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications"
+    "name" | "kana" | "nameAlt" | "phone" | "email" | "postalCode" | "address" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications" | "questionnaireOther"
   >
 >;
 
@@ -495,8 +495,8 @@ export function fetchDeviceLinks(): Promise<DeviceLinksStatus> {
   return call(`/api/v1/device-links`);
 }
 
-export function createDeviceLink(name: string): Promise<{ link: DeviceLink; token: string }> {
-  return call(`/api/v1/device-links`, { method: "POST", body: JSON.stringify({ source: "neovoir", ...(name.trim() && { name: name.trim() }) }) });
+export function createDeviceLink(name: string, source: DeviceLink["source"] = "neovoir"): Promise<{ link: DeviceLink; token: string }> {
+  return call(`/api/v1/device-links`, { method: "POST", body: JSON.stringify({ source, ...(name.trim() && { name: name.trim() }) }) });
 }
 
 export function revokeDeviceLink(id: string): Promise<DeviceLink> {

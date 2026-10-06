@@ -41,6 +41,7 @@ function toForm(d: PatientDetail): Form {
     memo: p.memo ?? "",
     history: p.history ?? "",
     medications: p.medications ?? "",
+    questionnaireOther: p.questionnaireOther ?? "",
   };
 }
 
@@ -339,6 +340,9 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         </Field>
         <Field label="内服歴・服用中の薬" changed={changedKeys.includes("medications")}>
           <textarea className={styles.textarea} value={form.medications} onChange={(e) => set("medications", e.target.value)} maxLength={2000} rows={2} placeholder="例：ロキソニン頓用、低用量ピル" />
+        </Field>
+        <Field label="その他の問診票情報（既往歴・内服歴・アレルギー・連絡先以外の問診票の回答。問診票が届くたびに日付付きで足されます）" changed={changedKeys.includes("questionnaireOther")}>
+          <textarea className={styles.textarea} value={form.questionnaireOther} onChange={(e) => set("questionnaireOther", e.target.value)} maxLength={8000} rows={3} />
         </Field>
         <QuestionnaireAnswers patientId={p.id} />
         <Field label="院内メモ" changed={changedKeys.includes("memo")}>

@@ -160,7 +160,7 @@ final class Http
         $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
         $given = (string) ($_SERVER['HTTP_X_DEVICE_TOKEN'] ?? (str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : ''));
         $link = Store::deviceLinkByToken($given);
-        if ($link === null) {
+        if ($link === null || $link['source'] !== 'neovoir') {
             self::json(['error' => 'unauthorized'], 401);
         }
         return $link;
@@ -169,12 +169,16 @@ final class Http
     /** 外部連携API（リマインド送信プログラム等）の認証。トークン未設定なら停止（503） */
     public static function checkIntegrationAuth(): void
     {
+        $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        $given = (string) ($_SERVER['HTTP_X_INTEGRATION_TOKEN'] ?? (str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : ''));
+        // 設定画面で発行した「Google連携の鍵」（止めたものは使えない）
+        if (Store::acceptIntegrationLink($given)) {
+            return;
+        }
         $expected = (string) (config()['integration_token'] ?? '');
         if (strlen($expected) < 32) {
             self::json(['error' => 'disabled', 'message' => '外部連携APIは無効です'], 503);
         }
-        $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-        $given = (string) ($_SERVER['HTTP_X_INTEGRATION_TOKEN'] ?? (str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : ''));
         if (!hash_equals($expected, $given)) {
             self::json(['error' => 'unauthorized'], 401);
         }
@@ -354,7 +358,7 @@ final class Schema
         return [
             'kana?' => $s(120), 'nameAlt?' => $s(120), 'phone?' => $s(30), 'email?' => $s(200), 'postalCode?' => $s(10), 'address?' => $s(200), 'chartNo?' => $s(30), 'm3ChartNo?' => $s(30),
             'birthDate?' => $s(10), 'caution?' => [V::class, 'bool'], 'cautionNote?' => $s(1000), 'memo?' => $s(12000),
-            'history?' => $s(4000), 'medications?' => $s(4000),
+            'history?' => $s(4000), 'medications?' => $s(4000), 'questionnaireOther?' => $s(8000),
         ];
     }
 
@@ -409,7 +413,7 @@ final class Schema
 
     public static function deviceLink(mixed $v): array
     {
-        return V::shape($v, ['source' => fn($x) => V::enum($x, ['neovoir']), 'name?' => fn($x) => V::str($x, 60)]);
+        return V::shape($v, ['source' => fn($x) => V::enum($x, ['neovoir', 'google']), 'name?' => fn($x) => V::str($x, 60)]);
     }
 
     public static function deviceOptions(mixed $v): array

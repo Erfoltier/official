@@ -775,7 +775,7 @@ export function deletePatientReservations(patientId: string, by: Actor): { patie
 
 // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
 
-const DEVICE_SOURCES: Record<DeviceSource, string> = { neovoir: "ネオボワール" };
+const DEVICE_SOURCES: Record<DeviceSource, string> = { neovoir: "ネオボワール", google: "Google連携（問診票・同意書・料金表）" };
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
 const publicLink = (l: DeviceLink & { tokenHash: string }): DeviceLink => {
@@ -788,8 +788,9 @@ const publicLink = (l: DeviceLink & { tokenHash: string }): DeviceLink => {
 export function deviceLinks(): DeviceLinksStatus {
   const st = state();
   const links = [...st.deviceLinks.values()].map(publicLink).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const last = links.reduce<string | undefined>((m, l) => (l.lastUsedAt && (!m || l.lastUsedAt > m) ? l.lastUsedAt : m), undefined);
-  return { links, inbox: st.photoInbox.size, received: links.reduce((n, l) => n + l.received, 0), ...(last && { lastReceivedAt: last }) };
+  const devices = links.filter((l) => l.source === "neovoir");
+  const last = devices.reduce<string | undefined>((m, l) => (l.lastUsedAt && (!m || l.lastUsedAt > m) ? l.lastUsedAt : m), undefined);
+  return { links, inbox: st.photoInbox.size, received: devices.reduce((n, l) => n + l.received, 0), ...(last && { lastReceivedAt: last }) };
 }
 
 /** 接続用の鍵を作る。鍵はこのときだけ返し、保存するのはハッシュだけ */
@@ -797,7 +798,7 @@ export function createDeviceLink(input: { source: DeviceSource; name?: string },
   const st = state();
   if (!DEVICE_SOURCES[input.source]) throw new StoreError("invalid", "連携できない機器です");
   const name = checkText("名前", input.name ?? "", 40, false) || DEVICE_SOURCES[input.source];
-  const token = `${input.source === "neovoir" ? "nv_" : ""}${randomBytes(20).toString("hex")}`;
+  const token = `${input.source === "neovoir" ? "nv_" : "gi_"}${randomBytes(20).toString("hex")}`;
   const id = `dl-${Date.now().toString(36)}-${randomBytes(3).toString("hex")}`;
   const link: DeviceLink = { id, source: input.source, name, createdAt: new Date().toISOString(), createdBy: by, received: 0 };
   st.deviceLinks.set(id, { ...link, tokenHash: sha256(token) });
@@ -830,6 +831,16 @@ export function setDeviceOptions(id: string, options: DeviceOptions, by: Actor):
 export const deviceOptionsOf = (l: DeviceLink): DeviceOptions => l.options ?? DEFAULT_DEVICE_OPTIONS;
 
 /** 鍵から連携を探す（止めたもの・違う鍵は undefined） */
+/** 外部連携の受け取り口で使う「Google連携の鍵」。合えば最後に使った日時を残して true */
+export function acceptIntegrationLink(token: string): boolean {
+  const l = deviceLinkByToken(token);
+  if (!l || l.source !== "google") return false;
+  const st = state();
+  const cur = st.deviceLinks.get(l.id);
+  if (cur && (!cur.lastUsedAt || Date.parse(cur.lastUsedAt) < Date.now() - 60_000)) st.deviceLinks.set(l.id, { ...cur, lastUsedAt: new Date().toISOString() });
+  return true;
+}
+
 export function deviceLinkByToken(token: string): DeviceLink | undefined {
   if (token.length < 20) return undefined;
   const h = sha256(token);
@@ -1307,6 +1318,7 @@ export interface PatientInput {
   memo?: string;
   history?: string;
   medications?: string;
+  questionnaireOther?: string;
 }
 
 export type CreatePatientInput = PatientInput & { name: string };
@@ -1388,6 +1400,7 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
   if (input.memo !== undefined) out.memo = opt(checkNote("メモ", input.memo, 12000));
   if (input.history !== undefined) out.history = opt(checkNote("既往歴", input.history, 2000));
   if (input.medications !== undefined) out.medications = opt(checkNote("内服歴", input.medications, 2000));
+  if (input.questionnaireOther !== undefined) out.questionnaireOther = opt(checkNote("その他の問診票情報", input.questionnaireOther, 8000));
   return out;
 }
 
@@ -1428,6 +1441,7 @@ const FIELD_LABEL: Record<string, string> = {
   memo: "メモ",
   history: "既往歴",
   medications: "内服歴",
+  questionnaireOther: "その他の問診票情報",
   lineUserId: "LINE紐付け",
 };
 
@@ -2028,6 +2042,7 @@ function mergePatientsImpl(
   next.memo = [keep.memo, dup.memo && `（統合元 診察券${dup.chartNo}）${dup.memo}`].filter(Boolean).join("\n") || undefined;
   next.history = [keep.history, dup.history].filter(Boolean).join("\n") || undefined;
   next.medications = [keep.medications, dup.medications].filter(Boolean).join("\n") || undefined;
+  next.questionnaireOther = [keep.questionnaireOther, dup.questionnaireOther].filter(Boolean).join("\n\n") || undefined;
   next.version = keep.version + 1;
   next.updatedAt = at;
   st.patients.set(keep.id, dropUndefined(next));
@@ -2290,6 +2305,7 @@ function receiveQuestionnairesImpl(responses: QuestionnaireInput[]): { received:
       receivedAt: new Date().toISOString(),
     });
     st.questionnaires.set(q.id, q);
+    if (patientId) fillPatientFromQuestionnaire(patientId, q);
     out.received++;
     if (patientId) out.matched++;
     else out.unmatched++;
@@ -2328,7 +2344,62 @@ export function linkQuestionnaire(id: string, chartNo: string, by?: Actor): Ques
   const next: Questionnaire = { ...q, patientId: p.id, ...(by && { linkedBy: by }) };
   st.questionnaires.set(id, next);
   if (by) audit(by, "問診票を患者に結びつけ", p.id);
+  fillPatientFromQuestionnaire(p.id, next);
   return next;
+}
+
+// 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方）
+const Q_ADDRESS = /住所/;
+const Q_POSTAL = /郵便番号|〒/;
+const Q_KNOWN = /タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/i;
+const Q_NONE = /^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/i;
+const QUESTIONNAIRE_ACTOR: Actor = { id: "questionnaire", name: "問診票（自動取り込み）" };
+
+/** 「なし」などの回答は写さない */
+const answered = (v?: string) => !!v && !Q_NONE.test(v.replace(/[\s　]/g, ""));
+
+/**
+ * 結びついた問診票の回答を患者の基本情報へ写す（院長の決定：患者の欄が空のときだけ）。
+ * 住所・電話 → 連絡先情報、アレルギー → 注意事項、既往歴・内服歴、どれにも当てはまらない回答 → その他の問診票情報（日付付きで足す）
+ */
+function fillPatientFromQuestionnaire(patientId: string, q: Questionnaire): void {
+  const cur = state().patients.get(patientId);
+  if (!cur || cur.deleted) return;
+  const find = (re: RegExp, not?: RegExp) => q.answers.find((x) => re.test(x.q) && !(not && not.test(x.q)))?.a;
+  let address = find(Q_ADDRESS, /メール|郵便/);
+  let postal = find(Q_POSTAL, /メール/);
+  const m = address?.match(/^〒?\s*([0-9０-９]{3}[-－ー‐]?[0-9０-９]{4})\s*/);
+  if (address && m) {
+    postal = postal || m[1];
+    address = address.slice(m[0].length);
+  }
+  const wanted: PatientInput = {};
+  if (!cur.phone && q.phone) wanted.phone = q.phone;
+  if (!cur.postalCode && postal) wanted.postalCode = postal;
+  if (!cur.address && answered(address)) wanted.address = address!.replace(/\s*\n\s*/g, " ");
+  if (!cur.history && answered(q.history)) wanted.history = q.history;
+  if (!cur.medications && answered(q.medications)) wanted.medications = q.medications;
+  if (!cur.cautionNote && answered(q.allergies)) {
+    wanted.caution = true;
+    wanted.cautionNote = `アレルギー：${q.allergies}`.slice(0, 500);
+  }
+  const other = q.answers.filter((x) => !Q_KNOWN.test(x.q) && answered(x.a)).map((x) => `${x.q}：${x.a}`);
+  if (other.length) {
+    const block = `【問診票 ${q.submittedAt.slice(0, 10)}】\n${other.join("\n")}`;
+    wanted.questionnaireOther = (cur.questionnaireOther ? `${cur.questionnaireOther}\n\n${block}` : block).slice(0, 8000);
+  }
+  // 形の合わない値（電話番号の形など）は、その項目だけ写さない
+  const ok: PatientInput = {};
+  for (const [k, v] of Object.entries(wanted) as [keyof PatientInput, never][]) {
+    try {
+      patientFields({ [k]: v }, patientId);
+      ok[k] = v;
+    } catch {
+      // 写さない
+    }
+  }
+  if (Object.keys(ok).length === 0) return;
+  updatePatient(patientId, { ...ok, version: cur.version }, QUESTIONNAIRE_ACTOR);
 }
 
 export function deleteQuestionnaire(id: string, by?: Actor): void {

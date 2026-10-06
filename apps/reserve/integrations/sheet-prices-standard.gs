@@ -14,7 +14,7 @@
  * 置き方：スプレッドシートの［拡張機能］→［Apps Script］に、このファイルの中身をすべて貼り付けて保存。
  * ［プロジェクトの設定］→［スクリプト プロパティ］に次を入れて、関数「setup」を1回実行する（許可を求められたら許可）。
  *   RESERVE_URL   https://（ドメイン）/reserve/api/v1/integration/prices
- *   TOKEN         config.php の integration_token の値
+ *   TOKEN         予約カレンダーの「設定 → 外部機器の連携 → Googleの問診票・同意書・料金表の鍵」で作った鍵（config.php の integration_token でも可）
  *   LABEL         取り込みの名前（例：自費商品）。予約カレンダーの料金表の見出しになる。省くとスプレッドシートの名前
  *   DEFAULT_KIND  種類の列がないときの種類：「商品」か「施術」。省くと分類の言葉で見分ける（商品・スキンケア・内服・外用など → 商品）
  *   SHEET_NAME    読むシートの名前（省くといちばん左のシート）

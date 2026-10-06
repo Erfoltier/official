@@ -15,7 +15,7 @@
  *
  * 予備：ウェブアプリが止まっていても使えるよう、毎朝ソフトへ送っておく場合は、さらに次を入れて「setup」を1回実行する。
  *        RESERVE_URL   https://（ドメイン）/reserve/api/v1/integration/consent-templates
- *        TOKEN         config.php の integration_token の値
+ *        TOKEN         予約カレンダーの「設定 → 外部機器の連携 → Googleの問診票・同意書・料金表の鍵」で作った鍵（config.php の integration_token でも可）
  *        BASIC_USER / BASIC_PASS   ロリポップのアクセス制限の ID・パスワード
  *
  * 送るのは Google ドキュメントだけ（Word・PDF は送らない。使うときは Google ドキュメントに変換してフォルダに置く）。

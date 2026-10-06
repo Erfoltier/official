@@ -2,7 +2,7 @@ import "server-only";
 
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { StoreError } from "@/lib/server/store";
+import { StoreError, acceptIntegrationLink } from "@/lib/server/store";
 import { AuthError } from "@/lib/server/staff";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -54,13 +54,15 @@ export async function readBytes(request: Request, maxBytes: number): Promise<Uin
  * 未設定なら外部連携APIは停止状態（503）にする。
  */
 export function checkIntegrationAuth(request: Request): Response | null {
+  // 共用サーバーで Authorization が Basic認証に使われている場合に備え、X-Integration-Token でも受け付ける
+  const header = request.headers.get("authorization") ?? "";
+  const given = request.headers.get("x-integration-token") ?? (header.startsWith("Bearer ") ? header.slice(7) : "");
+  // 設定画面で発行した「Google連携の鍵」（止めたものは使えない）
+  if (acceptIntegrationLink(given)) return null;
   const expected = process.env.INTEGRATION_API_TOKEN;
   if (!expected || expected.length < 32) {
     return json({ error: "disabled", message: "外部連携APIは無効です" }, 503);
   }
-  // 共用サーバーで Authorization が Basic認証に使われている場合に備え、X-Integration-Token でも受け付ける
-  const header = request.headers.get("authorization") ?? "";
-  const given = request.headers.get("x-integration-token") ?? (header.startsWith("Bearer ") ? header.slice(7) : "");
   const a = Buffer.from(given);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
