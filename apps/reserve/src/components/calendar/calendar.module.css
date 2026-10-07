@@ -2184,16 +2184,15 @@ button.stagePill[data-clickable]:disabled {
 /* ===== 配色ごとの面の表情（ブロックごとに色の差をつけ、単方向ではないふんわりしたグラデーション） ===== */
 /*
  * ピンクベージュ：3色の構成。
- *  エトープ（灰みの茶）…上のメニュー・レーン名・時刻の列（枠の部品）
+ *  エトープ（灰みの茶）…レーン名・時刻の列（予定表の枠）
+ *  淡いピンクベージュ…上のメニュー
  *  ファンデのようなベージュ（ピンクを含まない）…予定表の升目
  *  ピンクベージュ…左の受付一覧と右の詳細（彩り）
  */
 :global(:root[data-theme="blush"]) .toolbar {
-  --text-muted: #3a2f2a;
-  --text-faint: #4a3d36;
-  background: linear-gradient(180deg, rgb(255 255 255 / 22%) 0%, rgb(255 255 255 / 0%) 55%, rgb(40 28 22 / 8%) 100%),
-    linear-gradient(90deg, #a99a8d 0%, #b8aa9d 40%, #b1a294 70%, #a19184 100%);
-  border-image: linear-gradient(90deg, #8f7e72 0%, #c9a9a6 50%, #8f7e72 100%) 1;
+  background: radial-gradient(520px 120px at 18% -30%, #f0d9d3 0%, transparent 70%), radial-gradient(480px 120px at 92% 130%, #f2e4da 0%, transparent 70%),
+    linear-gradient(90deg, #f6e9e4 0%, #faf2ed 50%, #f5e7e1 100%);
+  border-image: linear-gradient(90deg, #b9a79b 0%, #d8b9b6 50%, #b9a79b 100%) 1;
 }
 
 :global(:root[data-theme="blush"]) .header {
