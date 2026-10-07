@@ -240,6 +240,24 @@
 
 .grip {
   cursor: grab;
+  touch-action: none;
+}
+
+/* 指でつかんでいる写真（指の少し上に出す） */
+.ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 68px;
+  height: 86px;
+  object-fit: cover;
+  border-radius: 4px;
+  outline: 2px solid #ecebe7;
+  box-shadow: 0 14px 28px rgb(0 0 0 / 60%);
+  opacity: 0.92;
+  pointer-events: none;
+  z-index: 10;
+  rotate: -3deg;
 }
 
 .meta {
@@ -344,6 +362,8 @@
 
 .thumb {
   position: relative;
+  /* 横の動きは帯のスクロール、縦（上へ引き上げ）は写真をつかむ */
+  touch-action: pan-x;
   width: 68px;
   height: 86px;
   padding: 0;

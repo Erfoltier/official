@@ -237,6 +237,66 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
     else if (data.startsWith("s:")) swap(Number(data.slice(2)), i);
   };
 
+  // ---- 指でのドラッグ（Android などはブラウザのドラッグが指で動かないため自前で行う） ----
+  // 下の帯の写真は「上へ引き上げる」とつかむ（横の動きは帯のスクロールのまま）。枠の ⠿ は押してすぐつかむ
+  const [touchDrag, setTouchDrag] = useState<{ data: string; src?: string; x: number; y: number } | null>(null);
+  const pending = useRef<{ data: string; src?: string; x: number; y: number; id: number } | null>(null);
+  const suppressClick = useRef(false);
+  const slotAt = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y)?.closest("[data-slot]");
+    return el ? Number(el.getAttribute("data-slot")) : null;
+  };
+  const touchStart = (data: string, src: string | undefined, immediate: boolean) => (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.pointerType === "mouse") return;
+    e.stopPropagation();
+    if (immediate) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setTouchDrag({ data, src, x: e.clientX, y: e.clientY });
+    } else pending.current = { data, src, x: e.clientX, y: e.clientY, id: e.pointerId };
+  };
+  const touchMove = (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.pointerType === "mouse") return;
+    const p = pending.current;
+    if (!touchDrag && p && p.id === e.pointerId) {
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      if (dy < -12 && Math.abs(dy) > Math.abs(dx)) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        pending.current = null;
+        setTouchDrag({ data: p.data, src: p.src, x: e.clientX, y: e.clientY });
+      }
+      return;
+    }
+    if (touchDrag) {
+      e.stopPropagation();
+      setTouchDrag({ ...touchDrag, x: e.clientX, y: e.clientY });
+      setDropOver(slotAt(e.clientX, e.clientY));
+    }
+  };
+  const touchEnd = (e: ReactPointerEvent<HTMLElement>) => {
+    pending.current = null;
+    if (!touchDrag) return;
+    e.stopPropagation();
+    const i = slotAt(e.clientX, e.clientY);
+    if (i !== null) {
+      if (touchDrag.data.startsWith("f:")) place(touchDrag.data.slice(2), i);
+      else swap(Number(touchDrag.data.slice(2)), i);
+    }
+    suppressClick.current = true;
+    setTouchDrag(null);
+    setDropOver(null);
+  };
+  const touchHandlers = (data: string, src: string | undefined, immediate: boolean) => ({
+    onPointerDown: touchStart(data, src, immediate),
+    onPointerMove: touchMove,
+    onPointerUp: touchEnd,
+    onPointerCancel: () => {
+      pending.current = null;
+      setTouchDrag(null);
+      setDropOver(null);
+    },
+  });
+
   const filled = slots.filter((id): id is string => !!id && byId.has(id));
   const earliest = filled.map((id) => byId.get(id)!.date).sort()[0];
   const shown = focus !== null ? [focus] : slots.map((_, i) => i);
@@ -287,6 +347,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                 <section
                   key={i}
                   className={styles.slot}
+                  data-slot={i}
                   data-active={i === active || undefined}
                   data-over={dropOver === i || undefined}
                   onClick={() => setActive(i)}
@@ -327,6 +388,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                         <div className={styles.tools}>
                           <span
                             className={styles.grip}
+                            {...touchHandlers(`s:${i}`, thumbUrl(f.id), true)}
                             draggable
                             onDragStart={(e) => {
                               e.dataTransfer.setData("text/plain", `s:${i}`);
@@ -364,7 +426,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                   ) : (
                     <div className={styles.empty}>
                       <span>ここへ写真をドラッグ</span>
-                      <small>または、この枠を選んでから下の写真をタップ</small>
+                      <small>タブレット・スマホは、下の写真を指で上へ引き上げてここで離す。この枠を選んでから写真をタップでも入ります</small>
                     </div>
                   )}
                 </section>
@@ -402,7 +464,14 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                         e.dataTransfer.setData("text/plain", `f:${f.id}`);
                         e.dataTransfer.effectAllowed = "copy";
                       }}
-                      onClick={() => place(f.id, slots[active] === null ? active : slots.includes(null) ? undefined : active)}
+                      {...touchHandlers(`f:${f.id}`, thumbUrl(f.id), false)}
+                      onClick={() => {
+                        if (suppressClick.current) {
+                          suppressClick.current = false;
+                          return;
+                        }
+                        place(f.id, slots[active] === null ? active : slots.includes(null) ? undefined : active);
+                      }}
                       title={f.name}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -416,6 +485,10 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
           </div>
         </footer>
       </div>
+      {touchDrag?.src && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={styles.ghost} src={touchDrag.src} alt="" style={{ transform: `translate3d(${touchDrag.x - 34}px, ${touchDrag.y - 60}px, 0)` }} />
+      )}
     </dialog>
   );
 }
