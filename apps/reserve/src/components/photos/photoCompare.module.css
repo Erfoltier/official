@@ -425,3 +425,14 @@
 :global(:root[data-size]) .dialog {
   zoom: 1;
 }
+
+/* 1枚のとき：枠は画面いっぱい。等倍では枠を見せず写真だけが浮かぶように */
+.stage[data-single] .photo {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.stage[data-single] .slot {
+  outline: 0;
+}

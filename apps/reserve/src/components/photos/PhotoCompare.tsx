@@ -300,7 +300,11 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   const filled = slots.filter((id): id is string => !!id && byId.has(id));
   const earliest = filled.map((id) => byId.get(id)!.date).sort()[0];
   const shown = focus !== null ? [focus] : slots.map((_, i) => i);
-  const layout = bestLayout(shown.length, stageSize.w, stageSize.h, ar);
+  // 1枚のときは枠を画面いっぱいに取る。等倍では写真の形のまま見え、拡大すると左右（上下）の余白まで使って大きく映す
+  const single = shown.length === 1;
+  const layout = single
+    ? { cols: 1, pw: Math.floor(stageSize.w), ph: Math.max(0, Math.floor(stageSize.h - META_H)) }
+    : bestLayout(shown.length, stageSize.w, stageSize.h, ar);
 
   return (
     <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} onCancel={onClose} aria-label="写真比較">
@@ -332,7 +336,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
           </button>
         </header>
 
-        <main ref={stageRef} className={styles.stage} style={{ gridTemplateColumns: `repeat(${layout.cols}, ${layout.pw || 0}px)`, gridAutoRows: `${layout.ph + META_H}px` }}>
+        <main ref={stageRef} className={styles.stage} data-single={single || undefined} style={{ gridTemplateColumns: `repeat(${layout.cols}, ${layout.pw || 0}px)`, gridAutoRows: `${layout.ph + META_H}px` }}>
           {error ? (
             <p className={styles.message}>{error}</p>
           ) : files === null ? (
