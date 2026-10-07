@@ -406,7 +406,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         <h2 className={styles.sectionTitle}>その他の操作</h2>
         <div className={styles.manageRow}>
           <button type="button" className={styles.btn} onClick={() => setComparing(true)}>
-            🖼 写真比較
+            写真比較
           </button>
           {canManage && !readOnly && (
             <>

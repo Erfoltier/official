@@ -28,6 +28,27 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.p
 const thumbUrl = (id: string) => `${fileUrl(id)}?size=thumb`;
 const viewable = (f: PatientFile) => f.kind === "image" && !f.deleted && f.type !== "image/heic" && f.type !== "image/heif";
 
+/** 枠の下の日付の行の高さ（px） */
+const META_H = 26;
+const GAP = 12;
+
+/**
+ * 並べ方を決める：写真の縦横比（幅÷高さ）のまま、余白なくいちばん大きく収まる列数を選ぶ。
+ * 縦長の写真を横に2枚、スマホの縦画面なら上下に2枚、のように画面の形に合わせて変わる
+ */
+function bestLayout(n: number, w: number, h: number, ar: number): { cols: number; pw: number; ph: number } {
+  let best = { cols: 1, pw: 0, ph: 0 };
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const cellW = (w - GAP * (cols - 1)) / cols;
+    const cellH = (h - GAP * (rows - 1)) / rows - META_H;
+    if (cellW <= 0 || cellH <= 0) continue;
+    const pw = Math.min(cellW, cellH * ar);
+    if (pw > best.pw) best = { cols, pw: Math.floor(pw), ph: Math.floor(pw / ar) };
+  }
+  return best;
+}
+
 /**
  * 写真比較（アルバムモード）。患者の写真から好きなものを枠へ入れ（ドラッグ／タップ）、なるべく大きく並べて経過を比べる。
  * 下の帯は縮小版だけを読み、大きい写真は枠に入れた分だけ読む
@@ -46,6 +67,18 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   const [views, setViews] = useState<View[]>([]);
   const [light, setLight] = useState<string>("");
   const [dropOver, setDropOver] = useState<number | null>(null);
+  const stageRef = useRef<HTMLElement>(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+  /** 写真の縦横比（幅÷高さ）。最初に表示した写真から読む。ネオボワールは縦長 */
+  const [ar, setAr] = useState(3 / 4);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setStageSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -207,7 +240,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   const filled = slots.filter((id): id is string => !!id && byId.has(id));
   const earliest = filled.map((id) => byId.get(id)!.date).sort()[0];
   const shown = focus !== null ? [focus] : slots.map((_, i) => i);
-  const cols = shown.length <= 1 ? 1 : shown.length === 4 ? 2 : shown.length >= 5 ? 3 : shown.length;
+  const layout = bestLayout(shown.length, stageSize.w, stageSize.h, ar);
 
   return (
     <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} onCancel={onClose} aria-label="写真比較">
@@ -239,7 +272,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
           </button>
         </header>
 
-        <main className={styles.stage} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        <main ref={stageRef} className={styles.stage} style={{ gridTemplateColumns: `repeat(${layout.cols}, ${layout.pw || 0}px)`, gridAutoRows: `${layout.ph + META_H}px` }}>
           {error ? (
             <p className={styles.message}>{error}</p>
           ) : files === null ? (
@@ -282,6 +315,10 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                           alt=""
                           draggable={false}
                           decoding="async"
+                          onLoad={(e) => {
+                            const im = e.currentTarget;
+                            if (im.naturalWidth && im.naturalHeight) setAr((cur) => (Math.abs(cur - im.naturalWidth / im.naturalHeight) > 0.01 ? im.naturalWidth / im.naturalHeight : cur));
+                          }}
                           style={{ transform: `translate3d(${v.x}px, ${v.y}px, 0) scale(${v.s})` }}
                         />
                         <span className={styles.badge} data-before={f.date === earliest || undefined}>
