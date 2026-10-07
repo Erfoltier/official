@@ -183,6 +183,8 @@
   display: flex;
   min-height: 0;
   min-width: 0;
+  /* 横から出てくる受付一覧・詳細が、動いている間に画面の外へはみ出してスクロールが出ないように */
+  overflow: clip;
 }
 
 .empty {
@@ -1884,24 +1886,28 @@ button.stagePill[data-clickable]:disabled {
   }
 }
 
+/*
+ * 横から出る動き：幅（margin）を動かすと毎コマ カレンダー全体の配置計算と質感の背景の描き直しが起きて
+ * カクつくため、位置（transform）と透明度だけを動かす。カレンダーの幅は最初の1コマで切り替わる
+ */
 @keyframes panelSlideIn {
   from {
-    margin-right: calc(-1 * var(--w));
-    opacity: 0.4;
+    transform: translateX(100%);
+    opacity: 0.6;
   }
   to {
-    margin-right: 0;
+    transform: none;
     opacity: 1;
   }
 }
 
 @keyframes receptionSlideIn {
   from {
-    margin-left: calc(-1 * var(--w));
-    opacity: 0.4;
+    transform: translateX(-100%);
+    opacity: 0.6;
   }
   to {
-    margin-left: 0;
+    transform: none;
     opacity: 1;
   }
 }
@@ -1925,11 +1931,20 @@ button.stagePill[data-clickable]:disabled {
 }
 
 .panel[data-enter] {
-  animation: panelSlideIn 0.24s ease-out;
+  animation: panelSlideIn 0.26s cubic-bezier(0.22, 0.8, 0.3, 1);
 }
 
 .reception[data-enter] {
-  animation: receptionSlideIn 0.24s ease-out;
+  animation: receptionSlideIn 0.26s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* 動いている間は別の層として描き、中身の描き直しを外へ広げない */
+.panel[data-enter],
+.reception[data-enter] {
+  position: relative;
+  z-index: 3;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 @media (max-width: 760px) {
