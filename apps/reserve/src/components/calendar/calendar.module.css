@@ -2338,40 +2338,57 @@ button.stagePill[data-clickable]:disabled {
 }
 
 /*
- * 白磁（ブティック）：白の中で質感を変える
- *  つやの強い陶器（光の筋がすっと入る）…上のメニュー・受付の各行・ボタン
- *  さらさらの素焼き（細かな粒子）…左の受付一覧・レーン名・時刻の列
- *  白い石（うっすらとした石目）…右の詳細
- *  まっさらな白…予定表の升目
+ * 白磁（ブティック）：部品ひとつひとつを、素材の違う白い器として作る
+ *  上のメニューの帯 … つやの強い白磁。釉の厚みで上辺に鋭い照り、下辺に青みの釉だまり
+ *  ボタン          … 小さな白磁の器。上半分に窓の映り込み、底に釉だまり（決定ボタンは黒釉）
+ *  レーン名の行    … さらさらした磁器（とても細かな粒子のつや消し）
+ *  時刻の列        … 素焼き。轆轤（ろくろ）目の細い筋
+ *  受付一覧の地    … 土の粒が見える素焼きの浅い鉢（縁に向かって落ちる陰影）
+ *  受付の各行      … つやの白磁の皿（縁の照りと、皿の下の柔らかな影）
+ *  右の詳細        … 磨いた白い大理石（流れる石目と、斜めの映り込み）
+ *  予定表の升目    … まっさらな白
  */
 :global(:root[data-theme="hakuji"]) .toolbar {
-  background: linear-gradient(180deg, rgb(255 255 255 / 100%) 0%, rgb(255 255 255 / 0%) 46%, rgb(60 58 54 / 4%) 100%),
-    linear-gradient(100deg, #f2f2f0 0%, #fafaf9 22%, #ffffff 30%, #f0f0ee 38%, #f6f6f4 62%, #ffffff 72%, #efefed 100%);
-  border-image: linear-gradient(90deg, #e2e1dd 0%, #c9c7c2 50%, #e2e1dd 100%) 1;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0%) 0%, #ffffff 14%, rgb(255 255 255 / 0%) 34%),
+    radial-gradient(60% 140% at 30% 120%, rgb(255 255 255 / 90%) 0%, rgb(255 255 255 / 0%) 70%),
+    linear-gradient(100deg, rgb(255 255 255 / 0%) 52%, rgb(255 255 255 / 85%) 60%, rgb(255 255 255 / 0%) 68%),
+    linear-gradient(180deg, #f4f4f2 0%, #fbfbfa 40%, #f2f2f1 82%, #e9ebec 100%);
+  border-image: linear-gradient(90deg, #e6e5e2 0%, #cfd1d2 50%, #e6e5e2 100%) 1;
+  box-shadow: inset 0 1px 0 #ffffff, inset 0 -1px 0 rgb(140 150 158 / 22%);
 }
 
 :global(:root[data-theme="hakuji"]) .header {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .39 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(180deg, #f9f9f8 0%, #efeeeb 100%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.4 0 0 0 0 0.37 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(180deg, #faf9f7 0%, #f1f0ec 100%);
+  box-shadow: inset 0 -1px 0 rgb(60 58 54 / 6%), inset 0 1px 0 #ffffff;
 }
 
 :global(:root[data-theme="hakuji"]) .corner,
 :global(:root[data-theme="hakuji"]) .timeCol {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .39 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(90deg, #fafaf9 0%, #efeeeb 100%);
+  background: repeating-linear-gradient(180deg, rgb(0 0 0 / 0%) 0 13px, rgb(90 84 76 / 5%) 14px, rgb(255 255 255 / 70%) 15px, rgb(0 0 0 / 0%) 16px 29px, rgb(90 84 76 / 3%) 30px, rgb(0 0 0 / 0%) 31px 37px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.42 0 0 0 0 0.38 0 0 0 0.085 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(90deg, #f7f6f2 0%, #efede8 100%);
 }
 
 :global(:root[data-theme="hakuji"]) .body {
-  background: radial-gradient(800px 500px at 30% 0%, #ffffff 0%, transparent 60%), #fdfdfc;
+  background: radial-gradient(900px 420px at 25% -5%, #ffffff 0%, rgb(255 255 255 / 0%) 60%), linear-gradient(180deg, #fefefd 0%, #fbfbfa 100%);
 }
 
 :global(:root[data-theme="hakuji"]) .reception {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .39 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(420px 320px at 110% 0%, #f7f6f4 0%, transparent 70%), radial-gradient(420px 420px at -10% 100%, #e6e5e1 0%, transparent 70%), #efeeeb;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .40 0 0 0 0 .34 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .35'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23s)'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.42 0 0 0 0 0.38 0 0 0 0.085 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(120% 90% at 50% 40%, rgb(255 255 255 / 55%) 0%, rgb(255 255 255 / 0%) 60%, rgb(80 72 62 / 7%) 100%),
+    linear-gradient(170deg, #f3f1ec 0%, #ebe8e2 100%);
 }
 
 :global(:root[data-theme="hakuji"]) .receptionRow {
-  background: linear-gradient(170deg, #ffffff 0%, #ffffff 35%, #f4f4f2 100%);
-  box-shadow: 0 2px 6px rgb(60 58 54 / 10%), 0 0 0 1px rgb(60 58 54 / 4%), inset 0 1px 0 #ffffff;
+  background: linear-gradient(104deg, rgb(255 255 255 / 0%) 62%, rgb(255 255 255 / 95%) 68%, rgb(255 255 255 / 0%) 74%),
+    radial-gradient(130% 110% at 28% 0%, #ffffff 0%, #ffffff 42%, #f6f6f5 72%, #eceef0 100%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 95%), inset 0 -2px 4px rgb(128 138 148 / 10%), 0 1px 1px rgb(60 58 54 / 7%), 0 6px 12px -6px rgb(60 58 54 / 26%);
 }
 
 :global(:root[data-theme="hakuji"]) .panel {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='.003 .012' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .54 0 0 0 0 .52 0 0 0 -1.6 .5'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)'/%3E%3C/svg%3E"), radial-gradient(500px 300px at 100% 0%, #ffffff 0%, transparent 70%), linear-gradient(160deg, #f7f6f3 0%, #eeede9 100%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Cfilter id='v' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0022 .006' numOctaves='6' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.48 0 0 0 0 0.47 0 0 0 0 0.45 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 0 0 0 0 0 .42 0 0 0 0 0 .22 0 0 0 0 0 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='800' height='800' filter='url(%23v)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Cfilter id='v' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 .009' numOctaves='6' seed='21' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.56 0 0 0 0 0.55 0 0 0 0 0.53 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 0 .14 0 0 0 0 .1 0 0 0 .16 0 0 0 0 .08 0 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='800' height='800' filter='url(%23v)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.005' numOctaves='3' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .6 0 0 0 0 .6 0 0 0 0 .58 0 0 0 .12 -.03'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23c)'/%3E%3C/svg%3E"),
+    linear-gradient(118deg, rgb(255 255 255 / 0%) 30%, rgb(255 255 255 / 60%) 42%, rgb(255 255 255 / 0%) 54%),
+    linear-gradient(160deg, #f9f8f5 0%, #efede8 100%);
+  box-shadow: inset 1px 0 0 #ffffff, inset 3px 0 6px -3px rgb(60 58 54 / 10%);
 }
