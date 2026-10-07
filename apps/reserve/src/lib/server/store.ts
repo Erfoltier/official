@@ -878,11 +878,26 @@ export function deviceLinkByToken(token: string): DeviceLink | undefined {
 }
 
 /** 名前で患者を探す（漢字・フリガナ・ローマ字のどれかが空白を除いて同じで、ちょうど1人のときだけ） */
-function matchByName(name: string): { id?: string; reason?: PhotoInboxItem["reason"] } {
+/** 番号の比べ方：数字だけにして先頭の0を落とす（「00123」と「123」を同じに） */
+function refKey(v: string | undefined): string {
+  return (v ?? "").normalize("NFKC").replace(/\D/g, "").replace(/^0+/, "");
+}
+
+/**
+ * 名前で探す。名前が1人に決まればその人。同姓同名などで決まらないときは、
+ * 「氏名（またはフリガナ）」と「顧客番号＝カルテ番号／M3番号」の2つが合う人が1人だけならその人にする
+ */
+function matchByName(name: string, ref?: string): { id?: string; reason?: PhotoInboxItem["reason"] } {
   const key = searchKey(name);
   if (!key) return { reason: "not_found" };
   const hits = [...state().patients.values()].filter((p) => !p.deleted && [p.name, p.kana, p.nameAlt].some((x) => x && searchKey(x) === key));
-  return hits.length === 1 ? { id: hits[0].id } : { reason: hits.length ? "ambiguous" : "not_found" };
+  if (hits.length === 1) return { id: hits[0].id };
+  const r = refKey(ref);
+  if (r && hits.length > 1) {
+    const both = hits.filter((p) => refKey(p.chartNo) === r || refKey(p.m3ChartNo) === r);
+    if (both.length === 1) return { id: both[0].id };
+  }
+  return { reason: hits.length ? "ambiguous" : "not_found" };
 }
 
 /**
@@ -896,7 +911,7 @@ function matchPhoto(source: DeviceSource, ref: string | undefined, name: string)
     const p = m && st.patients.get(m.patientId);
     if (p && !p.deleted) return { id: p.id };
   }
-  return matchByName(name);
+  return matchByName(name, ref);
 }
 
 function rememberRef(source: DeviceSource, ref: string | undefined, patientId: string): void {

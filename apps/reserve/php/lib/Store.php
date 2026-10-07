@@ -1648,7 +1648,18 @@ final class Store
     }
 
     /** 名前で患者を探す（漢字・フリガナ・ローマ字のどれかが空白を除いて同じで、ちょうど1人のときだけ） */
-    private static function matchByName(string $name): array
+    /** 番号の比べ方：数字だけにして先頭の0を落とす（「00123」と「123」を同じに）。Node.js 版 refKey と同じ */
+    private static function refKey(?string $v): string
+    {
+        $d = preg_replace('/\D/u', '', mb_convert_kana((string) $v, 'n', 'UTF-8'));
+        return ltrim((string) $d, '0');
+    }
+
+    /**
+     * 名前で探す。名前が1人に決まればその人。同姓同名などで決まらないときは、
+     * 「氏名（またはフリガナ）」と「顧客番号＝カルテ番号／M3番号」の2つが合う人が1人だけならその人にする
+     */
+    private static function matchByName(string $name, string $ref = ''): array
     {
         $key = search_key($name);
         if ($key === '') {
@@ -1666,7 +1677,18 @@ final class Store
                 }
             }
         }
-        return count($hits) === 1 ? ['id' => $hits[0], 'reason' => null] : ['id' => null, 'reason' => $hits ? 'ambiguous' : 'not_found'];
+        if (count($hits) === 1) {
+            return ['id' => $hits[0], 'reason' => null];
+        }
+        $r = self::refKey($ref);
+        if ($r !== '' && count($hits) > 1) {
+            $all = self::patients();
+            $both = array_values(array_filter($hits, fn($id) => self::refKey($all[$id]['chartNo'] ?? '') === $r || self::refKey($all[$id]['m3ChartNo'] ?? '') === $r));
+            if (count($both) === 1) {
+                return ['id' => $both[0], 'reason' => null];
+            }
+        }
+        return ['id' => null, 'reason' => $hits ? 'ambiguous' : 'not_found'];
     }
 
     /**
@@ -1682,7 +1704,7 @@ final class Store
                 return ['id' => $p['id'], 'reason' => null];
             }
         }
-        return self::matchByName($name);
+        return self::matchByName($name, $ref);
     }
 
     private static function rememberRef(string $source, string $ref, string $patientId): void
