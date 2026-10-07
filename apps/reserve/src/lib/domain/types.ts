@@ -679,8 +679,10 @@ export interface ClinicSettings {
 /** 画面の配色プリセット（色そのものは globals.css） */
 export const THEMES = [
   { id: "default", label: "華やか（標準）", note: "すみれ色からローズのグラデーション", swatch: ["#7c3aed", "#ec4899"] },
-  { id: "blush", label: "ピンクベージュ", note: "ピンクベージュ・ベージュ・アイボリーの淡いグラデーション。白を使わない", swatch: ["#b98f95", "#ead9d6"] },
+  { id: "blush", label: "ピンクベージュ", note: "ファンデのようなベージュの升目、エトープの枠、ピンクベージュの彩り", swatch: ["#b98f95", "#ead9d6"] },
   { id: "calm", label: "爽やか", note: "涼しい水色の濃淡に、くすんだ青と紺", swatch: ["#2778a8", "#b3e0f1"] },
+  { id: "seiji", label: "青白磁とリネン", note: "リネンの生成りに、青白磁の淡い水色と白磁の器", swatch: ["#8fb5b2", "#e6e0d4"] },
+  { id: "hakuji", label: "白磁（ブティック）", note: "白一色を、つやの陶器・さらさらの素焼き・白い石の質感で見せる", swatch: ["#d9d8d4", "#ffffff"] },
   { id: "solemn", label: "厳か", note: "濃紺と墨に、控えめな金", swatch: ["#18264a", "#9c8250"] },
   { id: "luxe", label: "上品（ゴールド）", note: "アイボリーとミルクティーベージュに金の線。ホテルのロビーのような配色", swatch: ["#a88860", "#efdfb9"] },
   { id: "natural", label: "やさしい", note: "くすんだ緑のナチュラルな配色", swatch: ["#3f6a4a", "#9cbf8c"] },

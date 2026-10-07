@@ -2298,3 +2298,80 @@ button.stagePill[data-clickable]:disabled {
 :global(:root[data-theme="calm"]) .panel {
   background: radial-gradient(520px 280px at 105% -8%, #c9e5f2 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #dbe5ee 0%, transparent 65%), radial-gradient(420px 360px at 50% 45%, #f6fbfd 0%, transparent 70%), #e8f3f8;
 }
+
+/*
+ * 青白磁とリネン
+ *  生成りのリネン（織り目）…左の受付一覧・右の詳細
+ *  青白磁の釉（淡い水色、器の縁のような同心円の照り）…上のメニュー・レーン名・時刻の列
+ *  白磁（白灰の器）…予定表の升目と受付の各行
+ */
+:global(:root[data-theme="seiji"]) .toolbar {
+  background: radial-gradient(420px 160px at 22% 140%, rgb(255 255 255 / 55%) 0%, transparent 60%), radial-gradient(380px 140px at 82% -40%, #c7dddb 0%, transparent 70%),
+    linear-gradient(90deg, #d3e4e2 0%, #e4efed 30%, #d8e7e5 60%, #cfe1df 100%);
+  border-image: linear-gradient(90deg, #c9c2b4 0%, #a9cbc8 50%, #c9c2b4 100%) 1;
+}
+
+:global(:root[data-theme="seiji"]) .header {
+  background: linear-gradient(180deg, #e6f0ee 0%, #d4e5e2 100%);
+}
+
+:global(:root[data-theme="seiji"]) .corner,
+:global(:root[data-theme="seiji"]) .timeCol {
+  background: linear-gradient(90deg, #eaf2f0 0%, #d6e6e3 100%);
+}
+
+:global(:root[data-theme="seiji"]) .body {
+  background: radial-gradient(520px 520px at 18% 22%, #eef5f4 0%, rgb(238 245 244 / 0%) 62%), radial-gradient(600px 600px at 82% 78%, #f0efeb 0%, rgb(240 239 235 / 0%) 62%), #f5f6f4;
+}
+
+:global(:root[data-theme="seiji"]) .reception {
+  background: repeating-linear-gradient(0deg, rgb(110 98 80 / 7%) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(110 98 80 / 7%) 0 1px, transparent 1px 3px), radial-gradient(380px 300px at 110% -5%, #f1ede5 0%, transparent 70%), radial-gradient(420px 420px at -10% 90%, #ddd5c7 0%, transparent 70%), #e7e1d5;
+}
+
+:global(:root[data-theme="seiji"]) .receptionRow {
+  background: radial-gradient(160% 130% at 25% 0%, #ffffff 0%, #f6f8f7 45%, #e9eeec 100%);
+  box-shadow: 0 1px 3px rgb(52 66 64 / 18%), inset 0 0 0 1px rgb(255 255 255 / 70%);
+}
+
+:global(:root[data-theme="seiji"]) .panel {
+  background: repeating-linear-gradient(0deg, rgb(110 98 80 / 7%) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(110 98 80 / 7%) 0 1px, transparent 1px 3px), radial-gradient(360px 360px at 85% 12%, #e9f1ef 0%, rgb(233 241 239 / 0%) 65%), radial-gradient(480px 420px at 0% 100%, #ddd5c7 0%, transparent 70%), #e9e4da;
+}
+
+/*
+ * 白磁（ブティック）：白の中で質感を変える
+ *  つやの強い陶器（光の筋がすっと入る）…上のメニュー・受付の各行・ボタン
+ *  さらさらの素焼き（細かな粒子）…左の受付一覧・レーン名・時刻の列
+ *  白い石（うっすらとした石目）…右の詳細
+ *  まっさらな白…予定表の升目
+ */
+:global(:root[data-theme="hakuji"]) .toolbar {
+  background: linear-gradient(180deg, rgb(255 255 255 / 100%) 0%, rgb(255 255 255 / 0%) 46%, rgb(60 58 54 / 4%) 100%),
+    linear-gradient(100deg, #f2f2f0 0%, #fafaf9 22%, #ffffff 30%, #f0f0ee 38%, #f6f6f4 62%, #ffffff 72%, #efefed 100%);
+  border-image: linear-gradient(90deg, #e2e1dd 0%, #c9c7c2 50%, #e2e1dd 100%) 1;
+}
+
+:global(:root[data-theme="hakuji"]) .header {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .39 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(180deg, #f9f9f8 0%, #efeeeb 100%);
+}
+
+:global(:root[data-theme="hakuji"]) .corner,
+:global(:root[data-theme="hakuji"]) .timeCol {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .39 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"), linear-gradient(90deg, #fafaf9 0%, #efeeeb 100%);
+}
+
+:global(:root[data-theme="hakuji"]) .body {
+  background: radial-gradient(800px 500px at 30% 0%, #ffffff 0%, transparent 60%), #fdfdfc;
+}
+
+:global(:root[data-theme="hakuji"]) .reception {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .39 0 0 0 0 .37 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(420px 320px at 110% 0%, #f7f6f4 0%, transparent 70%), radial-gradient(420px 420px at -10% 100%, #e6e5e1 0%, transparent 70%), #efeeeb;
+}
+
+:global(:root[data-theme="hakuji"]) .receptionRow {
+  background: linear-gradient(170deg, #ffffff 0%, #ffffff 35%, #f4f4f2 100%);
+  box-shadow: 0 2px 6px rgb(60 58 54 / 10%), 0 0 0 1px rgb(60 58 54 / 4%), inset 0 1px 0 #ffffff;
+}
+
+:global(:root[data-theme="hakuji"]) .panel {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='.003 .012' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .54 0 0 0 0 .52 0 0 0 -1.6 .5'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)'/%3E%3C/svg%3E"), radial-gradient(500px 300px at 100% 0%, #ffffff 0%, transparent 70%), linear-gradient(160deg, #f7f6f3 0%, #eeede9 100%);
+}

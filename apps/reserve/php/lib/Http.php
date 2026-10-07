@@ -453,7 +453,7 @@ final class Schema
             'estimateNote?' => fn($x) => V::str($x, 3000),
             'estimateValidDays?' => fn($x) => V::int($x, 1, 365),
             'estimatePaper?' => fn($x) => V::enum($x, ['A4', 'A5']),
-            'theme?' => fn($x) => V::enum($x, ['default', 'blush', 'calm', 'solemn', 'luxe', 'natural']),
+            'theme?' => fn($x) => V::enum($x, ['default', 'blush', 'calm', 'seiji', 'hakuji', 'solemn', 'luxe', 'natural']),
             'dayStartMin?' => $min,
             'dayEndMin?' => $min,
             'slotMin?' => function ($x) {
