@@ -11,6 +11,7 @@ import { TreatmentHistory, type VisitSave } from "./VisitTable";
 import { EstimateList } from "@/components/estimates/EstimateList";
 import { ConsentList } from "@/components/consents/ConsentList";
 import { CautionInline } from "./CautionInline";
+import { PhotoCompare } from "@/components/photos/PhotoCompare";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { QuestionnaireAnswers } from "@/components/questionnaires/QuestionnaireAnswers";
 import styles from "./patients.module.css";
@@ -63,6 +64,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
   const [me, setMe] = useState<StaffPublic | null>(null);
   const [mergeWith, setMergeWith] = useState<Patient | null | undefined>(undefined);
   const [deleting, setDeleting] = useState(false);
+  const [comparing, setComparing] = useState(false);
 
   useEffect(() => {
     fetchMe().then(setMe, () => {});
@@ -400,19 +402,25 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       </section>
 
 
-      {canManage && !readOnly && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>その他の操作</h2>
-          <div className={styles.manageRow}>
-            <button type="button" className={styles.btn} onClick={() => setMergeWith(null)}>
-              重複している患者をまとめる
-            </button>
-            <button type="button" className={styles.dangerBtn} onClick={() => setDeleting(true)}>
-              この患者を削除
-            </button>
-          </div>
-        </section>
-      )}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>その他の操作</h2>
+        <div className={styles.manageRow}>
+          <button type="button" className={styles.btn} onClick={() => setComparing(true)}>
+            🖼 写真比較
+          </button>
+          {canManage && !readOnly && (
+            <>
+              <button type="button" className={styles.btn} onClick={() => setMergeWith(null)}>
+                重複している患者をまとめる
+              </button>
+              <button type="button" className={styles.dangerBtn} onClick={() => setDeleting(true)}>
+                この患者を削除
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+      {comparing && <PhotoCompare patientId={patientId} patientName={p.name} onClose={() => setComparing(false)} />}
       {mergeWith !== undefined && (
         <MergeDialog current={p} initialOther={mergeWith} onClose={() => setMergeWith(undefined)} onMerged={(d) => afterManage(d, "統合しました")} />
       )}

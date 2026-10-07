@@ -1,0 +1,392 @@
+/* 写真比較：写真の色を正しく見るため、配色テーマに関係なく墨色のギャラリーにする */
+.dialog {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #141413;
+  color: #ecebe7;
+}
+
+.dialog::backdrop {
+  background: #0c0c0b;
+}
+
+.shell {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #2a2927;
+  background: linear-gradient(180deg, #1c1b1a, #161615);
+}
+
+.titleBox {
+  margin-right: 6px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.sub {
+  font-size: 12px;
+  color: #8f8c86;
+}
+
+.chip {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  background: transparent;
+  color: #b9b6b0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.chip:hover {
+  border-color: #6a6863;
+  color: #ecebe7;
+}
+
+.chip[data-on] {
+  border-color: #c9b48a;
+  color: #e9dcc0;
+}
+
+.hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: #77746e;
+}
+
+.seg {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.seg button {
+  min-width: 38px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #b9b6b0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.seg button[data-on] {
+  background: #ecebe7;
+  color: #141413;
+  font-weight: 600;
+}
+
+.close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #3a3936;
+  background: transparent;
+  color: #b9b6b0;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: #fff;
+  border-color: #6a6863;
+}
+
+.stage {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 18px;
+  min-height: 0;
+}
+
+.message {
+  grid-column: 1 / -1;
+  align-self: center;
+  justify-self: center;
+  color: #8f8c86;
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+  outline: 1px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color 0.15s;
+}
+
+.slot[data-active] {
+  outline-color: #3d3c39;
+}
+
+.slot[data-over] {
+  outline: 2px solid #c9b48a;
+}
+
+.photo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #1d1d1c;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 45%);
+  touch-action: none;
+  cursor: zoom-in;
+}
+
+.photo[data-zoomed] {
+  cursor: grab;
+}
+
+.photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+}
+
+.badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(20 20 19 / 62%);
+  backdrop-filter: blur(6px);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.badge[data-before] {
+  background: rgb(201 180 138 / 88%);
+  color: #1b1a18;
+  font-weight: 600;
+}
+
+.tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.photo:hover .tools {
+  opacity: 1;
+}
+
+.tools button,
+.grip {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(20 20 19 / 62%);
+  color: #e5e3de;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.grip {
+  cursor: grab;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 2px 0;
+  font-size: 12px;
+  color: #8f8c86;
+  font-variant-numeric: tabular-nums;
+}
+
+.date {
+  color: #ecebe7;
+  letter-spacing: 0.06em;
+}
+
+.tag {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  text-align: center;
+  border: 1.5px dashed #45443f;
+  border-radius: 6px;
+  background: repeating-linear-gradient(45deg, #1a1a19 0 10px, #1d1d1c 10px 20px);
+  color: #8a8781;
+  font-size: 13px;
+}
+
+.empty small {
+  font-size: 11px;
+  color: #67645f;
+}
+
+.stripWrap {
+  border-top: 1px solid #2a2927;
+  background: #191918;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 18px 0;
+}
+
+.filters button {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  background: transparent;
+  color: #a9a6a0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filters button[data-on] {
+  border-color: #c9b48a;
+  color: #e9dcc0;
+}
+
+.strip {
+  display: flex;
+  gap: 18px;
+  padding: 8px 18px 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3936 transparent;
+}
+
+.group {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8f8c86;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.thumbs {
+  display: flex;
+  gap: 6px;
+}
+
+.thumb {
+  position: relative;
+  width: 68px;
+  height: 86px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #232321;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  cursor: grab;
+  transition: transform 0.12s, outline-color 0.12s;
+}
+
+.thumb:hover {
+  transform: translateY(-2px);
+}
+
+.thumb[data-used] {
+  outline-color: #c9b48a;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbLabel {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 80%);
+}
+
+@media (max-width: 760px) {
+  .hint {
+    display: none;
+  }
+  .top {
+    flex-wrap: wrap;
+  }
+  .stage {
+    padding: 10px;
+    gap: 8px;
+  }
+  .thumb {
+    width: 56px;
+    height: 72px;
+  }
+}
+
+/* 文字の大きさの設定（ダイアログを拡大）は、画面いっぱいの写真比較には効かせない */
+:global(:root[data-size]) .dialog {
+  zoom: 1;
+}

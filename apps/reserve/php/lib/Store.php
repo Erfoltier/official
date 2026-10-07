@@ -1466,6 +1466,54 @@ final class Store
         return [$meta, $bytes];
     }
 
+    /**
+     * 写真の縮小版（写真比較の下の帯など、一覧で軽く見せるため）。長い辺 480px の JPEG。
+     * 一度作ったら暗号化して保存し、次からはそれを返す。縮小できない形式（HEIC など）は元のまま
+     */
+    public static function getFileThumb(string $id): array
+    {
+        [$meta, $bytes] = self::getFile($id);
+        if ($meta['kind'] !== 'image') {
+            return [$meta, $bytes];
+        }
+        $db = Db::i();
+        $key = 'thumb:' . $id;
+        $thumb = $db->getBlob($key);
+        if ($thumb === null) {
+            $thumb = self::makeThumb($bytes, 480);
+            if ($thumb === null) {
+                return [$meta, $bytes];
+            }
+            $db->putBlob($key, $thumb);
+        }
+        return [array_merge($meta, ['type' => 'image/jpeg']), $thumb];
+    }
+
+    private static function makeThumb(string $bytes, int $max): ?string
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            return null;
+        }
+        $src = @imagecreatefromstring($bytes);
+        if ($src === false) {
+            return null;
+        }
+        $w = imagesx($src);
+        $h = imagesy($src);
+        $scale = min(1, $max / max($w, $h));
+        $tw = max(1, (int) round($w * $scale));
+        $th = max(1, (int) round($h * $scale));
+        $dst = imagecreatetruecolor($tw, $th);
+        imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $w, $h);
+        ob_start();
+        imagejpeg($dst, null, 78);
+        $out = (string) ob_get_clean();
+        imagedestroy($src);
+        imagedestroy($dst);
+        return $out !== '' ? $out : null;
+    }
+
     public static function deleteFile(string $id, ?array $by = null): array
     {
         $cur = Db::i()->get('file', $id);

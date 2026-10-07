@@ -1,0 +1,384 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type DragEvent as ReactDragEvent } from "react";
+import type { PatientFile } from "@/lib/domain/types";
+import { ApiError, fetchFiles, fileUrl } from "@/components/calendar/api";
+import styles from "./photoCompare.module.css";
+
+/** 並べる枚数の選択肢 */
+const COUNTS = [1, 2, 3, 4, 6] as const;
+const MAX_SCALE = 8;
+
+interface View {
+  s: number;
+  x: number;
+  y: number;
+}
+const RESET: View = { s: 1, x: 0, y: 0 };
+
+/** ネオボワールのファイル名「顧客番号_回_向き_光_氏名」から向きと光を読む。違う形なら空 */
+function shotInfo(f: PatientFile): { angle: string; light: string } {
+  if (f.source !== "neovoir") return { angle: "", light: "" };
+  const parts = f.name.replace(/\.[^.]+$/, "").split("_");
+  return parts.length >= 5 ? { angle: parts[2], light: parts[3] } : { angle: "", light: "" };
+}
+
+const dotDate = (d: string) => d.replaceAll("-", ".");
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+const thumbUrl = (id: string) => `${fileUrl(id)}?size=thumb`;
+const viewable = (f: PatientFile) => f.kind === "image" && !f.deleted && f.type !== "image/heic" && f.type !== "image/heif";
+
+/**
+ * 写真比較（アルバムモード）。患者の写真から好きなものを枠へ入れ（ドラッグ／タップ）、なるべく大きく並べて経過を比べる。
+ * 下の帯は縮小版だけを読み、大きい写真は枠に入れた分だけ読む
+ */
+export function PhotoCompare(props: { patientId: string; patientName: string; onClose: () => void }) {
+  const { patientId, onClose } = props;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [files, setFiles] = useState<PatientFile[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [count, setCount] = useState<number>(2);
+  const [slots, setSlots] = useState<(string | null)[]>([null, null]);
+  const [active, setActive] = useState(0);
+  const [focus, setFocus] = useState<number | null>(null);
+  const [linked, setLinked] = useState(true);
+  const [views, setViews] = useState<View[]>([]);
+  const [light, setLight] = useState<string>("");
+  const [dropOver, setDropOver] = useState<number | null>(null);
+
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    fetchFiles(patientId)
+      .then((all) => {
+        if (!alive) return;
+        const imgs = all.filter(viewable).sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+        setFiles(imgs);
+        // はじめは、最初の写真と同じ向き・光の「いちばん古い1枚」と「いちばん新しい1枚」を並べる
+        if (imgs.length) {
+          const first = shotInfo(imgs[0]);
+          const same = imgs.filter((f) => {
+            const i = shotInfo(f);
+            return i.angle === first.angle && i.light === first.light;
+          });
+          const pick = same.length > 1 ? [same[0].id, same[same.length - 1].id] : [imgs[0].id, imgs.length > 1 ? imgs[imgs.length - 1].id : null];
+          setSlots(pick);
+          setLight(first.light);
+        }
+      })
+      .catch((err) => alive && setError(err instanceof ApiError ? err.message : "写真を読み込めませんでした"));
+    return () => {
+      alive = false;
+    };
+  }, [patientId]);
+
+  // 下の帯は最新の写真が見えるよう右端から
+  useEffect(() => {
+    const el = stripRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [files, light]);
+
+  const byId = useMemo(() => new Map((files ?? []).map((f) => [f.id, f])), [files]);
+  const dates = useMemo(() => [...new Set((files ?? []).map((f) => f.date))], [files]);
+  const lights = useMemo(() => [...new Set((files ?? []).map((f) => shotInfo(f).light).filter(Boolean))], [files]);
+  const groups = useMemo(() => {
+    const list = (files ?? []).filter((f) => !light || shotInfo(f).light === light || !shotInfo(f).light);
+    const out: { date: string; items: PatientFile[] }[] = [];
+    for (const f of list) {
+      const last = out[out.length - 1];
+      if (last && last.date === f.date) last.items.push(f);
+      else out.push({ date: f.date, items: [f] });
+    }
+    return out;
+  }, [files, light]);
+
+  const changeCount = (n: number) => {
+    setCount(n);
+    setFocus(null);
+    setSlots((cur) => Array.from({ length: n }, (_, i) => cur[i] ?? null));
+    setActive((a) => Math.min(a, n - 1));
+  };
+
+  const place = useCallback(
+    (id: string, at?: number) => {
+      setFocus(null);
+      setSlots((cur) => {
+        const next = [...cur];
+        let i = at ?? next.indexOf(null);
+        if (i < 0) i = active;
+        const from = next.indexOf(id);
+        if (from >= 0 && from !== i) next[from] = next[i];
+        next[i] = id;
+        return next;
+      });
+      setViews((v) => {
+        const n = [...v];
+        if (at !== undefined) n[at] = RESET;
+        return n;
+      });
+    },
+    [active],
+  );
+
+  const swap = (a: number, b: number) =>
+    setSlots((cur) => {
+      const next = [...cur];
+      [next[a], next[b]] = [next[b], next[a]];
+      return next;
+    });
+
+  const sortByDate = () =>
+    setSlots((cur) => {
+      const filled = cur.filter((id): id is string => !!id && byId.has(id)).sort((a, b) => byId.get(a)!.date.localeCompare(byId.get(b)!.date));
+      return Array.from({ length: cur.length }, (_, i) => filled[i] ?? null);
+    });
+
+  // ---- 拡大・移動（連動中は全部の枠が同じ倍率・同じ場所） ----
+  const viewOf = (i: number): View => (linked ? views[0] : views[i]) ?? RESET;
+  const setView = (i: number, f: (v: View) => View) =>
+    setViews((cur) => {
+      const n = [...cur];
+      if (linked) {
+        const v = f(n[0] ?? RESET);
+        return n.length ? n.map(() => v) : [v];
+      }
+      n[i] = f(n[i] ?? RESET);
+      return n;
+    });
+  const clampView = (v: View): View => (v.s <= 1 ? RESET : v);
+  const zoomAt = (i: number, el: HTMLElement, clientX: number, clientY: number, factor: number) => {
+    const r = el.getBoundingClientRect();
+    const px = clientX - r.left - r.width / 2;
+    const py = clientY - r.top - r.height / 2;
+    setView(i, (v) => {
+      const s = Math.min(MAX_SCALE, Math.max(1, v.s * factor));
+      const k = s / v.s;
+      return clampView({ s, x: px - (px - v.x) * k, y: py - (py - v.y) * k });
+    });
+  };
+  const onWheel = (i: number) => (e: ReactWheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    zoomAt(i, e.currentTarget, e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+  };
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d: number } | null>(null);
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) };
+    }
+  };
+  const onPointerMove = (i: number) => (e: ReactPointerEvent<HTMLDivElement>) => {
+    const prev = pointers.current.get(e.pointerId);
+    if (!prev) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2 && pinch.current) {
+      const [a, b] = [...pointers.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      zoomAt(i, e.currentTarget, (a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch.current.d);
+      pinch.current = { d };
+      return;
+    }
+    const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
+    setView(i, (v) => (v.s > 1 ? { ...v, x: v.x + dx, y: v.y + dy } : v));
+  };
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+  };
+
+  // ---- ドラッグで入れる・入れ替える ----
+  const onDrop = (i: number) => (e: ReactDragEvent) => {
+    e.preventDefault();
+    setDropOver(null);
+    const data = e.dataTransfer.getData("text/plain");
+    if (data.startsWith("f:")) place(data.slice(2), i);
+    else if (data.startsWith("s:")) swap(Number(data.slice(2)), i);
+  };
+
+  const filled = slots.filter((id): id is string => !!id && byId.has(id));
+  const earliest = filled.map((id) => byId.get(id)!.date).sort()[0];
+  const shown = focus !== null ? [focus] : slots.map((_, i) => i);
+  const cols = shown.length <= 1 ? 1 : shown.length === 4 ? 2 : shown.length >= 5 ? 3 : shown.length;
+
+  return (
+    <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} onCancel={onClose} aria-label="写真比較">
+      <div className={styles.shell}>
+        <header className={styles.top}>
+          <div className={styles.titleBox}>
+            <div className={styles.title}>写真比較</div>
+            <div className={styles.sub}>{props.patientName}</div>
+          </div>
+          <button type="button" className={styles.chip} data-on={linked || undefined} onClick={() => setLinked((v) => !v)} title="1枚を拡大・移動すると、ほかの枚も同じ場所を同じ倍率で映します">
+            ↔ 拡大・移動を連動
+          </button>
+          <button type="button" className={styles.chip} onClick={sortByDate}>
+            撮影日順に並べる
+          </button>
+          <button type="button" className={styles.chip} onClick={() => setViews([])}>
+            拡大を戻す
+          </button>
+          <span className={styles.hint}>下の写真を枠へドラッグ（タップでも入ります）／枠どうしは ⠿ をドラッグで入れ替え／ホイール・2本指で拡大</span>
+          <div className={styles.seg} role="group" aria-label="並べる枚数">
+            {COUNTS.map((n) => (
+              <button key={n} type="button" data-on={n === count || undefined} onClick={() => changeCount(n)}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <button type="button" className={styles.close} onClick={() => dialogRef.current?.close()} aria-label="閉じる">
+            ✕
+          </button>
+        </header>
+
+        <main className={styles.stage} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+          {error ? (
+            <p className={styles.message}>{error}</p>
+          ) : files === null ? (
+            <p className={styles.message}>写真を読み込んでいます…</p>
+          ) : files.length === 0 ? (
+            <p className={styles.message}>この患者さんの写真はまだありません</p>
+          ) : (
+            shown.map((i) => {
+              const f = slots[i] ? byId.get(slots[i]!) : undefined;
+              const v = viewOf(i);
+              return (
+                <section
+                  key={i}
+                  className={styles.slot}
+                  data-active={i === active || undefined}
+                  data-over={dropOver === i || undefined}
+                  onClick={() => setActive(i)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDropOver(i);
+                  }}
+                  onDragLeave={() => setDropOver((d) => (d === i ? null : d))}
+                  onDrop={onDrop(i)}
+                >
+                  {f ? (
+                    <>
+                      <div
+                        className={styles.photo}
+                        onWheel={onWheel(i)}
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove(i)}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerUp}
+                        onDoubleClick={() => setView(i, () => RESET)}
+                        data-zoomed={v.s > 1 || undefined}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={fileUrl(f.id)}
+                          alt=""
+                          draggable={false}
+                          decoding="async"
+                          style={{ transform: `translate3d(${v.x}px, ${v.y}px, 0) scale(${v.s})` }}
+                        />
+                        <span className={styles.badge} data-before={f.date === earliest || undefined}>
+                          {f.date === earliest ? "Before" : `+${daysBetween(earliest!, f.date)}日`}
+                        </span>
+                        <div className={styles.tools}>
+                          <span
+                            className={styles.grip}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", `s:${i}`);
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            title="ドラッグでほかの枠と入れ替え"
+                          >
+                            ⠿
+                          </span>
+                          <button type="button" onClick={() => setFocus(focus === i ? null : i)} title={focus === i ? "並べた表示に戻す" : "この1枚を大きく"}>
+                            {focus === i ? "⤡" : "⤢"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFocus(null);
+                              setSlots((cur) => cur.map((id, k) => (k === i ? null : id)));
+                            }}
+                            title="枠から外す"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      <div className={styles.meta}>
+                        <span className={styles.date}>{dotDate(f.date)}</span>
+                        <span className={styles.tag}>
+                          {[shotInfo(f).angle, shotInfo(f).light].filter(Boolean).join("・")}
+                          {shotInfo(f).angle ? "　" : ""}
+                          {dates.indexOf(f.date) + 1}回目の撮影
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className={styles.empty}>
+                      <span>ここへ写真をドラッグ</span>
+                      <small>または、この枠を選んでから下の写真をタップ</small>
+                    </div>
+                  )}
+                </section>
+              );
+            })
+          )}
+        </main>
+
+        <footer className={styles.stripWrap}>
+          {lights.length > 1 && (
+            <div className={styles.filters}>
+              <button type="button" data-on={!light || undefined} onClick={() => setLight("")}>
+                すべて
+              </button>
+              {lights.map((l) => (
+                <button key={l} type="button" data-on={light === l || undefined} onClick={() => setLight(l)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className={styles.strip} ref={stripRef}>
+            {groups.map((g) => (
+              <div key={g.date} className={styles.group}>
+                <h4>{dotDate(g.date)}</h4>
+                <div className={styles.thumbs}>
+                  {g.items.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className={styles.thumb}
+                      data-used={slots.includes(f.id) || undefined}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", `f:${f.id}`);
+                        e.dataTransfer.effectAllowed = "copy";
+                      }}
+                      onClick={() => place(f.id, slots[active] === null ? active : slots.includes(null) ? undefined : active)}
+                      title={f.name}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={thumbUrl(f.id)} alt="" loading="lazy" decoding="async" draggable={false} />
+                      {shotInfo(f).angle && <span className={styles.thumbLabel}>{shotInfo(f).angle}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </footer>
+      </div>
+    </dialog>
+  );
+}

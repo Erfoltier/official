@@ -332,8 +332,11 @@ try {
     if ($p[0] === 'files' && $n >= 2) {
         if ($method === 'GET' && $n === 2) {
             $s = $me();
-            [$meta, $bytes] = Store::getFile(V::id($p[1]));
-            Auth::noteAccess($s, 'ファイルを表示', 'file:' . $p[1]);
+            $thumb = ($_GET['size'] ?? '') === 'thumb';
+            [$meta, $bytes] = $thumb ? Store::getFileThumb(V::id($p[1])) : Store::getFile(V::id($p[1]));
+            if (!$thumb) {
+                Auth::noteAccess($s, 'ファイルを表示', 'file:' . $p[1]);
+            }
             Http::file($meta, $bytes);
         }
         if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
