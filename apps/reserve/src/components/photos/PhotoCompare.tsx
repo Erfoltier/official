@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type DragEvent as ReactDragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { PatientFile } from "@/lib/domain/types";
 import { ApiError, fetchFiles, fileUrl } from "@/components/calendar/api";
 import styles from "./photoCompare.module.css";
@@ -194,6 +194,67 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
       return clampView({ s, x: px - (px - v.x) * k, y: py - (py - v.y) * k });
     });
   };
+  /** 枠の真ん中を中心に拡大・縮小（キーボード用） */
+  const zoomCenter = (i: number, factor: number) =>
+    setView(i, (v) => {
+      const s = Math.min(MAX_SCALE, Math.max(1, v.s * factor));
+      const k = s / v.s;
+      return clampView({ s, x: v.x * k, y: v.y * k });
+    });
+
+  // ---- 全画面（ブラウザの全画面表示。タスクバーなども隠れる） ----
+  const [fullscreen, setFullscreen] = useState(false);
+  const canFullscreen = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", on);
+    return () => {
+      document.removeEventListener("fullscreenchange", on);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    };
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void document.documentElement.requestFullscreen?.().catch(() => {});
+  }, []);
+
+  // ---- キーボード：＋ / − で拡大・縮小、0 で元に戻す、矢印で移動、F で全画面 ----
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDialogElement>) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const i = focus ?? active;
+    const step = 60;
+    switch (e.key) {
+      case "+":
+      case "=":
+      case ";":
+        zoomCenter(i, 1.25);
+        break;
+      case "-":
+      case "_":
+        zoomCenter(i, 1 / 1.25);
+        break;
+      case "0":
+        setView(i, () => RESET);
+        break;
+      case "ArrowLeft":
+      case "ArrowRight":
+      case "ArrowUp":
+      case "ArrowDown": {
+        const dx = e.key === "ArrowLeft" ? step : e.key === "ArrowRight" ? -step : 0;
+        const dy = e.key === "ArrowUp" ? step : e.key === "ArrowDown" ? -step : 0;
+        setView(i, (v) => (v.s > 1 ? { ...v, x: v.x + dx, y: v.y + dy } : v));
+        break;
+      }
+      case "f":
+      case "F":
+        toggleFullscreen();
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  };
   const onWheel = (i: number) => (e: ReactWheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     zoomAt(i, e.currentTarget, e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
@@ -307,7 +368,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
     : bestLayout(shown.length, stageSize.w, stageSize.h, ar);
 
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} onCancel={onClose} aria-label="写真比較">
+    <dialog ref={dialogRef} className={styles.dialog} onKeyDown={onKeyDown} onClose={onClose} onCancel={onClose} aria-label="写真比較">
       <div className={styles.shell}>
         <header className={styles.top}>
           <div className={styles.titleBox}>
@@ -323,14 +384,22 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
           <button type="button" className={styles.chip} onClick={() => setViews([])}>
             拡大を戻す
           </button>
-          <span className={styles.hint}>下の写真を枠へドラッグ（タップでも入ります）／枠どうしは ⠿ をドラッグで入れ替え／ホイール・2本指で拡大</span>
+          <span className={styles.hint}>下の写真を枠へドラッグ（タップでも入ります）／枠どうしは ⠿ で入れ替え／拡大：ホイール・2本指・＋−キー（0で戻す・矢印で移動・Fで全画面）</span>
           <div className={styles.seg} role="group" aria-label="並べる枚数">
             {COUNTS.map((n) => (
               <button key={n} type="button" data-on={n === count || undefined} onClick={() => changeCount(n)}>
                 {n}
               </button>
             ))}
+            <span className={styles.segUnit} aria-hidden>
+              枚
+            </span>
           </div>
+          {canFullscreen && (
+            <button type="button" className={styles.chip} data-on={fullscreen || undefined} onClick={toggleFullscreen} title="画面いっぱいに表示（F キー）">
+              {fullscreen ? "全画面を終える" : "⛶ 全画面"}
+            </button>
+          )}
           <button type="button" className={styles.close} onClick={() => dialogRef.current?.close()} aria-label="閉じる">
             ✕
           </button>
