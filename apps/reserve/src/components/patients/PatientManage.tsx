@@ -9,6 +9,7 @@ import {
   previewMerge,
   restorePatient,
   searchPatients,
+  unmergePatient,
 } from "@/components/calendar/api";
 import { formatDateFull } from "./VisitTable";
 import styles from "./patients.module.css";
@@ -22,14 +23,73 @@ function stamp(iso: string): string {
 export function DeletedBanner(props: { detail: PatientDetail; canManage: boolean; onChanged: (d: PatientDetail) => void }) {
   const p = props.detail.patient;
   const [error, setError] = useState<string | null>(null);
-  if (!p.deleted) return null;
+  const [busy, setBusy] = useState(false);
+  const un = props.detail.unmerge;
+  if (!p.deleted) {
+    const from = props.detail.mergedFrom ?? [];
+    if (un) {
+      return (
+        <div className={styles.dupBanner}>
+          <strong>統合を取り消しました</strong>
+          <div className={styles.dupNote}>
+            予約 {un.counts.reservation ?? 0}件・記録 {un.counts.visitNote ?? 0}日分
+            {un.counts.file ? `・ファイル ${un.counts.file}件` : ""}
+            {un.counts.consent ? `・同意書 ${un.counts.consent}件` : ""}
+            {un.counts.estimate ? `・見積書 ${un.counts.estimate}件` : ""}
+            {un.counts.chart ? `・カルテ ${un.counts.chart}件` : ""}
+            をこの患者へ戻しました。
+          </div>
+          {un.notes.map((n) => (
+            <div key={n} className={styles.dupNote}>
+              ・{n}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (from.length === 0 || !props.canManage) return null;
+    return (
+      <div className={styles.dupNote}>
+        この患者へ統合した患者：
+        {from.map((f) => (
+          <a key={f.id} href={withBase(patientPath(f.id))} style={{ marginRight: 10 }}>
+            {f.name}（診察券 {f.chartNo}）を開く（統合の取り消しはこちら）
+          </a>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className={styles.deletedBanner}>
       <strong>この患者は削除されています</strong>（{stamp(p.deleted.at)}
       {p.deleted.by && `・${p.deleted.by.name}`}）
       <div>理由：{p.deleted.reason}</div>
       {p.mergedInto ? (
-        <a href={withBase(patientPath(p.mergedInto))}>統合先の患者を開く →</a>
+        <div>
+          <a href={withBase(patientPath(p.mergedInto))}>統合先の患者を開く →</a>
+          {props.canManage && (
+            <button
+              type="button"
+              className={styles.smallBtn}
+              style={{ marginLeft: 12 }}
+              disabled={busy}
+              onClick={async () => {
+                if (!window.confirm("統合を取り消して、この患者を元に戻します。統合のときに移した予約・日ごとの記録・ファイルなどもこの患者へ戻し、統合先に補った欄も元に戻します。よろしいですか？")) return;
+                setBusy(true);
+                setError(null);
+                try {
+                  props.onChanged(await unmergePatient(p.id, p.version));
+                } catch (err) {
+                  setError(err instanceof ApiError ? err.message : "取り消せませんでした");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? "取り消しています…" : "統合を取り消す"}
+            </button>
+          )}
+        </div>
       ) : (
         props.canManage && (
           <button

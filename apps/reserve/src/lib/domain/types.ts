@@ -586,6 +586,10 @@ export interface PatientDetail {
   history: PatientChange[];
   /** 重複の可能性がある患者（削除済みの患者では空） */
   duplicates: DuplicateCandidate[];
+  /** この患者へ統合した患者（統合の取り消しの入口） */
+  mergedFrom?: { id: PatientId; chartNo: string; name: string }[];
+  /** 統合を取り消したときの結果（取り消した直後だけ） */
+  unmerge?: { counts: Record<string, number>; notes: string[] };
 }
 
 export const RESERVATION_STATUSES = [

@@ -222,6 +222,10 @@ export function restorePatient(id: string, version: number): Promise<PatientDeta
   return call(`/api/v1/patients/${encodeURIComponent(id)}/restore`, { method: "POST", body: JSON.stringify({ version }) });
 }
 
+export function unmergePatient(id: string, version: number): Promise<PatientDetail> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}/unmerge`, { method: "POST", body: JSON.stringify({ version }) });
+}
+
 export function previewMerge(keepId: string, dupId: string): Promise<MergePreview> {
   return call(`/api/v1/patients/merge?keep=${encodeURIComponent(keepId)}&dup=${encodeURIComponent(dupId)}`);
 }

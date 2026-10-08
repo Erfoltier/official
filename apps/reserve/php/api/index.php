@@ -240,6 +240,12 @@ try {
             Store::restorePatient($id, Schema::versionOnly(Http::readJson()), $actor($s));
             Http::json(Store::getPatientDetail($id));
         }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'unmerge') {
+            $s = $manager();
+            $id = V::id($p[1]);
+            $r = Store::unmergePatient($id, Schema::versionOnly(Http::readJson()), $actor($s));
+            Http::json([...Store::getPatientDetail($id), 'unmerge' => ['counts' => $r['counts'], 'notes' => $r['notes']]]);
+        }
         if ($method === 'GET' && $n === 3 && $p[2] === 'files') {
             $me();
             $date = $q('date');

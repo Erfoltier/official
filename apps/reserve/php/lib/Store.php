@@ -2103,6 +2103,10 @@ final class Store
             'menuInfo' => (object) array_map(fn($m) => ['name' => $m['name'], 'color' => $m['color']], self::menus()),
             'history' => Db::i()->get('patientHistory', $id) ?? [],
             'duplicates' => !empty($patient['deleted']) ? [] : self::findDuplicates($patient),
+            'mergedFrom' => array_values(array_map(
+                fn($p) => ['id' => $p['id'], 'chartNo' => $p['chartNo'], 'name' => $p['name']],
+                array_filter(self::patients(), fn($p) => ($p['mergedInto'] ?? null) === $id),
+            )),
         ];
     }
 
@@ -4109,8 +4113,11 @@ final class Store
             $at = now_iso();
             $preview = self::previewMerge($keep['id'], $dup['id']);
             $db = Db::i();
+            // 取り消せるように、動かしたものと統合前の統合先を控えておく（mergeUndo）
+            $moved = ['reservation' => [], 'visitNote' => [], 'file' => [], 'consent' => [], 'estimate' => [], 'questionnaire' => [], 'chart' => []];
 
             foreach (self::reservationsOf($dup['id']) as $r) {
+                $moved['reservation'][] = $r['id'];
                 $n = [...$r, 'patientId' => $keep['id'], 'version' => $r['version'] + 1, 'updatedAt' => $at];
                 if ($by) {
                     $n['updatedBy'] = $by;
@@ -4121,6 +4128,7 @@ final class Store
                 $db->delete('visitNote', self::noteKey($dup['id'], $n['date']));
                 $k = self::noteKey($keep['id'], $n['date']);
                 $mine = $db->get('visitNote', $k);
+                $moved['visitNote'][] = ['date' => $n['date'], 'dup' => $n, 'keepBefore' => $mine ?: null];
                 if ($mine) {
                     $merged = [
                         ...$mine,
@@ -4141,16 +4149,19 @@ final class Store
             // 写真・同意書などのファイルと見積書を移す
             foreach ($db->where('file', 'k2', $dup['id']) as $f) {
                 if ($f['patientId'] === $dup['id']) {
+                    $moved['file'][] = $f['id'];
                     $db->put('file', $f['id'], [...$f, 'patientId' => $keep['id']]);
                 }
             }
             foreach ($db->where('consent', 'k2', $dup['id']) as $c) {
                 if ($c['patientId'] === $dup['id']) {
+                    $moved['consent'][] = $c['id'];
                     $db->put('consent', $c['id'], [...$c, 'patientId' => $keep['id']]);
                 }
             }
             foreach ($db->where('estimate', 'k2', $dup['id']) as $e) {
                 if ($e['patientId'] === $dup['id']) {
+                    $moved['estimate'][] = $e['id'];
                     $ne = [...$e, 'patientId' => $keep['id'], 'version' => $e['version'] + 1, 'updatedAt' => $at];
                     if ($by) {
                         $ne['updatedBy'] = $by;
@@ -4160,11 +4171,13 @@ final class Store
             }
             foreach ($db->where('questionnaire', 'k2', $dup['id']) as $q) {
                 if (($q['patientId'] ?? null) === $dup['id']) {
+                    $moved['questionnaire'][] = $q['id'];
                     $db->put('questionnaire', $q['id'], [...$q, 'patientId' => $keep['id']]);
                 }
             }
             foreach ($db->where('chart', 'k2', $dup['id']) as $c) {
                 if ($c['patientId'] === $dup['id']) {
+                    $moved['chart'][] = $c['id'];
                     $nc = [...$c, 'patientId' => $keep['id'], 'version' => $c['version'] + 1, 'updatedAt' => $at];
                     if ($by) {
                         $nc['updatedBy'] = $by;
@@ -4199,6 +4212,7 @@ final class Store
             if ($by) {
                 $deleted['by'] = $by;
             }
+            $db->put('mergeUndo', $dup['id'], drop_null(['at' => $at, 'keepBefore' => $keep, 'keepAfter' => drop_null($next), 'lineUserId' => $dup['lineUserId'] ?? null, 'moved' => $moved]));
             $d = [...$dup, 'deleted' => $deleted, 'mergedInto' => $keep['id'], 'version' => $dup['version'] + 1, 'updatedAt' => $at];
             // LINEの紐付けは統合先へ移した（または統合先のものを残した）ので外す
             unset($d['lineUserId']);
@@ -4214,6 +4228,278 @@ final class Store
             self::recordChange($dup['id'], ["診察券{$keep['chartNo']}（{$keep['name']}）へ統合"], $at, $by, "統合先へまとめた（統合先 {$keep['id']}）");
             return self::patients()[$keep['id']];
         });
+    }
+
+    /**
+     * 統合を取り消す：統合元（dup）を元に戻し、移した予約・記録・ファイルなどを返し、統合先に補った欄を元に戻す。
+     * 統合のときの控え（mergeUndo）があればそれで正確に戻す。古い統合で控えがなければ、統合の時刻・統合前のバックアップ・
+     * 統合で書き足した印から見分ける（見分けられないものは統合先に残し、notes で知らせる）
+     */
+    public static function unmergePatient(string $dupId, int $version, ?array $by = null): array
+    {
+        return Db::i()->transaction(function () use ($dupId, $version, $by) {
+            $dup = self::patient($dupId);
+            if (empty($dup['mergedInto'])) {
+                throw new StoreError('invalid', 'この患者は統合されていません');
+            }
+            if ($dup['version'] !== $version) {
+                throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+            }
+            $keep = self::patients()[$dup['mergedInto']] ?? null;
+            if (!$keep || !empty($keep['deleted'])) {
+                throw new StoreError('invalid', '統合先の患者が削除（または別の患者へ統合）されているため取り消せません。先に統合先を元に戻してください');
+            }
+            foreach (self::patients() as $p) {
+                if ($p['id'] !== $dupId && empty($p['deleted']) && $dup['chartNo'] !== '' && $p['chartNo'] === $dup['chartNo']) {
+                    throw new StoreError('invalid', '同じ診察券番号の患者がいるため取り消せません');
+                }
+            }
+            $db = Db::i();
+            $u = $db->get('mergeUndo', $dupId) ?? self::guessMergeUndo($dup, $keep);
+            $at = now_iso();
+            $count = ['reservation' => 0, 'visitNote' => 0, 'file' => 0, 'consent' => 0, 'estimate' => 0, 'questionnaire' => 0, 'chart' => 0];
+            $stampBy = function (array $x) use ($by, $at): array {
+                $x['version'] = ($x['version'] ?? 0) + 1;
+                $x['updatedAt'] = $at;
+                if ($by) {
+                    $x['updatedBy'] = $by;
+                }
+                return $x;
+            };
+
+            foreach (['reservation', 'file', 'consent', 'estimate', 'questionnaire', 'chart'] as $kind) {
+                foreach (array_unique($u['moved'][$kind] ?? []) as $id) {
+                    $x = $db->get($kind, $id);
+                    if (!$x || ($x['patientId'] ?? null) !== $keep['id']) {
+                        continue;
+                    }
+                    $n = [...$x, 'patientId' => $dupId];
+                    $db->put($kind, $id, in_array($kind, ['reservation', 'estimate', 'chart'], true) ? $stampBy($n) : $n);
+                    $count[$kind]++;
+                }
+            }
+            foreach ($u['moved']['visitNote'] ?? [] as $e) {
+                $kk = self::noteKey($keep['id'], $e['date']);
+                $cur = $db->get('visitNote', $kk);
+                if ($e['keepBefore'] === null) {
+                    // まるごと移した日の記録は、そのまま返す
+                    if ($cur && $cur['patientId'] === $keep['id']) {
+                        $db->delete('visitNote', $kk);
+                        $db->put('visitNote', self::noteKey($dupId, $e['date']), $stampBy([...$cur, 'patientId' => $dupId]));
+                        $count['visitNote']++;
+                    }
+                    continue;
+                }
+                // 同じ日に両方の記録があって書き足した日は、統合先を統合前に戻し、統合元の記録を作り直す
+                if ($cur) {
+                    $db->put('visitNote', $kk, $stampBy([...$e['keepBefore'], 'version' => $cur['version']]));
+                }
+                $db->put('visitNote', self::noteKey($dupId, $e['date']), $stampBy([...$e['dup'], 'patientId' => $dupId]));
+                $count['visitNote']++;
+            }
+
+            // 統合先：統合で変わった欄のうち、その後に書き換えていないものだけ統合前に戻す
+            $before = $u['keepBefore'];
+            $after = $u['keepAfter'];
+            $next = $keep;
+            $restored = [];
+            foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $k) {
+                if (in_array($k, ['id', 'version', 'updatedAt', 'createdAt', 'deleted', 'mergedInto', 'chartNo', 'name'], true)) {
+                    continue;
+                }
+                $b = $before[$k] ?? null;
+                $a = $after[$k] ?? null;
+                if ($a === $b || ($keep[$k] ?? null) !== $a) {
+                    continue;
+                }
+                if ($b === null) {
+                    unset($next[$k]);
+                } else {
+                    $next[$k] = $b;
+                }
+                $restored[] = self::FIELD_LABEL[$k] ?? $k;
+            }
+            $next['version'] = $keep['version'] + 1;
+            $next['updatedAt'] = $at;
+            self::putPatient($next);
+
+            $d = $dup;
+            unset($d['deleted'], $d['mergedInto']);
+            $line = $u['lineUserId'] ?? null;
+            if ($line) {
+                $taken = false;
+                foreach (self::patients() as $p) {
+                    if ($p['id'] !== $dupId && ($p['lineUserId'] ?? null) === $line) {
+                        $taken = true;
+                    }
+                }
+                if (!$taken) {
+                    $d['lineUserId'] = $line;
+                }
+            }
+            $d['version'] = $dup['version'] + 1;
+            $d['updatedAt'] = $at;
+            self::putPatient($d);
+            $db->delete('mergeUndo', $dupId);
+
+            $detail = array_filter([
+                "予約{$count['reservation']}件",
+                "記録{$count['visitNote']}日分",
+                $count['file'] ? "ファイル{$count['file']}件" : null,
+                $count['consent'] ? "同意書{$count['consent']}件" : null,
+                $count['estimate'] ? "見積書{$count['estimate']}件" : null,
+                $count['chart'] ? "カルテ{$count['chart']}件" : null,
+                $count['questionnaire'] ? "問診票{$count['questionnaire']}件" : null,
+                $restored ? '補った欄を戻した（' . implode('・', $restored) . '）' : null,
+            ]);
+            self::recordChange($keep['id'], ["診察券{$dup['chartNo']}（{$dup['name']}）との統合を取り消し：" . implode('、', $detail) . 'を返した'], $at, $by, "患者の統合を取り消し（統合元 {$dupId}）");
+            self::recordChange($dupId, ["診察券{$keep['chartNo']}（{$keep['name']}）との統合を取り消し"], $at, $by, "患者の統合を取り消し（統合先 {$keep['id']}）");
+            return ['patient' => $d, 'counts' => $count, 'notes' => $u['notes'] ?? []];
+        });
+    }
+
+    /** 控え（mergeUndo）のない古い統合の取り消し方を、統合の時刻・統合前のバックアップ・書き足した印から組み立てる */
+    private static function guessMergeUndo(array $dup, array $keep): array
+    {
+        $db = Db::i();
+        $at = $dup['deleted']['at'];
+        $chart = $dup['chartNo'];
+        $notes = [];
+        $bk = $db->latestBackupBefore($at);
+        $bkKeep = $bk ? ($db->readBackup($bk['file'], 'patient', null, $keep['id'])[$keep['id']] ?? null) : null;
+        $bkDup = $bk ? ($db->readBackup($bk['file'], 'patient', null, $dup['id'])[$dup['id']] ?? null) : null;
+        $moved = ['reservation' => [], 'visitNote' => [], 'file' => [], 'consent' => [], 'estimate' => [], 'questionnaire' => [], 'chart' => []];
+
+        // 統合前のバックアップに統合元の持ち物として載っているもの
+        if ($bk) {
+            foreach (['reservation', 'file', 'consent', 'estimate', 'questionnaire', 'chart'] as $kind) {
+                foreach ($db->readBackup($bk['file'], $kind, $dup['id']) as $id => $x) {
+                    if (($x['patientId'] ?? null) === $dup['id']) {
+                        $moved[$kind][$id] = true;
+                    }
+                }
+            }
+        }
+        // 統合のときに書き換えたもの（更新時刻が統合の時刻と同じ）
+        foreach (['reservation', 'estimate', 'chart'] as $kind) {
+            foreach ($db->where($kind, 'k2', $keep['id']) as $id => $x) {
+                if (($x['patientId'] ?? null) === $keep['id'] && ($x['updatedAt'] ?? '') === $at) {
+                    $moved[$kind][$id] = true;
+                }
+            }
+        }
+        $dupDates = [];
+        $keepDates = [];
+        foreach (self::reservationsOf($keep['id']) as $r) {
+            if (isset($moved['reservation'][$r['id']])) {
+                $dupDates[clinic_date_of($r['startAt'])] = true;
+            } else {
+                $keepDates[clinic_date_of($r['startAt'])] = true;
+            }
+        }
+        // 日ごとの記録
+        $uncertain = 0;
+        $mixedSkincare = 0;
+        foreach (self::notesOf($keep['id']) as $n) {
+            if (($n['updatedAt'] ?? '') !== $at) {
+                continue;
+            }
+            $date = $n['date'];
+            $marker = "（統合元 診察券{$chart}の記録）\n";
+            $pos = strpos($n['note'], $marker);
+            $bkKeepNote = $bk ? ($db->readBackup($bk['file'], 'visitNote', null, self::noteKey($keep['id'], $date))[self::noteKey($keep['id'], $date)] ?? null) : null;
+            $bkDupNote = $bk ? ($db->readBackup($bk['file'], 'visitNote', null, self::noteKey($dup['id'], $date))[self::noteKey($dup['id'], $date)] ?? null) : null;
+            if ($pos !== false || $bkKeepNote) {
+                $keepNote = $pos === false ? $n['note'] : substr($n['note'], 0, max(0, $pos - 1));
+                $dupNote = $pos === false ? ($bkDupNote['note'] ?? '') : substr($n['note'], $pos + strlen($marker));
+                $moved['visitNote'][] = [
+                    'date' => $date,
+                    'keepBefore' => [...$n, 'note' => $keepNote, 'skincare' => $bkKeepNote['skincare'] ?? $n['skincare']],
+                    'dup' => [...$n, 'patientId' => $dup['id'], 'note' => $dupNote, 'skincare' => $bkDupNote['skincare'] ?? []],
+                ];
+                if (!$bkDupNote && $n['skincare']) {
+                    $mixedSkincare++;
+                }
+                $dupDates[$date] = true;
+            } elseif ($bkDupNote || (isset($dupDates[$date]) && !isset($keepDates[$date]))) {
+                $moved['visitNote'][] = ['date' => $date, 'keepBefore' => null];
+                $dupDates[$date] = true;
+            } else {
+                $uncertain++;
+            }
+        }
+        if ($uncertain) {
+            $notes[] = "日ごとの記録のうち {$uncertain} 日分は、どちらの記録か見分けられないため統合先に残しました";
+        }
+        if ($mixedSkincare) {
+            $notes[] = "同じ日に両方の記録があった {$mixedSkincare} 日分は、スキンケアの品目をどちらのものか分けられないため統合先に残しました（統合元の記録の文は戻しました）";
+        }
+        // ファイル・同意書：移した予約に結びついたもの、または統合元だけが来院した日のもの
+        foreach (['file', 'consent'] as $kind) {
+            foreach ($db->where($kind, 'k2', $keep['id']) as $id => $x) {
+                if (($x['patientId'] ?? null) !== $keep['id'] || isset($moved[$kind][$id])) {
+                    continue;
+                }
+                $newer = !$bk || ($x['createdAt'] ?? '9999') > $bk['at'];
+                if (!empty($x['reservationId']) && isset($moved['reservation'][$x['reservationId']])) {
+                    $moved[$kind][$id] = true;
+                } elseif ($newer && isset($dupDates[$x['date'] ?? '']) && !isset($keepDates[$x['date'] ?? ''])) {
+                    $moved[$kind][$id] = true;
+                }
+            }
+        }
+        if (!$bk) {
+            $notes[] = '問診票は、どちらのものか見分けられないため統合先に残しました';
+        }
+
+        // 統合先の欄：統合で補った欄・書き足した文を外したものを「統合前」とみなす
+        $before = $keep;
+        $label = array_flip(self::FIELD_LABEL);
+        foreach (Db::i()->get('patientHistory', $keep['id']) ?? [] as $h) {
+            if (($h['at'] ?? '') === $at && preg_match('/空欄を補完（([^）]*)）/u', implode('', $h['fields']), $m)) {
+                foreach (explode('・', $m[1]) as $l) {
+                    $k = $label[$l] ?? null;
+                    if ($k && ($keep[$k] ?? null) === ($dup[$k] ?? null)) {
+                        $before[$k] = $bkKeep[$k] ?? null;
+                    }
+                }
+            }
+        }
+        if (($keep['nameAlt'] ?? null) === $dup['name'] && search_key($dup['name']) !== search_key($keep['name'])) {
+            $before['nameAlt'] = $bkKeep['nameAlt'] ?? null;
+        }
+        $strip = function (?string $cur, ?string $part, string $sep): ?string {
+            if ($cur === null || $part === null || $part === '') {
+                return $cur;
+            }
+            if ($cur === $part) {
+                return null;
+            }
+            return str_ends_with($cur, $sep . $part) ? (substr($cur, 0, -strlen($sep . $part)) ?: null) : $cur;
+        };
+        $before['cautionNote'] = $strip($keep['cautionNote'] ?? null, $dup['cautionNote'] ?? null, "\n");
+        $before['memo'] = $strip($keep['memo'] ?? null, !empty($dup['memo']) ? "（統合元 診察券{$chart}）{$dup['memo']}" : null, "\n");
+        $before['history'] = $strip($keep['history'] ?? null, $dup['history'] ?? null, "\n");
+        $before['medications'] = $strip($keep['medications'] ?? null, $dup['medications'] ?? null, "\n");
+        $before['questionnaireOther'] = $strip($keep['questionnaireOther'] ?? null, $dup['questionnaireOther'] ?? null, "\n\n");
+        if ($bkKeep) {
+            $before['caution'] = $bkKeep['caution'] ?? null;
+        } elseif (!empty($dup['caution']) && empty($before['cautionNote'])) {
+            // 統合先に注意事項の文がなく、統合元に「注意事項あり」があったなら、統合元から来た印とみなす
+            $before['caution'] = null;
+        }
+        $line = $bkDup['lineUserId'] ?? null;
+        if ($line && ($keep['lineUserId'] ?? null) === $line && empty($bkKeep['lineUserId'])) {
+            $before['lineUserId'] = null;
+        } elseif (!$bk && !empty($keep['lineUserId'])) {
+            $notes[] = 'LINEの紐付けは、どちらのものか見分けられないため統合先に残しました';
+        }
+        foreach ($moved as $kind => $ids) {
+            if ($kind !== 'visitNote') {
+                $moved[$kind] = array_map('strval', array_keys($ids));
+            }
+        }
+        return ['at' => $at, 'keepBefore' => drop_null($before), 'keepAfter' => $keep, 'lineUserId' => $line, 'moved' => $moved, 'notes' => $notes];
     }
 }
 

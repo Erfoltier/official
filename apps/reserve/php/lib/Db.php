@@ -124,6 +124,44 @@ final class Db
         return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out), 'docs' => $docs];
     }
 
+    /** $beforeIso より前に作った控えのうち、いちばん新しいもの（['file' => パス, 'at' => 作った時刻]。なければ null） */
+    public function latestBackupBefore(string $beforeIso): ?array
+    {
+        $dsn = (string) config()['db_dsn'];
+        if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
+            return null;
+        }
+        $best = null;
+        $bestAt = '';
+        foreach (glob(dirname(substr($dsn, 7)) . '/backups/*.db') ?: [] as $f) {
+            if (!preg_match('/(\d{8})-(\d{6})/', basename($f), $m)) {
+                continue;
+            }
+            $at = substr($m[1], 0, 4) . '-' . substr($m[1], 4, 2) . '-' . substr($m[1], 6, 2) . 'T' . substr($m[2], 0, 2) . ':' . substr($m[2], 2, 2) . ':' . substr($m[2], 4, 2);
+            if ($at < substr($beforeIso, 0, 19) && $at > $bestAt) {
+                $best = $f;
+                $bestAt = $at;
+            }
+        }
+        return $best ? ['file' => $best, 'at' => $bestAt] : null;
+    }
+
+    /** 控えのファイルから読む（索引列 k2 で絞る。$k2 が null なら id で1件） @return array<string, mixed> */
+    public function readBackup(string $file, string $kind, ?string $k2, ?string $id = null): array
+    {
+        $pdo = new PDO('sqlite:' . $file, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+        $st = $id !== null
+            ? $pdo->prepare('SELECT id, data FROM docs WHERE kind = ? AND id = ?')
+            : $pdo->prepare('SELECT id, data FROM docs WHERE kind = ? AND k2 = ?');
+        $st->execute([$kind, $id ?? $k2]);
+        $out = [];
+        foreach ($st->fetchAll() as $r) {
+            $blob = is_resource($r['data']) ? stream_get_contents($r['data']) : $r['data'];
+            $out[$r['id']] = $this->decrypt($blob);
+        }
+        return $out;
+    }
+
     private function migrate(): void
     {
         if ($this->mysql) {
