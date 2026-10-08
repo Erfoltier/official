@@ -453,7 +453,7 @@
 
 /* ---- 横長の画面：上のバーを左の列、下の写真一覧を右の列にして、写真の高さを広く取る ---- */
 .shell[data-side] {
-  grid-template-columns: 196px minmax(0, 1fr) 176px;
+  grid-template-columns: 196px minmax(0, 1fr) 232px;
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -521,13 +521,17 @@
   touch-action: pan-y;
 }
 
+/* 右の列の写真一覧は3列 */
 .shell[data-side] .thumbs {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .shell[data-side] .thumb {
-  width: 74px;
-  height: 92px;
+  width: auto;
+  height: auto;
+  aspect-ratio: 3 / 4;
   touch-action: pan-y;
 }
 
