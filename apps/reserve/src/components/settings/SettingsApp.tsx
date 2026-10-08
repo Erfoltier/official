@@ -148,11 +148,7 @@ export function SettingsApp() {
       ) : tab === "imports" ? (
         <>
           <ImportsTab menus={data.menus} lanes={data.lanes} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
-          {isAdmin && (
-            <section className={styles.clinic}>
-              <M3MatchCard notify={notify} fail={fail} />
-            </section>
-          )}
+          {isAdmin && <M3MatchCard notify={notify} fail={fail} />}
         </>
       ) : tab === "questionnaires" ? (
         <QuestionnairesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />

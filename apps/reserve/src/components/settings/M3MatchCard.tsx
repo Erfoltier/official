@@ -80,8 +80,8 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
   );
 
   return (
-    <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>電子カルテなどの患者一覧（CSV）と照合して、漢字の氏名を補う</h3>
+    <div className={styles.importBox}>
+      <h3>電子カルテなどの患者一覧（CSV）と照合し不足情報を補う</h3>
       <p className={styles.hint}>
         予約システムなどからカタカナだけで入った患者に、電子カルテ（M3 など、ソフトは問いません）から書き出した患者一覧の漢字の氏名を入れます。選んだ CSV はこのパソコンのブラウザの中だけで読み、ファイルそのものはどこにも送りません。
         サーバーへ送るのは、照合できた患者の分（漢字の氏名など）だけです。
