@@ -2266,22 +2266,108 @@ button.stagePill[data-clickable]:disabled {
   background: radial-gradient(900px 600px at 80% 0%, #fdfbf6 0%, transparent 60%), radial-gradient(800px 700px at 0% 100%, #efe5d3 0%, transparent 60%), #f8f4ec;
 }
 
+/*
+ * 上品の左右の列：暗めのグレーの金属板（細かなヘアライン・斜めの鈍い照り）で締め、
+ * 受付の各行（アイボリー）とシャンパンゴールドの細い線とのツートンにする。金色を広い面に使わない
+ */
 :global(:root[data-theme="luxe"]) .reception {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(125deg, rgb(255 250 235 / 0%) 18%, rgb(255 250 235 / 55%) 30%, rgb(255 250 235 / 0%) 44%, rgb(255 250 235 / 0%) 62%, rgb(255 250 235 / 35%) 72%, rgb(255 250 235 / 0%) 82%),
-    radial-gradient(380px 460px at -10% 60%, #b89f74 0%, transparent 70%), radial-gradient(360px 300px at 80% 108%, #b29770 0%, transparent 70%),
-    linear-gradient(160deg, #dccaa6 0%, #ccb48b 100%);
+  /* 暗い地の上の文字・線・ボタン・入力欄 */
+  --text: #f1ebe1;
+  --text-muted: #cdc4b6;
+  --text-faint: #a39a8d;
+  --line: rgb(255 255 255 / 13%);
+  --line-strong: rgb(255 255 255 / 24%);
+  --surface: #4a4743;
+  --bg: #45423e;
+  --bg-subtle: #4e4b46;
+  --bg-muted: #57534e;
+  --tint: #4c4945;
+  --accent: #cdb68c;
+  --accent-strong: #dcc69c;
+  --accent-soft: rgb(205 182 140 / 16%);
+  --accent-line: rgb(205 182 140 / 45%);
+  --btn-bg: linear-gradient(180deg, #605c56 0%, #4b4844 100%);
+  --btn-line: rgb(214 195 159 / 38%);
+  --btn-shadow: 0 1px 2px rgb(0 0 0 / 35%), inset 0 1px 0 rgb(255 255 255 / 10%);
+  --field-bg: #3c3a37;
+  --danger: #eea596;
+  --caution-add: #f0a99b;
+  --caution-add-line: rgb(240 169 155 / 55%);
+  --grad-soft: linear-gradient(135deg, #514e49 0%, #46433f 100%);
+  color: var(--text);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 2.5%) 0 1px, transparent 1px 3px),
+    linear-gradient(118deg, rgb(255 255 255 / 0%) 18%, rgb(255 255 255 / 8%) 34%, rgb(255 255 255 / 0%) 50%, rgb(255 255 255 / 0%) 66%, rgb(255 255 255 / 5%) 76%, rgb(255 255 255 / 0%) 86%),
+    linear-gradient(165deg, #67635d 0%, #514e49 45%, #3f3d3a 100%);
+  border-right: 1px solid #b59d72;
+  box-shadow: inset -1px 0 0 rgb(255 255 255 / 6%);
 }
 
 :global(:root[data-theme="luxe"]) .receptionRow {
-  background: linear-gradient(150deg, #fefcf8 0%, #f3ecdf 100%);
-  box-shadow: 0 1px 3px rgb(80 62 38 / 24%);
+  /* 受付の各行はアイボリーのまま（暗い地との2色で締める） */
+  --text: #3a3026;
+  --text-muted: #6c5d4b;
+  --text-faint: #a08f7a;
+  --line: #e5dccb;
+  --line-strong: #cdb999;
+  --surface: #fcfaf6;
+  --bg: #faf7f1;
+  --bg-subtle: #f3ede2;
+  --bg-muted: #e6dac5;
+  --tint: #f5efe5;
+  --accent: #ad9468;
+  --accent-strong: #8c7450;
+  --accent-soft: #f1e9da;
+  --accent-line: #d6c39f;
+  --btn-bg: linear-gradient(180deg, #fefcf8 0%, #f2eadc 100%);
+  --btn-line: #c2ab83;
+  --btn-shadow: 0 1px 2px rgb(80 62 38 / 18%), inset 0 1px 0 rgb(255 255 255 / 75%);
+  --field-bg: #fefcf9;
+  color: var(--text);
+  background: linear-gradient(150deg, #fdfbf7 0%, #f1eadd 100%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 10px rgb(0 0 0 / 14%);
+}
+
+:global(:root[data-theme="luxe"]) .panel .stageTime input {
+  background: var(--field-bg);
+  color-scheme: dark;
+}
+
+:global(:root[data-theme="luxe"]) .panel a.btn {
+  color: var(--text);
 }
 
 :global(:root[data-theme="luxe"]) .panel {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(115deg, rgb(255 250 235 / 0%) 25%, rgb(255 250 235 / 50%) 38%, rgb(255 250 235 / 0%) 52%),
-    radial-gradient(520px 280px at 105% -8%, #c2a87e 0%, transparent 70%), radial-gradient(520px 520px at -5% 105%, #d4bf99 0%, transparent 65%), #e8dcc4;
+  /* 暗い地の上の文字・線・ボタン・入力欄 */
+  --text: #f1ebe1;
+  --text-muted: #cdc4b6;
+  --text-faint: #a39a8d;
+  --line: rgb(255 255 255 / 13%);
+  --line-strong: rgb(255 255 255 / 24%);
+  --surface: #4a4743;
+  --bg: #45423e;
+  --bg-subtle: #4e4b46;
+  --bg-muted: #57534e;
+  --tint: #4c4945;
+  --accent: #cdb68c;
+  --accent-strong: #dcc69c;
+  --accent-soft: rgb(205 182 140 / 16%);
+  --accent-line: rgb(205 182 140 / 45%);
+  --btn-bg: linear-gradient(180deg, #605c56 0%, #4b4844 100%);
+  --btn-line: rgb(214 195 159 / 38%);
+  --btn-shadow: 0 1px 2px rgb(0 0 0 / 35%), inset 0 1px 0 rgb(255 255 255 / 10%);
+  --field-bg: #3c3a37;
+  --danger: #eea596;
+  --caution-add: #f0a99b;
+  --caution-add-line: rgb(240 169 155 / 55%);
+  --grad-soft: linear-gradient(135deg, #514e49 0%, #46433f 100%);
+  color: var(--text);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 2.5%) 0 1px, transparent 1px 3px),
+    linear-gradient(118deg, rgb(255 255 255 / 0%) 18%, rgb(255 255 255 / 8%) 34%, rgb(255 255 255 / 0%) 50%, rgb(255 255 255 / 0%) 66%, rgb(255 255 255 / 5%) 76%, rgb(255 255 255 / 0%) 86%),
+    linear-gradient(165deg, #67635d 0%, #514e49 45%, #3f3d3a 100%);
+  border-left: 1px solid #b59d72;
+  box-shadow: inset 1px 0 0 rgb(255 255 255 / 6%);
 }
 
 :global(:root[data-theme="calm"]) .toolbar {
