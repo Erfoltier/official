@@ -1436,3 +1436,21 @@ details:not([open]) > summary.histTitle {
   margin-left: 6px;
   vertical-align: middle;
 }
+
+/* 患者の検索画面の「＋新規登録」 */
+.newPatientBox {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.newPatientActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
