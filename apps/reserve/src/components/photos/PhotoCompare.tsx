@@ -602,7 +602,11 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                   ) : (
                     <div className={styles.empty}>
                       <span>ここへ写真をドラッグ</span>
-                      <small>タブレット・スマホは、{side ? "右の写真を指で左へ引き出して" : "下の写真を指で上へ引き上げて"}ここで離す。この枠を選んでから写真をタップでも入ります</small>
+                      <small>
+                        <span>タブレット・スマホは、</span>
+                        <span>{side ? "右の写真を指で左へ引き出して" : "下の写真を指で上へ引き上げて"}ここで離す。</span>
+                        <span>この枠を選んでから写真をタップでも入ります。</span>
+                      </small>
                     </div>
                   )}
                 </section>

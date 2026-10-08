@@ -312,7 +312,15 @@
 
 .empty small {
   font-size: 11px;
+  line-height: 1.6;
   color: #67645f;
+  padding: 0 10px;
+}
+
+/* 1 文ずつ改行し、枠が狭くて折り返すときも行の長さをそろえる */
+.empty small span {
+  display: block;
+  text-wrap: balance;
 }
 
 .stripWrap {
