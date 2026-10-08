@@ -21,6 +21,7 @@
 
 .shell {
   height: 100%;
+  background: #141413;
   overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -139,6 +140,8 @@
 
 /* 枠の大きさは写真の縦横比から計算して入れる（余白なく、真ん中に寄せる） */
 .stage {
+  /* 2本指の拡大縮小は写真の拡大に使い、ブラウザの画面ごとの拡大にはしない */
+  touch-action: none;
   display: grid;
   gap: 12px;
   justify-content: center;
@@ -446,4 +449,130 @@
 
 .stage[data-single] .slot {
   outline: 0;
+}
+
+/* ---- 横長の画面：上のバーを左の列、下の写真一覧を右の列にして、写真の高さを広く取る ---- */
+.shell[data-side] {
+  grid-template-columns: 196px minmax(0, 1fr) 176px;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.shell[data-side] .top {
+  flex-wrap: nowrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 14px 12px;
+  border-bottom: 0;
+  border-right: 1px solid #2a2927;
+  background: linear-gradient(90deg, #1c1b1a, #171716);
+  overflow-y: auto;
+}
+
+.shell[data-side] .close {
+  order: -1;
+  align-self: flex-end;
+  margin-bottom: -40px;
+}
+
+.shell[data-side] .titleBox {
+  margin: 0 40px 6px 0;
+}
+
+.shell[data-side] .hint {
+  display: block;
+  flex: none;
+  order: 10;
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.shell[data-side] .seg {
+  margin: 4px 0 0;
+  align-self: stretch;
+}
+
+.shell[data-side] .seg button {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell[data-side] .stripWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 0;
+  border-left: 1px solid #2a2927;
+}
+
+.shell[data-side] .filters {
+  flex-wrap: wrap;
+  padding: 10px 10px 0;
+}
+
+.shell[data-side] .strip {
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+.shell[data-side] .thumbs {
+  flex-wrap: wrap;
+}
+
+.shell[data-side] .thumb {
+  width: 74px;
+  height: 92px;
+  touch-action: pan-y;
+}
+
+/* ---- 全画面：バーと写真一覧を隠し、写真を画面の上から下までいっぱいに ---- */
+.shell[data-fs] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.shell[data-fs] .top,
+.shell[data-fs] .stripWrap {
+  display: none;
+}
+
+.shell[data-fs] .stage {
+  padding: 8px;
+}
+
+/* 全画面のときの小さなボタン（右上に縦に並べ、写真の邪魔をしない） */
+.fsBar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.fsBar:hover {
+  opacity: 1;
+}
+
+.fsBar button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  background: rgb(20 20 19 / 60%);
+  backdrop-filter: blur(6px);
+  color: #ecebe7;
+  font-size: 15px;
+  cursor: pointer;
 }

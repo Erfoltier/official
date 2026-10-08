@@ -57,6 +57,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   const { patientId, onClose } = props;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const [files, setFiles] = useState<PatientFile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState<number>(2);
@@ -71,6 +72,34 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
   /** 写真の縦横比（幅÷高さ）。最初に表示した写真から読む。ネオボワールは縦長 */
   const [ar, setAr] = useState(3 / 4);
+
+  // 横長の画面（パソコン・スマホの横向き）では、上下のバーを左右の列にして写真の高さを広く取る
+  // 1・2・6枚は写真が縦に長く収まるので左右の列に、3・4枚は横に広く並ぶので上下のバーのまま
+  const [landscape, setLandscape] = useState(false);
+  const side = landscape && (count === 1 || count === 2 || count === 6);
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape) and (min-width: 700px)");
+    const on = () => setLandscape(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+
+  // 写真の並ぶ領域では、2本指の操作をブラウザの拡大（画面ごとの拡大）に渡さない
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const block = (e: TouchEvent) => {
+      if (e.touches.length > 1) e.preventDefault();
+    };
+    const blockGesture = (e: Event) => e.preventDefault();
+    el.addEventListener("touchmove", block, { passive: false });
+    el.addEventListener("gesturestart", blockGesture);
+    return () => {
+      el.removeEventListener("touchmove", block);
+      el.removeEventListener("gesturestart", blockGesture);
+    };
+  }, []);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -113,8 +142,11 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   // 下の帯は最新の写真が見えるよう右端から
   useEffect(() => {
     const el = stripRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [files, light]);
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [files, light, side]);
 
   const byId = useMemo(() => new Map((files ?? []).map((f) => [f.id, f])), [files]);
   const dates = useMemo(() => [...new Set((files ?? []).map((f) => f.date))], [files]);
@@ -215,7 +247,8 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   }, []);
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void document.documentElement.requestFullscreen?.().catch(() => {});
+    // 写真比較の中身だけを全画面に（ページ全体だと後ろの画面が前に出てしまう）
+    else void shellRef.current?.requestFullscreen?.().catch(() => {});
   }, []);
 
   // ---- キーボード：＋ / − で拡大・縮小、0 で元に戻す、矢印で移動、F で全画面 ----
@@ -276,7 +309,8 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
     if (pointers.current.size === 2 && pinch.current) {
       const [a, b] = [...pointers.current.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
-      zoomAt(i, e.currentTarget, (a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch.current.d);
+      // 指の開き具合より少し大きめに拡大する（何度もつままなくて済むように）
+      zoomAt(i, e.currentTarget, (a.x + b.x) / 2, (a.y + b.y) / 2, Math.pow(d / pinch.current.d, 1.7));
       pinch.current = { d };
       return;
     }
@@ -321,7 +355,8 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
     if (!touchDrag && p && p.id === e.pointerId) {
       const dx = e.clientX - p.x;
       const dy = e.clientY - p.y;
-      if (dy < -12 && Math.abs(dy) > Math.abs(dx)) {
+      // 下の帯（縦向き）は上へ、横の列（横向き）は左へ引き出すとつかむ。帯のスクロール方向の動きはスクロールのまま
+      if (side ? dx < -12 && Math.abs(dx) > Math.abs(dy) : dy < -12 && Math.abs(dy) > Math.abs(dx)) {
         e.currentTarget.setPointerCapture(e.pointerId);
         pending.current = null;
         setTouchDrag({ data: p.data, src: p.src, x: e.clientX, y: e.clientY });
@@ -369,7 +404,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
 
   return (
     <dialog ref={dialogRef} className={styles.dialog} onKeyDown={onKeyDown} onClose={onClose} onCancel={onClose} aria-label="写真比較">
-      <div className={styles.shell}>
+      <div ref={shellRef} className={styles.shell} data-side={side || undefined} data-fs={fullscreen || undefined}>
         <header className={styles.top}>
           <div className={styles.titleBox}>
             <div className={styles.title}>写真比較</div>
@@ -507,6 +542,19 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
             })
           )}
         </main>
+        {fullscreen && (
+          <div className={styles.fsBar}>
+            <button type="button" onClick={toggleFullscreen} title="全画面を終える（F キー・Esc）" aria-label="全画面を終える">
+              ⤡
+            </button>
+            <button type="button" onClick={() => setViews([])} title="拡大を戻す（0 キー）" aria-label="拡大を戻す">
+              ⟲
+            </button>
+            <button type="button" onClick={() => dialogRef.current?.close()} title="写真比較を閉じる" aria-label="閉じる">
+              ✕
+            </button>
+          </div>
+        )}
 
         <footer className={styles.stripWrap}>
           {lights.length > 1 && (
