@@ -147,9 +147,44 @@ export async function reorder(kind: "lanes" | "menus" | "products" | "stages", i
 export type PatientUpdate = Partial<
   Pick<
     Patient,
-    "name" | "kana" | "nameAlt" | "phone" | "email" | "postalCode" | "address" | "sex" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications" | "questionnaireOther"
+    "name" | "kana" | "nameAlt" | "phone" | "email" | "postalCode" | "address" | "sex" | "chartNo" | "m3ChartNo" | "birthDate" | "caution" | "cautionNote" | "memo" | "history" | "medications" | "questionnaireOther" | "reminderOptOut"
   >
->;
+> & { contactPref?: "auto" | "line" | "email" | "none" };
+
+// ---- リマインド ----
+
+export interface ReminderSettings {
+  enabled: boolean;
+  prevTime: string | null;
+  dayTime: string | null;
+  useLine: boolean;
+  useEmail: boolean;
+  fromEmail: string;
+  fromName: string;
+  replyTo: string;
+  lineReserve: number;
+  template: string;
+  defaultTemplate: string;
+  lineConfigured: boolean;
+  lineRemaining: number | null;
+  lastRun: { at: string; prev: Record<string, number> | null; day: Record<string, number> | null } | null;
+}
+
+export function fetchReminderSettings(): Promise<ReminderSettings> {
+  return call("/api/v1/admin/reminders");
+}
+
+export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defaultTemplate" | "lineConfigured" | "lineRemaining" | "lastRun">> & { lineToken?: string }): Promise<ReminderSettings> {
+  return call("/api/v1/admin/reminders", { method: "PUT", body: JSON.stringify(body) });
+}
+
+export function runRemindersNow(): Promise<{ ran: boolean; reason?: string; prev?: Record<string, number> | null; day?: Record<string, number> | null }> {
+  return call("/api/v1/admin/reminders/run", { method: "POST", body: "{}" });
+}
+
+export function remindNow(reservationId: string): Promise<{ status: string; channel: "line" | "email" | null }> {
+  return call(`/api/v1/reservations/${encodeURIComponent(reservationId)}/remind`, { method: "POST", body: "{}" });
+}
 
 export function fetchPatient(id: string): Promise<PatientDetail> {
   return call(`/api/v1/patients/${encodeURIComponent(id)}`);

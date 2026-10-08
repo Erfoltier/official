@@ -20,7 +20,7 @@ BASE_PATH="$BASE_PATH" npm run build:static >/dev/null
 cp -R out/. "$APP/"
 
 echo "== PHP の API をコピー"
-cp -R php/api php/lib php/seed "$APP/"
+cp -R php/api php/lib php/seed php/cron "$APP/"
 mkdir -p "$APP/data"
 cp php/data/.htaccess "$APP/data/"
 cp php/.htaccess php/config.sample.php "$APP/"

@@ -15,6 +15,7 @@ import { ConsentsTab } from "./ConsentsTab";
 import { QuestionnairesTab } from "./QuestionnairesTab";
 import { ImportsTab } from "./ImportsTab";
 import { M3MatchCard } from "./M3MatchCard";
+import { ReminderCard } from "./ReminderCard";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -159,7 +160,14 @@ export function SettingsApp() {
       ) : tab === "products" ? (
         <ProductsTab products={data.products} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "clinic" ? (
-        <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+        <>
+          <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+          {isAdmin && (
+            <section className={styles.clinic}>
+              <ReminderCard notify={notify} fail={fail} />
+            </section>
+          )}
+        </>
       ) : tab === "appearance" ? (
         <section className={styles.clinic}>
           <p className={styles.lead}>画面の見た目の設定です。配色は院で1つ（すべての端末に反映）、その下の表示はこの端末ごとに選べます。</p>

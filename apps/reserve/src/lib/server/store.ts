@@ -1353,6 +1353,8 @@ function normalizeIso(iso: string): string {
 
 export interface PatientInput {
   name?: string;
+  contactPref?: "auto" | "line" | "email" | "none";
+  reminderOptOut?: boolean;
   kana?: string;
   nameAlt?: string;
   phone?: string;
@@ -1461,6 +1463,8 @@ function patientFields(input: PatientInput, selfId: string | null): Partial<Pati
     out.birthDate = opt(b);
   }
   if (input.caution !== undefined) out.caution = input.caution || undefined;
+  if (input.contactPref !== undefined) out.contactPref = input.contactPref === "auto" ? undefined : input.contactPref;
+  if (input.reminderOptOut !== undefined) out.reminderOptOut = input.reminderOptOut || undefined;
   if (input.cautionNote !== undefined) out.cautionNote = opt(checkNote("注意事項", input.cautionNote, 500));
   if (input.memo !== undefined) out.memo = opt(checkNote("メモ", input.memo, 12000));
   if (input.history !== undefined) out.history = opt(checkNote("既往歴", input.history, 2000));

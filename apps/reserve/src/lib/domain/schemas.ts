@@ -72,6 +72,8 @@ const patientFieldsSchema = {
   history: shortText(4000).optional(),
   medications: shortText(4000).optional(),
   questionnaireOther: shortText(8000).optional(),
+  contactPref: z.enum(["auto", "line", "email", "none"]).optional(),
+  reminderOptOut: z.boolean().optional(),
 };
 
 export const createPatientSchema = z.object({ name: shortText(120), ...patientFieldsSchema }).strict();

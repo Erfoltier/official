@@ -95,6 +95,10 @@ export interface Patient {
    * 電話番号や氏名の一致で自動的に入れてはいけない（誤送信防止）。
    */
   lineUserId?: string;
+  /** リマインドなどの連絡の受け取り先。なし＝自動（LINE がつながっていれば LINE、なければメール） */
+  contactPref?: "line" | "email" | "none";
+  /** 「リマインド不要」と言われた */
+  reminderOptOut?: boolean;
   /** 生年月日（YYYY-MM-DD） */
   birthDate?: string;
   /** 注意事項（アレルギー等）がある患者。予約表に「!」を出す */
@@ -649,7 +653,19 @@ export interface Reservation {
     status: ReminderStatus;
     /** 送信・スキップした日時 */
     updatedAt?: string;
+    /** 送った先（line／email） */
+    channel?: "line" | "email";
+    /** 前日（prev）・当日（day） */
+    round?: "prev" | "day";
+    /** 送らなかった・送れなかった理由（optout・no_contact・line_quota など） */
+    reason?: string;
   };
+  /** 同じ来院の予約枠をまとめる番号（なし＝同じ患者・同じ日を1回の来院とみなす） */
+  visitId?: string;
+  /** 患者に伝える来院目安時刻（なし＝最初の枠の開始時刻） */
+  arrivalAt?: string;
+  /** 院の承認待ち（pending）はリマインドを送らない。なし＝確定 */
+  confirmation?: "confirmed" | "pending";
   /** 楽観的排他制御用。更新のたびに増える */
   version: number;
   createdAt: string;

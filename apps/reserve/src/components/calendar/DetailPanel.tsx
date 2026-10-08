@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { ageSexText } from "@/lib/domain/age";
 import { CautionInline } from "@/components/patients/CautionInline";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
-import { fetchFiles } from "./api";
+import { ApiError, fetchFiles, remindNow } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
 import { ChartDialog } from "@/components/charts/ChartDialog";
@@ -19,6 +19,15 @@ import { StageTimeInput, parseHm } from "./StageTime";
 import { formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/time";
 import { displayName } from "./names";
 import styles from "./calendar.module.css";
+
+const REMINDER_REASON: Record<string, string> = {
+  optout: "不要の患者",
+  no_contact: "送り先なし",
+  line_quota: "LINE の残り通数が少ない",
+  line_token: "LINE の鍵を確認",
+  line_limit: "LINE の上限",
+  mail_failed: "メール送信の失敗",
+};
 
 const REMINDER_LABEL = {
   pending: "未送信",
@@ -56,6 +65,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
   const [memo, setMemo] = useState(r.memo ?? "");
+  const [reminding, setReminding] = useState(false);
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
@@ -247,7 +257,33 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           </>
         )}
         <dt>リマインド</dt>
-        <dd>{REMINDER_LABEL[r.reminder.status]}</dd>
+        <dd>
+          {REMINDER_LABEL[r.reminder.status]}
+          {r.reminder.status === "sent" && r.reminder.channel && `（${r.reminder.round === "day" ? "当日" : "前日"}・${r.reminder.channel === "line" ? "LINE" : "メール"}）`}
+          {r.reminder.status !== "sent" && r.reminder.reason && `（${REMINDER_REASON[r.reminder.reason] ?? r.reminder.reason}）`}
+          {!["cancelled", "no_show"].includes(r.status) && (
+            <button
+              type="button"
+              className={styles.linkBtn}
+              style={{ marginLeft: 8 }}
+              disabled={reminding}
+              onClick={async () => {
+                if (!window.confirm("この来院へ、いまリマインドを送ります。よろしいですか？")) return;
+                setReminding(true);
+                try {
+                  const res = await remindNow(r.id);
+                  window.alert(`送りました（${res.channel === "line" ? "LINE" : "メール"}）`);
+                } catch (err) {
+                  window.alert(err instanceof ApiError ? err.message : "送れませんでした");
+                } finally {
+                  setReminding(false);
+                }
+              }}
+            >
+              {reminding ? "送っています…" : "今すぐ送る"}
+            </button>
+          )}
+        </dd>
       </dl>
 
       {editOpen && (

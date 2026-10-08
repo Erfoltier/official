@@ -19,6 +19,7 @@ require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/PriceParse.php';
 require_once __DIR__ . '/Store.php';
+require_once __DIR__ . '/Reminder.php';
 require_once __DIR__ . '/Http.php';
 
 function config(): array

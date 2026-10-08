@@ -18,6 +18,7 @@ final class Store
         'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール', 'postalCode' => '郵便番号', 'address' => '住所', 'sex' => '性別',
         'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
         'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'questionnaireOther' => 'その他の問診票情報', 'lineUserId' => 'LINE紐付け',
+        'contactPref' => '連絡先の希望', 'reminderOptOut' => 'リマインド不要',
     ];
     private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'postalCode', 'address', 'sex', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
@@ -174,6 +175,19 @@ final class Store
         self::ensureBaseline();
         // 削除から90日たったファイルの中身を消す（1日1回）
         self::purgeDeletedFiles();
+        // リマインド：決まった時刻を過ぎていたら、この通信の応答を返したあとに送る（有効にしたときだけ・5分に1回だけ見る）
+        if (PHP_SAPI !== 'cli' && (Reminder::settings()['enabled'] ?? false)) {
+            register_shutdown_function(static function (): void {
+                if (function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                }
+                try {
+                    Reminder::tick();
+                } catch (Throwable $e) {
+                    error_log('reminder tick: ' . get_class($e));
+                }
+            });
+        }
     }
 
     /** 試作のサンプル患者か（カルテ番号10001〜10120・電話0120-000-xxx の両方がそろうものだけ） */
@@ -1329,6 +1343,16 @@ final class Store
         }
         if (isset($input['caution'])) {
             $out['caution'] = $input['caution'] ?: null;
+        }
+        // リマインドなどの連絡の受け取り先（auto は「LINE がつながっていれば LINE、なければメール」。既定なので保存しない）
+        if (isset($input['contactPref'])) {
+            if (!in_array($input['contactPref'], ['auto', 'line', 'email', 'none'], true)) {
+                throw new StoreError('invalid', '連絡先の希望は 自動・LINE・メール・送らない から選んでください');
+            }
+            $out['contactPref'] = $input['contactPref'] === 'auto' ? null : $input['contactPref'];
+        }
+        if (isset($input['reminderOptOut'])) {
+            $out['reminderOptOut'] = $input['reminderOptOut'] ?: null;
         }
         if (isset($input['cautionNote'])) {
             $out['cautionNote'] = $opt(self::checkNote('注意事項', $input['cautionNote'], 500));

@@ -68,6 +68,10 @@ try {
     }
 
     // ---- 外部連携（スタッフのログインではなく連携トークンで確認） ----
+    if ($route === 'POST integration/reminders/run') {
+        Http::checkIntegrationAuth();
+        Http::json(Reminder::tick(true));
+    }
     if ($p[0] === 'integration' && ($p[1] ?? '') === 'reminders') {
         Http::checkIntegrationAuth();
         if ($method === 'GET' && $n === 2) {
@@ -184,6 +188,11 @@ try {
     if ($route === 'POST reservations') {
         $s = $me();
         Http::json(Store::createReservation(Schema::createReservation(Http::readJson(65_536)), $actor($s)), 201);
+    }
+    // リマインドを今すぐ送る（その予約の来院へ）
+    if ($method === 'POST' && $n === 3 && $p[0] === 'reservations' && $p[2] === 'remind') {
+        $s = $me();
+        Http::json(Reminder::sendNow(V::id($p[1]), $actor($s)));
     }
     if ($method === 'PATCH' && $n === 2 && $p[0] === 'reservations') {
         $s = $me();
@@ -359,6 +368,24 @@ try {
     }
 
     // ---- M3 の患者一覧との照合（院長・管理者）。CSV はブラウザの中だけで読み、照合できた分だけ届く ----
+    // ---- リマインドの設定（院長・管理者） ----
+    if ($route === 'GET admin/reminders') {
+        $me(STAFF_ADMIN);
+        Http::json(Reminder::publicSettings());
+    }
+    if ($route === 'PUT admin/reminders') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson(20_000);
+        if (!is_array($in)) {
+            Http::json(['error' => 'invalid', 'message' => '設定を読み取れませんでした'], 400);
+        }
+        Http::json(Reminder::updateSettings($in, $actor($s)));
+    }
+    if ($route === 'POST admin/reminders/run') {
+        $me(STAFF_ADMIN);
+        Http::json(Reminder::tick(true));
+    }
+
     if ($route === 'GET admin/m3-fill') {
         $s = $me(STAFF_ADMIN);
         $items = Store::m3FillCandidates();

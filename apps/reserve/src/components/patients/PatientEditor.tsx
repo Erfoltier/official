@@ -24,7 +24,7 @@ interface Props {
   onClose?: () => void;
 }
 
-type Form = Required<{ [K in keyof PatientUpdate]-?: K extends "caution" ? boolean : string }>;
+type Form = Required<{ [K in keyof PatientUpdate]-?: K extends "caution" | "reminderOptOut" ? boolean : string }>;
 
 function toForm(d: PatientDetail): Form {
   const p = d.patient;
@@ -46,6 +46,8 @@ function toForm(d: PatientDetail): Form {
     history: p.history ?? "",
     medications: p.medications ?? "",
     questionnaireOther: p.questionnaireOther ?? "",
+    contactPref: p.contactPref ?? "auto",
+    reminderOptOut: !!p.reminderOptOut,
   };
 }
 
@@ -302,6 +304,20 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             </Field>
             <Field label="メール" changed={changedKeys.includes("email")}>
               <input className={styles.input} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} maxLength={200} />
+            </Field>
+            <Field label="リマインドの送り先" changed={changedKeys.includes("contactPref")}>
+              <select className={styles.input} value={form.contactPref} onChange={(e) => set("contactPref", e.target.value)}>
+                <option value="auto">自動（LINE がつながっていれば LINE、なければメール）</option>
+                <option value="line">LINE</option>
+                <option value="email">メール</option>
+                <option value="none">送らない</option>
+              </select>
+            </Field>
+            <Field label="リマインド" changed={changedKeys.includes("reminderOptOut")}>
+              <span style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 36 }}>
+                <input type="checkbox" checked={form.reminderOptOut} onChange={(e) => set("reminderOptOut", e.target.checked)} />
+                リマインド不要（自動では送らない）
+              </span>
             </Field>
             <Field label="郵便番号" changed={changedKeys.includes("postalCode")}>
               <input
