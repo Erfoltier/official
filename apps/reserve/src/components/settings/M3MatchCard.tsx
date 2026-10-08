@@ -5,6 +5,8 @@ import { applyM3Fill, fetchM3FillCandidates } from "@/components/calendar/api";
 import { decodeCsv, guessColumns, matchM3, parseCsv, type M3Columns, type M3MatchResult } from "@/lib/domain/m3match";
 import styles from "./settings.module.css";
 
+const BATCH = 200;
+
 const FIELDS: { key: Exclude<keyof M3Columns, "phone">; label: string }[] = [
   { key: "name", label: "氏名（漢字）" },
   { key: "kana", label: "フリガナ" },
@@ -21,9 +23,12 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
   const [col, setCol] = useState<M3Columns | null>(null);
   const [result, setResult] = useState<(M3MatchResult & { total: number }) | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 反映の進み具合（done / total）と、終わったときの結果 */
+  const [progress, setProgress] = useState<{ done: number; total: number; updated: number; skipped: number; finished: boolean; error?: string } | null>(null);
 
   const pick = async (f: File | undefined) => {
     setResult(null);
+    setProgress(null);
     if (!f) return;
     setBusy(true);
     try {
@@ -55,13 +60,25 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
   const apply = async () => {
     if (!result?.fills.length) return;
     if (!window.confirm(`${result.fills.length}名の氏名に漢字を入れます。先にサーバーで控え（バックアップ）を取ってから書き換えます。よろしいですか？`)) return;
+    const items = result.fills.map(({ before: _before, ...x }) => x);
+    const p = { done: 0, total: items.length, updated: 0, skipped: 0, finished: false };
     setBusy(true);
+    setProgress(p);
     try {
-      const r = await applyM3Fill(result.fills.map(({ before: _before, ...x }) => x));
-      props.notify(`${r.updated}名の氏名に漢字を入れました（入れなかった ${r.skipped}名）`);
+      // 1回で全部送ると共用サーバーの時間切れで止まることがあるため、200名ずつ送る（控えは最初の1回だけ）
+      for (let i = 0; i < items.length; i += BATCH) {
+        const r = await applyM3Fill(items.slice(i, i + BATCH), i === 0);
+        p.done = Math.min(i + BATCH, items.length);
+        p.updated += r.updated;
+        p.skipped += r.skipped;
+        setProgress({ ...p });
+      }
+      setProgress({ ...p, finished: true });
+      props.notify(`${p.updated}名の氏名に漢字を入れました（入れなかった ${p.skipped}名）`);
       setResult(null);
       setFile(null);
     } catch (e) {
+      setProgress({ ...p, finished: true, error: e instanceof Error ? e.message : "通信に失敗しました" });
       props.fail(e);
     } finally {
       setBusy(false);
@@ -125,6 +142,26 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
         </>
       )}
 
+      {progress && (
+        <div className={styles.priceStatus} role="status">
+          {progress.error ? (
+            <span>
+              途中で止まりました（{progress.done.toLocaleString()} / {progress.total.toLocaleString()}名まで送信・漢字を入れた {progress.updated.toLocaleString()}名）：{progress.error}
+              。もう一度 CSV を選んで照合すると、残りの人だけが出ます。
+            </span>
+          ) : progress.finished ? (
+            <span>
+              反映が終わりました：漢字を入れた <b>{progress.updated.toLocaleString()}名</b>／入れなかった {progress.skipped.toLocaleString()}名
+            </span>
+          ) : (
+            <span>
+              {progress.done === 0 ? "サーバーで控え（バックアップ）を取っています…" : "反映しています…"} {progress.done.toLocaleString()} / {progress.total.toLocaleString()}名
+              <progress max={progress.total} value={progress.done} />
+            </span>
+          )}
+        </div>
+      )}
+
       {result && (
         <>
           <div className={styles.priceStatus}>
@@ -145,7 +182,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
               </details>
               <div className={styles.actions}>
                 <button className={styles.primary} disabled={busy} onClick={apply}>
-                  {result.fills.length.toLocaleString()}名に反映する
+                  {busy && progress ? "反映しています…" : `${result.fills.length.toLocaleString()}名に反映する`}
                 </button>
               </div>
             </>

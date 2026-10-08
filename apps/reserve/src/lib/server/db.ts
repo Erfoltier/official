@@ -270,6 +270,24 @@ export function transaction<T>(fn: () => T): T {
   }
 }
 
+/** 写真などのファイル（blobs）を除いた控え（患者・予約など）。一括書き換えの前に手早く取る */
+export function backupDocsTo(file: string): void {
+  mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const db = st().db;
+  db.prepare("ATTACH DATABASE ? AS bk").run(file);
+  try {
+    for (const t of ["docs", "audit"]) {
+      const row = db.prepare("SELECT sql FROM main.sqlite_master WHERE type = 'table' AND name = ?").get(t) as { sql: string } | undefined;
+      if (!row) continue;
+      db.exec(row.sql.replace(new RegExp(`^CREATE TABLE\\s+(IF NOT EXISTS\\s+)?"?${t}"?`, "i"), `CREATE TABLE bk.${t}`));
+      db.exec(`INSERT INTO bk.${t} SELECT * FROM main.${t}`);
+    }
+  } finally {
+    db.exec("DETACH DATABASE bk");
+  }
+  chmodSync(file, 0o600);
+}
+
 /** バックアップ：その時点の内容を別ファイルに書き出す（中身は暗号化されたまま） */
 export function backupTo(file: string): void {
   mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });

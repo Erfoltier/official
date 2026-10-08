@@ -1,5 +1,5 @@
 import path from "node:path";
-import { backupTo } from "@/lib/server/db";
+import { backupDocsTo } from "@/lib/server/db";
 import { errorResponse, json, readJson } from "@/lib/server/http";
 import { actorOf, requireStaff } from "@/lib/server/session";
 import { noteAccess } from "@/lib/server/staff";
@@ -21,8 +21,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const staff = requireStaff(request, ["admin"]);
-    const body = (await readJson(request)) as { confirm?: unknown; items?: unknown } | null;
-    if (!body || body.confirm !== "APPLY" || !Array.isArray(body.items) || body.items.length > 100000) {
+    const body = (await readJson(request, 300_000)) as { confirm?: unknown; items?: unknown; backup?: unknown } | null;
+    if (!body || body.confirm !== "APPLY" || !Array.isArray(body.items) || body.items.length > 1000) {
       return json({ error: "invalid", message: '確認のため {"confirm":"APPLY","items":[…]} を送ってください' }, 400);
     }
     const str = (v: unknown, max: number) => (typeof v === "string" && v.length <= max ? v : undefined);
@@ -33,10 +33,14 @@ export async function POST(request: Request) {
       if (!id || !name) continue;
       items.push({ id, name, kana: str(x.kana, 60), birthDate: str(x.birthDate, 10), phone: str(x.phone, 20), m3ChartNo: str(x.m3ChartNo, 20) });
     }
-    // 書き換える前に、必ず控えを取る
-    const name = `reserve-${new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15)}-m3.db`;
-    backupTo(path.join(process.env.RESERVE_DATA_DIR ?? path.join(process.cwd(), ".data"), "backups", name));
-    return json({ ...applyM3Fill(items, actorOf(staff)), backup: `backups/${name}` });
+    // 書き換える前に、必ず控えを取る（分けて送るときは最初の1回だけ。写真は書き換えないので除いて手早く）
+    let backup: string | null = null;
+    if (body.backup !== false) {
+      const name = `docs-${new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15)}.db`;
+      backupDocsTo(path.join(process.env.RESERVE_DATA_DIR ?? path.join(process.cwd(), ".data"), "backups", name));
+      backup = `backups/${name}`;
+    }
+    return json({ ...applyM3Fill(items, actorOf(staff)), backup });
   } catch (err) {
     return errorResponse(err);
   }

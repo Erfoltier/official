@@ -362,8 +362,8 @@ try {
     if ($route === 'POST admin/m3-fill') {
         $s = $me(STAFF_ADMIN);
         set_time_limit(300);
-        $in = Http::readJson();
-        if (!is_array($in) || ($in['confirm'] ?? null) !== 'APPLY' || !is_array($in['items'] ?? null) || count($in['items']) > 100000) {
+        $in = Http::readJson(300_000); // 照合できた患者の分を、画面から 200 名ずつ送ってくる
+        if (!is_array($in) || ($in['confirm'] ?? null) !== 'APPLY' || !is_array($in['items'] ?? null) || count($in['items']) > 1000) {
             Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"APPLY","items":[…]} を送ってください'], 400);
         }
         $str = fn($v, int $max) => is_string($v) && mb_strlen($v) <= $max ? $v : null;
@@ -376,10 +376,13 @@ try {
             }
             $items[] = ['id' => $id, 'name' => $name, 'kana' => $str($x['kana'] ?? null, 60), 'birthDate' => $str($x['birthDate'] ?? null, 10), 'phone' => $str($x['phone'] ?? null, 20), 'm3ChartNo' => $str($x['m3ChartNo'] ?? null, 20)];
         }
-        // 書き換える前に、必ず控えを取る
-        $b = Db::i()->backup();
-        Auth::audit($actor($s), 'M3照合の前に保存データの控えを作成：' . $b['file']);
-        Http::json(Store::applyM3Fill($items, $actor($s)) + ['backup' => $b['file']]);
+        // 書き換える前に、必ず控えを取る（分けて送るときは最初の1回だけ。写真は書き換えないので除いて手早く）
+        $b = null;
+        if (($in['backup'] ?? true) !== false) {
+            $b = Db::i()->backupDocs();
+            Auth::audit($actor($s), 'M3照合の前に保存データの控えを作成：' . $b['file']);
+        }
+        Http::json(Store::applyM3Fill($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
     }
 
     // ---- 整った控え（バックアップ）をサーバーの data/backups/ に作る（院長・管理者） ----

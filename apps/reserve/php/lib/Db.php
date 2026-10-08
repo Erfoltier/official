@@ -82,6 +82,48 @@ final class Db
         return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out), 'integrity' => $integrity, 'docs' => $docs, 'liveDocs' => $live];
     }
 
+    /**
+     * 写真などのファイル（blobs）を除いた、患者・予約などの控え。写真が多いと丸ごとの控えは時間がかかりすぎるため、
+     * データの一括書き換えの前はこちらを使う。保存先は backups/ の docs-*.db（中身は暗号化されたまま）。直近 $keep 個を残す
+     */
+    public function backupDocs(int $keep = 10): array
+    {
+        $dsn = (string) config()['db_dsn'];
+        if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
+            throw new RuntimeException('この保存方式では控えを作れません（SQLite のファイルだけ）');
+        }
+        $dir = dirname(substr($dsn, 7)) . '/backups';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0700, true);
+        }
+        $name = 'docs-' . gmdate('Ymd-His') . '.db';
+        $out = "{$dir}/{$name}";
+        $this->pdo->prepare('ATTACH DATABASE ? AS bk')->execute([$out]);
+        try {
+            foreach (['docs', 'audit'] as $t) {
+                $sql = (string) $this->pdo->query("SELECT sql FROM main.sqlite_master WHERE type = 'table' AND name = '{$t}'")->fetchColumn();
+                $this->pdo->exec(preg_replace('/^CREATE TABLE\s+(IF NOT EXISTS\s+)?"?' . $t . '"?/i', "CREATE TABLE bk.{$t}", $sql));
+                $this->pdo->exec("INSERT INTO bk.{$t} SELECT * FROM main.{$t}");
+            }
+        } finally {
+            $this->pdo->exec('DETACH DATABASE bk');
+        }
+        @chmod($out, 0600);
+        $files = glob("{$dir}/docs-*.db") ?: [];
+        rsort($files);
+        foreach (array_slice($files, $keep) as $old) {
+            @unlink($old);
+        }
+        $chk = new PDO('sqlite:' . $out, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $docs = (int) $chk->query('SELECT COUNT(*) FROM docs')->fetchColumn();
+        $chk = null;
+        $live = (int) $this->pdo->query('SELECT COUNT(*) FROM docs')->fetchColumn();
+        if ($docs !== $live) {
+            throw new RuntimeException('控えの件数が合いません');
+        }
+        return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out), 'docs' => $docs];
+    }
+
     private function migrate(): void
     {
         if ($this->mysql) {

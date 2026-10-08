@@ -553,6 +553,7 @@ export async function fetchM3FillCandidates(): Promise<import("@/lib/domain/m3ma
   return (await call<{ items: import("@/lib/domain/m3match").M3Candidate[] }>("/api/v1/admin/m3-fill")).items;
 }
 
-export function applyM3Fill(items: Omit<import("@/lib/domain/m3match").M3Fill, "before">[]): Promise<{ updated: number; skipped: number; backup: string }> {
-  return call("/api/v1/admin/m3-fill", { method: "POST", body: JSON.stringify({ confirm: "APPLY", items }) });
+/** backup=false は分けて送る2回目以降（控えは最初の1回で取る） */
+export function applyM3Fill(items: Omit<import("@/lib/domain/m3match").M3Fill, "before">[], backup = true): Promise<{ updated: number; skipped: number; backup: string | null }> {
+  return call("/api/v1/admin/m3-fill", { method: "POST", body: JSON.stringify({ confirm: "APPLY", items, backup }) });
 }
