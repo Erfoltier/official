@@ -172,6 +172,8 @@ final class Store
         }
         // 設定のバックアップ：まだ記録がなければ、今の設定を「記録を始めた時点」として残す
         self::ensureBaseline();
+        // 削除から90日たったファイルの中身を消す（1日1回）
+        self::purgeDeletedFiles();
     }
 
     /** 試作のサンプル患者か（カルテ番号10001〜10120・電話0120-000-xxx の両方がそろうものだけ） */
@@ -202,6 +204,7 @@ final class Store
                     foreach ($db->where($kind, 'k2', $id) as $rid => $rec) {
                         if ($kind === 'file') {
                             $db->deleteBlob((string) $rid);
+                            $db->deleteBlob('thumb:' . $rid);
                         }
                         $db->delete($kind, (string) $rid);
                         $records++;
@@ -1446,6 +1449,7 @@ final class Store
             Db::i()->putBlob($id, $bytes);
             Db::i()->put('file', $id, $meta);
         });
+        self::storeThumb($id, $bytes, $type);
         if ($by) {
             Auth::audit($by, 'ファイルを追加', $patientId);
         }
@@ -1464,6 +1468,43 @@ final class Store
             throw new StoreError('not_found', 'ファイルが見つかりません');
         }
         return [$meta, $bytes];
+    }
+
+    /** 写真を受け取ったときに縮小版も作っておく（写真比較を初めて開くときに待たせないため）。作れない形式は何もしない */
+    private static function storeThumb(string $id, string $bytes, string $type): void
+    {
+        if ((self::FILE_TYPES[$type] ?? null) !== 'image') {
+            return;
+        }
+        $thumb = self::makeThumb($bytes, 480);
+        if ($thumb !== null) {
+            Db::i()->putBlob('thumb:' . $id, $thumb);
+        }
+    }
+
+    /**
+     * 削除してから90日たったファイルは、中身と縮小版を本当に消す（一覧の記録は「削除済み」として残す）。
+     * 1日1回だけ、最初の通信のついでに行う
+     */
+    private static function purgeDeletedFiles(): void
+    {
+        $db = Db::i();
+        $today = substr(now_iso(), 0, 10);
+        if ($db->meta('filesPurgedOn') === $today) {
+            return;
+        }
+        $db->setMeta('filesPurgedOn', $today);
+        $limit = gmdate('Y-m-d\TH:i:s', time() - 90 * 86400);
+        foreach ($db->all('file') as $id => $f) {
+            if (empty($f['deleted']) || !empty($f['purged']) || ($f['deleted']['at'] ?? '9999') >= $limit) {
+                continue;
+            }
+            $db->transaction(function () use ($db, $id, $f) {
+                $db->deleteBlob((string) $id);
+                $db->deleteBlob('thumb:' . $id);
+                $db->put('file', (string) $id, [...$f, 'purged' => now_iso()]);
+            });
+        }
     }
 
     /**
@@ -1755,6 +1796,7 @@ final class Store
         $by = ['id' => 'device:' . $link['id'], 'name' => $link['name']];
         $out = $db->transaction(function () use ($db, $id, $bytes, $type, $date, $fileName, $patientName, $takenAt, $match, $link, $by, $ref) {
             $db->putBlob($id, $bytes);
+            self::storeThumb($id, $bytes, $type);
             $base = ['id' => $id];
             if ($match['id'] !== null) {
                 $meta = $base + ['patientId' => $match['id'], 'date' => $date, 'name' => $fileName, 'type' => $type, 'kind' => 'image', 'size' => strlen($bytes), 'createdAt' => now_iso(), 'createdBy' => $by, 'source' => $link['source']];
