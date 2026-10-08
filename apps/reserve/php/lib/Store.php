@@ -1677,6 +1677,15 @@ final class Store
                 }
             }
         }
+        if (!$hits) {
+            // 同じ字で見つからなければ、旧字体・異体字をそろえて探し直す（川瀨／川瀬、冨沢／富沢 など）
+            $fold = fold_name_variants($key);
+            foreach (self::patients() as $p) {
+                if (empty($p['deleted']) && array_filter([$p['name'], $p['kana'] ?? '', $p['nameAlt'] ?? ''], fn($x) => $x !== '' && fold_name_variants(search_key($x)) === $fold)) {
+                    $hits[] = $p['id'];
+                }
+            }
+        }
         if (count($hits) === 1) {
             return ['id' => $hits[0], 'reason' => null];
         }

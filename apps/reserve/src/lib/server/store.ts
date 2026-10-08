@@ -43,7 +43,7 @@ import type {
 } from "@/lib/domain/types";
 import { DEFAULT_DEVICE_OPTIONS, DEFAULT_ESTIMATE_VALID_DAYS, INACTIVE_STATUSES, NEOVOIR_LIGHTS, STATUS_LABEL } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, isDateString, minutesOfDay, nowInClinic, toIso, weekdayOf } from "@/lib/domain/time";
-import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
+import { cleanName, hasForbiddenChars, searchKey, foldNameVariants } from "@/lib/domain/text";
 import {
   DEFAULT_SKINCARE_CATALOG,
   DEMO_CLINIC,
@@ -890,7 +890,12 @@ function refKey(v: string | undefined): string {
 function matchByName(name: string, ref?: string): { id?: string; reason?: PhotoInboxItem["reason"] } {
   const key = searchKey(name);
   if (!key) return { reason: "not_found" };
-  const hits = [...state().patients.values()].filter((p) => !p.deleted && [p.name, p.kana, p.nameAlt].some((x) => x && searchKey(x) === key));
+  let hits = [...state().patients.values()].filter((p) => !p.deleted && [p.name, p.kana, p.nameAlt].some((x) => x && searchKey(x) === key));
+  if (hits.length === 0) {
+    // 同じ字で見つからなければ、旧字体・異体字をそろえて探し直す（川瀨／川瀬、冨沢／富沢 など）
+    const fold = foldNameVariants(key);
+    hits = [...state().patients.values()].filter((p) => !p.deleted && [p.name, p.kana, p.nameAlt].some((x) => x && foldNameVariants(searchKey(x)) === fold));
+  }
   if (hits.length === 1) return { id: hits[0].id };
   const r = refKey(ref);
   if (r && hits.length > 1) {
