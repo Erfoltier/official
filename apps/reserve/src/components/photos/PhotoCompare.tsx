@@ -452,7 +452,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
       bestLayout(shown.length, stageSize.w, stageSize.h, ar, shown.length === 6 ? (stageSize.w >= stageSize.h ? 3 : 2) : undefined);
 
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onKeyDown={onKeyDown} onClose={onClose} onCancel={onClose} aria-label="写真比較">
+    <dialog ref={dialogRef} className={styles.dialog} onKeyDown={onKeyDown} onClose={(e) => e.target === e.currentTarget && onClose()} onCancel={(e) => e.target === e.currentTarget && onClose()} aria-label="写真比較">
       <div ref={shellRef} className={styles.shell} data-side={side || undefined} data-fs={fullscreen || undefined}>
         <header className={styles.top}>
           <div className={styles.titleBox}>

@@ -189,7 +189,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   };
 
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} onCancel={onClose}>
+    <dialog ref={dialogRef} className={styles.dialog} onClose={(e) => e.target === e.currentTarget && onClose()} onCancel={(e) => e.target === e.currentTarget && onClose()}>
       <form
         method="dialog"
         onSubmit={(e) => {
