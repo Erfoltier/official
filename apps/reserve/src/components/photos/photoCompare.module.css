@@ -576,3 +576,38 @@
   font-size: 15px;
   cursor: pointer;
 }
+
+/* 拡大のスライドバー */
+.zoomBar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  color: #8f8c86;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.zoomBar input {
+  width: 110px;
+  accent-color: #c9b48a;
+}
+
+.zoomBar b {
+  min-width: 38px;
+  text-align: right;
+  color: #ecebe7;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.shell[data-side] .zoomBar input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}

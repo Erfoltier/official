@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
 import type { PatientFile } from "@/lib/domain/types";
 import { ApiError, fetchFiles, fileUrl } from "@/components/calendar/api";
 import styles from "./photoCompare.module.css";
@@ -36,9 +36,9 @@ const GAP = 12;
  * 並べ方を決める：写真の縦横比（幅÷高さ）のまま、余白なくいちばん大きく収まる列数を選ぶ。
  * 縦長の写真を横に2枚、スマホの縦画面なら上下に2枚、のように画面の形に合わせて変わる
  */
-function bestLayout(n: number, w: number, h: number, ar: number): { cols: number; pw: number; ph: number } {
-  let best = { cols: 1, pw: 0, ph: 0 };
-  for (let cols = 1; cols <= n; cols++) {
+function bestLayout(n: number, w: number, h: number, ar: number, fixedCols?: number): { cols: number; pw: number; ph: number } {
+  let best = { cols: fixedCols ?? 1, pw: 0, ph: 0 };
+  for (let cols = fixedCols ?? 1; cols <= (fixedCols ?? n); cols++) {
     const rows = Math.ceil(n / cols);
     const cellW = (w - GAP * (cols - 1)) / cols;
     const cellH = (h - GAP * (rows - 1)) / rows - META_H;
@@ -288,14 +288,61 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
     }
     e.preventDefault();
   };
-  const onWheel = (i: number) => (e: ReactWheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    zoomAt(i, e.currentTarget, e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+  // ホイール・トラックパッドのピンチ（ctrl 付きのホイールとして届く）は、ブラウザの拡大にせず写真の拡大に使う。
+  // React のホイールは preventDefault が効かないため、写真の並ぶ領域に直接つける
+  const zoomAtRef = useRef(zoomAt);
+  useEffect(() => {
+    zoomAtRef.current = zoomAt;
+  });
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      const photo = (e.target as HTMLElement).closest<HTMLElement>("[data-photo]");
+      const slot = photo?.closest<HTMLElement>("[data-slot]");
+      if (!photo || !slot) {
+        if (e.ctrlKey) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      zoomAtRef.current(Number(slot.dataset.slot), photo, e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+    };
+    // Mac の Safari はタッチパッドのピンチを gesturechange（scale）で伝える
+    let lastScale = 1;
+    const onGesture = (e: Event) => {
+      const g = e as Event & { scale: number; clientX: number; clientY: number; type: string };
+      e.preventDefault();
+      if (g.type === "gesturestart") {
+        lastScale = 1;
+        return;
+      }
+      const photo = (e.target as HTMLElement).closest<HTMLElement>("[data-photo]");
+      const slot = photo?.closest<HTMLElement>("[data-slot]");
+      if (photo && slot) zoomAtRef.current(Number(slot.dataset.slot), photo, g.clientX, g.clientY, Math.pow(g.scale / lastScale, 1.5));
+      lastScale = g.scale;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("gesturestart", onGesture);
+    el.addEventListener("gesturechange", onGesture);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("gesturestart", onGesture);
+      el.removeEventListener("gesturechange", onGesture);
+    };
+  }, []);
+
+  // クリック（動かさずに押して離す）：等倍なら押した所を中心に拡大、拡大中なら元に戻す
+  const press = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const onPhotoClick = (i: number) => (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (press.current?.moved) return;
+    if (viewOf(i).s > 1.01) setView(i, () => RESET);
+    else zoomAt(i, e.currentTarget, e.clientX, e.clientY, 2.5);
   };
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ d: number } | null>(null);
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
+    if (pointers.current.size === 0) press.current = { x: e.clientX, y: e.clientY, moved: false };
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
@@ -306,6 +353,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
     const prev = pointers.current.get(e.pointerId);
     if (!prev) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (press.current && (pointers.current.size > 1 || Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > 5)) press.current.moved = true;
     if (pointers.current.size === 2 && pinch.current) {
       const [a, b] = [...pointers.current.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -400,7 +448,8 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
   const single = shown.length === 1;
   const layout = single
     ? { cols: 1, pw: Math.floor(stageSize.w), ph: Math.max(0, Math.floor(stageSize.h - META_H)) }
-    : bestLayout(shown.length, stageSize.w, stageSize.h, ar);
+    : // 6枚は横長の画面なら 3枚×2段、縦長の画面なら 2枚×3段
+      bestLayout(shown.length, stageSize.w, stageSize.h, ar, shown.length === 6 ? (stageSize.w >= stageSize.h ? 3 : 2) : undefined);
 
   return (
     <dialog ref={dialogRef} className={styles.dialog} onKeyDown={onKeyDown} onClose={onClose} onCancel={onClose} aria-label="写真比較">
@@ -430,6 +479,25 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
               枚
             </span>
           </div>
+          <label className={styles.zoomBar} title="拡大（＋ / − キー、ホイール、ピンチでも）">
+            <span>拡大</span>
+            <input
+              type="range"
+              min={0}
+              max={Math.log(MAX_SCALE)}
+              step={0.01}
+              value={Math.log(viewOf(focus ?? active).s)}
+              onChange={(e) => {
+                const target = Math.exp(Number(e.target.value));
+                setView(focus ?? active, (v) => {
+                  const k = target / v.s;
+                  return clampView({ s: target, x: v.x * k, y: v.y * k });
+                });
+              }}
+              aria-label="拡大率"
+            />
+            <b>{Math.round(viewOf(focus ?? active).s * 100)}%</b>
+          </label>
           {canFullscreen && (
             <button type="button" className={styles.chip} data-on={fullscreen || undefined} onClick={toggleFullscreen} title="画面いっぱいに表示（F キー）">
               {fullscreen ? "全画面を終える" : "⛶ 全画面"}
@@ -470,12 +538,12 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                     <>
                       <div
                         className={styles.photo}
-                        onWheel={onWheel(i)}
+                        data-photo
+                        onClick={onPhotoClick(i)}
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove(i)}
                         onPointerUp={onPointerUp}
                         onPointerCancel={onPointerUp}
-                        onDoubleClick={() => setView(i, () => RESET)}
                         data-zoomed={v.s > 1 || undefined}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -534,7 +602,7 @@ export function PhotoCompare(props: { patientId: string; patientName: string; on
                   ) : (
                     <div className={styles.empty}>
                       <span>ここへ写真をドラッグ</span>
-                      <small>タブレット・スマホは、下の写真を指で上へ引き上げてここで離す。この枠を選んでから写真をタップでも入ります</small>
+                      <small>タブレット・スマホは、{side ? "右の写真を指で左へ引き出して" : "下の写真を指で上へ引き上げて"}ここで離す。この枠を選んでから写真をタップでも入ります</small>
                     </div>
                   )}
                 </section>
