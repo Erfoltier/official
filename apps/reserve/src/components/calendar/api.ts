@@ -546,3 +546,13 @@ export function rematchPhotoInbox(): Promise<{ matched: number; remaining: numbe
 export function saveDeviceOptions(id: string, options: DeviceOptions): Promise<DeviceLink> {
   return call(`/api/v1/device-links/${encodeURIComponent(id)}/options`, { method: "POST", body: JSON.stringify(options) });
 }
+
+// ---- M3 の患者一覧との照合（院長・管理者） ----
+
+export async function fetchM3FillCandidates(): Promise<import("@/lib/domain/m3match").M3Candidate[]> {
+  return (await call<{ items: import("@/lib/domain/m3match").M3Candidate[] }>("/api/v1/admin/m3-fill")).items;
+}
+
+export function applyM3Fill(items: Omit<import("@/lib/domain/m3match").M3Fill, "before">[]): Promise<{ updated: number; skipped: number; backup: string }> {
+  return call("/api/v1/admin/m3-fill", { method: "POST", body: JSON.stringify({ confirm: "APPLY", items }) });
+}

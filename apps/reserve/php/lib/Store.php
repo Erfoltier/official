@@ -3744,6 +3744,72 @@ final class Store
     }
 
     /** 結びついている問診票を、患者の空いている欄へ写し直す（写す仕組みより前に結びついた回答のため。何度実行しても重ならない） */
+    // ---- M3 の患者一覧との照合（漢字の氏名を補う。Node.js 版と同じ） ----
+    // 7万件の CSV はブラウザの中だけで読み、ここへは「照合できた患者の番号と補う値」だけが届く
+
+    private const HAS_KANJI = '/\p{Han}/u';
+
+    /** 氏名に漢字がない患者（Airリザーブからカタカナで入った人など）の、照合に使う欄だけ */
+    public static function m3FillCandidates(): array
+    {
+        self::init();
+        $out = [];
+        foreach (self::patients() as $p) {
+            if (!empty($p['deleted']) || preg_match(self::HAS_KANJI, $p['name'])) {
+                continue;
+            }
+            $out[] = array_filter([
+                'id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'] ?? '', 'birthDate' => $p['birthDate'] ?? null,
+                'phone' => $p['phone'] ?? null, 'chartNo' => $p['chartNo'] ?? '', 'm3ChartNo' => $p['m3ChartNo'] ?? null,
+            ], fn($v) => $v !== null);
+        }
+        return $out;
+    }
+
+    /**
+     * 照合できた患者へ漢字の氏名を入れる。サーバーでも決まりを確かめ直す：
+     * 今の氏名に漢字がなく、新しい氏名に漢字があるときだけ氏名を書き換え、ほかの欄は空のときだけ埋める。
+     * もとのカタカナの氏名は、フリガナが空ならフリガナへ残す
+     */
+    public static function applyM3Fill(array $items, array $by): array
+    {
+        self::init();
+        $updated = 0;
+        Db::i()->transaction(function () use ($items, &$updated) {
+            foreach ($items as $it) {
+                $cur = self::patients()[$it['id']] ?? null;
+                if (!$cur || !empty($cur['deleted']) || preg_match(self::HAS_KANJI, $cur['name']) || !preg_match(self::HAS_KANJI, $it['name'] ?? '')) {
+                    continue;
+                }
+                $wanted = ['name' => $it['name']];
+                if (($cur['kana'] ?? '') === '') {
+                    $wanted['kana'] = ($it['kana'] ?? '') !== '' ? $it['kana'] : $cur['name'];
+                }
+                foreach (['birthDate', 'phone', 'm3ChartNo'] as $k) {
+                    if (($cur[$k] ?? '') === '' && ($it[$k] ?? '') !== '') {
+                        $wanted[$k] = $it[$k];
+                    }
+                }
+                $ok = [];
+                foreach ($wanted as $k => $v) {
+                    try {
+                        self::patientFields([$k => $v], $cur['id']);
+                        $ok[$k] = $v;
+                    } catch (StoreError) {
+                        // 形の合わない値・ほかの患者と重なる番号は入れない
+                    }
+                }
+                if (!isset($ok['name'])) {
+                    continue;
+                }
+                self::updatePatient($cur['id'], [...$ok, 'version' => $cur['version']], ['id' => 'm3-match', 'name' => 'M3照合']);
+                $updated++;
+            }
+        });
+        Auth::audit($by, "M3の患者一覧と照合して漢字の氏名を追加（{$updated}名）");
+        return ['updated' => $updated, 'skipped' => count($items) - $updated];
+    }
+
     public static function refillFromQuestionnaires(array $by): array
     {
         self::init();

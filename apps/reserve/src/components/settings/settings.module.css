@@ -870,3 +870,27 @@ details.priceGroup > summary {
 .devices .clinicCard {
   max-width: none;
 }
+
+/* M3 照合：列の当てはめ */
+.m3Cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 12px;
+  margin: 6px 0 10px;
+}
+
+.m3Cols label {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.m3Preview {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.7;
+}

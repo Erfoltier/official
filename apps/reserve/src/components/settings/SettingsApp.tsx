@@ -14,6 +14,7 @@ import { PricesTab } from "./PricesTab";
 import { ConsentsTab } from "./ConsentsTab";
 import { QuestionnairesTab } from "./QuestionnairesTab";
 import { ImportsTab } from "./ImportsTab";
+import { M3MatchCard } from "./M3MatchCard";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -145,7 +146,14 @@ export function SettingsApp() {
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : tab === "imports" ? (
-        <ImportsTab menus={data.menus} lanes={data.lanes} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+        <>
+          <ImportsTab menus={data.menus} lanes={data.lanes} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+          {isAdmin && (
+            <section className={styles.clinic}>
+              <M3MatchCard notify={notify} fail={fail} />
+            </section>
+          )}
+        </>
       ) : tab === "questionnaires" ? (
         <QuestionnairesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : tab === "consents" ? (

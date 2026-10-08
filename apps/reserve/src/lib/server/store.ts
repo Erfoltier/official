@@ -2412,6 +2412,73 @@ export function linkQuestionnaire(id: string, chartNo: string, by?: Actor): Ques
 }
 
 /** 結びついている問診票を、患者の空いている欄へ写し直す（写す仕組みより前に結びついた回答のため。何度実行しても重ならない） */
+// ---- M3 の患者一覧との照合（漢字の氏名を補う） ----
+// 7万件の CSV はブラウザの中だけで読み、ここへは「照合できた患者の番号と補う値」だけが届く
+
+const HAS_KANJI = /\p{Script=Han}/u;
+const M3_ACTOR: Actor = { id: "m3-match", name: "M3照合" };
+
+export interface M3FillCandidate {
+  id: string;
+  name: string;
+  kana: string;
+  birthDate?: string;
+  phone?: string;
+  chartNo: string;
+  m3ChartNo?: string;
+}
+
+/** 氏名に漢字がない患者（Airリザーブからカタカナで入った人など）の、照合に使う欄だけ */
+export function m3FillCandidates(): M3FillCandidate[] {
+  return [...state().patients.values()]
+    .filter((p) => !p.deleted && !HAS_KANJI.test(p.name))
+    .map((p) => ({ id: p.id, name: p.name, kana: p.kana, birthDate: p.birthDate, phone: p.phone, chartNo: p.chartNo, m3ChartNo: p.m3ChartNo }));
+}
+
+export interface M3FillItem {
+  id: string;
+  name: string;
+  kana?: string;
+  birthDate?: string;
+  phone?: string;
+  m3ChartNo?: string;
+}
+
+/**
+ * 照合できた患者へ漢字の氏名を入れる。サーバーでも決まりを確かめ直す：
+ * 今の氏名に漢字がなく、新しい氏名に漢字があるときだけ氏名を書き換え、ほかの欄は空のときだけ埋める。
+ * もとのカタカナの氏名は、フリガナが空ならフリガナへ残す
+ */
+export function applyM3Fill(items: M3FillItem[], by: Actor): { updated: number; skipped: number } {
+  const st = state();
+  let updated = 0;
+  transaction(() => {
+    for (const it of items) {
+      const cur = st.patients.get(it.id);
+      if (!cur || cur.deleted || HAS_KANJI.test(cur.name) || !HAS_KANJI.test(it.name ?? "")) continue;
+      const wanted: PatientInput = { name: it.name };
+      if (!cur.kana) wanted.kana = it.kana || cur.name;
+      if (!cur.birthDate && it.birthDate) wanted.birthDate = it.birthDate;
+      if (!cur.phone && it.phone) wanted.phone = it.phone;
+      if (!cur.m3ChartNo && it.m3ChartNo) wanted.m3ChartNo = it.m3ChartNo;
+      const ok: PatientInput = {};
+      for (const [k, v] of Object.entries(wanted) as [keyof PatientInput, never][]) {
+        try {
+          patientFields({ [k]: v }, cur.id);
+          ok[k] = v;
+        } catch {
+          // 形の合わない値・ほかの患者と重なる番号は入れない
+        }
+      }
+      if (!ok.name) continue;
+      updatePatient(cur.id, { ...ok, version: cur.version }, M3_ACTOR);
+      updated++;
+    }
+  });
+  audit(by, `M3の患者一覧と照合して漢字の氏名を追加（${updated}名）`);
+  return { updated, skipped: items.length - updated };
+}
+
 export function refillFromQuestionnaires(by: Actor): { questionnaires: number; patients: number } {
   const st = state();
   const qs = [...st.questionnaires.values()].filter((q) => q.patientId && !q.deleted).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));

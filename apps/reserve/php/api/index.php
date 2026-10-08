@@ -352,6 +352,36 @@ try {
         Http::json(Store::refillFromQuestionnaires($actor($s)));
     }
 
+    // ---- M3 の患者一覧との照合（院長・管理者）。CSV はブラウザの中だけで読み、照合できた分だけ届く ----
+    if ($route === 'GET admin/m3-fill') {
+        $s = $me(STAFF_ADMIN);
+        $items = Store::m3FillCandidates();
+        Auth::noteAccess($s, 'M3照合のため氏名がカタカナの患者を表示', 'patients:' . count($items));
+        Http::json(['items' => $items]);
+    }
+    if ($route === 'POST admin/m3-fill') {
+        $s = $me(STAFF_ADMIN);
+        set_time_limit(300);
+        $in = Http::readJson();
+        if (!is_array($in) || ($in['confirm'] ?? null) !== 'APPLY' || !is_array($in['items'] ?? null) || count($in['items']) > 100000) {
+            Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"APPLY","items":[…]} を送ってください'], 400);
+        }
+        $str = fn($v, int $max) => is_string($v) && mb_strlen($v) <= $max ? $v : null;
+        $items = [];
+        foreach ($in['items'] as $x) {
+            $id = $str($x['id'] ?? null, 64);
+            $name = $str($x['name'] ?? null, 60);
+            if ($id === null || $name === null) {
+                continue;
+            }
+            $items[] = ['id' => $id, 'name' => $name, 'kana' => $str($x['kana'] ?? null, 60), 'birthDate' => $str($x['birthDate'] ?? null, 10), 'phone' => $str($x['phone'] ?? null, 20), 'm3ChartNo' => $str($x['m3ChartNo'] ?? null, 20)];
+        }
+        // 書き換える前に、必ず控えを取る
+        $b = Db::i()->backup();
+        Auth::audit($actor($s), 'M3照合の前に保存データの控えを作成：' . $b['file']);
+        Http::json(Store::applyM3Fill($items, $actor($s)) + ['backup' => $b['file']]);
+    }
+
     // ---- 整った控え（バックアップ）をサーバーの data/backups/ に作る（院長・管理者） ----
     if ($route === 'POST admin/backup') {
         $s = $me(STAFF_ADMIN);
