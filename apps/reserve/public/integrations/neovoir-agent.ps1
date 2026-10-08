@@ -16,6 +16,7 @@
     過去の写真も送る        powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Backfill
     止める                  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Uninstall
     入口の鍵だけ入れ直す    powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -SetBasic
+    5分ごとの起動で窓が一瞬出るのを止める（登録し直すだけ）  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Reregister
 
   どの光源（NL・PL・SL・UV）を送るか、縮小するかは、予約カレンダーの「設定 → 外部機器の連携」で選びます
   （取り込み係は起きるたびにそれを読みにいきます）。
@@ -24,7 +25,7 @@
   ・鍵はこのパソコンの、このWindowsユーザーだけが読める形で保存します（ほかの人・ほかのパソコンでは使えません）
   ・送るのは写真と、照合に使う氏名・撮影日時・ファイル名だけです。記録はこのパソコンの中にだけ残します
 #>
-param([switch]$Setup, [switch]$Preview, [switch]$Backfill, [switch]$Uninstall, [switch]$Once, [switch]$SetBasic)
+param([switch]$Setup, [switch]$Preview, [switch]$Backfill, [switch]$Uninstall, [switch]$Once, [switch]$SetBasic, [switch]$Reregister)
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -176,6 +177,20 @@ if ($Uninstall) {
   exit 0
 }
 
+# 5分ごとの起動を登録する。powershell.exe を直接起こすと -WindowStyle Hidden でも窓が一瞬出るため、
+# 窓を作らない conhost.exe --headless から起こす（Windows 10 1809 以降。それより古いときは従来どおり）
+function Register-AgentTask {
+  $ps = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -Once'
+  $conhost = Join-Path $env:SystemRoot 'System32\conhost.exe'
+  if ([Environment]::OSVersion.Version.Build -ge 17763 -and (Test-Path $conhost)) {
+    $action = New-ScheduledTaskAction -Execute $conhost -Argument ('--headless powershell.exe ' + $ps)
+  } else {
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $ps
+  }
+  $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
+  Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Description '予約カレンダーへネオボワールの写真を送る' -Force | Out-Null
+}
+
 if ($Setup) {
   New-Item -ItemType Directory -Force -Path $Dir | Out-Null
   Write-Host '=== ネオボワール → 予約カレンダー 取り込み係の準備 ==='
@@ -202,10 +217,15 @@ if ($Setup) {
   $c = Load-Config
   $pong = Invoke-Api $c '/ping'
   Write-Host "接続できました：$($pong.name)"
-  $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -Once')
-  $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
-  Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Description '予約カレンダーへネオボワールの写真を送る' -Force | Out-Null
+  Register-AgentTask
   Write-Host '5分ごとに自動で送るよう登録しました。まず -Preview で、読み取る氏名が正しいか確かめてください'
+  exit 0
+}
+
+if ($Reregister) {
+  if (-not (Test-Path $ConfigFile)) { throw '準備がまだです。-Setup を付けて実行してください' }
+  Register-AgentTask
+  Write-Host '登録し直しました。これからは5分ごとの起動で窓が出ません'
   exit 0
 }
 
