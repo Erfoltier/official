@@ -336,6 +336,38 @@ button {
 }
 
 /* ===== 配色ごとの「面の表情」：ページ・窓の地に、単方向ではないふんわりしたグラデーション ===== */
+/*
+ * ページ全体の地（スクロールしたときの1画面より下）。body の模様は1画面ぶんの高さにしか描かれないため、
+ * 下まで同じ地の色と布目・粒子（つなぎ目の出ない模様）を html に敷く（設定画面などを縦長の画面でスクロールしたとき白くならないように）
+ */
+:root[data-theme="blush"] {
+  background:
+    #faf3ee;
+}
+
+:root[data-theme="luxe"] {
+  background:
+    #f7f2e9;
+}
+
+:root[data-theme="calm"] {
+  background:
+    #f2f8fb;
+}
+
+:root[data-theme="seiji"] {
+  background:
+    repeating-linear-gradient(0deg, rgb(120 108 90 / 5%) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(120 108 90 / 5%) 0 1px, transparent 1px 3px),
+    #ebe6dc;
+}
+
+:root[data-theme="hakuji"] {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.4 0 0 0 0 0.37 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+    #f7f7f5;
+}
+
 :root[data-theme="blush"] body,
 :root[data-theme="blush"] dialog {
   background:
