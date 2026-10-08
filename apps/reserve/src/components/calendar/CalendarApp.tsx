@@ -19,7 +19,7 @@ import { PatientDialog } from "@/components/patients/PatientDialog";
 import { isBoolean, isNumber, isString, usePref } from "./usePref";
 import styles from "./calendar.module.css";
 import { withBase } from "@/lib/paths";
-import { isBlockInfo, type BlockInfo } from "@/lib/displayPrefs";
+import { isBlockInfo, type BlockInfo, UI_SIZES, applyUiSize, isUiSize, type UiSize } from "@/lib/displayPrefs";
 
 const POLL_MS = 20_000;
 const ALL_LANES = "all";
@@ -44,6 +44,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [scale, setScale] = usePref("scale", DEFAULT_PX_PER_MIN, isNumber);
   const [maskNames, setMaskNames] = usePref("maskNames", false, isBoolean);
   const [blockInfo] = usePref<BlockInfo>("blockInfo", "all", isBlockInfo);
+  // 文字の大きさ（この端末だけ。設定 → この端末の表示 と同じもの）
+  const [uiSize, setUiSize] = usePref<UiSize>("uiSize", "m", isUiSize);
   const [showCancelled, setShowCancelled] = usePref("showCancelled", false, isBoolean);
   const [laneFilter, setLaneFilter] = usePref("laneFilter", ALL_LANES, isString);
   const [receptionLane, setReceptionLane] = usePref("receptionLane", ALL_LANES, isString);
@@ -376,6 +378,19 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           </button>
           <button className={styles.btn} onClick={() => gridRef.current?.fitAll()} title="1日全体を画面に収める">
             全体
+          </button>
+          <button
+            className={styles.btn}
+            onClick={() => {
+              const i = UI_SIZES.findIndex((x) => x.id === uiSize);
+              const next = UI_SIZES[(i + 1) % UI_SIZES.length].id;
+              setUiSize(next);
+              applyUiSize(next);
+            }}
+            title="文字の大きさを切り替える（この端末だけ。標準 → 大きめ → 特大）"
+            aria-label={`文字の大きさ：${UI_SIZES.find((x) => x.id === uiSize)?.label}`}
+          >
+            文字 {UI_SIZES.find((x) => x.id === uiSize)?.label}
           </button>
           {isToday && (
             <button

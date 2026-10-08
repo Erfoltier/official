@@ -19,7 +19,7 @@ export const RECEPTION_START = [
   { id: "closed", label: "いつもたたむ" },
 ] as const;
 
-/** 文字の大きさ（カレンダーの予定表の部分は、上の「＋」「−」で拡大縮小する） */
+/** 文字の大きさ（カレンダー上部の「文字」ボタンでも切り替える。予定表は枠はそのままで文字だけ大きくなる） */
 export const UI_SIZES = [
   { id: "m", label: "標準" },
   { id: "l", label: "大きめ" },
