@@ -13,7 +13,7 @@ const FIELDS: { key: Exclude<keyof M3Columns, "phone">; label: string }[] = [
 ];
 
 /**
- * M3 の患者一覧（CSV）と照合して、カタカナだけの氏名に漢字を補う（院長・管理者）。
+ * 電子カルテなど（M3 に限らない）の患者一覧（CSV）と照合して、カタカナだけの氏名に漢字を補う（院長・管理者）。
  * CSV はこのブラウザの中だけで読み、サーバーへ送るのは照合できた患者の分だけ
  */
 export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unknown) => void }) {
@@ -81,9 +81,9 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
 
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>M3の患者一覧と照合して、漢字の氏名を補う</h3>
+      <h3 className={styles.cardTitle}>電子カルテなどの患者一覧（CSV）と照合して、漢字の氏名を補う</h3>
       <p className={styles.hint}>
-        Airリザーブからカタカナだけで入った患者に、M3の漢字の氏名を入れます。選んだ CSV はこのパソコンのブラウザの中だけで読み、ファイルそのものはどこにも送りません。
+        予約システムなどからカタカナだけで入った患者に、電子カルテ（M3 など、ソフトは問いません）から書き出した患者一覧の漢字の氏名を入れます。選んだ CSV はこのパソコンのブラウザの中だけで読み、ファイルそのものはどこにも送りません。
         サーバーへ送るのは、照合できた患者の分（漢字の氏名など）だけです。
       </p>
       <p className={styles.hint}>
@@ -91,7 +91,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
       </p>
       <div className={styles.actions}>
         <label className={styles.btn}>
-          {file ? `選び直す（${file.name}・${file.rows.length.toLocaleString()}件）` : "M3 の CSV を選ぶ"}
+          {file ? `選び直す（${file.name}・${file.rows.length.toLocaleString()}件）` : "患者一覧の CSV を選ぶ"}
           <input type="file" accept=".csv,text/csv" hidden disabled={busy} onChange={(e) => pick(e.target.files?.[0])} />
         </label>
       </div>
