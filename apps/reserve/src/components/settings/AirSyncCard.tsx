@@ -135,7 +135,7 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
       </div>
 
       <div className={styles.actions}>
-        <input className={styles.input} type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="取り込む日" style={{ width: "auto" }} />
+        <input className={styles.input} type="date" min={new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)} value={date} onChange={(e) => setDate(e.target.value)} aria-label="取り込む日" style={{ width: "auto" }} />
         <button type="button" className={styles.btn} disabled={busy || !s.loginConfigured} onClick={() => void run()}>
           {busy ? "取り込んでいます…" : date ? "この日を今すぐ取り込む" : "明日の分を今すぐ取り込む"}
         </button>

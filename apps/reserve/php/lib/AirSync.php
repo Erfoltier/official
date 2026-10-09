@@ -154,6 +154,12 @@ final class AirSync
     /** 指定した日の Air の予約を取り込む */
     public static function run(string $date, bool $auto = false): array
     {
+        // 照合は今日以降の予約だけで行うため、過去の日は取り込まない（取り込むと二重になる）
+        $today = now_in_clinic()['date'];
+        $max = (new DateTimeImmutable($today, jst()))->modify('+60 day')->format('Y-m-d');
+        if ($date < $today || $date > $max) {
+            throw new StoreError('invalid', '取り込めるのは今日から60日先までです');
+        }
         $last = Db::i()->meta('airSyncLast');
         $last = is_array($last) ? $last : [];
         try {
