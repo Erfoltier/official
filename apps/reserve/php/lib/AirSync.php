@@ -99,6 +99,11 @@ final class AirSync
             return null;
         }
         $now = now_in_clinic();
+        // リマインドを送る20分前にも、その回の対象日をもう一度取り込む（朝の取り込みのあとに Air で取り消された予約へ送らないため）
+        $pre = self::preReminderRun($now);
+        if ($pre !== null) {
+            return $pre;
+        }
         $last = Db::i()->meta('airSyncLast');
         if (is_array($last) && ($last['auto'] ?? '') === $now['date']) {
             return null;
@@ -113,6 +118,37 @@ final class AirSync
             return null;
         }
         return self::run($tomorrow, true);
+    }
+
+    private static function preReminderRun(array $now): ?array
+    {
+        $rs = Reminder::settings();
+        if (!$rs['enabled']) {
+            return null;
+        }
+        $done = Db::i()->meta('airSyncPre');
+        $done = is_array($done) ? $done : [];
+        foreach ($rs['rounds'] as $r) {
+            [$hh, $mm] = array_map('intval', explode(':', (string) $r['time']));
+            $send = $hh * 60 + $mm;
+            if ($now['minutes'] < $send - 20 || $now['minutes'] >= $send + 180) {
+                continue;
+            }
+            $key = $now['date'] . '|' . $r['time'] . '|' . (int) $r['daysBefore'];
+            if (in_array($key, $done, true)) {
+                continue;
+            }
+            $done[] = $key;
+            Db::i()->setMeta('airSyncPre', array_slice($done, -20));
+            $target = (new DateTimeImmutable($now['date'], jst()))->modify('+' . (int) $r['daysBefore'] . ' day')->format('Y-m-d');
+            try {
+                return self::run($target);
+            } catch (Throwable) {
+                // 失敗は airSyncLast に残る。リマインドはそのまま（朝の取り込みの内容で）送る
+                return ['ok' => false, 'date' => $target];
+            }
+        }
+        return null;
     }
 
     /** 指定した日の Air の予約を取り込む */
