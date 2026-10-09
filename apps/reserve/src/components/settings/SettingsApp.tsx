@@ -17,6 +17,7 @@ import { ImportsTab } from "./ImportsTab";
 import { M3MatchCard } from "./M3MatchCard";
 import { ReminderCard } from "./ReminderCard";
 import { AirSyncCard } from "./AirSyncCard";
+import { ReminderMenusCard } from "./ReminderMenusCard";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -24,7 +25,7 @@ import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
 import styles from "./settings.module.css";
 
-const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "appearance", "staff", "audit", "restore"] as const;
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "reminders", "appearance", "staff", "audit", "restore"] as const;
 type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
@@ -107,6 +108,11 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
+          {(isAdmin || canEdit) && (
+            <button role="tab" aria-selected={tab === "reminders"} onClick={() => setTab("reminders")}>
+              リマインド
+            </button>
+          )}
           <button role="tab" aria-selected={tab === "appearance"} onClick={() => setTab("appearance")}>
             画面の表示・配色
           </button>
@@ -161,15 +167,16 @@ export function SettingsApp() {
       ) : tab === "products" ? (
         <ProductsTab products={data.products} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "clinic" ? (
-        <div className={styles.clinicWide}>
-          <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
-          {isAdmin && (
-            <section className={styles.clinic}>
-              <ReminderCard notify={notify} fail={fail} />
-              <AirSyncCard notify={notify} fail={fail} />
-            </section>
-          )}
-        </div>
+        <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "reminders" ? (
+        <section>
+          <p className={styles.lead}>予約のお知らせ（リマインド）の送り方、患者に見せるメニュー名と来院前の案内、Airリザーブからの予約の取り込みをまとめています。</p>
+          <div className={styles.clinicWide}>
+            {isAdmin && <ReminderCard notify={notify} fail={fail} />}
+            {isAdmin && <AirSyncCard notify={notify} fail={fail} />}
+            <ReminderMenusCard menus={data.menus} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+          </div>
+        </section>
       ) : tab === "appearance" ? (
         <section className={styles.clinic}>
           <p className={styles.lead}>画面の見た目の設定です。配色は院で1つ（すべての端末に反映）、その下の表示はこの端末ごとに選べます。</p>

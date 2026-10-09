@@ -917,3 +917,90 @@ details.priceGroup > summary {
     max-width: 720px;
   }
 }
+
+/* ===== リマインドのタブ：メニューの見せ方（PCは表、スマホ・タブレットはカード） ===== */
+.reminderMenus {
+  grid-column: 1 / -1;
+}
+.rmList {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.rmHead {
+  display: none;
+}
+.rmRow {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.rmName {
+  font-weight: 700;
+  border-left: 4px solid var(--c, var(--line-strong));
+  padding-left: 8px;
+  overflow-wrap: anywhere;
+}
+.rmField {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.rmRow > button {
+  justify-self: end;
+}
+@media (min-width: 900px) {
+  .rmHead {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(220px, 2fr) 72px;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 0 10px;
+  }
+  .rmRow {
+    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(220px, 2fr) 72px;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 10px;
+  }
+  .rmField > span {
+    display: none;
+  }
+  .rmRow > button {
+    justify-self: stretch;
+  }
+}
+
+/* スマホ：カードが中身に押し広げられて横にはみ出さないように */
+.clinicWide {
+  grid-template-columns: minmax(0, 1fr);
+}
+.clinicCard,
+.clinicCard > * {
+  min-width: 0;
+}
+.clinicCard input,
+.clinicCard select,
+.clinicCard textarea {
+  max-width: 100%;
+}
+.m3Cols {
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+}
+@media (min-width: 1100px) {
+  .clinicWide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.clinicCard .actions {
+  flex-wrap: wrap;
+}
+.rmRow textarea {
+  min-height: 38px;
+  height: 38px;
+}

@@ -58,6 +58,7 @@ export function ClinicTab({
         カレンダーに表示する時間帯と、予約を入れるときの時間の刻みです。院ごとに変えられます。
         時間外に入っている予約も、カレンダーには表示されます。
       </p>
+      <div className={styles.clinicWide}>
       <div className={styles.clinicCard}>
         <label className={styles.field}>
           <span>院名</span>
@@ -99,6 +100,7 @@ export function ClinicTab({
       </div>
 
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
+      </div>
     </section>
   );
 }
