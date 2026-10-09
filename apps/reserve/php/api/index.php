@@ -194,6 +194,11 @@ try {
         $s = $me();
         Http::json(Reminder::sendNow(V::id($p[1]), $actor($s)));
     }
+    // 予約の申請で見つかった LINE を患者に紐付ける（スタッフが確かめて押す）
+    if ($method === 'POST' && $n === 3 && $p[0] === 'reservations' && $p[2] === 'link-line') {
+        $s = $me();
+        Http::json(Store::linkPatientLineFromReservation(V::id($p[1]), $actor($s)));
+    }
     if ($method === 'PATCH' && $n === 2 && $p[0] === 'reservations') {
         $s = $me();
         $id = V::id($p[1]);

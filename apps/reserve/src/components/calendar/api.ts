@@ -188,6 +188,11 @@ export function remindNow(reservationId: string): Promise<{ status: string; chan
   return call(`/api/v1/reservations/${encodeURIComponent(reservationId)}/remind`, { method: "POST", body: "{}" });
 }
 
+/** 予約の申請で見つかった LINE を患者に紐付ける */
+export function linkLineFromReservation(reservationId: string): Promise<Patient> {
+  return call(`/api/v1/reservations/${encodeURIComponent(reservationId)}/link-line`, { method: "POST", body: "{}" });
+}
+
 export function fetchPatient(id: string): Promise<PatientDetail> {
   return call(`/api/v1/patients/${encodeURIComponent(id)}`);
 }

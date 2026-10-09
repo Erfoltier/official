@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { ageSexText } from "@/lib/domain/age";
 import { CautionInline } from "@/components/patients/CautionInline";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
-import { ApiError, fetchFiles, remindNow } from "./api";
+import { ApiError, fetchFiles, linkLineFromReservation, remindNow } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
 import { ChartDialog } from "@/components/charts/ChartDialog";
@@ -73,6 +73,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const menus = r.menuIds.map((id) => bundle.menus.find((t) => t.id === id)).filter(Boolean);
   const [memo, setMemo] = useState(r.memo ?? "");
   const [reminding, setReminding] = useState(false);
+  const [lineLinked, setLineLinked] = useState(false);
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
@@ -170,6 +171,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                     >
                       {r.requestLine === "ok" ? "LINE（申込者）" : r.requestLine === "mismatch" ? "⚠ 申請と患者が不一致" : "LINE 不明"}
                     </span>
+                  )}
+                  {!editingRequestId && r.requestLine === "ok" && patient && !patient.lineUserId && !lineLinked && (
+                    <button
+                      type="button"
+                      className={styles.idBtn}
+                      title="この申請の LINE を患者に紐付けます。電話・窓口で取った予約にも LINE でリマインドが届くようになります"
+                      onClick={async () => {
+                        if (!window.confirm(`申請の名前・生年月日が「${patient.name}」さんと合っています。\nこの LINE を患者に紐付けますか？（家族が代わりに申し込んだ場合は、紐付けないでください）`)) return;
+                        try {
+                          await linkLineFromReservation(r.id);
+                          setLineLinked(true);
+                          window.alert("LINE を紐付けました");
+                        } catch (err) {
+                          window.alert(err instanceof ApiError ? err.message : "紐付けられませんでした");
+                        }
+                      }}
+                    >
+                      ＋患者に紐付け
+                    </button>
                   )}
                 </span>
               </span>

@@ -2142,6 +2142,31 @@ final class Store
         return $next;
     }
 
+    /**
+     * 予約の申請（申請IDの欄・メモ）で見つかった LINE を、スタッフの確認のうえで患者に紐付ける。
+     * 申請の名前・生年月日などが患者と合っているときだけ（requestLine が ok）。以後は電話・窓口の予約にも LINE で送れる
+     */
+    public static function linkPatientLineFromReservation(string $reservationId, ?array $by = null): array
+    {
+        $r = self::reservation($reservationId);
+        $cur = self::patient($r['patientId']);
+        [$uid] = self::reservationLine($r, $cur);
+        if ($uid === null) {
+            throw new StoreError('invalid', 'この予約の申請から、患者と合う LINE が見つかりません');
+        }
+        if (!empty($cur['lineUserId'])) {
+            if ($cur['lineUserId'] === $uid) {
+                return $cur;
+            }
+            throw new StoreError('invalid', 'この患者には別の LINE が紐付いています。先に患者画面で紐付けを解除してください');
+        }
+        $now = now_iso();
+        $next = [...$cur, 'lineUserId' => $uid, 'version' => $cur['version'] + 1, 'updatedAt' => $now];
+        self::putPatient($next);
+        self::recordChange($cur['id'], ['LINE紐付け（予約申請から）'], $now, $by);
+        return $next;
+    }
+
     /** LINEの紐付けを解除する（誤った紐付けの訂正・本人の希望） */
     public static function unlinkPatientLine(string $id, int $version, ?array $by = null): array
     {
