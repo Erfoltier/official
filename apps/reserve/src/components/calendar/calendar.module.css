@@ -2575,3 +2575,37 @@ button.stagePill[data-clickable]:disabled {
     justify-content: safe center;
   }
 }
+
+/* スマホ：受付一覧は開く動きの間も画面に重ねたまま（位置が変わると一覧がスクロールできなくなる） */
+@media (max-width: 760px) {
+  .reception,
+  .reception[data-enter] {
+    position: fixed;
+    z-index: 30;
+    height: 100dvh;
+    overscroll-behavior: contain;
+  }
+  .receptionRows {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ボタンの右上に重ねる件数の印（ボタンの幅を変えない・隣のボタンに重ならない） */
+.countBadge {
+  position: absolute;
+  top: -6px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--danger, #c0392b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--surface, #fff);
+}

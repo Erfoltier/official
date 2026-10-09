@@ -498,9 +498,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onClick={() => setInboxOpen(true)}
             aria-label={`受付箱（LINE 予約申請）${inboxCount ? `・未対応 ${inboxCount}件` : ""}`}
             title="受付箱（LINE 予約申請）"
-            style={inboxCount ? { borderColor: "var(--danger, #c0392b)", color: "var(--danger, #c0392b)", fontWeight: 700 } : undefined}
+            style={{ position: "relative", ...(inboxCount ? { borderColor: "var(--danger, #c0392b)" } : {}) }}
           >
-            📥{inboxCount > 0 && ` ${inboxCount}`}
+            📥
+            {inboxCount > 0 && <span className={styles.countBadge}>{inboxCount > 99 ? "99+" : inboxCount}</span>}
           </button>
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
             👤

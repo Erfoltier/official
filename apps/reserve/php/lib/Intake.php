@@ -25,6 +25,7 @@ final class Intake
         $handled = self::handled();
         $booked = self::bookedRequestIds($days + 60);
         $items = [];
+        $today = now_in_clinic()['date'];
         foreach ($files as $file) {
             $rid = basename($file, '.json');
             if (!preg_match(self::ID_RE, $rid) || substr($rid, 1, 14) < $since) {
@@ -36,6 +37,11 @@ final class Intake
             }
             $f = is_array($rec['intake'] ?? null) ? $rec['intake'] : [];
             $s = fn(string $k) => js_slice(trim((string) ($f[$k] ?? '')), 500);
+            // 希望日が過ぎた申請は、いまさら対応しないので出さない（line-webhook の保存ファイルは消さない）
+            $pref = (string) ($f['preferredDate'] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $pref) && $pref < $today) {
+                continue;
+            }
             $initial = ($f['visitType'] ?? '') === 'initial';
             $state = isset($booked[$rid]) ? 'booked' : ($handled[$rid]['action'] ?? 'new');
             $items[] = [
