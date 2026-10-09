@@ -4,6 +4,7 @@ declare(strict_types=1);
 /**
  * リマインド（前日・当日朝のお知らせ）。設計は docs/saas-plan.md の第7章。
  * - 来院ごとに1通（同じ患者・同じ日の予約、または同じ visitId の予約を1回の来院とみなす）
+ * - 送る回は院ごとに決める（何日前の何時、最大3回。既定は前日18時の1回）
  * - 送り先は患者の「連絡先の希望」（auto＝LINE がつながっていれば LINE、なければメール）
  * - LINE は送る前に今月の残り通数を確かめ、残しておく通数を下回るならメールに回す
  * - 同じ来院・同じ回・同じ時刻には二度送らない（reminderLog）。本文は残さない
@@ -21,8 +22,8 @@ final class Reminder
     {
         return [
             'enabled' => false,
-            'prevTime' => '18:00',
-            'dayTime' => '08:00',
+            // 送る回：何日前（0＝当日）の何時。最大3回
+            'rounds' => [['daysBefore' => 1, 'time' => '18:00']],
             'useLine' => true,
             'useEmail' => true,
             'fromEmail' => '',
@@ -36,7 +37,9 @@ final class Reminder
     public static function settings(): array
     {
         $s = Db::i()->meta('reminderSettings');
-        return [...self::defaults(), ...(is_array($s) ? $s : [])];
+        $s = [...self::defaults(), ...(is_array($s) ? $s : [])];
+        unset($s['prevTime'], $s['dayTime']);
+        return $s;
     }
 
     private static function lineToken(): string
@@ -74,11 +77,25 @@ final class Reminder
         if (array_key_exists('enabled', $in)) {
             $next['enabled'] = (bool) $in['enabled'];
         }
-        if (array_key_exists('prevTime', $in)) {
-            $next['prevTime'] = $time($in['prevTime'], '前日に送る時刻');
-        }
-        if (array_key_exists('dayTime', $in)) {
-            $next['dayTime'] = $time($in['dayTime'], '当日に送る時刻');
+        if (array_key_exists('rounds', $in)) {
+            if (!is_array($in['rounds']) || count($in['rounds']) > 3) {
+                throw new StoreError('invalid', '送る回は3回までにしてください');
+            }
+            $rounds = [];
+            foreach ($in['rounds'] as $r) {
+                $days = is_array($r) && is_int($r['daysBefore'] ?? null) ? $r['daysBefore'] : -1;
+                if ($days < 0 || $days > 14) {
+                    throw new StoreError('invalid', '何日前に送るかは 当日〜14日前 から選んでください');
+                }
+                $t = $time($r['time'] ?? null, '送る時刻');
+                if ($t === null || $t < '06:00' || $t > '21:00') {
+                    throw new StoreError('invalid', '送る時刻は 6:00〜21:00 のあいだにしてください（夜遅く・早朝に届かないように）');
+                }
+                $rounds[$days . '@' . $t] = ['daysBefore' => $days, 'time' => $t];
+            }
+            // 早く送る回から並べる（何日前が大きい順、同じ日なら時刻順）
+            usort($rounds, fn($a, $b) => ($b['daysBefore'] <=> $a['daysBefore']) ?: strcmp($a['time'], $b['time']));
+            $next['rounds'] = array_values($rounds);
         }
         foreach (['useLine', 'useEmail'] as $k) {
             if (array_key_exists($k, $in)) {
@@ -183,21 +200,21 @@ final class Reminder
         $db->setMeta('reminderLock', ['ts' => $nowTs]);
         @set_time_limit(120);
         $now = now_in_clinic();
-        $min = fn(?string $hm) => $hm === null ? null : ((int) substr($hm, 0, 2)) * 60 + (int) substr($hm, 3, 2);
-        $result = ['ran' => true, 'prev' => null, 'day' => null];
+        $result = ['ran' => true, 'rounds' => []];
         $quota = ['remaining' => null, 'checked' => false];
-        // 前日：決めた時刻〜21時のあいだに、明日の来院へ
-        $prev = $min($s['prevTime']);
-        if ($prev !== null && $now['minutes'] >= $prev && $now['minutes'] < 21 * 60) {
-            $tomorrow = (new DateTimeImmutable($now['date'], jst()))->modify('+1 day')->format('Y-m-d');
-            $result['prev'] = self::runRound('prev', $tomorrow, $quota);
+        foreach ($s['rounds'] as $r) {
+            $at = ((int) substr($r['time'], 0, 2)) * 60 + (int) substr($r['time'], 3, 2);
+            // 決めた時刻から3時間のあいだ（21時まで）に送る。それより遅くなったら、その回は送らない（夜遅く届かないように）
+            if ($now['minutes'] < $at || $now['minutes'] >= min($at + 180, 21 * 60 + 30)) {
+                continue;
+            }
+            $days = (int) $r['daysBefore'];
+            $target = (new DateTimeImmutable($now['date'], jst()))->modify("+{$days} day")->format('Y-m-d');
+            // 当日の回：まだ先（30分より後）の来院だけ、今日とった予約には送らない
+            $label = ($days === 0 ? '当日' : ($days === 1 ? '前日' : "{$days}日前")) . ' ' . $r['time'];
+            $result['rounds'][$label] = self::runRound('d' . $days, $target, $quota, $days === 0 ? $now['minutes'] + 30 : null);
         }
-        // 当日：決めた時刻〜20時のあいだに、今日のまだ先の来院へ（今日とった予約には送らない）
-        $day = $min($s['dayTime']);
-        if ($day !== null && $now['minutes'] >= $day && $now['minutes'] < 20 * 60) {
-            $result['day'] = self::runRound('day', $now['date'], $quota, $now['minutes'] + 30);
-        }
-        $db->setMeta('reminderLastRun', ['at' => now_iso(), 'prev' => $result['prev'], 'day' => $result['day']]);
+        $db->setMeta('reminderLastRun', ['at' => now_iso(), 'rounds' => $result['rounds']]);
         return $result;
     }
 
@@ -209,7 +226,7 @@ final class Reminder
             if ($afterMinute !== null && minutes_of_day($v['arrivalAt']) <= $afterMinute) {
                 continue;
             }
-            if ($round === 'day' && clinic_date_of((string) $v['createdAt']) === $date) {
+            if ($round === 'd0' && clinic_date_of((string) $v['createdAt']) === $date) {
                 continue;
             }
             $logId = hash('sha256', $v['key'] . '|' . $round . '|' . $v['arrivalAt']);
@@ -242,7 +259,8 @@ final class Reminder
             throw new StoreError('invalid', 'キャンセル・承認待ちの予約には送れません');
         }
         $quota = ['remaining' => null, 'checked' => false];
-        $round = $date === now_in_clinic()['date'] ? 'day' : 'prev';
+        $days = (int) (new DateTimeImmutable(now_in_clinic()['date'], jst()))->diff(new DateTimeImmutable($date, jst()))->format('%r%a');
+        $round = 'd' . max(0, $days);
         $res = self::deliver($visit, $round, $quota, true);
         Auth::audit($by, 'リマインドを手動で送信（' . ($res['channel'] ?? 'なし') . '・' . $res['status'] . '）', $r['patientId']);
         if ($res['status'] !== 'sent') {
@@ -336,7 +354,12 @@ final class Reminder
             '{患者名}' => (string) $v['patient']['name'],
             '{院名}' => (string) ($clinic['docName'] ?? '') ?: (string) $clinic['name'],
             '{院の電話}' => (string) ($clinic['phone'] ?? ''),
-            '{いつ}' => $round === 'day' ? '本日' : '明日',
+            '{いつ}' => match ((int) substr($round, 1)) {
+                0 => '本日',
+                1 => '明日',
+                2 => '明後日',
+                default => $d->format('n') . '月' . $d->format('j') . "日（{$week}）",
+            },
             '{日付}' => $d->format('n') . '月' . $d->format('j') . "日（{$week}）",
             '{時刻}' => $d->format('G:i'),
             '{メニュー}' => implode('・', $v['menuNames']),

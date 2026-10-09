@@ -155,8 +155,8 @@ export type PatientUpdate = Partial<
 
 export interface ReminderSettings {
   enabled: boolean;
-  prevTime: string | null;
-  dayTime: string | null;
+  /** 送る回：何日前（0＝当日）の何時。最大3回 */
+  rounds: { daysBefore: number; time: string }[];
   useLine: boolean;
   useEmail: boolean;
   fromEmail: string;
@@ -167,7 +167,7 @@ export interface ReminderSettings {
   defaultTemplate: string;
   lineConfigured: boolean;
   lineRemaining: number | null;
-  lastRun: { at: string; prev: Record<string, number> | null; day: Record<string, number> | null } | null;
+  lastRun: { at: string; rounds: Record<string, Record<string, number>> } | null;
 }
 
 export function fetchReminderSettings(): Promise<ReminderSettings> {
@@ -178,7 +178,7 @@ export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defau
   return call("/api/v1/admin/reminders", { method: "PUT", body: JSON.stringify(body) });
 }
 
-export function runRemindersNow(): Promise<{ ran: boolean; reason?: string; prev?: Record<string, number> | null; day?: Record<string, number> | null }> {
+export function runRemindersNow(): Promise<{ ran: boolean; reason?: string; rounds?: Record<string, Record<string, number>> }> {
   return call("/api/v1/admin/reminders/run", { method: "POST", body: "{}" });
 }
 

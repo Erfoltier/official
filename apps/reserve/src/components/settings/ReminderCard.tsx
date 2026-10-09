@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchReminderSettings, runRemindersNow, saveReminderSettings, type ReminderSettings } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
+const DAY_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 14];
 const PLACEHOLDERS = ["{患者名}", "{院名}", "{いつ}", "{日付}", "{時刻}", "{メニュー}", "{院の電話}"];
 
 function stamp(iso: string): string {
@@ -47,8 +48,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
     try {
       const r = await saveReminderSettings({
         enabled: extra?.enabled ?? draft.enabled,
-        prevTime: draft.prevTime || null,
-        dayTime: draft.dayTime || null,
+        rounds: draft.rounds,
         useLine: draft.useLine,
         useEmail: draft.useEmail,
         fromEmail: draft.fromEmail,
@@ -76,8 +76,8 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
       if (!r.ran) {
         props.notify(r.reason === "disabled" ? "リマインドが「止めている」状態です" : "少し前に確認したばかりです");
       } else {
-        const sum = (x?: Record<string, number> | null) => (x ? `送信 ${x.sent}・送らない ${x.skipped}・失敗 ${x.failed}` : "時刻外");
-        props.notify(`前日の回：${sum(r.prev)}／当日の回：${sum(r.day)}`);
+        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => `${k}：送信 ${x.sent}・送らない ${x.skipped}・失敗 ${x.failed}`);
+        props.notify(parts.length ? parts.join("／") : "いまは送る時刻ではありません（決めた時刻から3時間のあいだに送ります）");
       }
       setS(await fetchReminderSettings());
     } catch (e) {
@@ -91,7 +91,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>リマインド（前日・当日朝のお知らせ）</h3>
       <p className={styles.hint}>
-        来院ごとに1通、LINE がつながっている人には LINE、ほかはメールで送ります（患者ごとに「リマインドの送り先」「リマインド不要」を変えられます）。キャンセル・承認待ちの予約と、当日に取った予約の当日の回には送りません。
+        送る回ごとに、来院ごとに1通、LINE がつながっている人には LINE、ほかはメールで送ります（患者ごとに「リマインドの送り先」「リマインド不要」を変えられます）。キャンセル・承認待ちの予約と、当日に取った予約の当日の回には送りません。
       </p>
 
       <div className={styles.prefRow}>
@@ -120,15 +120,49 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         </small>
       </div>
 
+      <div className={styles.prefRow}>
+        <b>送る回（最大3回）</b>
+        <div style={{ display: "grid", gap: 6 }}>
+          {draft.rounds.map((r, i) => (
+            <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <select
+                className={styles.input}
+                style={{ width: "auto" }}
+                value={r.daysBefore}
+                onChange={(e) => set("rounds", draft.rounds.map((x, j) => (j === i ? { ...x, daysBefore: Number(e.target.value) } : x)))}
+                aria-label="何日前"
+              >
+                {DAY_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d === 0 ? "当日" : d === 1 ? "前日" : `${d}日前`}
+                  </option>
+                ))}
+              </select>
+              <input
+                className={styles.input}
+                style={{ width: "auto" }}
+                type="time"
+                min="06:00"
+                max="21:00"
+                value={r.time}
+                onChange={(e) => set("rounds", draft.rounds.map((x, j) => (j === i ? { ...x, time: e.target.value } : x)))}
+                aria-label="送る時刻"
+              />
+              <button type="button" className={styles.btn} onClick={() => set("rounds", draft.rounds.filter((_, j) => j !== i))}>
+                この回をなくす
+              </button>
+            </div>
+          ))}
+          {draft.rounds.length < 3 && (
+            <button type="button" className={styles.btn} style={{ justifySelf: "start" }} onClick={() => set("rounds", [...draft.rounds, { daysBefore: 1, time: "18:00" }])}>
+              ＋ 回を足す
+            </button>
+          )}
+        </div>
+        <small>時刻は 6:00〜21:00。決めた時刻から3時間のあいだに送ります。当日の回は、30分より先の来院だけに送ります。回をなくすと、自動では送りません。</small>
+      </div>
+
       <div className={styles.m3Cols}>
-        <label>
-          <span>前日に送る時刻（空欄＝送らない）</span>
-          <input className={styles.input} type="time" value={draft.prevTime ?? ""} onChange={(e) => set("prevTime", e.target.value || null)} />
-        </label>
-        <label>
-          <span>当日に送る時刻（空欄＝送らない）</span>
-          <input className={styles.input} type="time" value={draft.dayTime ?? ""} onChange={(e) => set("dayTime", e.target.value || null)} />
-        </label>
         <label>
           <span>LINE で送る</span>
           <select className={styles.input} value={draft.useLine ? "1" : ""} onChange={(e) => set("useLine", !!e.target.value)}>

@@ -655,8 +655,8 @@ export interface Reservation {
     updatedAt?: string;
     /** 送った先（line／email） */
     channel?: "line" | "email";
-    /** 前日（prev）・当日（day） */
-    round?: "prev" | "day";
+    /** 何日前の回か（d1＝前日、d0＝当日） */
+    round?: string;
     /** 送らなかった・送れなかった理由（optout・no_contact・line_quota など） */
     reason?: string;
   };

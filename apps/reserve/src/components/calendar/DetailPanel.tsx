@@ -20,6 +20,12 @@ import { formatDateJa, formatHm, minutesOfDay, durationMin } from "@/lib/domain/
 import { displayName } from "./names";
 import styles from "./calendar.module.css";
 
+/** リマインドの回の表示（d1 → 前日、d0 → 当日、d3 → 3日前） */
+function roundLabel(round?: string): string {
+  const n = Number(round?.slice(1));
+  return n === 0 ? "当日" : n === 1 ? "前日" : Number.isFinite(n) ? `${n}日前` : "";
+}
+
 const REMINDER_REASON: Record<string, string> = {
   optout: "不要の患者",
   no_contact: "送り先なし",
@@ -259,7 +265,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <dt>リマインド</dt>
         <dd>
           {REMINDER_LABEL[r.reminder.status]}
-          {r.reminder.status === "sent" && r.reminder.channel && `（${r.reminder.round === "day" ? "当日" : "前日"}・${r.reminder.channel === "line" ? "LINE" : "メール"}）`}
+          {r.reminder.status === "sent" && r.reminder.channel && `（${roundLabel(r.reminder.round)}・${r.reminder.channel === "line" ? "LINE" : "メール"}）`}
           {r.reminder.status !== "sent" && r.reminder.reason && `（${REMINDER_REASON[r.reminder.reason] ?? r.reminder.reason}）`}
           {!["cancelled", "no_show"].includes(r.status) && (
             <button
