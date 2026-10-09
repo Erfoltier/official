@@ -7,11 +7,11 @@
 :root {
   --bg: #f6f6f3;
   --paper: #ffffff;
-  --ink: #1b2430;
+  --ink: #0d1b2e;
   --muted: #5d6874;
   --line: #dfe2dd;
-  --accent: #5f7f6e;      /* sage */
-  --accent-ink: #3f5c4d;
+  --accent: #92845b;      /* brand gold */
+  --accent-ink: #6f6340;
   --flag-bg: #fbeedd;
   --flag-fg: #8a4b12;
   --code-bg: #eef0ec;
@@ -21,15 +21,15 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #12161b; --paper: #192028; --ink: #e6e9ec; --muted: #9aa5b0; --line: #2b3440;
-  --accent: #8fb3a0; --accent-ink: #a9cbb9; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; color-scheme: dark } }
+  --accent: #b9a77a; --accent-ink: #cfc09a; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #12161b; --paper: #192028; --ink: #e6e9ec; --muted: #9aa5b0; --line: #2b3440;
-  --accent: #8fb3a0; --accent-ink: #a9cbb9; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; color-scheme: dark }
+  --accent: #b9a77a; --accent-ink: #cfc09a; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; color-scheme: dark }
 * { box-sizing: border-box }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.85; }
 .wrap { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding-inline: 24px; padding-block: 32px 80px; }
 header.mast { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
-.brand { font-family: var(--display); font-weight: 700; letter-spacing: .18em; font-size: 15px; color: var(--accent-ink); }
+.brand { display: block; flex-basis: 100%; } .brand img { height: 52px; width: auto; display: block; }
 header.mast h1 { font-family: var(--display); font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: .02em; text-wrap: balance; }
 header.mast p { margin: 0; color: var(--muted); font-size: 14px; flex-basis: 100%; }
 nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); align-self: start; max-height: calc(100vh - 32px); overflow: auto; font-size: 14px; }
@@ -84,7 +84,7 @@ dialog button { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px)
 
 <div class="wrap">
   <header class="mast">
-    <span class="brand">LANE RESERVE</span>
+    <picture class="brand"><source srcset="img/lane-reserve-logo-horizontal-dark.svg" media="(prefers-color-scheme: dark)"><img src="img/lane-reserve-logo-horizontal.svg" alt="LANE RESERVE レーンリザーブ" height="52"></picture>
     <h1>操作マニュアル</h1>
     <p>レーンリザーブ（予約カレンダー）の使い方。受付・看護師・医師・院長、はじめて触る人やAI向け。画面の写真はすべて架空のデモデータです。写真を押すと大きく表示します。</p>
   </header>
