@@ -2493,3 +2493,42 @@ button.stagePill[data-clickable]:disabled {
     linear-gradient(160deg, #f9f8f5 0%, #efede8 100%);
   box-shadow: inset 1px 0 0 #ffffff, inset 3px 0 6px -3px rgb(60 58 54 / 10%);
 }
+
+/*
+ * スマホ：右の詳細は画面いっぱいの1枚にして、中身だけをスクロールする（下が切れない・後ろのカレンダーが動かない）。
+ * 見出し（名前と×）は上に貼りつけ、いつでも閉じてカレンダーに戻れるようにする
+ */
+@media (max-width: 760px) {
+  .panel,
+  .panel[data-enter] {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    max-height: none;
+    height: 100dvh;
+    border-radius: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-top: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  .panelHead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -14px 10px;
+    padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+    background: inherit;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .panelHead > .iconBtn {
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    line-height: 1;
+    padding: 0;
+    flex: none;
+  }
+}
