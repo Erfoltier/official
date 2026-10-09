@@ -2,10 +2,11 @@
 declare(strict_types=1);
 
 /**
- * リマインドを送る（ロリポップの cron などから5〜10分おきに呼ぶ）。
- * 通信のついでにも送っているが、院のパソコンが止まっている朝なども確実に送るため。ブラウザからは開けない
+ * リマインドを送る（ロリポップの cron から呼ぶ。院のパソコンが止まっていても送れるように）。
+ * ロリポップの cron は CGI 版の PHP で動くため、「ウェブからの通信でないこと」で見分ける。
+ * このフォルダはウェブから開けない（.htaccess）。
  */
-if (PHP_SAPI !== 'cli') {
+if (isset($_SERVER['REQUEST_METHOD']) || isset($_SERVER['HTTP_HOST'])) {
     http_response_code(404);
     exit;
 }

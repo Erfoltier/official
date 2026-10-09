@@ -193,11 +193,19 @@ final class Reminder
         }
         $db = Db::i();
         $nowTs = time();
-        $lock = $db->meta('reminderLock');
-        if (!$force && is_array($lock) && $nowTs - (int) ($lock['ts'] ?? 0) < 300) {
+        // cron と画面の通信が同時に始めても、二重に送らないよう、走っている印を1つだけ取る
+        $claimed = $db->transaction(function () use ($db, $nowTs, $force) {
+            $lock = $db->meta('reminderLock');
+            $last = is_array($lock) ? (int) ($lock['ts'] ?? 0) : 0;
+            if ($nowTs - $last < ($force ? 60 : 300)) {
+                return false;
+            }
+            $db->setMeta('reminderLock', ['ts' => $nowTs]);
+            return true;
+        });
+        if (!$claimed) {
             return ['ran' => false, 'reason' => 'throttled'];
         }
-        $db->setMeta('reminderLock', ['ts' => $nowTs]);
         @set_time_limit(120);
         $now = now_in_clinic();
         $result = ['ran' => true, 'rounds' => []];
