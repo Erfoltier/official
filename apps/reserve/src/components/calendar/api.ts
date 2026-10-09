@@ -153,6 +153,48 @@ export type PatientUpdate = Partial<
 
 // ---- リマインド ----
 
+export interface AirSyncResult {
+  at: string;
+  date: string;
+  ok: boolean;
+  error?: string;
+  count?: number;
+  created?: number;
+  updated?: number;
+  cancelled?: number;
+  unchanged?: number;
+  newPatients?: number;
+  linked?: number;
+}
+
+export interface AirSyncSettings {
+  enabled: boolean;
+  /** 毎朝この時刻を過ぎたら、翌日の分を取り込む */
+  time: string;
+  groupId: string;
+  loginConfigured: boolean;
+  loginId: string;
+  lastRun: AirSyncResult | null;
+  review: { id: string; name: string; kana: string }[];
+}
+
+export function fetchAirSync(): Promise<AirSyncSettings> {
+  return call("/api/v1/admin/air-sync");
+}
+
+export function saveAirSync(body: { enabled?: boolean; time?: string; groupId?: string; loginId?: string; password?: string }): Promise<AirSyncSettings> {
+  return call("/api/v1/admin/air-sync", { method: "PUT", body: JSON.stringify(body) });
+}
+
+export function runAirSync(date?: string): Promise<AirSyncResult> {
+  return call("/api/v1/admin/air-sync/run", { method: "POST", body: JSON.stringify(date ? { date } : {}) });
+}
+
+/** Airリザーブの取り込みで付いた「要確認」の印を外す */
+export function markPatientReviewed(id: string): Promise<Patient> {
+  return call(`/api/v1/patients/${encodeURIComponent(id)}/reviewed`, { method: "POST", body: "{}" });
+}
+
 export interface ReminderSettings {
   enabled: boolean;
   /** 送る回：何日前（0＝当日）の何時。最大3回 */

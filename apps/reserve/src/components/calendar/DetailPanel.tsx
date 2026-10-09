@@ -131,6 +131,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           <div className={styles.panelName}>
             {patient?.caution && <span className={styles.caution}>!</span>}
             <span className={styles.nameText}>{displayName(patient, maskNames)}</span>
+            {!maskNames && patient?.needsReview && (
+              <span
+                className={styles.subGap}
+                style={{ color: "var(--danger, #c0392b)", fontSize: "0.8em", whiteSpace: "nowrap" }}
+                title="Airリザーブから取り込んだとき、既存の患者と結びつけられずに新しく登録した患者です。同じ人がいれば患者画面で統合し、別の人なら設定（院の情報）の「Airリザーブの取り込み」で確認済みにしてください"
+              >
+                要確認
+              </span>
+            )}
             {!maskNames && patient && (
               <span className={styles.nameSide}>
                 <CautionInline note={patient.cautionNote} onSave={onCaution} />

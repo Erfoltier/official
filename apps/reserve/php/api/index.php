@@ -199,6 +199,11 @@ try {
         $s = $me();
         Http::json(Store::linkPatientLineFromReservation(V::id($p[1]), $actor($s)));
     }
+    // Airリザーブの取り込みで付いた「要確認」の印を外す
+    if ($method === 'POST' && $n === 3 && $p[0] === 'patients' && $p[2] === 'reviewed') {
+        $s = $me();
+        Http::json(Store::clearPatientReview(V::id($p[1]), $actor($s)));
+    }
     if ($method === 'PATCH' && $n === 2 && $p[0] === 'reservations') {
         $s = $me();
         $id = V::id($p[1]);
@@ -389,6 +394,28 @@ try {
     if ($route === 'POST admin/reminders/run') {
         $me(STAFF_ADMIN);
         Http::json(Reminder::tick(true));
+    }
+
+    // ---- Airリザーブの予約の取り込み（院長・管理者） ----
+    if ($route === 'GET admin/air-sync') {
+        $me(STAFF_ADMIN);
+        Http::json(AirSync::publicSettings());
+    }
+    if ($route === 'PUT admin/air-sync') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson(4_000);
+        if (!is_array($in)) {
+            Http::json(['error' => 'invalid', 'message' => '設定を読み取れませんでした'], 400);
+        }
+        Http::json(AirSync::updateSettings($in, $actor($s)));
+    }
+    if ($route === 'POST admin/air-sync/run') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        $date = is_array($in) && is_string($in['date'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $in['date']) ? $in['date'] : (new DateTimeImmutable(now_in_clinic()['date'], jst()))->modify('+1 day')->format('Y-m-d');
+        $r = AirSync::run($date);
+        Auth::audit($actor($s), "Airリザーブの予約を手動で取り込み（{$date}・{$r['count']}件）");
+        Http::json($r);
     }
 
     if ($route === 'GET admin/m3-fill') {

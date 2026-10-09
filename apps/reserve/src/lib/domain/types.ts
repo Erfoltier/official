@@ -99,6 +99,8 @@ export interface Patient {
   contactPref?: "line" | "email" | "none";
   /** 「リマインド不要」と言われた */
   reminderOptOut?: boolean;
+  /** Airリザーブの取り込みで、既存の患者と結びつけられずに新しく作った患者（スタッフが確かめたら外す） */
+  needsReview?: "air";
   /** 生年月日（YYYY-MM-DD） */
   birthDate?: string;
   /** 注意事項（アレルギー等）がある患者。予約表に「!」を出す */

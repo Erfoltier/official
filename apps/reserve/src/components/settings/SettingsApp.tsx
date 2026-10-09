@@ -16,6 +16,7 @@ import { QuestionnairesTab } from "./QuestionnairesTab";
 import { ImportsTab } from "./ImportsTab";
 import { M3MatchCard } from "./M3MatchCard";
 import { ReminderCard } from "./ReminderCard";
+import { AirSyncCard } from "./AirSyncCard";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -165,6 +166,7 @@ export function SettingsApp() {
           {isAdmin && (
             <section className={styles.clinic}>
               <ReminderCard notify={notify} fail={fail} />
+              <AirSyncCard notify={notify} fail={fail} />
             </section>
           )}
         </div>
