@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="レーンリザーブ">
+  <rect x="4" y="4" width="112" height="112" rx="26" fill="#0f5f66"/>
+  <!-- 4本のレーンと、そこに入った予約の枠 -->
+  <g fill="#ffffff" opacity="0.18">
+    <rect x="24" y="24" width="14" height="72" rx="7"/>
+    <rect x="44" y="24" width="14" height="72" rx="7"/>
+    <rect x="64" y="24" width="14" height="72" rx="7"/>
+    <rect x="84" y="24" width="14" height="72" rx="7"/>
+  </g>
+  <rect x="24" y="30" width="14" height="30" rx="7" fill="#ffffff"/>
+  <rect x="44" y="52" width="14" height="38" rx="7" fill="#7dd3c7"/>
+  <rect x="64" y="26" width="14" height="22" rx="7" fill="#ffffff"/>
+  <rect x="64" y="58" width="14" height="20" rx="7" fill="#f4b183"/>
+  <rect x="84" y="40" width="14" height="44" rx="7" fill="#7dd3c7"/>
+</svg>
