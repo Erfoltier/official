@@ -646,6 +646,8 @@ export interface Reservation {
   memo?: string;
   /** LINE予約フォームの予約申請ID（例：R2026100506574020A34A8B） */
   requestId?: string;
+  /** 申請IDから申し込んだ LINE が見つかったか（ok＝リマインドをその LINE へ／mismatch＝申請の名前・生年月日が患者と合わない／notfound＝見つからない）。サーバーが付ける */
+  requestLine?: "ok" | "mismatch" | "notfound";
   /** 登録・最終更新したスタッフ */
   createdBy?: Actor;
   updatedBy?: Actor;

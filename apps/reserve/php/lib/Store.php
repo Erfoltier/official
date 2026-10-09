@@ -837,7 +837,12 @@ final class Store
             'clinic' => self::clinic(),
             'lanes' => array_values(array_filter(self::sortedLanes(), fn($l) => $l['active'] || isset($used[$l['id']]))),
             'menus' => self::sortedMenus(),
-            'reservations' => $reservations,
+            'reservations' => array_map(function ($r) use ($patients) {
+                if (!empty($r['requestId']) && isset($patients[$r['patientId']])) {
+                    $r['requestLine'] = self::requestLine($r['requestId'], $patients[$r['patientId']])[1];
+                }
+                return $r;
+            }, $reservations),
             'patients' => array_values(array_filter(array_map(fn($id) => $patients[$id] ?? null, array_keys($pids)))),
             'stages' => self::sortedStages(),
             'dayNotes' => (object) self::dayNotesOn($date),
@@ -1162,6 +1167,44 @@ final class Store
     {
         $cur = self::reservation($id);
         return self::updateReservation($id, ['version' => $cur['version'], 'requestId' => $requestId], self::INTEGRATION_ACTOR);
+    }
+
+    /**
+     * LINE 予約フォームの申請IDから、申し込んだ LINE を引く（line-webhook の保存ファイルを読むだけ。書き換えない）。
+     * 照合は申請IDだけで行い、希望日時は使わない（実際の予約は希望と違う時間に入ることがあるため）。
+     * 申請の氏名・カナ・生年月日・電話が予約の患者と合わないときは使わない（申請IDの入れ間違いで別の人に送らないため）。
+     * 戻り値：[LINE のユーザーID または null, 'ok' | 'mismatch' | 'notfound']
+     */
+    public static function requestLine(string $requestId, array $patient): array
+    {
+        static $cache = [];
+        $rid = strtoupper(trim($requestId));
+        if (!preg_match('/^R\d{14}[0-9A-F]{8}$/', $rid)) {
+            return [null, 'notfound'];
+        }
+        if (!array_key_exists($rid, $cache)) {
+            $dir = (string) (config()['line_intake_dir'] ?? RESERVE_ROOT . '/../line-webhook/private-queue/intake-records');
+            $file = rtrim($dir, '/') . '/' . $rid . '.json';
+            $rec = is_file($file) ? json_decode((string) @file_get_contents($file), true) : null;
+            $cache[$rid] = is_array($rec) && ($rec['requestId'] ?? '') === $rid && ($rec['type'] ?? '') === 'reservation_intake' ? $rec : null;
+        }
+        $rec = $cache[$rid];
+        $uid = is_array($rec) ? (string) ($rec['source']['userId'] ?? '') : '';
+        if (!preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            return [null, 'notfound'];
+        }
+        $f = is_array($rec['intake'] ?? null) ? $rec['intake'] : [];
+        $key = fn($x) => search_key(fold_name_variants((string) $x));
+        $birth = (string) ($f['birthDate'] ?? '');
+        if ($birth !== '' && !empty($patient['birthDate']) && $birth !== $patient['birthDate']) {
+            return [null, 'mismatch'];
+        }
+        $same = fn($a, $b) => $a !== '' && $a === $b;
+        $nameOk = $same($key($f['name'] ?? ''), $key($patient['name'] ?? ''))
+            || $same($key($f['kana'] ?? ''), $key($patient['kana'] ?? ''))
+            || $same(digits_only($f['phone'] ?? ''), digits_only($patient['phone'] ?? ''));
+        $birthOk = $birth !== '' && $birth === ($patient['birthDate'] ?? null);
+        return $nameOk || $birthOk ? [$uid, 'ok'] : [null, 'mismatch'];
     }
 
     /** 外部連携：電子カルテ（M3）などからカルテ番号を書き込む */

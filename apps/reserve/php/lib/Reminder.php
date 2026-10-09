@@ -166,6 +166,14 @@ final class Reminder
             if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
                 $v['lineTo'] = (string) $r['lineUserId'];
             }
+            if (empty($v['lineTo']) && !empty($r['requestId'])) {
+                [$uid, $st] = Store::requestLine((string) $r['requestId'], $p);
+                if ($uid !== null) {
+                    $v['lineTo'] = $uid;
+                } elseif ($st === 'mismatch') {
+                    $v['requestMismatch'] = true;
+                }
+            }
             $arrival = $r['arrivalAt'] ?? $r['startAt'];
             if ($v['arrivalAt'] === null || strcmp($arrival, $v['arrivalAt']) < 0) {
                 $v['arrivalAt'] = $arrival;
@@ -288,6 +296,7 @@ final class Reminder
             'optout' => 'この患者は「リマインド不要」です',
             'no_contact' => '送り先がありません（LINE のつながり・メールアドレス・送信の設定を確かめてください）',
             'line_quota' => 'LINE の今月の残り通数が少ないため送りませんでした',
+            'request_mismatch' => '予約申請の名前・生年月日がこの患者と合わないため、LINE では送りませんでした（申請IDを確かめてください）',
             default => '送れませんでした' . ($reason !== '' ? "（{$reason}）" : ''),
         };
     }
@@ -338,7 +347,10 @@ final class Reminder
                 $lastError = $err;
             }
         }
-        $status = in_array($lastError, ['no_contact', 'line_quota'], true) ? 'skipped' : 'failed';
+        if ($lastError === 'no_contact' && !empty($v['requestMismatch'])) {
+            $lastError = 'request_mismatch';
+        }
+        $status = in_array($lastError, ['no_contact', 'line_quota', 'request_mismatch'], true) ? 'skipped' : 'failed';
         return self::mark($v, ['status' => $status, 'channel' => null, 'reason' => $lastError], $round);
     }
 

@@ -33,6 +33,7 @@ const REMINDER_REASON: Record<string, string> = {
   line_token: "LINE の鍵を確認",
   line_limit: "LINE の上限",
   mail_failed: "メール送信の失敗",
+  request_mismatch: "申請の名前・生年月日が患者と合わない",
 };
 
 const REMINDER_LABEL = {
@@ -154,6 +155,21 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                     <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・変更">
                       {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
                     </button>
+                  )}
+                  {!editingRequestId && r.requestId && r.requestLine && (
+                    <span
+                      className={styles.subGap}
+                      title={
+                        r.requestLine === "ok"
+                          ? "リマインドは、この申請を送った LINE に届きます"
+                          : r.requestLine === "mismatch"
+                            ? "申請の名前・生年月日がこの患者と合いません。申請IDを確かめてください（LINE では送りません）"
+                            : "この申請IDの LINE が見つかりません（LINE では送りません）"
+                      }
+                      style={r.requestLine === "ok" ? undefined : { color: "var(--danger, #c0392b)" }}
+                    >
+                      {r.requestLine === "ok" ? "LINE（申込者）" : r.requestLine === "mismatch" ? "⚠ 申請と患者が不一致" : "LINE 不明"}
+                    </span>
                   )}
                 </span>
               </span>
