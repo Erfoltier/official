@@ -190,6 +190,19 @@ export function runAirSync(date?: string): Promise<AirSyncResult> {
   return call("/api/v1/admin/air-sync/run", { method: "POST", body: JSON.stringify(date ? { date } : {}) });
 }
 
+export interface AirCompareItem {
+  kind: "missing" | "extra" | "diff" | "duplicate";
+  diff?: ("person" | "time" | "lane" | "status")[];
+  air?: { no: string; at: string; kana: string; kanji: string; lane: string; menu: string; cancelled: boolean };
+  reservation?: { id: string; no?: string; at: string; status: string; lane?: string; patient: { id: string; name: string; kana: string } };
+  reservations?: { id: string; at: string; status: string; patient: { id: string; name: string; kana: string } }[];
+}
+
+/** 期間の Air の予約とカレンダーを見比べる（読むだけ） */
+export function compareAir(from: string, to: string): Promise<{ from: string; to: string; air: number; ok: number; items: AirCompareItem[] }> {
+  return call("/api/v1/admin/air-sync/compare", { method: "POST", body: JSON.stringify({ from, to }) });
+}
+
 /** Airリザーブの取り込みで付いた「要確認」の印を外す */
 export function markPatientReviewed(id: string): Promise<Patient> {
   return call(`/api/v1/patients/${encodeURIComponent(id)}/reviewed`, { method: "POST", body: "{}" });

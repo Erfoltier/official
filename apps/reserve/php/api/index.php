@@ -418,6 +418,14 @@ try {
         Http::json($r);
     }
 
+    if ($route === 'POST admin/air-sync/compare') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        $r = AirSync::compare((string) ($in['from'] ?? ''), (string) ($in['to'] ?? ''));
+        Auth::noteAccess($s, 'Airリザーブとカレンダーの予約を見比べ', 'air-compare:' . $r['from'] . '..' . $r['to']);
+        Http::json($r);
+    }
+
     if ($route === 'GET admin/m3-fill') {
         $s = $me(STAFF_ADMIN);
         $items = Store::m3FillCandidates();

@@ -192,6 +192,12 @@ final class AirSync
     /** 1日分の予約を、カレンダーに入れる形にして返す */
     public static function fetchDay(string $date): array
     {
+        return self::fetchRange($date, $date);
+    }
+
+    /** 期間の予約を読む（読むだけ。過去の日も可） */
+    public static function fetchRange(string $from, string $to): array
+    {
         $sec = self::secrets();
         if (($sec['id'] ?? '') === '' || ($sec['password'] ?? '') === '') {
             throw new StoreError('invalid', 'Airリザーブのログイン情報が入っていません');
@@ -202,8 +208,7 @@ final class AirSync
         if ($csrf === '') {
             throw new StoreError('invalid', 'Airリザーブにログインできませんでした（ID・パスワードを確かめてください）');
         }
-        $d = str_replace('-', '', $date);
-        $body = json_encode(['bookingFromDt' => $d . '000000', 'bookingToDt' => $d . '240000', 'resrcSchdlGrpId' => self::settings()['groupId']]);
+        $body = json_encode(['bookingFromDt' => str_replace('-', '', $from) . '000000', 'bookingToDt' => str_replace('-', '', $to) . '240000', 'resrcSchdlGrpId' => self::settings()['groupId']]);
         [$code, $raw] = self::req('POST', self::BASE . '/stateful/booking/staff/search/calendar', [
             'Content-Type: application/json; charset=UTF-8',
             'X-Requested-With: XMLHttpRequest',
@@ -237,6 +242,21 @@ final class AirSync
             }
         }
         return array_values($rows);
+    }
+
+    /**
+     * 期間の Air の予約と、カレンダーの「Air予約番号」付きの予約を見比べる（読むだけ・何も書き換えない）。
+     * 違う人・時刻やレーンのずれ・片方にしかない予約を返す
+     */
+    public static function compare(string $from, string $to): array
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) || $from > $to) {
+            throw new StoreError('invalid', '期間を正しく入れてください');
+        }
+        if ((new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->days > 62) {
+            throw new StoreError('invalid', '一度に見比べられるのは62日までです');
+        }
+        return Store::airCompare(self::fetchRange($from, $to), $from, $to);
     }
 
     /** 20261014101500 → 2026-10-14T10:15:00+09:00（24:00 は翌日 0:00） */

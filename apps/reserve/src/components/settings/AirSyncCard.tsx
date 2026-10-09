@@ -2,11 +2,63 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { fetchAirSync, markPatientReviewed, runAirSync, saveAirSync, type AirSyncResult, type AirSyncSettings } from "@/components/calendar/api";
+import { compareAir, fetchAirSync, markPatientReviewed, type AirCompareItem, runAirSync, saveAirSync, type AirSyncResult, type AirSyncSettings } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 function stamp(iso: string): string {
   return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+const DIFF_LABEL = { person: "違う人", time: "時刻", lane: "レーン", status: "取り消しの状態" } as const;
+
+function when(iso: string): string {
+  return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function PatientLink({ p }: { p: { id: string; name: string; kana: string } }) {
+  return (
+    <Link href={`/patients/view/?id=${encodeURIComponent(p.id)}`}>
+      {p.name}
+      {p.kana && p.kana !== p.name && `（${p.kana}）`}
+    </Link>
+  );
+}
+
+function CompareRow({ it }: { it: AirCompareItem }) {
+  const air = it.air && (
+    <>
+      Air：{when(it.air.at)} {it.air.lane} {it.air.kanji || it.air.kana}
+      {it.air.kanji && it.air.kana && `（${it.air.kana}）`} {it.air.menu}
+      {it.air.cancelled && "【取り消し】"}
+    </>
+  );
+  if (it.kind === "missing") return <li>カレンダーにない：{air}（予約番号 {it.air?.no}）</li>;
+  if (it.kind === "extra" && it.reservation)
+    return (
+      <li>
+        Air にない：カレンダー {when(it.reservation.at)} {it.reservation.lane} <PatientLink p={it.reservation.patient} />（予約番号 {it.reservation.no}・Air で取り消し・削除された可能性）
+      </li>
+    );
+  if (it.kind === "duplicate")
+    return (
+      <li>
+        同じ予約番号が二重：{air} → カレンダーに{it.reservations?.length}件（
+        {it.reservations?.map((r, i) => (
+          <span key={r.id}>
+            {i > 0 && "／"}
+            <PatientLink p={r.patient} />
+          </span>
+        ))}
+        ）
+      </li>
+    );
+  return (
+    <li>
+      <b style={{ color: it.diff?.includes("person") ? "var(--danger, #c0392b)" : undefined }}>{it.diff?.map((d) => DIFF_LABEL[d]).join("・")}がちがう</b>：{air}
+      <br />
+      　カレンダー：{it.reservation && when(it.reservation.at)} {it.reservation?.lane} {it.reservation && <PatientLink p={it.reservation.patient} />}
+    </li>
+  );
 }
 
 function resultText(r: AirSyncResult): string {
@@ -24,6 +76,10 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [date, setDate] = useState("");
+  const [today] = useState(() => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10));
+  const [cmpFrom, setCmpFrom] = useState("");
+  const [cmpTo, setCmpTo] = useState("");
+  const [cmp, setCmp] = useState<Awaited<ReturnType<typeof compareAir>> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,11 +191,52 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
       </div>
 
       <div className={styles.actions}>
-        <input className={styles.input} type="date" min={new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)} value={date} onChange={(e) => setDate(e.target.value)} aria-label="取り込む日" style={{ width: "auto" }} />
+        <input className={styles.input} type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} aria-label="取り込む日" style={{ width: "auto" }} />
         <button type="button" className={styles.btn} disabled={busy || !s.loginConfigured} onClick={() => void run()}>
           {busy ? "取り込んでいます…" : date ? "この日を今すぐ取り込む" : "明日の分を今すぐ取り込む"}
         </button>
       </div>
+
+      <div className={styles.prefRow} style={{ marginTop: 14 }}>
+        <b>Air と見比べる（読むだけ）</b>
+        <small>期間の Air の予約と、カレンダーの予約（Air予約番号つき）を見比べて、違う人・時刻やレーンのずれ・片方にしかない予約を出します。何も書き換えません。過去の日も選べます（一度に62日まで）。</small>
+      </div>
+      <div className={styles.actions}>
+        <input className={styles.input} type="date" value={cmpFrom} onChange={(e) => setCmpFrom(e.target.value)} aria-label="見比べる最初の日" style={{ width: "auto" }} />
+        〜
+        <input className={styles.input} type="date" value={cmpTo} onChange={(e) => setCmpTo(e.target.value)} aria-label="見比べる最後の日" style={{ width: "auto" }} />
+        <button
+          type="button"
+          className={styles.btn}
+          disabled={busy || !s.loginConfigured || !cmpFrom}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              setCmp(await compareAir(cmpFrom, cmpTo || cmpFrom));
+            } catch (e) {
+              props.fail(e);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "見比べています…" : "見比べる"}
+        </button>
+      </div>
+      {cmp && (
+        <div className={styles.hint}>
+          <p style={{ margin: "6px 0" }}>
+            {cmp.from}〜{cmp.to}：Air {cmp.air}件のうち一致 {cmp.ok}件、気になるもの {cmp.items.length}件
+          </p>
+          {cmp.items.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 360, overflow: "auto", lineHeight: 1.6 }}>
+              {cmp.items.map((it, i) => (
+                <CompareRow key={i} it={it} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {s.review.length > 0 && (
         <>

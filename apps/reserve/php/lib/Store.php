@@ -2161,6 +2161,81 @@ final class Store
         return $res;
     }
 
+    /** AirSync::compare の中身。$rows は fetchRange の形 */
+    public static function airCompare(array $rows, string $from, string $to): array
+    {
+        self::init();
+        $norm = fn($x) => fold_name_variants(search_key((string) $x));
+        $cal = [];
+        // 索引の時刻は UTC のことがあるので、前の日から読んでから日本の日付で絞る
+        $fromKey = (new DateTimeImmutable($from))->modify('-1 day')->format('Y-m-d');
+        foreach (Db::i()->between('reservation', 'k1', $fromKey, $to . "\u{FFFF}") as $r) {
+            $d = clinic_date_of($r['startAt']);
+            if ($d < $from || $d > $to) {
+                continue;
+            }
+            if (preg_match('/' . self::AIR_MARK . '\s*[:：]\s*([0-9A-Za-z]+)/u', strip_tags((string) ($r['memo'] ?? '')), $m)) {
+                $cal[strtoupper($m[1])][] = $r;
+            }
+        }
+        $patients = self::patients();
+        $lanes = self::lanes();
+        $pv = fn($id) => isset($patients[$id]) ? ['id' => $id, 'name' => $patients[$id]['name'], 'kana' => $patients[$id]['kana'] ?? ''] : ['id' => $id, 'name' => '（不明）', 'kana' => ''];
+        $items = [];
+        $seen = [];
+        $ok = 0;
+        foreach ($rows as $a) {
+            $no = strtoupper((string) $a['no']);
+            $seen[$no] = true;
+            $air = ['no' => $no, 'at' => $a['from'], 'kana' => $a['kana'], 'kanji' => $a['kanji'], 'lane' => $a['laneName'], 'menu' => $a['menuName'], 'cancelled' => (bool) $a['cancelled']];
+            $rs = $cal[$no] ?? [];
+            if (!$rs) {
+                if (!$a['cancelled']) {
+                    $items[] = ['kind' => 'missing', 'air' => $air];
+                }
+                continue;
+            }
+            if (count($rs) > 1) {
+                $items[] = ['kind' => 'duplicate', 'air' => $air, 'reservations' => array_map(fn($r) => ['id' => $r['id'], 'at' => $r['startAt'], 'status' => $r['status'], 'patient' => $pv($r['patientId'])], $rs)];
+            }
+            $r = $rs[0];
+            $p = $patients[$r['patientId']] ?? [];
+            $kanaOk = $a['kana'] === '' || $norm($p['kana'] ?? '') === $norm($a['kana']) || $norm($p['name'] ?? '') === $norm($a['kana']);
+            $kanjiOk = $a['kanji'] === '' || $norm($p['name'] ?? '') === $norm($a['kanji']) || ($p['nameAlt'] ?? '') !== '' && $norm($p['nameAlt']) === $norm($a['kanji']);
+            $diff = [];
+            if (!$kanaOk || !$kanjiOk) {
+                $diff[] = 'person';
+            }
+            if (normalize_iso($a['from']) !== $r['startAt']) {
+                $diff[] = 'time';
+            }
+            $ln = $norm($lanes[$r['laneId']]['name'] ?? '');
+            $an = $norm($a['laneName']);
+            if ($an !== '' && !($ln === $an || str_starts_with($ln, $an) || str_starts_with($an, $ln))) {
+                $diff[] = 'lane';
+            }
+            if ($a['cancelled'] !== in_array($r['status'], self::INACTIVE, true)) {
+                $diff[] = 'status';
+            }
+            if ($diff) {
+                $items[] = ['kind' => 'diff', 'diff' => $diff, 'air' => $air, 'reservation' => ['id' => $r['id'], 'at' => $r['startAt'], 'status' => $r['status'], 'lane' => $lanes[$r['laneId']]['shortName'] ?? '', 'patient' => $pv($r['patientId'])]];
+            } else {
+                $ok++;
+            }
+        }
+        foreach ($cal as $no => $rs) {
+            if (!isset($seen[$no])) {
+                foreach ($rs as $r) {
+                    if (!in_array($r['status'], self::INACTIVE, true)) {
+                        $items[] = ['kind' => 'extra', 'reservation' => ['id' => $r['id'], 'no' => $no, 'at' => $r['startAt'], 'status' => $r['status'], 'lane' => $lanes[$r['laneId']]['shortName'] ?? '', 'patient' => $pv($r['patientId'])]];
+                    }
+                }
+            }
+        }
+        usort($items, fn($x, $y) => strcmp($x['air']['at'] ?? $x['reservation']['at'], $y['air']['at'] ?? $y['reservation']['at']));
+        return ['from' => $from, 'to' => $to, 'air' => count($rows), 'ok' => $ok, 'items' => $items];
+    }
+
     /** Airリザーブの取り込みで作った「要確認」の患者 */
     public static function reviewPatients(): array
     {
