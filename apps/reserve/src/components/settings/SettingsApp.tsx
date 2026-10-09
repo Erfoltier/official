@@ -160,14 +160,14 @@ export function SettingsApp() {
       ) : tab === "products" ? (
         <ProductsTab products={data.products} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "clinic" ? (
-        <>
+        <div className={styles.clinicWide}>
           <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
           {isAdmin && (
             <section className={styles.clinic}>
               <ReminderCard notify={notify} fail={fail} />
             </section>
           )}
-        </>
+        </div>
       ) : tab === "appearance" ? (
         <section className={styles.clinic}>
           <p className={styles.lead}>画面の見た目の設定です。配色は院で1つ（すべての端末に反映）、その下の表示はこの端末ごとに選べます。</p>

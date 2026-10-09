@@ -12,7 +12,7 @@ function stamp(iso: string): string {
 }
 
 /**
- * リマインド（前日・当日朝のお知らせ）の設定（院長・管理者）。
+ * リマインド（予約のお知らせ）の設定（院長・管理者）。
  * LINE の鍵はここで入れ、暗号化して保存する（画面には二度と出さない）
  */
 export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unknown) => void }) {
@@ -35,7 +35,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
   if (error) {
     return (
       <div className={styles.clinicCard}>
-        <h3 className={styles.cardTitle}>リマインド（前日・当日朝のお知らせ）</h3>
+        <h3 className={styles.cardTitle}>リマインド（予約のお知らせ）</h3>
         <p className={styles.hint}>{error}</p>
       </div>
     );
@@ -89,7 +89,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
 
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>リマインド（前日・当日朝のお知らせ）</h3>
+      <h3 className={styles.cardTitle}>リマインド（予約のお知らせ）</h3>
       <p className={styles.hint}>
         送る回ごとに、来院ごとに1通、LINE がつながっている人には LINE、ほかはメールで送ります（患者ごとに「リマインドの送り先」「リマインド不要」を変えられます）。キャンセル・承認待ちの予約と、当日に取った予約の当日の回には送りません。
       </p>
