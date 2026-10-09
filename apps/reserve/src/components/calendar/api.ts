@@ -168,13 +168,15 @@ export interface ReminderSettings {
   lineConfigured: boolean;
   lineRemaining: number | null;
   lastRun: { at: string; rounds: Record<string, Record<string, number>> } | null;
+  /** サーバーの cron が最後に動いた日時（なければ cron が未設定） */
+  cronSeenAt: string | null;
 }
 
 export function fetchReminderSettings(): Promise<ReminderSettings> {
   return call("/api/v1/admin/reminders");
 }
 
-export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defaultTemplate" | "lineConfigured" | "lineRemaining" | "lastRun">> & { lineToken?: string }): Promise<ReminderSettings> {
+export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defaultTemplate" | "lineConfigured" | "lineRemaining" | "lastRun" | "cronSeenAt">> & { lineToken?: string }): Promise<ReminderSettings> {
   return call("/api/v1/admin/reminders", { method: "PUT", body: JSON.stringify(body) });
 }
 

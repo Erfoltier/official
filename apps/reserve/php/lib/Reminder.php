@@ -58,6 +58,7 @@ final class Reminder
             'lineConfigured' => self::lineToken() !== '',
             'defaultTemplate' => self::DEFAULT_TEMPLATE,
             'lastRun' => is_array($last) ? $last : null,
+            'cronSeenAt' => is_string($seen = Db::i()->meta('reminderCronSeen')) ? $seen : null,
             'lineRemaining' => self::lineToken() !== '' ? self::lineRemaining() : null,
         ];
     }

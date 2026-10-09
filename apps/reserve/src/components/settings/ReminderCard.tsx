@@ -116,6 +116,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         </div>
         <small>
           {s.lastRun ? `最後に確認：${stamp(s.lastRun.at)}` : "まだ一度も確認していません"}
+          {`　cron の最終実行：${s.cronSeenAt ? stamp(s.cronSeenAt) : "まだ（サーバーの cron 設定を確かめてください）"}`}
           {s.lineConfigured && s.lineRemaining !== null && `　LINE の今月の残り：${s.lineRemaining}通`}
         </small>
       </div>

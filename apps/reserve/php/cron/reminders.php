@@ -12,4 +12,6 @@ if (isset($_SERVER['REQUEST_METHOD']) || isset($_SERVER['HTTP_HOST'])) {
 }
 require __DIR__ . '/../lib/bootstrap.php';
 Store::clinic();
+// cron が動いたことを残す（リマインドを止めていても、設定画面で cron の動きを確かめられるように）
+Db::i()->setMeta('reminderCronSeen', now_iso());
 echo json_encode(Reminder::tick(true), JSON_UNESCAPED_UNICODE), "\n";
