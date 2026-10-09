@@ -9,7 +9,7 @@ import styles from "@/components/patients/patients.module.css";
 export default function Page() {
   const [id, setId] = useState<string | null>(null);
   useEffect(() => {
-    document.title = "患者情報｜予約カレンダー";
+    document.title = "患者情報｜LANE RESERVE";
     // URL を読めるのは表示後のため、ここで初期化する
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setId(new URLSearchParams(window.location.search).get("id"));

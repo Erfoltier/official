@@ -4,11 +4,12 @@ import { THEME_BOOT } from "@/lib/theme";
 import { DialogBackdropClose } from "@/components/DialogBackdropClose";
 
 export const metadata: Metadata = {
-  title: "予約カレンダー",
-  description: "美容皮膚科向け予約管理（試作）",
+  title: { default: "LANE RESERVE", template: "%s｜LANE RESERVE" },
+  description: "LANE RESERVE（レーンリザーブ）— レーンで見る予約台帳",
   robots: { index: false, follow: false },
-  applicationName: "予約カレンダー",
-  appleWebApp: { capable: true, title: "予約", statusBarStyle: "default" },
+  applicationName: "LANE RESERVE",
+  manifest: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/manifest.webmanifest`,
+  appleWebApp: { capable: true, title: "LANE RESERVE", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

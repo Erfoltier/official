@@ -503,7 +503,7 @@
   border-left-color: var(--text-faint);
   color: var(--text-faint);
   text-decoration: line-through;
-  cursor: default;
+  cursor: pointer;
 }
 
 .block[data-conflict]::before {
@@ -2615,4 +2615,34 @@ button.stagePill[data-clickable]:disabled {
   .receptionBackdrop {
     background: transparent;
   }
+}
+
+/* 上のバーの LANE RESERVE（横組み）。幅の広い画面だけ。スマホ・タブレットでは出さず、予約表の幅を優先する */
+.brandBar {
+  display: none;
+  height: 22px;
+  width: auto;
+  flex: none;
+  margin-right: 6px;
+  align-self: center;
+}
+@media (min-width: 1280px) {
+  .brandBar {
+    display: block;
+  }
+}
+
+/* 取り消した予約を元に戻す */
+.restoreBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger, #c0392b) 8%, var(--surface, #fff));
+  color: var(--danger, #c0392b);
+  font-size: 13px;
 }

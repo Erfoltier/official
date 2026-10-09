@@ -147,3 +147,14 @@
   color: #fff;
   box-shadow: var(--shadow-accent);
 }
+
+/* LANE RESERVE のロゴ（縦組み） */
+.brand {
+  margin: 0 0 18px;
+  line-height: 0;
+  text-align: center;
+}
+.brandLogo {
+  width: min(220px, 60vw);
+  height: auto;
+}

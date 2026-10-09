@@ -331,7 +331,12 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
 
   const beginPointer = (e: ReactPointerEvent, r: Reservation, mode: DragState["mode"]) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (INACTIVE_STATUSES.has(r.status)) return;
+    // 取り消した予約は動かせないが、押せば詳細を開く（「予約に戻す」ができるように）
+    if (INACTIVE_STATUSES.has(r.status)) {
+      e.stopPropagation();
+      if (mode === "move") onSelect(r.id);
+      return;
+    }
     e.stopPropagation();
     // マウスでドラッグしたときに周りの文字が選択されないようにする
     if (e.pointerType === "mouse") e.preventDefault();

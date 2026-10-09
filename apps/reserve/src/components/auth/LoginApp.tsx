@@ -47,7 +47,10 @@ export function LoginApp() {
 
   return (
     <main className={styles.page}>
-      <h1 className={styles.title}>予約カレンダー</h1>
+      <h1 className={styles.brand}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 静的書き出しのため最適化なしの画像で表示 */}
+        <img src={withBase("/brand/lane-reserve-logo.svg")} alt="LANE RESERVE レーンリザーブ" className={styles.brandLogo} />
+      </h1>
       {!picked ? (
         <>
           <p className={styles.lead}>あなたの名前を選んでください</p>

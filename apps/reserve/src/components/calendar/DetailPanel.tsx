@@ -470,6 +470,23 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             </button>
           </div>
         )}
+        {(r.status === "cancelled" || r.status === "no_show") && (
+          <div className={styles.restoreBar} role="status">
+            <span>この予約は{r.status === "cancelled" ? "キャンセル" : "無断キャンセル"}になっています。</span>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => {
+                if (!window.confirm("この予約を「予約」に戻します。よろしいですか？")) return;
+                const booked = bundle.stages.find((st) => st.phase === "booked" && st.active && !st.deleted);
+                if (booked) onStage(booked.id);
+                else onStatus("booked");
+              }}
+            >
+              予約に戻す
+            </button>
+          </div>
+        )}
         <div className={styles.statusRow}>
           <button
             className={styles.statusBtn}

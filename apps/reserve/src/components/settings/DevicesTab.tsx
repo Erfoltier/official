@@ -66,7 +66,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   return (
     <section className={`${styles.clinic} ${styles.devices}`}>
       <p className={styles.lead}>
-        院で使っている機器と予約カレンダーをつなぎます。つないだ機器のデータは、患者の施術歴（その日の写真）に自動で入ります。
+        院で使っている機器とLANE RESERVEをつなぎます。つないだ機器のデータは、患者の施術歴（その日の写真）に自動で入ります。
       </p>
 
       <div className={styles.clinicCard}>
@@ -74,7 +74,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           ネオボワール（肌診断機）の写真 <span className={styles.optionBadge}>オプション</span>
         </h3>
         <p className={styles.hint}>
-          ネオボワールの写真が見られるパソコン（親機または子機）に「取り込み係」を置くと、撮った写真を5分ごとに予約カレンダーへ送ります。
+          ネオボワールの写真が見られるパソコン（親機または子機）に「取り込み係」を置くと、撮った写真を5分ごとにLANE RESERVEへ送ります。
           写真のファイル名の<b>氏名</b>で患者を探し、1人に決まればその日の施術歴に入ります。ファイル名の<b>顧客番号</b>は一度結びつくと覚えるので、次からは同姓同名でも確実です。
           同じ名前の人が2人以上いる・見つからないときは、下の「照合待ちの写真」に入ります（送るのは撮影したままの写真だけで、解析の画像は送りません）。
         </p>
@@ -158,7 +158,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                 <li>
                   スタートメニューで「PowerShell」を<b>普通に</b>開き（「管理者として実行」では親機の共有フォルダが見えないことがあります）、次を入力します（ファイルの場所に合わせて）。
                   <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;$env:USERPROFILE\Documents\neovoir-agent.ps1&quot; -Setup</code>
-                  聞かれた順に、予約カレンダーのアドレス <code>{serverUrl}</code>、鍵、入口のID・パスワード（予約カレンダーをブラウザで開くときに聞かれるもの。聞かれないなら Enter）、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
+                  聞かれた順に、LANE RESERVEのアドレス <code>{serverUrl}</code>、鍵、入口のID・パスワード（LANE RESERVEをブラウザで開くときに聞かれるもの。聞かれないなら Enter）、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
                 </li>
                 <li>
                   <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どの写真から、どんな氏名・顧客番号を読むか」をそのパソコンの画面で確かめられます（患者さんの名前が出るので、チャットなどには貼らないでください）。正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
@@ -341,7 +341,7 @@ function OptionsEditor({ link, busy, onSave }: { link: DeviceLink; busy: boolean
   );
 }
 
-/** Google連携の鍵：問診票・同意書・料金表の Apps Script がこの予約カレンダーへ送るときの TOKEN */
+/** Google連携の鍵：問診票・同意書・料金表の Apps Script がLANE RESERVEへ送るときの TOKEN */
 function GoogleKeysCard(props: {
   keys: DeviceLink[];
   serverUrl: string;
@@ -358,7 +358,7 @@ function GoogleKeysCard(props: {
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>Googleの問診票・同意書・料金表の鍵</h3>
       <p className={styles.hint}>
-        Googleフォームの問診票・同意書のひな形・料金表（スプレッドシート）の Apps Script が、この予約カレンダーへ送るときに使う鍵です。
+        Googleフォームの問診票・同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVEへ送るときに使う鍵です。
         各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に入れます。
       </p>
       {keys.map((l) => (
@@ -405,7 +405,7 @@ function GoogleKeysCard(props: {
             <code>RESERVE_URL</code>：問診票は <code>{api}/questionnaires</code>、同意書は <code>{api}/consent-templates</code>、料金表は <code>{api}/prices</code>
           </li>
           <li>
-            <code>BASIC_USER</code>・<code>BASIC_PASS</code>：予約カレンダーをブラウザで開くときに聞かれる ID・パスワード
+            <code>BASIC_USER</code>・<code>BASIC_PASS</code>：LANE RESERVEをブラウザで開くときに聞かれる ID・パスワード
           </li>
           <li>入れ終わったら、エディタで <code>setup</code> を1回実行します（自動で送る時刻の登録）。</li>
         </ul>

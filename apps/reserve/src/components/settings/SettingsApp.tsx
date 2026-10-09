@@ -125,7 +125,7 @@ export function SettingsApp() {
                 操作ログ
               </button>
               <button role="tab" aria-selected={tab === "restore"} onClick={() => setTab("restore")}>
-                設定の復元
+                控え・復元
               </button>
             </>
           )}
@@ -238,7 +238,7 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
   return (
     <section>
       <p className={styles.lead}>
-        予約カレンダーの列です。表示できるレーンは{MIN_LANES}〜{MAX_LANES}本で、名前の変更・並べ替え・追加ができます（一番上が左端）。
+        予約表の列です。表示できるレーンは{MIN_LANES}〜{MAX_LANES}本で、名前の変更・並べ替え・追加ができます（一番上が左端）。
         使わなくなったレーンは「表示」を外すとカレンダーから消えます（過去の予約は残ります）。予約の記録が一度もないレーンは削除できます。
         今日以降の予約が残っているレーンは、予約を移してから外してください。
       </p>
