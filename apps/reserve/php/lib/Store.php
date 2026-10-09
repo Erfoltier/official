@@ -838,8 +838,11 @@ final class Store
             'lanes' => array_values(array_filter(self::sortedLanes(), fn($l) => $l['active'] || isset($used[$l['id']]))),
             'menus' => self::sortedMenus(),
             'reservations' => array_map(function ($r) use ($patients) {
-                if (!empty($r['requestId']) && isset($patients[$r['patientId']])) {
-                    $r['requestLine'] = self::requestLine($r['requestId'], $patients[$r['patientId']])[1];
+                if (isset($patients[$r['patientId']])) {
+                    $st = self::reservationLine($r, $patients[$r['patientId']])[1];
+                    if ($st !== null) {
+                        $r['requestLine'] = $st;
+                    }
                 }
                 return $r;
             }, $reservations),
@@ -1167,6 +1170,38 @@ final class Store
     {
         $cur = self::reservation($id);
         return self::updateReservation($id, ['version' => $cur['version'], 'requestId' => $requestId], self::INTEGRATION_ACTOR);
+    }
+
+    /**
+     * 予約の申請IDの欄と、メモに書かれた申請ID（R＋14桁＋8文字）から、申し込んだ LINE を引く。
+     * 合うものがあればそれ、なければ「不一致」「見つからない」のどちらか
+     */
+    public static function reservationLine(array $r, array $patient): array
+    {
+        $ids = [];
+        if (!empty($r['requestId'])) {
+            $ids[] = strtoupper((string) $r['requestId']);
+        }
+        if (!empty($r['memo']) && preg_match_all('/R\d{14}[0-9A-F]{8}/i', strip_tags((string) $r['memo']), $m)) {
+            foreach ($m[0] as $id) {
+                $ids[] = strtoupper($id);
+            }
+        }
+        $ids = array_slice(array_values(array_unique($ids)), 0, 5);
+        if (!$ids) {
+            return [null, null];
+        }
+        $state = 'notfound';
+        foreach ($ids as $id) {
+            [$uid, $st] = self::requestLine($id, $patient);
+            if ($uid !== null) {
+                return [$uid, 'ok'];
+            }
+            if ($st === 'mismatch') {
+                $state = 'mismatch';
+            }
+        }
+        return [null, $state];
     }
 
     /**

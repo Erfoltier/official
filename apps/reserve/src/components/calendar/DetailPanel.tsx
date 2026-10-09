@@ -156,7 +156,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                       {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
                     </button>
                   )}
-                  {!editingRequestId && r.requestId && r.requestLine && (
+                  {!editingRequestId && r.requestLine && (
                     <span
                       className={styles.subGap}
                       title={

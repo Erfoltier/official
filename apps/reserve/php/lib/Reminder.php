@@ -168,8 +168,8 @@ final class Reminder
             if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
                 $v['lineTo'] = (string) $r['lineUserId'];
             }
-            if (empty($v['lineTo']) && !empty($r['requestId'])) {
-                [$uid, $st] = Store::requestLine((string) $r['requestId'], $p);
+            [$uid, $st] = empty($v['lineTo']) ? Store::reservationLine($r, $p) : [null, null];
+            if ($st !== null) {
                 if ($uid !== null) {
                     $v['lineTo'] = $uid;
                 } elseif ($st === 'mismatch') {
@@ -326,8 +326,8 @@ final class Reminder
                 if (!$s['useLine'] || self::lineToken() === '' || $lineTo === '') {
                     $why[] = !$s['useLine'] ? 'LINE で送る設定が「送らない」'
                         : (self::lineToken() === '' ? 'LINE の鍵が入っていない'
-                        : (!empty($v['requestNotFound']) ? '予約申請IDの LINE が見つからない'
-                        : (!empty($v['requestMismatch']) ? '予約申請の名前・生年月日が患者と合わない' : 'LINE の申請ID・紐付けがない')));
+                        : (!empty($v['requestNotFound']) ? '予約申請ID（申請IDの欄・メモ）の LINE が見つからない'
+                        : (!empty($v['requestMismatch']) ? '予約申請の名前・生年月日が患者と合わない' : '申請IDの欄にもメモにも予約申請IDがなく、LINE の紐付けもない')));
                     continue;
                 }
                 if (!$quota['checked']) {
