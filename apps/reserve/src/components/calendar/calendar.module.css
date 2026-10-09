@@ -2532,3 +2532,46 @@ button.stagePill[data-clickable]:disabled {
     flex: none;
   }
 }
+
+/*
+ * 患者名を最優先で全部見せる：狭いときは ❗・1/2・LINE などの印を2行目へ送る（名前を「…」で切らない）。
+ * 名前そのものが枠より長いときは、名前の中で折り返す
+ */
+.blockTitle {
+  flex-wrap: wrap;
+  row-gap: 1px;
+}
+.blockTitle .blockName,
+.blockLine .blockName {
+  order: -1;
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.blockTitle .blockName {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+@container block (max-width: 90px) {
+  /* 細い枠で2段以上あるときは、名前を上に置いて折り返す（❗・1/2 などはその下） */
+  .block[data-stack] .blockLine {
+    justify-content: flex-start;
+  }
+  .block[data-stack] .blockLine .blockName {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    line-height: 1.15;
+  }
+}
+/* 中身が枠より高いときは上からそろえる（真ん中そろえだと名前の上側が枠の外に切れる） */
+.block[data-density="line"],
+.block[data-density="micro"] {
+  align-items: safe center;
+}
+@container block (max-width: 90px) {
+  .block[data-stack] .blockLine {
+    justify-content: safe center;
+  }
+}
