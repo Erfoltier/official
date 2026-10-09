@@ -17,6 +17,8 @@ final class Reminder
 
     /** 試験用：送信を差し替える（null なら本当に送る） */
     public static $transport = null;
+    /** 直前の送信で送れなかった理由（手動送信の画面表示用） */
+    private static array $lastWhy = [];
 
     public static function defaults(): array
     {
@@ -172,6 +174,8 @@ final class Reminder
                     $v['lineTo'] = $uid;
                 } elseif ($st === 'mismatch') {
                     $v['requestMismatch'] = true;
+                } else {
+                    $v['requestNotFound'] = true;
                 }
             }
             $arrival = $r['arrivalAt'] ?? $r['startAt'];
@@ -282,10 +286,12 @@ final class Reminder
         $quota = ['remaining' => null, 'checked' => false];
         $days = (int) (new DateTimeImmutable(now_in_clinic()['date'], jst()))->diff(new DateTimeImmutable($date, jst()))->format('%r%a');
         $round = 'd' . max(0, $days);
+        self::$lastWhy = [];
         $res = self::deliver($visit, $round, $quota, true);
         Auth::audit($by, 'リマインドを手動で送信（' . ($res['channel'] ?? 'なし') . '・' . $res['status'] . '）', $r['patientId']);
         if ($res['status'] !== 'sent') {
-            throw new StoreError('invalid', self::reasonText($res['reason'] ?? ''));
+            $detail = ($res['reason'] ?? '') === 'no_contact' && self::$lastWhy ? '送り先がありません：' . implode('／', array_unique(self::$lastWhy)) : self::reasonText($res['reason'] ?? '');
+            throw new StoreError('invalid', $detail);
         }
         return $res;
     }
@@ -314,9 +320,14 @@ final class Reminder
         $lineTo = $v['lineTo'] ?? ($p['lineUserId'] ?? '');
         $order = $pref === 'email' ? ['email', 'line'] : ['line', 'email'];
         $lastError = 'no_contact';
+        $why = [];
         foreach ($order as $ch) {
             if ($ch === 'line') {
                 if (!$s['useLine'] || self::lineToken() === '' || $lineTo === '') {
+                    $why[] = !$s['useLine'] ? 'LINE で送る設定が「送らない」'
+                        : (self::lineToken() === '' ? 'LINE の鍵が入っていない'
+                        : (!empty($v['requestNotFound']) ? '予約申請IDの LINE が見つからない'
+                        : (!empty($v['requestMismatch']) ? '予約申請の名前・生年月日が患者と合わない' : 'LINE の申請ID・紐付けがない')));
                     continue;
                 }
                 if (!$quota['checked']) {
@@ -337,6 +348,8 @@ final class Reminder
                 $lastError = $err;
             } else {
                 if (!$s['useEmail'] || $s['fromEmail'] === '' || empty($p['email']) || !filter_var($p['email'], FILTER_VALIDATE_EMAIL)) {
+                    $why[] = !$s['useEmail'] ? 'メールで送る設定が「送らない」'
+                        : ($s['fromEmail'] === '' ? '送信元のメールが未設定' : (empty($p['email']) ? '患者のメールアドレスがない' : '患者のメールアドレスの形が正しくない'));
                     continue;
                 }
                 $m = self::compose($v, $round, 'email');
@@ -350,6 +363,7 @@ final class Reminder
         if ($lastError === 'no_contact' && !empty($v['requestMismatch'])) {
             $lastError = 'request_mismatch';
         }
+        self::$lastWhy = $why;
         $status = in_array($lastError, ['no_contact', 'line_quota', 'request_mismatch'], true) ? 'skipped' : 'failed';
         return self::mark($v, ['status' => $status, 'channel' => null, 'reason' => $lastError], $round);
     }
