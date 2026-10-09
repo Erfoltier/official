@@ -74,6 +74,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const [memo, setMemo] = useState(r.memo ?? "");
   const [reminding, setReminding] = useState(false);
   const [lineLinked, setLineLinked] = useState(false);
+  /** キャンセル・無断キャンセルは誤タッチで消えないよう、いいえ／はい を挟む */
+  const [confirmStatus, setConfirmStatus] = useState<"cancelled" | "no_show" | null>(null);
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
@@ -473,7 +475,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             className={styles.statusBtn}
             data-danger
             data-active={r.status === "cancelled" || undefined}
-            onClick={() => onStatus("cancelled")}
+            onClick={() => (r.status === "cancelled" ? onStatus("cancelled") : setConfirmStatus("cancelled"))}
           >
             キャンセル
           </button>
@@ -481,11 +483,48 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             className={styles.statusBtn}
             data-danger
             data-active={r.status === "no_show" || undefined}
-            onClick={() => onStatus("no_show")}
+            onClick={() => (r.status === "no_show" ? onStatus("no_show") : setConfirmStatus("no_show"))}
           >
             無断キャンセル
           </button>
         </div>
+        {confirmStatus && (
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-status-title"
+            style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.35)", display: "grid", placeItems: "center", padding: 16 }}
+            onClick={() => setConfirmStatus(null)}
+          >
+            <div
+              style={{ background: "var(--surface, #fff)", color: "var(--text, #222)", borderRadius: 12, padding: "20px 22px", maxWidth: 360, width: "100%", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p id="confirm-status-title" style={{ margin: "0 0 18px", fontSize: "1.05em", lineHeight: 1.6 }}>
+                {displayName(patient, maskNames)}さんの予約を<b>{confirmStatus === "cancelled" ? "キャンセル" : "無断キャンセル"}</b>にします。よろしいですか？
+              </p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button type="button" className={styles.btn} style={{ minWidth: 96, minHeight: 44 }} autoFocus onClick={() => setConfirmStatus(null)}>
+                  いいえ
+                </button>
+                <button
+                  type="button"
+                  className={styles.statusBtn}
+                  data-danger
+                  data-active
+                  style={{ minWidth: 96, minHeight: 44 }}
+                  onClick={() => {
+                    const st = confirmStatus;
+                    setConfirmStatus(null);
+                    onStatus(st);
+                  }}
+                >
+                  はい
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={styles.panelSection}>
