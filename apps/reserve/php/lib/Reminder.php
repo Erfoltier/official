@@ -162,6 +162,10 @@ final class Reminder
             $key = $date . '|' . ($r['visitId'] ?? $r['patientId']);
             $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'arrivalAt' => null, 'createdAt' => null];
             $v['reservations'][] = $r;
+            // LINE 予約フォームから入った予約は、申し込んだ LINE（予約ごとに記録）へ返す。名前での照合はしない
+            if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
+                $v['lineTo'] = (string) $r['lineUserId'];
+            }
             $arrival = $r['arrivalAt'] ?? $r['startAt'];
             if ($v['arrivalAt'] === null || strcmp($arrival, $v['arrivalAt']) < 0) {
                 $v['arrivalAt'] = $arrival;
@@ -297,11 +301,13 @@ final class Reminder
         if (!$manual && (!empty($p['reminderOptOut']) || $pref === 'none')) {
             return self::mark($v, ['status' => 'skipped', 'channel' => null, 'reason' => 'optout'], $round);
         }
+        // 送り先の LINE：その予約を申し込んだ LINE → スタッフが確かめて紐付けた患者の LINE の順
+        $lineTo = $v['lineTo'] ?? ($p['lineUserId'] ?? '');
         $order = $pref === 'email' ? ['email', 'line'] : ['line', 'email'];
         $lastError = 'no_contact';
         foreach ($order as $ch) {
             if ($ch === 'line') {
-                if (!$s['useLine'] || self::lineToken() === '' || empty($p['lineUserId'])) {
+                if (!$s['useLine'] || self::lineToken() === '' || $lineTo === '') {
                     continue;
                 }
                 if (!$quota['checked']) {
@@ -312,7 +318,7 @@ final class Reminder
                     $lastError = 'line_quota';
                     continue;
                 }
-                [$ok, $err] = self::pushLine((string) $p['lineUserId'], self::compose($v, $round, 'line')['text']);
+                [$ok, $err] = self::pushLine((string) $lineTo, self::compose($v, $round, 'line')['text']);
                 if ($ok) {
                     if ($quota['remaining'] !== null) {
                         $quota['remaining']--;
