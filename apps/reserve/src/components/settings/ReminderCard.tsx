@@ -5,7 +5,7 @@ import { fetchReminderSettings, runRemindersNow, saveReminderSettings, type Remi
 import styles from "./settings.module.css";
 
 const DAY_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 14];
-const PLACEHOLDERS = ["{患者名}", "{院名}", "{いつ}", "{日付}", "{時刻}", "{メニュー}", "{院の電話}"];
+const PLACEHOLDERS = ["{患者名}", "{院名}", "{いつ}", "{日付}", "{時刻}", "{メニュー}", "{来院前のご案内}", "{院の電話}"];
 
 function stamp(iso: string): string {
   return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });

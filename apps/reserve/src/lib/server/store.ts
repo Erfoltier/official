@@ -1864,7 +1864,12 @@ function validateMenu(m: Menu): Menu {
   if (![5, 10, 15, 20, 30, 60].includes(m.startStepMin)) throw new StoreError("invalid", "開始時間の刻みが正しくありません");
   const laneIds = [...new Set(m.laneIds)];
   if (!laneIds.every(laneExists)) throw new StoreError("invalid", "レーンが見つかりません");
-  return { ...m, name, abbr, defaultMinutes, laneIds };
+  const publicName = checkText("患者に見せる名前", m.publicName ?? "", 40, false);
+  const preVisitNote = (m.preVisitNote ?? "").trim().slice(0, 300);
+  const out: Menu = { ...m, name, abbr, defaultMinutes, laneIds, publicName, preVisitNote };
+  if (!publicName) delete out.publicName;
+  if (!preVisitNote) delete out.preVisitNote;
+  return out;
 }
 
 export function createMenu(input: MenuInput, by?: Actor): Menu {
@@ -1873,6 +1878,8 @@ export function createMenu(input: MenuInput, by?: Actor): Menu {
     id: `menu-${Date.now().toString(36)}-${++st.seq}`,
     name: input.name ?? "",
     abbr: input.abbr ?? "",
+    publicName: input.publicName ?? "",
+    preVisitNote: input.preVisitNote ?? "",
     duration: input.duration ?? { kind: "fixed", minutes: 15 },
     defaultMinutes: input.defaultMinutes ?? 15,
     startStepMin: input.startStepMin ?? 5,

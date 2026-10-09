@@ -162,7 +162,7 @@ final class Reminder
                 continue;
             }
             $key = $date . '|' . ($r['visitId'] ?? $r['patientId']);
-            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'arrivalAt' => null, 'createdAt' => null];
+            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'notes' => [], 'arrivalAt' => null, 'createdAt' => null];
             $v['reservations'][] = $r;
             // LINE 予約フォームから入った予約は、申し込んだ LINE（予約ごとに記録）へ返す。名前での照合はしない
             if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
@@ -189,6 +189,10 @@ final class Reminder
                 $n = $menus[$mid]['publicName'] ?? $menus[$mid]['name'] ?? '';
                 if ($n !== '' && !in_array($n, $v['menuNames'], true)) {
                     $v['menuNames'][] = $n;
+                }
+                $note = trim((string) ($menus[$mid]['preVisitNote'] ?? ''));
+                if ($note !== '' && !in_array($note, $v['notes'], true)) {
+                    $v['notes'][] = $note;
                 }
             }
             $visits[$key] = $v;
@@ -409,7 +413,13 @@ final class Reminder
             '{時刻}' => $d->format('G:i'),
             '{メニュー}' => implode('・', $v['menuNames']),
         ];
+        $vars['{来院前のご案内}'] = implode("\n", $v['notes'] ?? []);
         $text = strtr((string) $s['template'], $vars);
+        // 文面に {来院前のご案内} がなくても、メニューに案内があれば最後に足す
+        if (!str_contains((string) $s['template'], '{来院前のご案内}') && !empty($v['notes'])) {
+            $text = rtrim($text) . "\n\n【ご来院前のご案内】\n" . $vars['{来院前のご案内}'];
+        }
+        $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
         return ['subject' => '【' . $vars['{院名}'] . '】' . $vars['{いつ}'] . 'のご予約のお知らせ', 'text' => $text];
     }
 

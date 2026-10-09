@@ -2768,7 +2768,16 @@ final class Store
                 throw new StoreError('invalid', 'レーンが見つかりません');
             }
         }
-        return [...$m, 'name' => $name, 'abbr' => $abbr, 'defaultMinutes' => $defaultMinutes, 'laneIds' => $laneIds];
+        $publicName = self::checkText('患者に見せる名前', (string) ($m['publicName'] ?? ''), 40, false);
+        $preVisitNote = js_slice(js_trim((string) ($m['preVisitNote'] ?? '')), 300);
+        $out = [...$m, 'name' => $name, 'abbr' => $abbr, 'defaultMinutes' => $defaultMinutes, 'laneIds' => $laneIds, 'publicName' => $publicName, 'preVisitNote' => $preVisitNote];
+        if ($publicName === '') {
+            unset($out['publicName']);
+        }
+        if ($preVisitNote === '') {
+            unset($out['preVisitNote']);
+        }
+        return $out;
     }
 
     public static function createMenu(array $input, ?array $by = null): array
@@ -2777,6 +2786,8 @@ final class Store
             'id' => new_id('menu'),
             'name' => $input['name'] ?? '',
             'abbr' => $input['abbr'] ?? '',
+            'publicName' => $input['publicName'] ?? '',
+            'preVisitNote' => $input['preVisitNote'] ?? '',
             'duration' => $input['duration'] ?? ['kind' => 'fixed', 'minutes' => 15],
             'defaultMinutes' => $input['defaultMinutes'] ?? 15,
             'startStepMin' => $input['startStepMin'] ?? 5,

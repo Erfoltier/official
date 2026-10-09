@@ -98,6 +98,8 @@ export const menuSchema = z
   .object({
     name: shortText(160).optional(),
     abbr: shortText(30).optional(),
+    publicName: shortText(80).optional(),
+    preVisitNote: z.string().max(600).optional(),
     duration: z
       .discriminatedUnion("kind", [
         z.object({ kind: z.literal("fixed"), minutes }).strict(),

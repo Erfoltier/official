@@ -37,6 +37,10 @@ export interface Menu {
   name: string;
   /** 短い枠に表示する略称（例: ボトックス【再診】 → BTX再） */
   abbr: string;
+  /** 患者に見せる名前（リマインドなど。空なら メニュー名）。院内の略称や【再診】などを出さないため */
+  publicName?: string;
+  /** 来院前の案内（リマインドの本文に入る。例：当日はメイクを落としやすい状態でお越しください） */
+  preVisitNote?: string;
   duration: MenuDuration;
   /** 予約登録時に最初に入る時間（分）。range のときは min〜max の範囲内 */
   defaultMinutes: number;

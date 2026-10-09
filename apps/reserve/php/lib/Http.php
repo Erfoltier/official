@@ -396,6 +396,8 @@ final class Schema
         return V::shape($v, [
             'name?' => fn($x) => V::str($x, 160),
             'abbr?' => fn($x) => V::str($x, 30),
+            'publicName?' => fn($x) => V::str($x, 80),
+            'preVisitNote?' => fn($x) => V::str($x, 600),
             'duration?' => function ($x) use ($min) {
                 $kind = is_array($x) ? ($x['kind'] ?? null) : null;
                 return match ($kind) {

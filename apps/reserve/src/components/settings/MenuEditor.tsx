@@ -22,6 +22,8 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
   const ref = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState(menu?.name ?? "");
   const [abbr, setAbbr] = useState(menu?.abbr ?? "");
+  const [publicName, setPublicName] = useState(menu?.publicName ?? "");
+  const [preVisitNote, setPreVisitNote] = useState(menu?.preVisitNote ?? "");
   const [color, setColor] = useState(menu?.color ?? "#64748b");
   const [kind, setKind] = useState<MenuDuration["kind"]>(menu?.duration.kind ?? "fixed");
   const [fixedMin, setFixedMin] = useState(menu?.duration.kind === "fixed" ? menu.duration.minutes : 15);
@@ -50,6 +52,8 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
       const saved = await saveMenu(menu?.id ?? null, {
         name,
         abbr,
+        publicName,
+        preVisitNote,
         color,
         duration,
         defaultMinutes: kind === "fixed" ? fixedMin : Math.min(rangeMax, Math.max(rangeMin, defaultMinutes)),
@@ -109,6 +113,12 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
               山田 Anna｜{abbr || name.slice(0, 6) || "略称"}
             </span>
           </div>
+
+          <label>患者に見せる名前</label>
+          <input className={styles.input} value={publicName} onChange={(e) => setPublicName(e.target.value)} maxLength={40} placeholder={`空欄なら「${name || "メニュー名"}」`} aria-label="患者に見せる名前" />
+
+          <label>来院前の案内</label>
+          <textarea className={styles.input} rows={2} value={preVisitNote} onChange={(e) => setPreVisitNote(e.target.value)} maxLength={300} placeholder="例：当日はメイクを落としやすい状態でお越しください（リマインドに入ります）" aria-label="来院前の案内" style={{ fontFamily: "inherit" }} />
 
           <label>提供時間</label>
           <div>
