@@ -2609,3 +2609,10 @@ button.stagePill[data-clickable]:disabled {
   pointer-events: none;
   box-shadow: 0 0 0 2px var(--surface, #fff);
 }
+
+/* スマホの受付一覧：後ろのカレンダーを暗くしない（外を押したら閉じる働きだけ残す） */
+@media (max-width: 760px) {
+  .receptionBackdrop {
+    background: transparent;
+  }
+}
