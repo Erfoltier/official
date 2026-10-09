@@ -426,6 +426,20 @@ try {
         Http::json($r);
     }
 
+    // ---- LINE 予約フォームの申請の受付箱（スタッフ） ----
+    if ($route === 'GET intake') {
+        $s = $me();
+        $r = Intake::list((int) ($_GET['days'] ?? 30));
+        Auth::noteAccess($s, '予約申請の受付箱を表示', 'intake:' . count($r['items']));
+        Http::json($r);
+    }
+    if ($method === 'POST' && $n === 3 && $p[0] === 'intake' && $p[2] === 'mark') {
+        $s = $me();
+        $in = Http::readJson();
+        $action = is_array($in) && in_array($in['action'] ?? null, ['done', 'skip'], true) ? $in['action'] : null;
+        Http::json(Intake::mark((string) $p[1], $action, $actor($s)));
+    }
+
     if ($route === 'GET admin/m3-fill') {
         $s = $me(STAFF_ADMIN);
         $items = Store::m3FillCandidates();

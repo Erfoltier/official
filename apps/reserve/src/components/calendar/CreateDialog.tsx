@@ -20,6 +20,8 @@ interface Props {
   onCreated: (r: Reservation) => void;
   /** メニューの追加・削除ができる人（院長・管理者と受付）だけ。変更のあと予約表を読み直す */
   onMenusChanged?: () => Promise<void>;
+  /** 受付箱から開いたときの申請の文面（開いたときに読み取って入れる） */
+  initialRequestText?: string;
 }
 
 interface NewPatientForm {
@@ -31,7 +33,7 @@ interface NewPatientForm {
   birthDate: string;
 }
 
-export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClose, onCreated, onMenusChanged }: Props) {
+export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClose, onCreated, onMenusChanged, initialRequestText }: Props) {
   const [manageMenus, setManageMenus] = useState(false);
   const { clinic } = bundle;
   const [query, setQuery] = useState("");
@@ -115,8 +117,8 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   };
 
   /** LINE予約申請の文面を読み取り、患者・予約申請ID・メモを入れる */
-  const applyRequest = async () => {
-    const r = parseBookingRequest(pasteText);
+  const applyRequest = async (text: string = pasteText) => {
+    const r = parseBookingRequest(text);
     if (!r.requestId && !r.name && !r.phone) {
       setPasteNote("予約申請の文面を読み取れませんでした（「項目名：内容」の形の文面を貼り付けてください）");
       return;
@@ -150,6 +152,15 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
     setPasteNote(notes.join("\n"));
     setPasteOpen(false);
   };
+
+  // 受付箱から開いたときは、申請の文面をすぐ読み取る（1回だけ）
+  const appliedInitial = useRef(false);
+  useEffect(() => {
+    if (!initialRequestText || appliedInitial.current) return;
+    appliedInitial.current = true;
+    void applyRequest(initialRequestText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRequestText]);
 
   const submit = async () => {
     setError(null);
@@ -223,7 +234,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
                 <button type="button" className={styles.btn} onClick={() => setPasteOpen(false)}>
                   閉じる
                 </button>
-                <button type="button" className={styles.primaryBtn} onClick={applyRequest} disabled={!pasteText.trim()}>
+                <button type="button" className={styles.primaryBtn} onClick={() => void applyRequest()} disabled={!pasteText.trim()}>
                   読み取って入力
                 </button>
               </div>

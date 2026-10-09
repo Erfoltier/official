@@ -6,10 +6,12 @@ import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } 
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
-import { ApiError, fetchDay, fetchMe, logout, patchReservation, putDayNote, putReceptionNote, updatePatient } from "./api";
+import { ApiError, fetchDay, fetchIntake, fetchMe, logout, patchReservation, putDayNote, putReceptionNote, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
+import { InboxDialog } from "./InboxDialog";
+import type { IntakeItem } from "./api";
 import { DatePicker } from "./DatePicker";
 import { ReceptionList } from "./ReceptionList";
 import { MoveConfirm } from "./MoveConfirm";
@@ -30,7 +32,12 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; kind: "info" | "error" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [createAt, setCreateAt] = useState<{ laneId: string; minute: number } | null>(null);
+  const [createAt, setCreateAt] = useState<{ laneId: string; minute: number; requestText?: string } | null>(null);
+  /** 受付箱：未対応の申請の数と、開いているか */
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxCount, setInboxCount] = useState(0);
+  /** 受付箱の「予約を作る」：その日を読み込んでから予約登録を開く */
+  const [pendingBook, setPendingBook] = useState<{ date: string; text: string } | null>(null);
   const [editPatientId, setEditPatientId] = useState<string | null>(null);
   const [me, setMe] = useState<StaffPublic | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -38,6 +45,13 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
   useEffect(() => {
     fetchMe().then(setMe, () => {});
+  }, []);
+  // 未対応の申請の数（5分ごとに見直す）
+  useEffect(() => {
+    const get = () => fetchIntake(30).then((r) => setInboxCount(r.items.filter((x) => x.state === "new").length), () => {});
+    get();
+    const t = setInterval(get, 5 * 60_000);
+    return () => clearInterval(t);
   }, []);
   const [now, setNow] = useState(() => nowInClinic());
 
@@ -65,6 +79,21 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const setReceptionOpen = (open: boolean) => {
     setReceptionSlide(open);
     setReceptionPref(open ? "open" : "closed");
+  };
+
+  useEffect(() => {
+    if (!pendingBook || !bundle || bundle.date !== pendingBook.date) return;
+    const lane = bundle.lanes.find((l) => l.active) ?? bundle.lanes[0];
+    // 選んだ日の読み込みが終わってから開く（読み込みの完了に合わせるため effect の中で開く）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (lane) setCreateAt({ laneId: lane.id, minute: bundle.clinic.dayStartMin, requestText: pendingBook.text });
+    setPendingBook(null);
+  }, [pendingBook, bundle]);
+  const bookFromInbox = (it: IntakeItem) => {
+    setInboxOpen(false);
+    const d = it.preferredDate || date;
+    setPendingBook({ date: d, text: it.message });
+    if (d !== date) setDate(d);
   };
 
   const gridRef = useRef<DayGridHandle>(null);
@@ -464,6 +493,15 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               <span className={styles.staffName}>{me.name}</span> ⇄
             </button>
           )}
+          <button
+            className={styles.iconBtn}
+            onClick={() => setInboxOpen(true)}
+            aria-label={`受付箱（LINE 予約申請）${inboxCount ? `・未対応 ${inboxCount}件` : ""}`}
+            title="受付箱（LINE 予約申請）"
+            style={inboxCount ? { borderColor: "var(--danger, #c0392b)", color: "var(--danger, #c0392b)", fontWeight: 700 } : undefined}
+          >
+            📥{inboxCount > 0 && ` ${inboxCount}`}
+          </button>
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
             👤
           </Link>
@@ -547,6 +585,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           date={date}
           laneId={createAt.laneId}
           minute={createAt.minute}
+          initialRequestText={createAt.requestText}
           onClose={() => setCreateAt(null)}
           onMenusChanged={me?.canManage ? () => load(date) : undefined}
           onCreated={(r) => {
@@ -556,6 +595,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           }}
         />
       )}
+
+      {inboxOpen && <InboxDialog onClose={() => setInboxOpen(false)} onBook={bookFromInbox} onCount={setInboxCount} />}
 
       {editPatientId && (
         <PatientDialog

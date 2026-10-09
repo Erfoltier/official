@@ -203,6 +203,38 @@ export function compareAir(from: string, to: string): Promise<{ from: string; to
   return call("/api/v1/admin/air-sync/compare", { method: "POST", body: JSON.stringify({ from, to }) });
 }
 
+export interface IntakeItem {
+  requestId: string;
+  receivedAt: string;
+  visitType: "initial" | "returning";
+  preferredDate: string;
+  timePreference: string;
+  timeNote: string;
+  name: string;
+  kana: string;
+  birthDate: string;
+  gender: string;
+  phone: string;
+  wish: string;
+  area: string;
+  notes: string;
+  /** 予約登録の画面に流し込む文面 */
+  message: string;
+  /** new＝未対応・booked＝カレンダーに予約あり・done＝済み（Airなど）・skip＝見送り */
+  state: "new" | "booked" | "done" | "skip";
+  reservation: { id: string; startAt: string } | null;
+  handledBy: string | null;
+}
+
+/** LINE 予約フォームの申請の受付箱 */
+export function fetchIntake(days = 30): Promise<{ items: IntakeItem[]; days: number; available: boolean }> {
+  return call(`/api/v1/intake?days=${days}`);
+}
+
+export function markIntake(requestId: string, action: "done" | "skip" | null): Promise<{ requestId: string; state: string }> {
+  return call(`/api/v1/intake/${encodeURIComponent(requestId)}/mark`, { method: "POST", body: JSON.stringify({ action }) });
+}
+
 /** Airリザーブの取り込みで付いた「要確認」の印を外す */
 export function markPatientReviewed(id: string): Promise<Patient> {
   return call(`/api/v1/patients/${encodeURIComponent(id)}/reviewed`, { method: "POST", body: "{}" });
