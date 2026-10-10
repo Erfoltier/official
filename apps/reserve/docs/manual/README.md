@@ -28,7 +28,7 @@
 13. [設定（院長・管理者向け）](#13-設定院長管理者向け)
 14. [困ったとき（FAQ）](#14-困ったときfaq)
 15. [役割ごとにできること](#15-役割ごとにできること)
-16. [AI・開発者向けメモ](#16-ai開発者向けメモ)
+16. [開発者向けメモ](#16-開発者向けメモ)
 
 ---
 
@@ -673,7 +673,7 @@ Googleフォームの問診票の回答は、自動でこのアプリに送ら�
 
 ---
 
-## 16. AI・開発者向けメモ
+## 16. 開発者向けメモ
 
 - **コードの場所**：`apps/reserve/`（Next.js）。画面は `src/app/`（`page.tsx`＝予約表、`login/`、`patients/`、`patients/view/`、`settings/`、`consents/print/`、`estimates/print/`）、部品は `src/components/`（`calendar/` 予約表・詳細・登録、`patients/`、`settings/`、`consents/`、`estimates/`、`charts/`、`questionnaires/`）、サーバー側は `src/lib/server/`（`store.ts` 保存と業務ルール、`session.ts`・`staff.ts` ログインと権限）、デモデータは `src/lib/demo/seed.ts`。共用サーバー用のPHP版は `php/`（APIと保存形式は同じ）。
 - **APIの入口**：本番では `/reserve/api/v1`（例：`/reserve/api/v1/day?date=YYYY-MM-DD`）。開発版（`npm run dev`）では `/api/v1`。権限は `requireStaff`（ログイン中のスタッフ）、`requireManager`（管理操作）、`requireStaff(request, ["admin"])`（院長・管理者のみ）で決まります。
