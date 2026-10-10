@@ -1004,3 +1004,17 @@ details.priceGroup > summary {
   min-height: 38px;
   height: 38px;
 }
+
+/* 操作マニュアル：画面の残りの高さいっぱいに出す */
+.manual {
+  display: flex;
+  flex-direction: column;
+}
+.manualFrame {
+  width: 100%;
+  height: calc(100dvh - 210px);
+  min-height: 480px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}

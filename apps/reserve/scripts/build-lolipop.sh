@@ -24,6 +24,7 @@ cp -R php/api php/lib php/seed php/cron "$APP/"
 mkdir -p "$APP/data"
 cp php/data/.htaccess "$APP/data/"
 cp php/.htaccess php/config.sample.php "$APP/"
+cp php/manual/.htaccess "$APP/manual/"
 
 KEY=$(openssl rand -hex 32)
 SECRET=$(openssl rand -hex 32)

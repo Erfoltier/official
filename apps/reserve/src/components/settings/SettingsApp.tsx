@@ -23,9 +23,10 @@ import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
 import { durationLabel, priceLabel } from "@/components/calendar/menuFormat";
 import { MenuEditor } from "./MenuEditor";
+import { ManualTab } from "./ManualTab";
 import styles from "./settings.module.css";
 
-const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "reminders", "appearance", "staff", "audit", "restore"] as const;
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "reminders", "appearance", "staff", "audit", "restore", "manual"] as const;
 type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
@@ -129,6 +130,9 @@ export function SettingsApp() {
               </button>
             </>
           )}
+          <button role="tab" aria-selected={tab === "manual"} onClick={() => setTab("manual")}>
+            操作マニュアル
+          </button>
         </nav>
       </header>
 
@@ -147,6 +151,8 @@ export function SettingsApp() {
         <AuditTab fail={fail} />
       ) : tab === "restore" && isAdmin ? (
         <RestoreTab onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "manual" ? (
+        <ManualTab />
       ) : tab === "devices" ? (
         <DevicesTab isAdmin={isAdmin} canEdit={canEdit} notify={notify} fail={fail} />
       ) : tab === "prices" ? (

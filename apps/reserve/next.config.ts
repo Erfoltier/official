@@ -50,6 +50,18 @@ const nextConfig: NextConfig = isStatic
         return [
           { source: "/:path*", headers: securityHeaders },
           { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+          // 操作マニュアルだけは設定画面に埋め込む（患者情報なし・書体は Google Fonts）
+          {
+            source: "/manual/:path*",
+            headers: [
+              { key: "X-Frame-Options", value: "SAMEORIGIN" },
+              {
+                key: "Content-Security-Policy",
+                value:
+                  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+              },
+            ],
+          },
         ];
       },
     };

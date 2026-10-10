@@ -1,0 +1,6 @@
+# 操作マニュアル（/reserve/manual/）だけは、設定画面の中に埋め込んで見せる。
+# 患者情報は入っていない（写真は架空のデモデータ）。書体は Google Fonts から読む
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+</IfModule>

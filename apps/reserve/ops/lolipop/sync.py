@@ -67,7 +67,8 @@ def sync(files):
         path = BASE + "".join(p + "/" for p in parts)
         have = rows(path)
         for n, local, replace in bydir[d]:
-            if n in have and not replace:
+            # マニュアルの写真（約8MB）は、大きさが変わったものだけ送り直す
+            if n in have and (not replace or (replace == "size" and have[n] == str(os.path.getsize(local)))):
                 stats["skipped"] += 1; continue
             if n in have:
                 delete(path, n); stats["replaced"] += 1
@@ -90,8 +91,8 @@ if __name__ == "__main__":
         for f in fs:
             local = os.path.join(d, f); rel = os.path.relpath(local, out)
             hashed = rel.startswith("_next/static/chunks/") or rel.startswith("_next/static/media/")
-            files.append((rel, local, not hashed))
+            files.append((rel, local, "size" if rel.startswith("manual/img/") else not hashed))
     libs = sorted("lib/" + f for f in os.listdir(APP + "/php/lib") if f.endswith(".php"))
-    for rel in libs + ["lib/.htaccess", "api/index.php", "seed/seed.json", "seed/.htaccess", "cron/reminders.php", "cron/.htaccess", ".htaccess"]:
+    for rel in libs + ["lib/.htaccess", "api/index.php", "seed/seed.json", "seed/.htaccess", "cron/reminders.php", "cron/.htaccess", "manual/.htaccess", ".htaccess"]:
         files.append((rel, APP + "/php/" + rel, True))
     print(sync(files))
