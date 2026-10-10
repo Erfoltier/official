@@ -63,7 +63,7 @@ function CompareRow({ it }: { it: AirCompareItem }) {
 
 function resultText(r: AirSyncResult): string {
   if (!r.ok) return `失敗：${r.error ?? "取り込めませんでした"}`;
-  return `${r.date} の ${r.count ?? 0}件：新しく ${r.created ?? 0}・変更 ${r.updated ?? 0}・取り消し ${r.cancelled ?? 0}・そのまま ${r.unchanged ?? 0}（新しい患者 ${r.newPatients ?? 0}人）`;
+  return `${r.date} の ${r.count ?? 0}件：新しく ${r.created ?? 0}・変更 ${r.updated ?? 0}・取り消し ${r.cancelled ?? 0}・そのまま ${r.unchanged ?? 0}（新しい患者 ${r.newPatients ?? 0}人${r.emailFilled ? `・メールを補った患者 ${r.emailFilled}人` : ""}）`;
 }
 
 /**

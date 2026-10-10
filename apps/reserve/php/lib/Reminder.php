@@ -353,6 +353,10 @@ final class Reminder
                     }
                     return self::mark($v, ['status' => 'sent', 'channel' => 'line'], $round);
                 }
+                if ($err === 'line_limit') {
+                    // 上限に達したら、この回の残りの人には LINE を試さず、はじめからメールに回す
+                    $quota = ['remaining' => 0, 'checked' => true];
+                }
                 $lastError = $err;
             } else {
                 if (!$s['useEmail'] || $s['fromEmail'] === '' || empty($p['email']) || !filter_var($p['email'], FILTER_VALIDATE_EMAIL)) {

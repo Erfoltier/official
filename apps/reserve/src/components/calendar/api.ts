@@ -189,6 +189,8 @@ export interface AirSyncResult {
   unchanged?: number;
   newPatients?: number;
   linked?: number;
+  /** 登録済みの患者のうち、空だったメールを Air のメールで補った数 */
+  emailFilled?: number;
 }
 
 export interface AirSyncSettings {

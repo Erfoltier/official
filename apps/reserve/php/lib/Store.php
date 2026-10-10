@@ -2024,7 +2024,7 @@ final class Store
     {
         self::init();
         $by = ['id' => 'air', 'name' => 'Airリザーブ取り込み'];
-        $res = ['created' => 0, 'updated' => 0, 'cancelled' => 0, 'unchanged' => 0, 'newPatients' => 0, 'linked' => 0, 'noLane' => 0];
+        $res = ['created' => 0, 'updated' => 0, 'cancelled' => 0, 'unchanged' => 0, 'newPatients' => 0, 'linked' => 0, 'noLane' => 0, 'emailFilled' => 0];
         $existing = [];
         foreach (Db::i()->between('reservation', 'k1', now_in_clinic()['date'], '9999-12-31') as $r) {
             if (preg_match('/' . self::AIR_MARK . '\s*[:：]\s*([0-9A-Za-z]+)/u', strip_tags((string) ($r['memo'] ?? '')), $m)) {
@@ -2141,6 +2141,16 @@ final class Store
                 $res['newPatients']++;
             } else {
                 $res['linked']++;
+                // メールが空の患者だけ、Air のメールで補う（LINE の無料通数を使い切ったときのメールのリマインド用。入っているメールは変えない）
+                $pt = self::patients()[$pid] ?? null;
+                if ($pt && empty($pt['deleted']) && empty($pt['email']) && filter_var($a['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+                    try {
+                        self::updatePatient($pid, ['version' => $pt['version'], 'email' => (string) $a['email']], $by);
+                        $res['emailFilled']++;
+                    } catch (Throwable) {
+                        // 補えなくても予約の取り込みは続ける
+                    }
+                }
             }
             $r = self::createReservation(['patientId' => $pid, 'laneId' => $laneId, 'menuIds' => $menuId ? [$menuId] : [], 'startAt' => $a['from'], 'endAt' => $a['to'], 'memo' => $memo], $by);
             $r['airMemo'] = $memo;
