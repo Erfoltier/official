@@ -393,7 +393,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>内容を確かめて登録します。登録した申請は「予約済み」になります（Airリザーブから取り込んだ予約のメモに申請IDがある場合も「予約済み」）。</li>
 <li>電話などで対応した申請は <strong>「済み」</strong>、受けない申請は <strong>「見送り」</strong> にします。「未対応に戻す」で戻せます。「予約済み・済み・見送りも表示」で対応済みの申請も見られます。</li>
 </ol>
-<p><strong><span class="unverified">未確認</span></strong> 実際の申請文面での読み取りは、デモでは試していません。受付箱は <strong>本番（PHP版）だけで動く機能</strong> で、写真を撮った開発版では「この版では使えません」と出るため、申請の一覧は撮影できていません。</p>
+<p><strong><span class="unverified">未確認</span></strong> 実際の申請文面での読み取りは、デモでは試していません。写真を撮った当時の開発版では受付箱が動かなかったため、申請の一覧は撮影できていません。</p>
 <h3 id="t13">4-5. メニューがないとき</h3>
 <p>院長・管理者・受付は、メニュー一覧の下の「⚙ メニューの追加・削除」から、その場でメニューを作れます。作ったメニューはこの予約に入ります。</p>
 <hr />
@@ -717,7 +717,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>リマインドで見せるメニュー</strong>（管理操作のできる人）：メニューごとに <strong>「患者に見せる名前」</strong>（リマインドの <code>{メニュー}</code> に入る。空欄ならメニュー名。院内の略称【再診】などを患者に見せないため）と <strong>「来院前の案内」</strong>（本文の最後、または <code>{来院前のご案内}</code> の場所に入る。1回の来院に複数のメニューがあるときはまとめて1回だけ）を入れ、行ごとに「保存」を押します。「まだ入れていないものだけ」で絞り込めます。メニューの編集画面でも同じ欄を直せます。</li>
 <li><strong>予約申請のLINEを患者に紐付ける</strong>：予約申請IDのLINEが見つかり、名前・生年月日が患者と合うとき、詳細パネルの申請IDの横に「LINE（申込者）」と「＋患者に紐付け」が出ます。家族が代わりに申し込んだ場合は紐付けないでください。</li>
 </ul>
-<p><strong><span class="unverified">未確認</span></strong> リマインド・Airリザーブの取り込み・Airとの見比べ・申請からのLINE紐付けは <strong>本番（PHP版）だけで動く機能</strong> で、この写真を撮った開発版では「この版では使えません」と表示されます。要確認の一覧・見比べの結果・LINE紐付けの確認画面・リマインドの本文に案内が入る様子は撮影できませんでした。</p>
+<p><strong><span class="unverified">未確認</span></strong> リマインド・Airリザーブの取り込み・Airとの見比べ・申請からのLINE紐付けは、写真を撮った当時の開発版では動かなかったため、「この版では使えません」と表示されています。要確認の一覧・見比べの結果・LINE紐付けの確認画面・リマインドの本文に案内が入る様子は撮影できませんでした。</p>
 <h3 id="t48">画面の表示・配色</h3>
 <p>院の配色（すべての端末）と、この端末だけの表示（予約の枠に出す情報、受付一覧を開いておくか、文字の大きさ）。</p>
 <figure><button class="zoom" type="button" data-src="img/70-settings-appearance.webp" aria-label="拡大：画面の表示・配色"><img src="img/70-settings-appearance.webp" alt="画面の表示・配色" width="1440" height="900" loading="lazy"></button><figcaption>画面の表示・配色</figcaption></figure>
@@ -745,10 +745,11 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <figure><button class="zoom" type="button" data-src="img/77-settings-manual.webp" aria-label="拡大：操作マニュアル"><img src="img/77-settings-manual.webp" alt="操作マニュアル" width="1440" height="900" loading="lazy"></button><figcaption>操作マニュアル</figcaption></figure>
 <h3 id="t53">バックアップ</h3>
 <ul>
-<li>毎日の控えは、サーバーで <code>npm run backup</code>（Node.js版）を決まった時刻に動かす運用です。上の「今すぐ控えを取る」は、それとは別に手で控えを取るためのものです。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
+<li>データの控えは、院長・管理者が上の「今すぐ控えを取る」で取ります。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
+<li>写真などのファイルは、データとは別の置き場所に保存されます。前からある分は「控え・復元」の <strong>「写真などの置き場所」</strong> で移せます。</li>
 <li>PHP版（本番）のバックアップの手順は <code>apps/reserve/php/README.md</code> を見てください。</li>
 </ul>
-<p><strong><span class="unverified">未確認</span></strong> 「今すぐ控えを取る」で作った控えから元に戻す（復元する）操作は画面にありません。控えから戻すときはサーバーでの作業になります。本番（PHP版）で控えが作られることは、開発版でしか確かめていません。</p>
+<p><strong><span class="unverified">未確認</span></strong> 「今すぐ控えを取る」で作った控えから元に戻す（復元する）操作は画面にありません。控えから戻すときはサーバーでの作業になります。</p>
 <hr />
 <h2 id="s14">14. 困ったとき（FAQ）</h2>
 <p><strong>Q. 保存できない／「保存できませんでした」と出る</strong>
@@ -912,16 +913,16 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <hr />
 <h2 id="s16">16. 開発者向けメモ</h2>
 <ul>
-<li><strong>コードの場所</strong>：<code>apps/reserve/</code>（Next.js）。画面は <code>src/app/</code>（<code>page.tsx</code>＝予約表、<code>login/</code>、<code>patients/</code>、<code>patients/view/</code>、<code>settings/</code>、<code>consents/print/</code>、<code>estimates/print/</code>）、部品は <code>src/components/</code>（<code>calendar/</code> 予約表・詳細・登録、<code>patients/</code>、<code>settings/</code>、<code>consents/</code>、<code>estimates/</code>、<code>charts/</code>、<code>questionnaires/</code>）、サーバー側は <code>src/lib/server/</code>（<code>store.ts</code> 保存と業務ルール、<code>session.ts</code>・<code>staff.ts</code> ログインと権限）、デモデータは <code>src/lib/demo/seed.ts</code>。共用サーバー用のPHP版は <code>php/</code>（APIと保存形式は同じ）。</li>
-<li><strong>APIの入口</strong>：本番では <code>/reserve/api/v1</code>（例：<code>/reserve/api/v1/day?date=YYYY-MM-DD</code>）。開発版（<code>npm run dev</code>）では <code>/api/v1</code>。権限は <code>requireStaff</code>（ログイン中のスタッフ）、<code>requireManager</code>（管理操作）、<code>requireStaff(request, ["admin"])</code>（院長・管理者のみ）で決まります。</li>
+<li><strong>コードの場所</strong>：<code>apps/reserve/</code>。画面は Next.js で <code>src/app/</code>（<code>page.tsx</code>＝予約表、<code>login/</code>、<code>patients/</code>、<code>patients/view/</code>、<code>settings/</code>、<code>consents/print/</code>、<code>estimates/print/</code>）、部品は <code>src/components/</code>（<code>calendar/</code> 予約表・詳細・登録、<code>patients/</code>、<code>settings/</code>、<code>consents/</code>、<code>estimates/</code>、<code>charts/</code>、<code>questionnaires/</code>）。裏側（API・保存・業務ルール・ログインと権限）は PHP で <code>php/</code> にあります（以前あった Node.js 版の裏側は削除済み）。</li>
+<li><strong>APIの入口</strong>：本番では <code>/reserve/api/v1</code>（例：<code>/reserve/api/v1/day?date=YYYY-MM-DD</code>）。開発では <code>npm run dev</code> で PHP の API と画面をいっしょに起動し、<code>/api/v1</code> で使います。</li>
 <li><strong>名前とロゴ</strong>：サービス名は LANE RESERVE（レーンリザーブ）。ロゴ・アイコンは <code>public/brand/</code>（ログイン画面は <code>lane-reserve-logo.svg</code>、上のバーは英字だけの <code>lane-reserve-logo-wordmark.svg</code> で横1280px以上のときだけ表示）、ホーム画面用は <code>public/manifest.webmanifest</code>、タブの題名は <code>src/app/layout.tsx</code>（「○○｜LANE RESERVE」）。</li>
 <li><strong>操作マニュアル</strong>：設定の「操作マニュアル」のタブは <code>public/manual/index.html</code> を埋め込んで表示します（部品は <code>src/components/settings/ManualTab.tsx</code>）。このフォルダの内容を取り込み直すときは <code>scripts/update-manual.sh</code> を使います。</li>
-<li><strong>控え</strong>：「今すぐ控えを取る」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。開発版ではデータフォルダの <code>backups/</code> に作られます。</li>
-<li><strong>受付箱</strong>：<code>GET /api/v1/intake</code>・<code>POST /api/v1/intake/{申請ID}/mark</code>。PHP版だけが申請を読み、開発版では空（「この版では使えません」）。</li>
+<li><strong>控え</strong>：「今すぐ控えを取る」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。写真などのファイルは <code>data/blobs/</code> に保存されます。サーバーでの控えと復元の手順は <code>php/README.md</code> を見てください。</li>
+<li><strong>受付箱</strong>：<code>GET /api/v1/intake</code>・<code>POST /api/v1/intake/{申請ID}/mark</code>。</li>
 <li><strong>同時編集</strong>：予約・患者などは <code>version</code> を持ち、古い版での保存は「他の端末で先に更新されました」で止まります（409）。</li>
-<li><strong>デモ</strong>：<code>RESERVE_DEMO=1</code>（開発の既定）で架空の患者・予約が入ります。デモのPINは全員 <code>1234</code>。デモの予約は日付ごとに同じものが作られます（水曜・日曜は混む日）。</li>
+<li><strong>デモ</strong>：架空の患者・予約は <code>php/tools/demo-seed.php</code> で入れます。デモのPINは全員 <code>1234</code>。</li>
 <li><strong>運用のルール</strong>：予約・患者などの運用データは院の運用ルールの対象です。<strong>患者の情報（氏名・電話・カルテ内容など）を、ログ・チャット・課題管理・AIへの指示文に書かないでください。</strong> 調べるときは架空のデモデータを使い、本番のデータや本番の画面・APIには触れないでください。</li>
-<li>このマニュアルの写真は開発版（Node.js、デモデータ）で撮影しました。本番（PHP版）だけの機能（リマインド送信、Airリザーブ取り込みとAirとの見比べ、受付箱、申請からのLINE紐付け）は撮影できていません。</li>
+<li>このマニュアルの写真は、裏側を PHP 版に一本化する前の開発版（デモデータ）で撮影しました。リマインド送信、Airリザーブの取り込みとAirとの見比べ、受付箱、申請からのLINE紐付けは、まだ撮影できていません。</li>
 </ul>
   </main>
 </div>
