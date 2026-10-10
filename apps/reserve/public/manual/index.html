@@ -136,7 +136,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><a href="#s10">10. カルテ・同意書・見積</a><ol class="sub"><li><a href="#t34">10-1. カルテ（施術の記録）</a></li><li><a href="#t35">10-2. 同意書</a></li><li><a href="#t36">10-3. 見積・会計</a></li></ol></li>
 <li><a href="#s11">11. 1日の流れ（朝・診療中・終業）</a><ol class="sub"><li><a href="#t37">朝（診療前）</a></li><li><a href="#t38">診療中</a></li><li><a href="#t39">終業</a></li></ol></li>
 <li><a href="#s12">12. スマホでの使い方</a></li>
-<li><a href="#s13">13. 設定（院長・管理者向け）</a><ol class="sub"><li><a href="#t40">レーン</a></li><li><a href="#t41">メニュー</a></li><li><a href="#t42">状態</a></li><li><a href="#t43">スキンケア・内服／料金表／取り込み</a></li><li><a href="#t44">同意書／問診票</a></li><li><a href="#t45">外部機器の連携</a></li><li><a href="#t46">院の情報・診療時間</a></li><li><a href="#t47">リマインド</a></li><li><a href="#t48">画面の表示・配色</a></li><li><a href="#t49">スタッフ（院長・管理者のみ）</a></li><li><a href="#t50">操作ログ（院長・管理者のみ）</a></li><li><a href="#t51">控え・復元（院長・管理者のみ）</a></li><li><a href="#t52">バックアップ</a></li></ol></li>
+<li><a href="#s13">13. 設定（院長・管理者向け）</a><ol class="sub"><li><a href="#t40">レーン</a></li><li><a href="#t41">メニュー</a></li><li><a href="#t42">状態</a></li><li><a href="#t43">スキンケア・内服／料金表／取り込み</a></li><li><a href="#t44">同意書／問診票</a></li><li><a href="#t45">外部機器の連携</a></li><li><a href="#t46">院の情報・診療時間</a></li><li><a href="#t47">リマインド</a></li><li><a href="#t48">画面の表示・配色</a></li><li><a href="#t49">スタッフ（院長・管理者のみ）</a></li><li><a href="#t50">操作ログ（院長・管理者のみ）</a></li><li><a href="#t51">控え・復元（院長・管理者のみ）</a></li><li><a href="#t52">操作マニュアル（スタッフ全員）</a></li><li><a href="#t53">バックアップ</a></li></ol></li>
 <li><a href="#s14">14. 困ったとき（FAQ）</a></li>
 <li><a href="#s15">15. 役割ごとにできること</a></li>
 <li><a href="#s16">16. 開発者向けメモ</a></li>
@@ -245,13 +245,13 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </tr>
 <tr>
 <td>③</td>
-<td>拡大・縮小</td>
-<td>−／スライダー／＋ で時間軸の高さを変える。「全体」で1日を画面に収める。「文字」で文字の大きさ（標準→大きめ→特大）。「今」は今日だけ表示され、現在時刻へ移動</td>
+<td>表示（レーン・拡大・縮小）</td>
+<td>左端の「全レーン」でレーンの絞り込み（全レーン／1レーンだけ）。−／スライダー／＋ で時間軸の高さを変える。「全体」で1日を画面に収める。「文字」で文字の大きさ（標準→大きめ→特大）。「今」は今日だけ表示され、現在時刻へ移動</td>
 </tr>
 <tr>
 <td>④</td>
 <td>表示の切り替え</td>
-<td>レーンの絞り込み（全レーン／1レーンだけ）、氏名を伏せる、キャンセル表示、全画面（⛶）、ログイン中の名前（押すとスタッフ交代）</td>
+<td>氏名を伏せる、キャンセル表示、全画面（⛶）、ログイン中の名前（押すとスタッフ交代）</td>
 </tr>
 <tr>
 <td>⑤</td>
@@ -282,7 +282,8 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </table></div>
 <ul>
 <li>縦軸が時刻、横にレーンが並びます。</li>
-<li>画面の幅が広いとき（横1280px以上）は、上のバーの左端に <strong>LANE RESERVE のロゴ</strong> が出ます。狭い画面・スマホでは出ません。</li>
+<li>上のバーは、1段目が「☰ 受付一覧・日付の移動」と「レーンの絞り込み・拡大縮小・全体・文字・今」、2段目が「氏名を伏せる・キャンセル表示・全画面・ログイン中の名前・📥・👤・⚙」の順です。</li>
+<li>画面の幅が広いとき（横1280px以上）は、上のバーの左端に英字だけの大きな <strong>「LANE RESERVE」</strong> のロゴが出ます。狭い画面・スマホでは出ません。</li>
 <li>今日を開くと、現在時刻の少し前まで自動で移動します。ほかの日は診療開始の時刻から表示します。</li>
 <li>パソコンでは <strong>Ctrl＋マウスホイール</strong>（トラックパッドのピンチ）、スマホ・タブレットでは <strong>2本指のピンチ</strong> でも拡大・縮小できます。</li>
 <li>上のバーだけを切り出すと次のようになります。<span class="fig"><button class="zoom" type="button" data-src="img/04-toolbar.webp" aria-label="拡大：ツールバー"><img src="img/04-toolbar.webp" alt="ツールバー" width="1440" height="86" loading="lazy"></button></span></li>
@@ -641,19 +642,42 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </ol>
 <hr />
 <h2 id="s12">12. スマホでの使い方</h2>
-<p>スマホでは上のバーが2〜3段になり、ボタンが短い名前になります（伏字＝氏名を伏せる、取消＝キャンセル表示）。LANE RESERVE のロゴは出ません。受付一覧は最初たたまれています。</p>
+<p>スマホ（画面の幅が760px以下）では、上のバーが次の3段になります。LANE RESERVE のロゴは出ません。受付一覧は最初たたまれています。</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>段</th>
+<th>並び</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1段目（日付）</td>
+<td>☰ 受付（受付一覧）、‹ 前の日、日付、› 次の日、今日</td>
+</tr>
+<tr>
+<td>2段目（表示）</td>
+<td>レーンの選択（全レーン／1レーン）、− 縮小、＋ 拡大、全体、文字、今</td>
+</tr>
+<tr>
+<td>3段目（道具）</td>
+<td>●● 伏字（氏名を伏せる）、✕ 取消（キャンセル表示）、⛶ 全画面、⇄ スタッフ交代（ログイン中の名前）、📥 受付箱、👤 患者、⚙ 設定</td>
+</tr>
+</tbody>
+</table></div>
+<p>3段目は記号のボタンで、記号の下に名前が小さく出ます。</p>
 <figure><button class="zoom" type="button" data-src="img/80-phone-calendar.webp" aria-label="拡大：スマホの予約表"><img src="img/80-phone-calendar.webp" alt="スマホの予約表" width="390" height="844" loading="lazy"></button><figcaption>スマホの予約表</figcaption></figure>
 <ol>
 <li><strong>予約を見る</strong>：予約枠を押すと、詳細が <strong>下から</strong> 出ます。上下にスクロールして状態のボタンなどを使います。× で閉じます。<span class="fig"><button class="zoom" type="button" data-src="img/81-phone-detail-sheet.webp" aria-label="拡大：スマホの詳細（上）"><img src="img/81-phone-detail-sheet.webp" alt="スマホの詳細（上）" width="390" height="844" loading="lazy"></button></span> <span class="fig"><button class="zoom" type="button" data-src="img/81b-phone-detail-sheet-scrolled.webp" aria-label="拡大：スマホの詳細（下）"><img src="img/81b-phone-detail-sheet-scrolled.webp" alt="スマホの詳細（下）" width="390" height="844" loading="lazy"></button></span></li>
-<li><strong>1レーンだけ表示</strong>：左上の「全レーン」の選択（①）で1つのレーンを選ぶと、そのレーンだけが画面の幅いっぱいに出ます。自分の担当レーンだけ見るときに便利です。<span class="fig"><button class="zoom" type="button" data-src="img/82-phone-one-lane.webp" aria-label="拡大：1レーン表示"><img src="img/82-phone-one-lane.webp" alt="1レーン表示" width="390" height="844" loading="lazy"></button></span></li>
-<li><strong>受付一覧</strong>：左上の「☰」で開きます。行を押すと一覧が閉じて、その予約の詳細が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/83-phone-reception.webp" aria-label="拡大：スマホの受付一覧"><img src="img/83-phone-reception.webp" alt="スマホの受付一覧" width="390" height="844" loading="lazy"></button></span></li>
+<li><strong>1レーンだけ表示</strong>：2段目の左端の「全レーン」の選択（①）で1つのレーンを選ぶと、そのレーンだけが画面の幅いっぱいに出ます。自分の担当レーンだけ見るときに便利です。<span class="fig"><button class="zoom" type="button" data-src="img/82-phone-one-lane.webp" aria-label="拡大：1レーン表示"><img src="img/82-phone-one-lane.webp" alt="1レーン表示" width="390" height="844" loading="lazy"></button></span></li>
+<li><strong>受付一覧</strong>：左上の「☰ 受付」で開きます。行を押すと一覧が閉じて、その予約の詳細が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/83-phone-reception.webp" aria-label="拡大：スマホの受付一覧"><img src="img/83-phone-reception.webp" alt="スマホの受付一覧" width="390" height="844" loading="lazy"></button></span></li>
 <li><strong>拡大・縮小</strong>：2本指でピンチします。</li>
 <li><strong>予約を動かす</strong>：枠を <strong>長押し</strong> してから動かします（普通に触ったときはスクロール）。</li>
 <li>全画面（⛶）にできない端末は、ブラウザの「ホーム画面に追加」を使うと広く使えます。</li>
 </ol>
 <hr />
 <h2 id="s13">13. 設定（院長・管理者向け）</h2>
-<p>予約表の右上の <strong>⚙</strong> で開きます。上のタブで切り替えます。<strong>スタッフ・操作ログ・控え・復元</strong> のタブは院長・管理者にだけ出ます。<strong>リマインド</strong> のタブは院長・管理者と、管理操作のできる人に出ます。変更できない人には「このログインでは見るだけです」と出ます。</p>
+<p>予約表の右上の <strong>⚙</strong> で開きます。上のタブで切り替えます。<strong>スタッフ・操作ログ・控え・復元</strong> のタブは院長・管理者にだけ出ます。<strong>リマインド</strong> のタブは院長・管理者と、管理操作のできる人に出ます。いちばん右の <strong>操作マニュアル</strong> のタブは、スタッフ全員に出ます。変更できない人には「このログインでは見るだけです」と出ます。</p>
 <figure><button class="zoom" type="button" data-src="img/74-settings-nurse.webp" aria-label="拡大：見るだけの表示（看護師）"><img src="img/74-settings-nurse.webp" alt="見るだけの表示（看護師）" width="1440" height="900" loading="lazy"></button><figcaption>見るだけの表示（看護師）</figcaption></figure>
 <h3 id="t40">レーン</h3>
 <p>名前・短い名前（スマホ用）・並べ替え（▲▼、一番上が左端）・表示の切り替え・追加・削除。表示できるのは1〜30本。今日以降の予約が残るレーンは非表示にできず、予約の記録が一度もないレーンだけ削除できます。</p>
@@ -715,7 +739,11 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </ol>
 <p><strong>設定の復元</strong></p>
 <p>誤って設定を変えたとき、1日前・1週間前などの状態に戻せます。対象は診療時間・レーン・メニュー・状態・スキンケア＆内服で、予約・患者・施術歴は変わりません。戻したい時点の「この時点に戻す」を押します。</p>
-<h3 id="t52">バックアップ</h3>
+<h3 id="t52">操作マニュアル（スタッフ全員）</h3>
+<p>このマニュアルを、アプリの中で読めます。予約表の ⚙ → いちばん右の <strong>「操作マニュアル」</strong> のタブ（①）を押すと、画面の高さいっぱいにマニュアルが出ます。上の検索欄で語句を探せます。院長・管理者だけでなく、受付・看護師・医師も開けます。</p>
+<p>別の画面で開いておきたいときは、<strong>「新しいタブで開く ↗」</strong>（②）を押します。</p>
+<figure><button class="zoom" type="button" data-src="img/77-settings-manual.webp" aria-label="拡大：操作マニュアル"><img src="img/77-settings-manual.webp" alt="操作マニュアル" width="1440" height="900" loading="lazy"></button><figcaption>操作マニュアル</figcaption></figure>
+<h3 id="t53">バックアップ</h3>
 <ul>
 <li>毎日の控えは、サーバーで <code>npm run backup</code>（Node.js版）を決まった時刻に動かす運用です。上の「今すぐ控えを取る」は、それとは別に手で控えを取るためのものです。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
 <li>PHP版（本番）のバックアップの手順は <code>apps/reserve/php/README.md</code> を見てください。</li>
@@ -748,6 +776,8 @@ main h2, main h3 { scroll-margin-top: 72px; }
 - 院長・管理者が 設定 →「控え・復元」の <strong>「今すぐ控えを取る」</strong> を押します（<a href="#控え復元院長管理者のみ">13章</a>）。取り込み・統合などの大きな変更の前に押しておくと安心です。院長・管理者以外のログインでは、このタブは出ません。</p>
 <p><strong>Q. 予約表の時刻の範囲を変えたい</strong>
 - 設定 → 院の情報・診療時間 で開院・閉院時間を変えます（管理操作のできる人）。時間外の予約も表示はされます。</p>
+<p><strong>Q. 使い方がわからない</strong>
+- 予約表の ⚙（設定）→ いちばん右の <strong>「操作マニュアル」</strong> のタブで、このマニュアルを読めます（<a href="#操作マニュアルスタッフ全員">13章</a>）。スタッフ全員が開けます。上の検索欄で語句を探せます。</p>
 <p><strong>Q. 文字が小さい</strong>
 - 上のバーの「文字」で、標準→大きめ→特大と切り替わります（この端末だけ）。</p>
 <hr />
@@ -869,6 +899,13 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <td style="text-align: center;">○</td>
 <td style="text-align: center;">○</td>
 </tr>
+<tr>
+<td>設定の「操作マニュアル」を見る</td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">○</td>
+</tr>
 </tbody>
 </table></div>
 <p>※1 コード上は、ログインしているスタッフ全員にボタンが出て、サーバー側も役割で止めていません。<strong><span class="unverified">未確認</span></strong> 画面で押して確かめたのは受付のみです（「予約に戻す」も受付で確かめました）。院の運用で、だれが押してよいかを決めてください。</p>
@@ -877,7 +914,8 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <ul>
 <li><strong>コードの場所</strong>：<code>apps/reserve/</code>（Next.js）。画面は <code>src/app/</code>（<code>page.tsx</code>＝予約表、<code>login/</code>、<code>patients/</code>、<code>patients/view/</code>、<code>settings/</code>、<code>consents/print/</code>、<code>estimates/print/</code>）、部品は <code>src/components/</code>（<code>calendar/</code> 予約表・詳細・登録、<code>patients/</code>、<code>settings/</code>、<code>consents/</code>、<code>estimates/</code>、<code>charts/</code>、<code>questionnaires/</code>）、サーバー側は <code>src/lib/server/</code>（<code>store.ts</code> 保存と業務ルール、<code>session.ts</code>・<code>staff.ts</code> ログインと権限）、デモデータは <code>src/lib/demo/seed.ts</code>。共用サーバー用のPHP版は <code>php/</code>（APIと保存形式は同じ）。</li>
 <li><strong>APIの入口</strong>：本番では <code>/reserve/api/v1</code>（例：<code>/reserve/api/v1/day?date=YYYY-MM-DD</code>）。開発版（<code>npm run dev</code>）では <code>/api/v1</code>。権限は <code>requireStaff</code>（ログイン中のスタッフ）、<code>requireManager</code>（管理操作）、<code>requireStaff(request, ["admin"])</code>（院長・管理者のみ）で決まります。</li>
-<li><strong>名前とロゴ</strong>：サービス名は LANE RESERVE（レーンリザーブ）。ロゴ・アイコンは <code>public/brand/</code>（ログイン画面は <code>lane-reserve-logo.svg</code>、上のバーは <code>lane-reserve-logo-horizontal.svg</code> で横1280px以上のときだけ表示）、ホーム画面用は <code>public/manifest.webmanifest</code>、タブの題名は <code>src/app/layout.tsx</code>（「○○｜LANE RESERVE」）。</li>
+<li><strong>名前とロゴ</strong>：サービス名は LANE RESERVE（レーンリザーブ）。ロゴ・アイコンは <code>public/brand/</code>（ログイン画面は <code>lane-reserve-logo.svg</code>、上のバーは英字だけの <code>lane-reserve-logo-wordmark.svg</code> で横1280px以上のときだけ表示）、ホーム画面用は <code>public/manifest.webmanifest</code>、タブの題名は <code>src/app/layout.tsx</code>（「○○｜LANE RESERVE」）。</li>
+<li><strong>操作マニュアル</strong>：設定の「操作マニュアル」のタブは <code>public/manual/index.html</code> を埋め込んで表示します（部品は <code>src/components/settings/ManualTab.tsx</code>）。このフォルダの内容を取り込み直すときは <code>scripts/update-manual.sh</code> を使います。</li>
 <li><strong>控え</strong>：「今すぐ控えを取る」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。開発版ではデータフォルダの <code>backups/</code> に作られます。</li>
 <li><strong>受付箱</strong>：<code>GET /api/v1/intake</code>・<code>POST /api/v1/intake/{申請ID}/mark</code>。PHP版だけが申請を読み、開発版では空（「この版では使えません」）。</li>
 <li><strong>同時編集</strong>：予約・患者などは <code>version</code> を持ち、古い版での保存は「他の端末で先に更新されました」で止まります（409）。</li>
