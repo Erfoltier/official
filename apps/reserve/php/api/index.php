@@ -484,6 +484,39 @@ try {
         Http::json($r);
     }
 
+    // ---- 写真などの置き場所（DB の表 → data/blobs/ のファイル）。移すのも詰めるのも院長・管理者が画面から押したときだけ ----
+    if ($route === 'GET admin/storage') {
+        $me(STAFF_ADMIN);
+        Http::json(Db::i()->blobStats());
+    }
+    if ($route === 'POST admin/storage/move') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        if (!is_array($in) || ($in['confirm'] ?? null) !== 'MOVE') {
+            Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"MOVE"} を送ってください'], 400);
+        }
+        @set_time_limit(60);
+        $r = Db::i()->moveBlobsOut(15.0);
+        if ($r['moved'] > 0) {
+            Auth::audit($actor($s), "写真などをデータベースの外へ移動：{$r['moved']}件（残り{$r['left']}件）");
+        }
+        Http::json($r + ['stats' => Db::i()->blobStats()]);
+    }
+    if ($route === 'POST admin/storage/compact') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        if (!is_array($in) || ($in['confirm'] ?? null) !== 'COMPACT') {
+            Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"COMPACT"} を送ってください'], 400);
+        }
+        if (Db::i()->blobStats()['inDb'] > 0) {
+            Http::json(['error' => 'invalid', 'message' => '先に写真をすべて移してください'], 400);
+        }
+        @set_time_limit(120);
+        $r = Db::i()->compact();
+        Auth::audit($actor($s), 'データベースを小さくした：' . round($r['before'] / 1048576) . 'MB → ' . round($r['after'] / 1048576) . 'MB');
+        Http::json($r + ['stats' => Db::i()->blobStats()]);
+    }
+
     // ---- 指定した患者の予約を過去・未来とも完全に消す（院長・管理者。患者そのものは消さない） ----
     if ($p[0] === 'reservations' && ($p[1] ?? '') === 'by-patient' && $n >= 3) {
         if ($method === 'GET' && $n === 3) {

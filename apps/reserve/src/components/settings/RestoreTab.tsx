@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createBackup, fetchRestorePoints, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
+import { compactStorage, createBackup, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 function stamp(iso: string): string {
@@ -20,6 +20,77 @@ function Summary({ s }: { s: RestoreSummary }) {
  * 設定の復元。設定を変えるたびに自動で記録しているので、誤って変えたときに前の状態へ戻せる。
  * 対象：診療時間・レーン・メニュー・状態・スキンケア＆内服（予約・患者・記録は対象外）
  */
+const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)}MB`;
+
+/**
+ * 写真などの置き場所。これまでは DB の中にあり、控えを作るたびに写真まで丸ごと複製していた。
+ * 新しい写真は DB の外（サーバーの data/blobs/）に置く。前からある分は、ここで押したときだけ少しずつ移す
+ */
+function StorageCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
+  const [st, setSt] = useState<StorageStats | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => {
+    fetchStorage().then(setSt, () => setSt(null));
+  }, []);
+  if (!st || !st.external) return null;
+  const move = async () => {
+    if (!window.confirm(`データベースの中にある写真など ${st.inDb}件（${mb(st.inDbBytes)}）を、サーバーの中の別の場所へ移します。\n中身は暗号化したままで、外には送りません。移している間も使えます。始めますか？`)) return;
+    setBusy("move");
+    let total = 0;
+    try {
+      for (;;) {
+        const r = await moveStorage();
+        total += r.moved;
+        setSt(r.stats);
+        setBusy(`move:${r.left}`);
+        if (r.left === 0 || r.moved === 0) break;
+      }
+      notify(`写真など ${total}件を移しました`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+  const compact = async () => {
+    if (!window.confirm("データベースの空いた場所を詰めて小さくします。数十秒かかることがあり、その間は保存が待たされます。よろしいですか？")) return;
+    setBusy("compact");
+    try {
+      const r = await compactStorage();
+      setSt(r.stats);
+      notify(`データベースを ${mb(r.before)} → ${mb(r.after)} にしました`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
+      <h3 className={styles.cardTitle}>写真などの置き場所</h3>
+      <p className={styles.hint}>
+        写真・PDF などはデータベースの外（サーバーの中の別の場所）に置き、控えを軽く速くしています。中身は暗号化したままです。上の「控え」には写真などは入りません（写真は消さない限り、そのまま残ります）。
+      </p>
+      <p className={styles.hint}>
+        データベースの外：{st.files}件（{mb(st.fileBytes)}）／ データベースの中：{st.inDb}件（{mb(st.inDbBytes)}）
+        {st.dbBytes !== null && `／ データベースの大きさ ${mb(st.dbBytes)}`}
+      </p>
+      <div className={styles.actions} style={{ marginTop: 0 }}>
+        {st.inDb > 0 && (
+          <button type="button" className={styles.primary} disabled={!!busy} onClick={() => void move()}>
+            {busy?.startsWith("move") ? `移しています…（残り ${busy.split(":")[1] ?? st.inDb}件）` : `前からある写真など ${st.inDb}件を外へ移す`}
+          </button>
+        )}
+        {st.inDb === 0 && st.dbBytes !== null && (
+          <button type="button" className={styles.btn} disabled={!!busy} onClick={() => void compact()}>
+            {busy === "compact" ? "小さくしています…" : "データベースを小さくする"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** 保存データ全体（予約・患者・記録・設定）の控えを、サーバーの中に今すぐ作る（院長・管理者） */
 function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
   const [busy, setBusy] = useState(false);
@@ -78,6 +149,7 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
   return (
     <section>
       <BackupCard notify={notify} fail={fail} />
+      <StorageCard notify={notify} fail={fail} />
       <p className={styles.lead}>
         誤って設定を変えてしまったときに、前の状態へ戻せます。設定を変えるたびに自動で記録しています。
         対象は 診療時間・レーン・メニュー・状態・スキンケア＆内服 です（予約・患者・施術歴は変わりません）。

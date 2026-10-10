@@ -54,6 +54,30 @@ export function createBackup(): Promise<{ file: string; bytes: number; integrity
   return call(`/api/v1/admin/backup`, { method: "POST", body: JSON.stringify({ confirm: "BACKUP" }) });
 }
 
+export interface StorageStats {
+  external: boolean;
+  inDb: number;
+  inDbBytes: number;
+  files: number;
+  fileBytes: number;
+  dbBytes: number | null;
+}
+
+/** 写真などの置き場所の状況（院長・管理者） */
+export function fetchStorage(): Promise<StorageStats> {
+  return call(`/api/v1/admin/storage`);
+}
+
+/** DB の表に残っている写真などを、data/blobs/ のファイルへ少し移す（1回15秒まで。残りがあれば繰り返し呼ぶ） */
+export function moveStorage(): Promise<{ moved: number; movedBytes: number; left: number; stats: StorageStats }> {
+  return call(`/api/v1/admin/storage/move`, { method: "POST", body: JSON.stringify({ confirm: "MOVE" }) });
+}
+
+/** 写真を移したあとの空き領域を詰めて、DB ファイルを小さくする */
+export function compactStorage(): Promise<{ before: number; after: number; stats: StorageStats }> {
+  return call(`/api/v1/admin/storage/compact`, { method: "POST", body: JSON.stringify({ confirm: "COMPACT" }) });
+}
+
 /** 結びついている問診票を、患者の空いている欄へ写し直す（院長・管理者） */
 export function refillQuestionnaires(): Promise<{ questionnaires: number; patients: number }> {
   return call(`/api/v1/questionnaires/refill`, { method: "POST", body: "{}" });

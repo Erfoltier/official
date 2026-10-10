@@ -230,31 +230,186 @@ final class Db
         return $iv . $tag . $body;
     }
 
+    /**
+     * 写真などのファイルの置き場所。SQLite のときは DB と同じフォルダの blobs/（外から見えない data/ の中）。
+     * DB の外に置くのは、控え（VACUUM INTO）のたびに写真まで丸ごと複製しないため。中身は DB と同じ暗号のまま。
+     * 置き場所がないとき（MySQL・メモリ上の DB）は、これまでどおり blobs 表に入れる
+     */
+    private function blobDir(): ?string
+    {
+        $cfg = config();
+        if (!empty($cfg['blob_dir'])) {
+            return rtrim((string) $cfg['blob_dir'], '/');
+        }
+        $dsn = (string) $cfg['db_dsn'];
+        if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
+            return null;
+        }
+        return dirname(substr($dsn, 7)) . '/blobs';
+    }
+
+    /** ID（「thumb:f-…」など）をそのまま名前にしない。ハッシュの先頭2文字でフォルダを分ける */
+    private function blobPath(string $dir, string $id): string
+    {
+        $h = hash('sha256', $id);
+        return "{$dir}/" . substr($h, 0, 2) . "/{$h}.bin";
+    }
+
+    /** 暗号化済みの中身をファイルに書く（途中で止まっても壊れたファイルを残さないよう、書いてから名前を変える） */
+    private function writeBlobFile(string $dir, string $id, string $sealed): void
+    {
+        $path = $this->blobPath($dir, $id);
+        if (!is_dir(dirname($path)) && !@mkdir(dirname($path), 0700, true) && !is_dir(dirname($path))) {
+            throw new RuntimeException('ファイルの置き場所を作れません');
+        }
+        $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        if (@file_put_contents($tmp, $sealed, LOCK_EX) !== strlen($sealed)) {
+            @unlink($tmp);
+            throw new RuntimeException('ファイルを保存できません（空き容量を確かめてください）');
+        }
+        @chmod($tmp, 0600);
+        if (!@rename($tmp, $path)) {
+            @unlink($tmp);
+            throw new RuntimeException('ファイルを保存できません');
+        }
+    }
+
+    private function openBlob(string $sealed): string
+    {
+        $plain = openssl_decrypt(substr($sealed, 28), 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, substr($sealed, 0, 12), substr($sealed, 12, 16));
+        if ($plain === false) {
+            throw new RuntimeException('ファイルを読めません（暗号鍵が違う可能性があります）');
+        }
+        return $plain;
+    }
+
     public function putBlob(string $id, string $bytes): void
     {
+        $sealed = $this->encryptBytes($bytes);
+        $dir = $this->blobDir();
+        if ($dir !== null) {
+            $this->writeBlobFile($dir, $id, $sealed);
+            // 同じIDの古い中身が表に残っていれば消す（読むときはファイルが先）
+            $this->pdo->prepare('DELETE FROM blobs WHERE id = ?')->execute([$id]);
+            return;
+        }
         $sql = $this->mysql
             ? 'INSERT INTO blobs (id, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)'
             : 'INSERT OR REPLACE INTO blobs (id, data) VALUES (?, ?)';
         $st = $this->pdo->prepare($sql);
         $st->bindValue(1, $id);
-        $st->bindValue(2, $this->encryptBytes($bytes), PDO::PARAM_LOB);
+        $st->bindValue(2, $sealed, PDO::PARAM_LOB);
         $st->execute();
     }
 
     public function getBlob(string $id): ?string
     {
+        $dir = $this->blobDir();
+        if ($dir !== null) {
+            $path = $this->blobPath($dir, $id);
+            if (is_file($path)) {
+                $sealed = @file_get_contents($path);
+                if ($sealed === false) {
+                    throw new RuntimeException('ファイルを読めません');
+                }
+                return $this->openBlob($sealed);
+            }
+        }
+        // まだ表に入っている古いファイル
         $st = $this->pdo->prepare('SELECT data FROM blobs WHERE id = ?');
         $st->execute([$id]);
         $row = $st->fetch();
         if (!$row) {
             return null;
         }
-        $blob = is_resource($row['data']) ? stream_get_contents($row['data']) : $row['data'];
-        $plain = openssl_decrypt(substr($blob, 28), 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, substr($blob, 0, 12), substr($blob, 12, 16));
-        if ($plain === false) {
-            throw new RuntimeException('ファイルを読めません（暗号鍵が違う可能性があります）');
+        return $this->openBlob(is_resource($row['data']) ? stream_get_contents($row['data']) : $row['data']);
+    }
+
+    /** 写真などの置き場所の状況：表に残っている件数・大きさ、ファイルの件数・大きさ、DB ファイルの大きさ */
+    public function blobStats(): array
+    {
+        $dir = $this->blobDir();
+        $row = $this->pdo->query('SELECT COUNT(*) AS n, COALESCE(SUM(LENGTH(data)), 0) AS b FROM blobs')->fetch();
+        $files = 0;
+        $fileBytes = 0;
+        if ($dir !== null && is_dir($dir)) {
+            foreach (glob($dir . '/*/*.bin') ?: [] as $f) {
+                $files++;
+                $fileBytes += (int) @filesize($f);
+            }
         }
-        return $plain;
+        $dsn = (string) config()['db_dsn'];
+        $dbFile = str_starts_with($dsn, 'sqlite:') ? substr($dsn, 7) : '';
+        return [
+            'external' => $dir !== null,
+            'inDb' => (int) $row['n'],
+            'inDbBytes' => (int) $row['b'],
+            'files' => $files,
+            'fileBytes' => $fileBytes,
+            'dbBytes' => $dbFile !== '' && is_file($dbFile) ? (int) filesize($dbFile) : null,
+        ];
+    }
+
+    /**
+     * 表に入っている写真などを、ファイルへ少しずつ移す（暗号はそのまま。書いたファイルを読み戻して同じか確かめてから表から消す）。
+     * 共用サーバーの時間制限に掛からないよう、$maxSeconds で区切って何度も呼ぶ
+     */
+    public function moveBlobsOut(float $maxSeconds = 15.0): array
+    {
+        $dir = $this->blobDir();
+        if ($dir === null) {
+            throw new RuntimeException('この保存方式ではファイルに移せません（SQLite のファイルだけ）');
+        }
+        $start = microtime(true);
+        $moved = 0;
+        $movedBytes = 0;
+        while (microtime(true) - $start < $maxSeconds) {
+            $ids = $this->pdo->query('SELECT id FROM blobs ORDER BY id LIMIT 20')->fetchAll(PDO::FETCH_COLUMN);
+            if (!$ids) {
+                break;
+            }
+            foreach ($ids as $id) {
+                $id = (string) $id;
+                $st = $this->pdo->prepare('SELECT data FROM blobs WHERE id = ?');
+                $st->execute([$id]);
+                $raw = $st->fetchColumn();
+                if ($raw === false) {
+                    continue;
+                }
+                $sealed = is_resource($raw) ? stream_get_contents($raw) : (string) $raw;
+                $path = $this->blobPath($dir, $id);
+                // 新しく保存した中身がもうファイルにあるときは、そちらを正とする
+                if (!is_file($path)) {
+                    $this->writeBlobFile($dir, $id, $sealed);
+                    if (@file_get_contents($path) !== $sealed) {
+                        throw new RuntimeException('移したファイルを確かめられませんでした（' . $moved . '件は移し終えています）');
+                    }
+                    $this->openBlob($sealed);
+                }
+                $this->pdo->prepare('DELETE FROM blobs WHERE id = ?')->execute([$id]);
+                $moved++;
+                $movedBytes += strlen($sealed);
+                if (microtime(true) - $start >= $maxSeconds) {
+                    break 2;
+                }
+            }
+        }
+        $left = (int) $this->pdo->query('SELECT COUNT(*) FROM blobs')->fetchColumn();
+        return ['moved' => $moved, 'movedBytes' => $movedBytes, 'left' => $left];
+    }
+
+    /** 写真を移したあとの空き領域を詰めて、DB ファイルを小さくする（SQLite だけ） */
+    public function compact(): array
+    {
+        $dsn = (string) config()['db_dsn'];
+        if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
+            throw new RuntimeException('この保存方式では小さくできません（SQLite のファイルだけ）');
+        }
+        $file = substr($dsn, 7);
+        $before = (int) filesize($file);
+        $this->pdo->exec('VACUUM');
+        clearstatcache(true, $file);
+        return ['before' => $before, 'after' => (int) filesize($file)];
     }
 
     /** 索引列（暗号化しない）：日付と患者IDだけ。Node.js 版 indexKeys と同じ */
@@ -367,6 +522,10 @@ final class Db
 
     public function deleteBlob(string $id): void
     {
+        $dir = $this->blobDir();
+        if ($dir !== null) {
+            @unlink($this->blobPath($dir, $id));
+        }
         $this->pdo->prepare('DELETE FROM blobs WHERE id = ?')->execute([$id]);
     }
 
