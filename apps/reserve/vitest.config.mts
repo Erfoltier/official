@@ -5,9 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      // テストではサーバー専用の目印を無効化する
-      "server-only": fileURLToPath(new URL("./src/lib/__tests__/empty.ts", import.meta.url)),
     },
   },
-  test: { environment: "node", include: ["src/**/*.test.ts"], setupFiles: ["src/lib/__tests__/setup.ts"] },
+  // API のテストは PHP 版（php/）を php -S で動かして確かめる（src/lib/__tests__/php/server.ts）
+  test: { environment: "node", include: ["src/**/*.test.ts"], testTimeout: 30_000, hookTimeout: 60_000 },
 });

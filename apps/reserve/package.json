@@ -9,7 +9,6 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "backup": "node scripts/backup.mjs",
     "build:static": "BUILD_TARGET=static NEXT_PUBLIC_BASE_PATH=${BASE_PATH:-/reserve} NEXT_PUBLIC_METHOD_OVERRIDE=1 next build",
     "build:lolipop": "bash scripts/build-lolipop.sh"
   },
@@ -18,7 +17,6 @@
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

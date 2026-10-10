@@ -1,131 +1,137 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { addDays, nowInClinic, toIso } from "@/lib/domain/time";
+import { withPhp, type Client } from "./php/server";
 
-const reset = () => {
-  resetStores();
-};
-const rc = { id: "staff-rc1", name: "受付A（デモ）" };
+// 重複の候補を見るので、テストごとにまっさらな DB で確かめる
+const h = withPhp({ each: true });
+const by = { id: "staff-admin", name: "院長" };
+const admin = () => h.srv.as("staff-admin");
+
+type P = { id: string; version: number; [k: string]: unknown };
+const detail = (c: Client, id: string) => c.get(`/patients/${id}`);
+const book = (c: Client, patientId: string, day: string) =>
+  c.post("/reservations", { patientId, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 610) });
+const merge = (c: Client, keep: P, dup: P) => c.post("/patients/merge", { keepId: keep.id, dupId: dup.id, keepVersion: keep.version, dupVersion: dup.version });
+const preview = (c: Client, keep: P, dup: P) => c.get(`/patients/merge?keep=${keep.id}&dup=${dup.id}`);
 
 describe("患者の削除・復元", () => {
-  beforeEach(reset);
-
   it("削除すると検索に出ず、記録は残り、復元できる", async () => {
-    const s = await import("@/lib/server/store");
-    const p = s.createPatient({ name: "誤登録 テスト", kana: "ゴトウロク" });
+    const c = await admin();
+    const p = await c.post("/patients", { name: "誤登録 テスト", kana: "ゴトウロク" });
     const today = nowInClinic().date;
-    s.saveVisitNote(p.id, today, { note: "メモ", skincare: [], version: 0 });
-    const d = s.deletePatient(p.id, { version: p.version, reason: "誤って登録した" }, rc);
+    await c.put(`/patients/${p.id}/visits/${today}`, { note: "メモ", skincare: [], version: 0 });
+    const d = (await c.post(`/patients/${p.id}/delete`, { version: p.version, reason: "誤って登録した" })).patient;
     expect(d.deleted?.reason).toBe("誤って登録した");
-    expect(d.deleted?.by).toEqual(rc);
-    expect(s.searchPatients("ゴトウロク")).toHaveLength(0);
+    expect(d.deleted?.by).toEqual(by);
+    expect((await c.get("/patients?q=ゴトウロク")).items).toHaveLength(0);
     // 記録は残る
-    expect(s.getPatientDetail(p.id).visits[0].note).toBe("メモ");
+    expect((await detail(c, p.id)).visits[0].note).toBe("メモ");
     // 削除された患者は編集・予約できない
-    expect(() => s.updatePatient(p.id, { version: d.version, name: "x" })).toThrow(/復元/);
-    expect(() =>
-      s.createReservation({ patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(today, 600), endAt: toIso(today, 610) }),
-    ).toThrow(/患者が見つかりません/);
-    const r = s.restorePatient(p.id, d.version, rc);
+    await expect(c.patch(`/patients/${p.id}`, { version: d.version, name: "x" })).rejects.toThrow(/復元/);
+    await expect(book(c, p.id, today)).rejects.toThrow(/患者が見つかりません/);
+    const r = (await c.post(`/patients/${p.id}/restore`, { version: d.version })).patient;
     expect(r.deleted).toBeUndefined();
-    expect(s.searchPatients("ゴトウロク")).toHaveLength(1);
+    expect((await c.get("/patients?q=ゴトウロク")).items).toHaveLength(1);
   });
 
   it("今日以降の予約がある患者は削除できない", async () => {
-    const s = await import("@/lib/server/store");
-    const p = s.createPatient({ name: "予約あり" });
-    const day = addDays(nowInClinic().date, 2);
-    s.createReservation({ patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 610) });
-    expect(() => s.deletePatient(p.id, { version: p.version, reason: "誤って登録した" })).toThrow(/予約が1件/);
+    const c = await admin();
+    const p = await c.post("/patients", { name: "予約あり" });
+    await book(c, p.id, addDays(nowInClinic().date, 2));
+    await expect(c.post(`/patients/${p.id}/delete`, { version: p.version, reason: "誤って登録した" })).rejects.toThrow(/予約が1件/);
+  });
+
+  it("削除・復元は管理操作のできるスタッフだけ", async () => {
+    const c = await admin();
+    const st = await c.post("/staff", { name: "看護師", role: "nurse", pin: "246810" });
+    const ns = await h.srv.as(st.id, "246810");
+    const p = await c.post("/patients", { name: "権限 テスト" });
+    await expect(ns.post(`/patients/${p.id}/delete`, { version: p.version, reason: "x" })).rejects.toThrow(/権限/);
   });
 });
 
 describe("重複患者の統合", () => {
-  beforeEach(reset);
-
   it("重複の候補を見つける", async () => {
-    const s = await import("@/lib/server/store");
-    const a = s.createPatient({ name: "山田 Anna", kana: "やまだ あんな", phone: "090-1234-5678" });
-    s.createPatient({ name: "山田 アンナ", kana: "ヤマダ アンナ" });
-    s.createPatient({ name: "別人", phone: "09012345678" });
-    const reasons = s.getPatientDetail(a.id).duplicates.map((d) => `${d.patient.name}:${d.reasons.join("/")}`);
+    const c = await admin();
+    const a = await c.post("/patients", { name: "山田 Anna", kana: "やまだ あんな", phone: "090-1234-5678" });
+    await c.post("/patients", { name: "山田 アンナ", kana: "ヤマダ アンナ" });
+    await c.post("/patients", { name: "別人", phone: "09012345678" });
+    const reasons = (await detail(c, a.id)).duplicates.map((d: { patient: P; reasons: string[] }) => `${d.patient.name}:${d.reasons.join("/")}`);
     expect(reasons).toContain("山田 アンナ:フリガナが同じ");
     expect(reasons).toContain("別人:電話番号が同じ");
   });
 
   it("予約・記録を移し、空欄を埋め、統合元は削除扱いで残る", async () => {
-    const s = await import("@/lib/server/store");
-    const staff = await import("@/lib/server/staff");
+    const c = await admin();
     const today = nowInClinic().date;
     const past = addDays(today, -7);
-    const keep = s.createPatient({ name: "山田 あんな", kana: "ヤマダ アンナ", birthDate: "1990-04-01", memo: "敏感肌" });
-    const dup = s.createPatient({ name: "山田　あんな", kana: "やまだあんな", phone: "090-1111-2222", email: "a@example.com", birthDate: "1990-04-01", memo: "金属アレルギー" });
-    const future = addDays(today, 3);
-    const r = s.createReservation({ patientId: dup.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(future, 600), endAt: toIso(future, 610) });
-    s.saveVisitNote(keep.id, past, { note: "keep側の記録", skincare: ["A"], version: 0 });
-    s.saveVisitNote(dup.id, past, { note: "dup側の記録", skincare: ["B"], version: 0 });
-    s.saveVisitNote(dup.id, today, { note: "今日の記録", skincare: [], version: 0 });
+    const keep = await c.post("/patients", { name: "山田 あんな", kana: "ヤマダ アンナ", birthDate: "1990-04-01", memo: "敏感肌" });
+    const dup = await c.post("/patients", { name: "山田　あんな", kana: "やまだあんな", phone: "090-1111-2222", email: "a@example.com", birthDate: "1990-04-01", memo: "金属アレルギー" });
+    const r = await book(c, dup.id, addDays(today, 3));
+    await c.put(`/patients/${keep.id}/visits/${past}`, { note: "keep側の記録", skincare: ["A"], version: 0 });
+    await c.put(`/patients/${dup.id}/visits/${past}`, { note: "dup側の記録", skincare: ["B"], version: 0 });
+    await c.put(`/patients/${dup.id}/visits/${today}`, { note: "今日の記録", skincare: [], version: 0 });
 
-    const k = s.getPatient(keep.id)!;
-    const d = s.getPatient(dup.id)!;
-    const pv = s.previewMerge(k.id, d.id);
-    expect(pv).toMatchObject({ reservations: 1, visitNotes: 2, sameDayNotes: [past], filledFields: ["電話", "メール"], identical: true, mismatch: [] });
+    const k = (await detail(c, keep.id)).patient;
+    const d = (await detail(c, dup.id)).patient;
+    expect(await preview(c, k, d)).toMatchObject({ reservations: 1, visitNotes: 2, sameDayNotes: [past], filledFields: ["電話", "メール"], identical: true, mismatch: [] });
 
-    const merged = s.mergePatients({ keepId: k.id, dupId: d.id, keepVersion: k.version, dupVersion: d.version }, rc);
+    const merged = (await merge(c, k, d)).patient;
     expect(merged.phone).toBe("090-1111-2222");
     expect(merged.email).toBe("a@example.com");
     expect(merged.memo).toContain("敏感肌");
     expect(merged.memo).toContain("金属アレルギー");
 
-    const detail = s.getPatientDetail(k.id);
-    expect(detail.upcoming.map((x) => x.id)).toContain(r.id);
-    const pastRow = detail.visits.find((v) => v.date === past)!;
+    const dt = await detail(c, k.id);
+    expect(dt.upcoming.map((x: { id: string }) => x.id)).toContain(r.id);
+    const pastRow = dt.visits.find((v: { date: string }) => v.date === past);
     expect(pastRow.note).toContain("keep側の記録");
     expect(pastRow.note).toContain("dup側の記録");
     expect(pastRow.skincare).toEqual(["A", "B"]);
-    expect(detail.visits.find((v) => v.date === today)?.note).toBe("今日の記録");
-    expect(detail.history[0].by).toEqual(rc);
+    expect(dt.visits.find((v: { date: string }) => v.date === today)?.note).toBe("今日の記録");
+    expect(dt.history[0].by).toEqual(by);
 
-    const dupAfter = s.getPatient(d.id)!;
+    const dupAfter = (await detail(c, d.id)).patient;
     expect(dupAfter.mergedInto).toBe(k.id);
     expect(dupAfter.deleted).toBeTruthy();
-    expect(() => s.restorePatient(d.id, dupAfter.version)).toThrow(/統合された/);
+    await expect(c.post(`/patients/${d.id}/restore`, { version: dupAfter.version })).rejects.toThrow(/統合された/);
     // 操作ログに氏名は残らない
-    expect(JSON.stringify(staff.listAudit())).not.toContain("山田");
+    expect(JSON.stringify((await c.get("/audit")).items)).not.toContain("山田");
   });
 
   it("生年月日が両方とも未入力なら、姓名とセイメイの一致で統合できる（Airリザーブから移した患者）", async () => {
-    const s = await import("@/lib/server/store");
-    const a = s.createPatient({ name: "鈴木 花", kana: "スズキ ハナ" });
-    const b = s.createPatient({ name: "鈴木　花", kana: "すずき はな" });
-    const c = s.createPatient({ name: "鈴木 花" });
-    expect(s.previewMerge(a.id, b.id)).toMatchObject({ identical: true, mismatch: [] });
-    expect(s.previewMerge(a.id, c.id).mismatch).toEqual(["セイメイ（未入力）"]);
-    expect(s.mergePatients({ keepId: a.id, dupId: b.id, keepVersion: a.version, dupVersion: b.version }).id).toBe(a.id);
+    const c = await admin();
+    const a = await c.post("/patients", { name: "鈴木 花", kana: "スズキ ハナ" });
+    const b = await c.post("/patients", { name: "鈴木　花", kana: "すずき はな" });
+    const x = await c.post("/patients", { name: "鈴木 花" });
+    expect(await preview(c, a, b)).toMatchObject({ identical: true, mismatch: [] });
+    expect((await preview(c, a, x)).mismatch).toEqual(["セイメイ（未入力）"]);
+    expect((await merge(c, a, b)).patient.id).toBe(a.id);
   });
 
   it("姓名・セイメイ・生年月日のどれかが違う（未入力を含む）と統合できない", async () => {
-    const s = await import("@/lib/server/store");
-    const a = s.createPatient({ name: "佐藤 花", kana: "サトウ ハナ", birthDate: "1995-05-05", phone: "090-5555-0000" });
-    const b = s.createPatient({ name: "佐藤 華", kana: "サトウ ハナ", birthDate: "1995-05-05", phone: "090-5555-0000" });
-    const c = s.createPatient({ name: "佐藤 花", kana: "サトウ ハナ", phone: "090-5555-0000" });
-    expect(s.previewMerge(a.id, b.id)).toMatchObject({ identical: false, mismatch: ["姓名"] });
-    expect(s.previewMerge(a.id, c.id).mismatch).toEqual(["生年月日（片方だけ未入力）"]);
-    expect(() => s.mergePatients({ keepId: a.id, dupId: b.id, keepVersion: a.version, dupVersion: b.version })).toThrow(/一致しない項目：姓名/);
+    const c = await admin();
+    const a = await c.post("/patients", { name: "佐藤 花", kana: "サトウ ハナ", birthDate: "1995-05-05", phone: "090-5555-0000" });
+    const b = await c.post("/patients", { name: "佐藤 華", kana: "サトウ ハナ", birthDate: "1995-05-05", phone: "090-5555-0000" });
+    const x = await c.post("/patients", { name: "佐藤 花", kana: "サトウ ハナ", phone: "090-5555-0000" });
+    expect(await preview(c, a, b)).toMatchObject({ identical: false, mismatch: ["姓名"] });
+    expect((await preview(c, a, x)).mismatch).toEqual(["生年月日（片方だけ未入力）"]);
+    await expect(merge(c, a, b)).rejects.toThrow(/一致しない項目：姓名/);
     // 重複の候補には出るが、統合できないことが分かる
-    const cand = s.getPatientDetail(a.id).duplicates;
-    expect(cand.find((d) => d.patient.id === b.id)).toMatchObject({ identical: false, mismatch: ["姓名"] });
+    const cand = (await detail(c, a.id)).duplicates;
+    expect(cand.find((d: { patient: P }) => d.patient.id === b.id)).toMatchObject({ identical: false, mismatch: ["姓名"] });
     // 生年月日をそろえれば統合できる
-    const c2 = s.updatePatient(c.id, { version: c.version, birthDate: "1995-05-05" });
-    expect(s.getPatientDetail(a.id).duplicates.find((d) => d.patient.id === c.id)?.identical).toBe(true);
-    expect(s.mergePatients({ keepId: a.id, dupId: c.id, keepVersion: a.version, dupVersion: c2.version }).id).toBe(a.id);
+    const x2 = (await c.patch(`/patients/${x.id}`, { version: x.version, birthDate: "1995-05-05" })).patient;
+    expect((await detail(c, a.id)).duplicates.find((d: { patient: P }) => d.patient.id === x.id)?.identical).toBe(true);
+    expect((await merge(c, a, x2)).patient.id).toBe(a.id);
   });
 
   it("古い版・同じ患者どうし・削除済みは統合できない", async () => {
-    const s = await import("@/lib/server/store");
-    const a = s.createPatient({ name: "A", kana: "エー", birthDate: "2000-01-01" });
-    const b = s.createPatient({ name: "A", kana: "エー", birthDate: "2000-01-01" });
-    expect(() => s.mergePatients({ keepId: a.id, dupId: a.id, keepVersion: 1, dupVersion: 1 })).toThrow(/同じ患者/);
-    s.updatePatient(b.id, { version: b.version, phone: "090-0000-0000" });
-    expect(() => s.mergePatients({ keepId: a.id, dupId: b.id, keepVersion: 1, dupVersion: 1 })).toThrow(/他の端末/);
+    const c = await admin();
+    const a = await c.post("/patients", { name: "A", kana: "エー", birthDate: "2000-01-01" });
+    const b = await c.post("/patients", { name: "A", kana: "エー", birthDate: "2000-01-01" });
+    await expect(merge(c, a, a)).rejects.toThrow(/同じ患者/);
+    await c.patch(`/patients/${b.id}`, { version: b.version, phone: "090-0000-0000" });
+    await expect(merge(c, a, { id: b.id, version: 1 })).rejects.toThrow(/他の端末/);
   });
 });

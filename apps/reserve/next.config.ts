@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 /**
- * 2つの作り方がある。
- * - 通常：Node.js のサーバーとして動かす（npm run dev / build / start）
- * - BUILD_TARGET=static：画面だけを静的ファイルに書き出す（ロリポップ等のPHPサーバー向け。APIはphp/が担当）
+ * API は PHP 版（php/）だけ。画面の作り方は2つ。
+ * - 通常：開発用（npm run dev）。/api/* は RESERVE_PHP_API（php -S）へ回す
+ * - BUILD_TARGET=static：画面だけを静的ファイルに書き出す（本番。ロリポップ等のPHPサーバーに php/ と一緒に置く）
  *   NEXT_PUBLIC_BASE_PATH=/reserve のように置き場所を指定する
  */
 const isStatic = process.env.BUILD_TARGET === "static";
@@ -39,8 +39,6 @@ const nextConfig: NextConfig = isStatic
       output: "export",
       basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? "",
       trailingSlash: true,
-      // route.ts（API）と proxy.ts は書き出さない（PHP側が担当する）
-      pageExtensions: ["tsx"],
       images: { unoptimized: true },
       poweredByHeader: false,
     }
@@ -48,7 +46,7 @@ const nextConfig: NextConfig = isStatic
       poweredByHeader: false,
       // 開発時に 127.0.0.1 で開いても画面の部品を読めるようにする
       allowedDevOrigins: ["127.0.0.1"],
-      // 開発時（npm run dev）は API を PHP 版へ回す（本番と同じ API で確かめる）
+      // API は PHP 版へ回す（本番と同じ API で確かめる。応答の Cache-Control: no-store は PHP 側が付ける）
       async rewrites() {
         const api = process.env.RESERVE_PHP_API;
         return api ? { beforeFiles: [{ source: "/api/:path*", destination: `${api}/api/:path*` }], afterFiles: [], fallback: [] } : { beforeFiles: [], afterFiles: [], fallback: [] };
@@ -56,7 +54,6 @@ const nextConfig: NextConfig = isStatic
       async headers() {
         return [
           { source: "/:path*", headers: securityHeaders },
-          { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
           // 操作マニュアルだけは設定画面に埋め込む（患者情報なし・書体は Google Fonts）
           {
             source: "/manual/:path*",

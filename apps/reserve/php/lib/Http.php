@@ -48,7 +48,7 @@ final class Http
         if ($err instanceof InputError) {
             self::json(['error' => 'invalid', 'message' => '入力内容が正しくありません'], 400);
         }
-        // 応答には詳細を出さない。原因調査のため、種類・場所だけを data/diag.txt（外から見えない）に残す
+        // 応答には詳細を出さない。原因調査のため、種類・場所だけを diag.txt（DB と同じ外から見えないフォルダ）に残す
         error_log('reserve: unexpected error ' . get_class($err));
         self::logError($err);
         self::json(['error' => 'internal', 'message' => 'サーバーでエラーが発生しました'], 500);
@@ -58,7 +58,10 @@ final class Http
     public static function logError(Throwable $err): void
     {
         try {
-            $file = RESERVE_ROOT . '/data/diag.txt';
+            // SQLite なら DB と同じフォルダ（本番は data/、開発は .data/php/）。それ以外は data/
+            $dsn = (string) (config()['db_dsn'] ?? '');
+            $dir = str_starts_with($dsn, 'sqlite:') && substr($dsn, 7) !== ':memory:' ? dirname(substr($dsn, 7)) : RESERVE_ROOT . '/data';
+            $file = $dir . '/diag.txt';
             if (is_file($file) && filesize($file) > 200_000) {
                 @rename($file, $file . '.old');
             }

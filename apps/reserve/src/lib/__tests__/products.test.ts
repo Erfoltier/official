@@ -1,33 +1,28 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { withPhp } from "./php/server";
 
-async function store() {
-  resetStores();
-  return import("@/lib/server/store");
-}
+const h = withPhp();
 
 describe("スキンケア・内服のプリセット", () => {
-  beforeEach(() => {
-    resetStores();
-  });
-
   it("見本の商品は片付けてあり、価格付きで追加・変更・並べ替え・非表示にできる", async () => {
-    const s = await store();
+    const c = await h.srv.as("staff-admin");
+    const products = async () => (await c.get("/settings")).products as { id: string }[];
     // 候補の本体は料金表。見本の12品（値段なし）は最初に片付ける
-    expect(s.getSettings().products).toEqual([]);
-    s.createProduct({ name: "院の美容液", category: "skincare", priceYen: 3300 });
+    expect(await products()).toEqual([]);
+    await c.post("/products", { name: "院の美容液", category: "skincare", priceYen: 3300 });
 
-    const p = s.createProduct({ name: "ハイドロキノン 5%", category: "skincare", priceYen: 4400 });
+    const p = await c.post("/products", { name: "ハイドロキノン 5%", category: "skincare", priceYen: 4400 });
     expect(p).toMatchObject({ priceYen: 4400, active: true });
-    expect(() => s.createProduct({ name: "ハイドロキノン　５％" })).toThrow(/同じ名前/);
-    expect(() => s.createProduct({ name: "x", priceYen: -1 })).toThrow(/価格/);
+    await expect(c.post("/products", { name: "ハイドロキノン　５％" })).rejects.toThrow(/同じ名前/);
+    await expect(c.post("/products", { name: "x", priceYen: -1 })).rejects.toThrow(/価格/);
 
-    const u = s.updateProduct(p.id, { priceYen: null, category: "oral" });
+    const u = await c.patch(`/products/${p.id}`, { priceYen: null, category: "oral" });
     expect(u).toMatchObject({ priceYen: null, category: "oral" });
-    s.updateProduct(p.id, { active: false });
-    const pid = (await import("@/lib/server/store")).createPatient({ name: "テスト" }).id;
-    expect(s.getPatientDetail(pid).products.find((x) => x.id === p.id)).toBeUndefined();
+    await c.patch(`/products/${p.id}`, { active: false });
+    const pid = (await c.post("/patients", { name: "テスト" })).id;
+    expect((await c.get(`/patients/${pid}`)).products.find((x: { id: string }) => x.id === p.id)).toBeUndefined();
 
-    const ids = s.getSettings().products.map((x) => x.id).reverse();
-    expect(s.reorderProducts(ids).map((x) => x.id)).toEqual(ids);
+    const ids = (await products()).map((x) => x.id).reverse();
+    expect((await c.post("/products/reorder", { ids })).items.map((x: { id: string }) => x.id)).toEqual(ids);
   });
 });

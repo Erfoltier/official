@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { birthKey, guessColumns, matchM3, parseCsv } from "@/lib/domain/m3match";
+import { withPhp } from "./php/server";
 
 const csv = `患者番号,患者氏名,患者カナ氏名,生年月日,電話番号
 00123,照合 花子,ｼｮｳｺﾞｳ ﾊﾅｺ,平成2年1月2日,090-1111-2222
@@ -34,38 +35,35 @@ describe("M3 の患者一覧との照合（ブラウザの中）", () => {
   });
 });
 
-async function store() {
-  resetStores();
-  return import("@/lib/server/store");
-}
-
 describe("照合できた患者へ漢字の氏名を入れる（サーバー）", () => {
-  beforeEach(() => {
-    resetStores();
-  });
+  const h = withPhp();
 
   it("カタカナだけの氏名だけを書き換え、空の欄だけ埋め、もとのカナはフリガナへ", async () => {
-    const s = await store();
-    const a = s.createPatient({ name: "ショウゴウ ハナコ", phone: "080-0000-0000" });
-    const b = s.createPatient({ name: "漢字 既存" });
-    const ids = s.m3FillCandidates().map((x) => x.id);
+    const c = await h.srv.as("staff-admin");
+    const a = await c.post("/patients", { name: "ショウゴウ ハナコ", phone: "080-0000-0000" });
+    const b = await c.post("/patients", { name: "漢字 既存" });
+    const ids = (await c.get("/admin/m3-fill")).items.map((x: { id: string }) => x.id);
     expect(ids).toContain(a.id);
     expect(ids).not.toContain(b.id);
-    const r = s.applyM3Fill(
-      [
+    const r = await c.post("/admin/m3-fill", {
+      confirm: "APPLY",
+      items: [
         { id: a.id, name: "照合 花子", birthDate: "1990-01-02", phone: "090-1111-2222", m3ChartNo: "00123" },
         { id: b.id, name: "上書き 不可" },
         { id: a.id, name: "カナのまま" },
       ],
-      { id: "t", name: "テスト" },
-    );
-    expect(r).toEqual({ updated: 1, skipped: 2 });
-    const u = s.getPatientDetail(a.id).patient;
+    });
+    expect(r).toMatchObject({ updated: 1, skipped: 2 });
+    // 書き換える前に控えを取る
+    expect(r.backup).toMatch(/^backups\/docs-.*\.db$/);
+    const u = (await c.get(`/patients/${a.id}`)).patient;
     expect(u.name).toBe("照合 花子");
     expect(u.kana).toBe("ショウゴウ ハナコ");
     expect(u.birthDate).toBe("1990-01-02");
     expect(u.phone).toBe("080-0000-0000");
     expect(u.m3ChartNo).toBe("00123");
-    expect(s.getPatientDetail(b.id).patient.name).toBe("漢字 既存");
+    expect((await c.get(`/patients/${b.id}`)).patient.name).toBe("漢字 既存");
+    // 確認の言葉がなければ書き換えない
+    await expect(c.post("/admin/m3-fill", { items: [] })).rejects.toThrow(/APPLY/);
   });
 });

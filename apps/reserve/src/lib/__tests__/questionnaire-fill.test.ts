@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { withPhp, type Client } from "./php/server";
 
-async function store() {
-  resetStores();
-  return import("@/lib/server/store");
-}
+// 問診票は氏名・生年月日などで患者に結びつくので、テストごとにまっさらな DB で確かめる
+const h = withPhp({ each: true });
 
 const answers = [
   { q: "お名前", a: "問診 はなこ" },
@@ -16,19 +15,23 @@ const answers = [
   { q: "来院のきっかけ", a: "特になし" },
 ];
 
-describe("問診票の回答を患者の基本情報へ写す", () => {
-  beforeEach(() => {
-    resetStores();
-  });
+/** Google フォームの回答を送る係（外部連携のトークンで） */
+async function receive(responses: object[]) {
+  const r = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses }, { Authorization: `Bearer ${h.srv.integrationToken}` });
+  expect(r.status).toBe(200);
+  return r.data as { matched: number };
+}
+const patientOf = async (c: Client, id: string) => (await c.get(`/patients/${id}`)).patient;
 
+describe("問診票の回答を患者の基本情報へ写す", () => {
   it("空の欄だけに写し、アレルギーは注意事項、ほかの回答はその他の問診票情報へ", async () => {
-    const s = await store();
-    const p = s.createPatient({ name: "問診 はなこ", birthDate: "1990-01-02", history: "高血圧" });
-    const r = s.receiveQuestionnaires([
+    const c = await h.srv.as("staff-admin");
+    const p = await c.post("/patients", { name: "問診 はなこ", birthDate: "1990-01-02", history: "高血圧" });
+    const r = await receive([
       { key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", history: "なし", allergies: "金属（ニッケル）", answers },
     ]);
     expect(r.matched).toBe(1);
-    const u = s.getPatientDetail(p.id).patient;
+    const u = await patientOf(c, p.id);
     expect(u.phone).toBe("090-1111-2222");
     expect(u.postalCode).toBe("900-0001");
     expect(u.address).toBe("沖縄県那覇市港町1-1");
@@ -39,64 +42,62 @@ describe("問診票の回答を患者の基本情報へ写す", () => {
   });
 
   it("入っている値は変えず、その他は2回目の問診票で足される", async () => {
-    const s = await store();
-    const p = s.createPatient({ name: "問診 はなこ", birthDate: "1990-01-02", phone: "080-0000-0000", cautionNote: "アルコール綿禁止" });
-    s.receiveQuestionnaires([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", allergies: "金属（ニッケル）", answers }]);
-    s.receiveQuestionnaires([
-      { key: "k2", submittedAt: "2026/11/01 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", answers: [{ q: "その他のご相談事項", a: "肝斑も" }] },
-    ]);
-    const u = s.getPatientDetail(p.id).patient;
+    const c = await h.srv.as("staff-admin");
+    const p = await c.post("/patients", { name: "問診 はなこ", birthDate: "1990-01-02", phone: "080-0000-0000", cautionNote: "アルコール綿禁止" });
+    await receive([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", phone: "090-1111-2222", allergies: "金属（ニッケル）", answers }]);
+    await receive([{ key: "k2", submittedAt: "2026/11/01 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", answers: [{ q: "その他のご相談事項", a: "肝斑も" }] }]);
+    const u = await patientOf(c, p.id);
     expect(u.phone).toBe("080-0000-0000");
     expect(u.cautionNote).toBe("アルコール綿禁止");
     expect(u.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる\n\n【問診票 2026/11/01】\nその他のご相談事項：肝斑も");
+  });
+
+  it("トークンがなければ受け付けない", async () => {
+    const r = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [] }, { Authorization: "Bearer wrong" });
+    expect(r.status).toBe(401);
   });
 });
 
 describe("問診票の写し直し", () => {
   it("何度実行しても、その他の問診票情報が重ならない", async () => {
-    resetStores();
-    const s = await import("@/lib/server/store");
-    const p = s.createPatient({ name: "問診 はなこ", birthDate: "1990-01-02" });
-    s.receiveQuestionnaires([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", answers }]);
-    const by = { id: "staff-admin", name: "院長" };
-    s.refillFromQuestionnaires(by);
-    expect(s.refillFromQuestionnaires(by)).toEqual({ questionnaires: 1, patients: 0 });
-    expect(s.getPatientDetail(p.id).patient.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる");
+    const c = await h.srv.as("staff-admin");
+    const p = await c.post("/patients", { name: "問診 はなこ", birthDate: "1990-01-02" });
+    await receive([{ key: "k1", submittedAt: "2026/10/06 10:00:00", name: "問診 はなこ", birthDate: "1990-01-02", answers }]);
+    await c.post("/questionnaires/refill");
+    expect(await c.post("/questionnaires/refill")).toEqual({ questionnaires: 1, patients: 0 });
+    expect((await patientOf(c, p.id)).questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる");
   });
 });
 
 describe("性別・生年月日", () => {
   it("問診票の性別・生年月日を空欄に写し、性別の入力は女性・男性・その他にそろえる", async () => {
-    resetStores();
-    const s = await import("@/lib/server/store");
-    const p = s.createPatient({ name: "性別 はなこ", phone: "090-3333-4444" });
-    s.receiveQuestionnaires([
-      { key: "s1", submittedAt: "2026/10/06 10:00:00", name: "性別 はなこ", phone: "090-3333-4444", birthDate: "1991-02-03", answers: [{ q: "性別", a: "女" }] },
-    ]);
-    const u = s.getPatientDetail(p.id).patient;
+    const c = await h.srv.as("staff-admin");
+    const p = await c.post("/patients", { name: "性別 はなこ", phone: "090-3333-4444" });
+    await receive([{ key: "s1", submittedAt: "2026/10/06 10:00:00", name: "性別 はなこ", phone: "090-3333-4444", birthDate: "1991-02-03", answers: [{ q: "性別", a: "女" }] }]);
+    const u = await patientOf(c, p.id);
     expect(u.sex).toBe("female");
     expect(u.birthDate).toBe("1991-02-03");
     expect(u.questionnaireOther).toBeUndefined();
-    expect(s.updatePatient(p.id, { version: u.version, sex: "男性" }).sex).toBe("male");
-    expect(() => s.updatePatient(p.id, { version: u.version + 1, sex: "?" })).toThrow(/性別/);
+    const m = (await c.patch(`/patients/${p.id}`, { version: u.version, sex: "男性" })).patient;
+    expect(m.sex).toBe("male");
+    await expect(c.patch(`/patients/${p.id}`, { version: m.version, sex: "?" })).rejects.toThrow(/性別/);
   });
 });
 
 describe("花粉症", () => {
   it("花粉症はアレルギーとして注意事項に出さず、ほかのアレルギーは残す。以前の自動の注意事項も直す", async () => {
-    resetStores();
-    const s = await import("@/lib/server/store");
-    const a = s.createPatient({ name: "花粉 いちこ", phone: "090-1000-0001" });
-    const b = s.createPatient({ name: "花粉 にこ", phone: "090-1000-0002" });
-    const c = s.createPatient({ name: "花粉 さんこ", phone: "090-1000-0003", caution: true, cautionNote: "アレルギー：無し, 動物" });
-    s.receiveQuestionnaires([
+    const c = await h.srv.as("staff-admin");
+    const a = await c.post("/patients", { name: "花粉 いちこ", phone: "090-1000-0001" });
+    const b = await c.post("/patients", { name: "花粉 にこ", phone: "090-1000-0002" });
+    const x = await c.post("/patients", { name: "花粉 さんこ", phone: "090-1000-0003", caution: true, cautionNote: "アレルギー：無し, 動物" });
+    await receive([
       { key: "h1", submittedAt: "2026/10/06", name: "花粉 いちこ", phone: "090-1000-0001", allergies: "花粉症", answers: [] },
       { key: "h2", submittedAt: "2026/10/06", name: "花粉 にこ", phone: "090-1000-0002", allergies: "無し, 動物, 花粉症, 内服薬（ペニシリン）, アルコール", answers: [] },
       { key: "h3", submittedAt: "2026/10/06", name: "花粉 さんこ", phone: "090-1000-0003", allergies: "無し, 動物", answers: [] },
     ]);
-    expect(s.getPatientDetail(a.id).patient.cautionNote).toBeUndefined();
-    expect(s.getPatientDetail(b.id).patient.cautionNote).toBe("アレルギー：内服薬（ペニシリン）、アルコール");
-    const cc = s.getPatientDetail(c.id).patient;
+    expect((await patientOf(c, a.id)).cautionNote).toBeUndefined();
+    expect((await patientOf(c, b.id)).cautionNote).toBe("アレルギー：内服薬（ペニシリン）、アルコール");
+    const cc = await patientOf(c, x.id);
     expect(cc.cautionNote).toBeUndefined();
     expect(cc.caution).toBeFalsy();
   });

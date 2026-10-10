@@ -43,44 +43,49 @@
 cd apps/reserve
 npm install
 npm run dev          # http://localhost:3000（API は PHP 版。PHP 8.1 以上が必要。デモのスタッフの PIN は 1234）
-npm test             # ロジックの単体テスト
+npm test             # 単体テストと API のテスト（API は php -S で PHP 版を動かして確かめる）
 npm run typecheck
 npm run lint
 ```
 
 特定の日を開く：`http://localhost:3000/?date=2026-10-07`
 
-`npm run dev` は、API を本番と同じ PHP 版（`php -S`）で動かし、画面だけを `next dev` で出します。データは `.data/php/`（初回にデモデータを作る。作り直すときはこのフォルダを消す）。
-※ Node.js 版の API（`src/app/api`・`src/lib/server`）は PHP 版に一本化するため、順に取り除いています。
+API（裏側の処理）は PHP 版（`php/`）だけです。`npm run dev` は API を本番と同じ PHP 版（`php -S`、ポート 3401）で動かし、画面だけを `next dev` で出して `/api/*` をそちらへ回します。
+データと設定は `.data/php/`（初回に `config.php` とデモデータを作る。作り直すときはこのフォルダを消す）。
 
-## 環境変数
+## 設定（config.php）
 
-`.env.example` を `.env.local` にコピーして設定します（`.env*` はGitに含めません）。
+環境変数は使いません。設定はすべて `config.php` に書きます（見本は `php/config.sample.php`。Git には含めない）。
+開発時は `npm run dev` が `.data/php/config.php` を自動で作ります。本番は `php/` を置いた場所の `config.php` です。
 
-| 変数 | 用途 |
+| キー | 用途 |
 | --- | --- |
-| `STAFF_BASIC_AUTH` | `ユーザー名:パスワード`。設定すると画面とAPIにBasic認証がかかる。**本番ビルドで未設定だと全リクエストを拒否（503）する** |
-| `SESSION_SECRET` | スタッフのログイン状態（Cookie）の署名用（32文字以上）。**本番で未設定だとログインできない**。開発時は起動ごとに自動で作る |
-| `DATA_ENCRYPTION_KEY` | 保存データの暗号鍵（64桁の16進数、`openssl rand -hex 32` で作る）。**本番では必須**。開発時は `.data/dev.key` を自動で作る。**鍵を失うとデータは読めなくなる**ので、サーバーとは別の安全な場所にも控える |
-| `INITIAL_ADMIN_PIN` | 本番の初回起動時に作る「院長」アカウントのPIN（4〜8桁）。スタッフが1人もいないときだけ使う |
-| `RESERVE_DATA_DIR` / `RESERVE_DB` | 保存先のフォルダ（既定 `./.data`）／データベースファイルの直接指定 |
-| `RESERVE_DEMO` | `1` で架空の患者・予約を入れる、`0` で入れない。未設定なら開発時は入れ、本番では入れない |
-| `INTEGRATION_API_TOKEN` | 外部連携API用のトークン（32文字以上）。未設定なら外部連携APIは停止（503） |
+| `base_path` | 置き場所の URL のパス（例 `/reserve`。開発は `''`） |
+| `db_dsn`（`db_user`・`db_pass`） | 保存先。標準は SQLite（`sqlite:…/data/reserve.db`）。MySQL も可 |
+| `encryption_key` | 保存データの暗号鍵（64桁の16進数）。**鍵を失うとデータは読めなくなる**ので、サーバーとは別の安全な場所にも控える |
+| `session_secret` | スタッフのログイン状態（Cookie）の署名用（32文字以上） |
+| `initial_admin_pin` | スタッフが1人もいないときに作る「院長」アカウントのPIN（4〜8桁） |
+| `integration_token` | 外部連携API用のトークン（32文字以上）。空なら外部連携APIは停止（503） |
+| `line_intake_dir` | LINE 予約フォームの申請の置き場所（受付箱。省略可） |
 
 ## データの保存とバックアップ
 
-- 保存先：`.data/reserve.db`（Gitには含めない）。中身は1件ずつ暗号化されている
-- 初回起動時に、Airリザーブから移したレーン・メニューを入れる。開発時はデモの患者・予約も入れる
-- 開発中にデモデータを作り直したいときは、サーバーを止めて `.data/` を消す（**本番では絶対にしない**）
-- バックアップ：`npm run backup` で `.data/backups/` に日時付きのコピーを作る（直近30個を残す）。
-  `BACKUP_DIR=/別のディスク npm run backup` のように、サーバーとは別の場所に保存するのがおすすめ。毎日決まった時刻に実行する設定（cron 等）を推奨
-- 復元：サーバーを止め、`reserve.db`（と `-wal` `-shm`）をバックアップのファイルで置き換えて起動する。同じ暗号鍵が必要
-- 注意：Node.js 標準の SQLite（試験的な機能）を使っており、サーバー1台での運用が前提。複数院・複数台で動かす段階で PostgreSQL に移す（保存の形は同じなので移しやすい作り）
+- 保存先：本番は `data/`（`.htaccess` で外から見えない）、開発は `.data/php/`。どちらも Git には含めない
+  - `reserve.db`：予約・患者・記録・設定・スタッフ・操作ログ（SQLite。1件ずつ AES-256-GCM で暗号化）
+  - `blobs/`：写真・PDF などのファイル（暗号化したまま）
+  - `backups/`：控え（下記）
+  - `diag.txt`：想定外のエラーの記録（種類と場所だけ。患者情報は入れない）
+- 初回に、Airリザーブから移したレーン・メニューを入れる。デモの患者・予約は開発時（`php/tools/demo-seed.php`）だけ
+- 控え：設定 →「控え・復元」の「今すぐ控えを取る」（院長・管理者）で `data/backups/` に日時付きの控えを作る（直近10個を残す。写真は入らない）。
+  一括の書き換え（M3照合の反映など）の前にも自動で控えを取る。サーバーの外にも保管するときは、`data/`（`blobs/` を含む）と `config.php` を両方ダウンロードする
+- 設定（診療時間・レーン・メニュー・状態・スキンケア＆内服）は、同じ画面から1日前〜1年前の状態に戻せる
+- 復元：`data/reserve.db` を控えのファイルで置き換える。同じ `config.php`（暗号鍵）が必要
+- 本番の置き方・入れ替え方：[php/README.md](php/README.md)
 
 アクセスは2段階です。
 
-1. **院の入口**：Basic認証（`STAFF_BASIC_AUTH`）
-2. **スタッフのログイン**：名前を選んでPIN（4〜8桁）を入力。初期スタッフ5名（院長・医師・看護師2名・受付）のPINは試作用にすべて `1234`。設定 → スタッフ（院長・管理者のみ）で追加・役割変更・利用停止・PIN変更ができる
+1. **院の入口**：Basic認証（サーバーのアクセス制限。[php/README.md](php/README.md)）
+2. **スタッフのログイン**：名前を選んでPIN（4〜8桁）を入力。デモの初期スタッフ5名（院長・医師・看護師2名・受付）のPINはすべて `1234`（本番は `initial_admin_pin` の院長1名から始める）。設定 → スタッフ（院長・管理者のみ）で追加・役割変更・利用停止・PIN変更ができる
 
 スタッフのログインについて：
 - PINは PBKDF2-SHA256（21万回）でハッシュ化して保存し、5回続けて間違えると5分間ロックする
@@ -92,8 +97,7 @@ npm run lint
 
 ## 共用サーバー（ロリポップ等・PHP）に置く場合
 
-Node.js を常時動かせないサーバー向けに、画面を静的ファイルにし、裏側を PHP で動かす版があります（`php/`）。
-API と保存形式は Node.js 版と同じです。
+画面を静的ファイルにし（`npm run build:static`）、裏側の API を PHP（`php/`）で動かします。
 
 - 一式の作成：`npm run build:lolipop` → `dist/reserve-lolipop.zip`（デモデータ入り。暗号鍵などは毎回新しく作る）
 - 置き方・Basic認証・バックアップの手順：[php/README.md](php/README.md)
@@ -107,7 +111,7 @@ LINEなどの送信は後から外部プログラムで行う前提で、前日�
 
 ```
 GET /api/v1/integration/reminders?date=2026-10-07
-Authorization: Bearer <INTEGRATION_API_TOKEN>
+Authorization: Bearer <config.php の integration_token>
 ```
 
 ```json
@@ -140,7 +144,7 @@ Authorization: Bearer <INTEGRATION_API_TOKEN>
 
 ```
 POST /api/v1/integration/reminders/{reservationId}
-Authorization: Bearer <INTEGRATION_API_TOKEN>
+Authorization: Bearer <config.php の integration_token>
 Content-Type: application/json
 
 {"status": "sent"}      // sent | skipped | failed
@@ -154,17 +158,9 @@ Content-Type: application/json
 src/
   app/
     page.tsx                         カレンダー画面
-    api/v1/day                       1日分の予約・レーン・施術・患者（画面用）
-    api/v1/reservations[/:id]        予約の登録・変更
-    api/v1/patients[/:id]            患者の検索・登録・詳細・更新、LINE紐付けの解除、削除・復元
-    api/v1/patients/:id/visits/:date 日付ごとの記録（簡易カルテ・スキンケア）
-    api/v1/patients/merge            重複患者の統合（事前確認・実行）
-    api/v1/auth, staff, audit        ログイン、スタッフ管理、操作ログ
-    patients/, patients/[id]         患者一覧・患者情報の編集画面
-    api/v1/settings, lanes, menus    レーン・メニューの設定
-    settings/page.tsx                設定画面
-    api/v1/integration/reminders     外部連携API
+    patients/, settings/ …           患者一覧・患者情報・設定などの画面
   components/calendar/
+    api.ts                           API の呼び出し（PHP 版の /api/v1/…）
     CalendarApp.tsx                  ツールバー・データ取得・保存
     DayGrid.tsx                      時間軸・レーン・ピンチ拡大・ドラッグ
     ReservationBlock.tsx             予約枠（高さに応じた表示切替）
@@ -172,19 +168,21 @@ src/
   lib/
     domain/                          型・日時変換・入力検証
     calendar/                        重なり配置・拡大率の計算
-    server/                          予約ストア・暗号化保存（db.ts）・ログイン・API共通処理
-  scripts/backup.mjs                 バックアップ
     seed/airreserve-import.ts        Airリザーブから移したレーン・メニュー
-    demo/seed.ts                     ダミーの患者・予約
-  proxy.ts                           アクセス制限（Basic認証）
+    __tests__/                       テスト（php/server.ts で PHP 版の API を起動して確かめる）
+php/
+  api/index.php                      API の入口（URL とメソッドで振り分け）
+  lib/                               保存（Db.php）・ログイン（Auth.php）・予約や患者の処理（Store.php）など
+  tools/                             開発用（dev-router.php・demo-seed.php）
+scripts/dev.sh                       開発用の起動（php -S ＋ next dev）
 ```
 
 ## セキュリティ上の配慮（試作段階）
 
-- 本番ビルドは認証設定がないと起動しても応答しない（誤公開防止）
 - Content-Security-Policy で外部スクリプト・外部通信・埋め込みを禁止、検索エンジンにも登録させない
 - APIの応答はキャッシュさせない。エラー時に患者情報を応答やログに出さない
-- 入力はすべてサーバー側で検証（zod）。日をまたぐ予約や不正な時刻は拒否
+- 入力はすべてサーバー側（PHP）で検証。日をまたぐ予約や不正な時刻は拒否
+- 変更の操作は、このサイトの画面から送られたものだけ受け付ける（Origin・Sec-Fetch-Site を確認）
 - 端末に保存するのは表示設定（拡大率など）だけで、患者情報は保存しない
 - 外部連携トークンの比較は時間差の出ない方法で行う
 
