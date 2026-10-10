@@ -333,7 +333,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
       <header className={styles.toolbar} data-ui-zoom>
         {/* eslint-disable-next-line @next/next/no-img-element -- 静的書き出しのため最適化なしの画像で表示 */}
         <img src={withBase("/brand/lane-reserve-logo-wordmark.svg")} alt="LANE RESERVE" className={styles.brandBar} />
-        <div className={styles.group}>
+        <div className={`${styles.group} ${styles.tbNav}`}>
           <button
             className={styles.btn}
             data-active={receptionOpen || undefined}
@@ -342,6 +342,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             title="その日の予約と状態を時刻順に一覧（受付一覧）"
           >
             ☰<span className={styles.long}> 受付一覧</span>
+            <span className={styles.short}> 受付</span>
           </button>
           <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, -1))} aria-label="前の日">
             ‹
@@ -389,52 +390,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           <span className={styles.count}>{activeCount}件</span>
         </div>
 
-        <div className={styles.group} role="group" aria-label="時間軸の拡大縮小">
-          <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1 / 1.25)} aria-label="縮小">
-            −
-          </button>
-          <input
-            className={styles.zoomRange}
-            type="range"
-            min={Math.log(MIN_PX_PER_MIN)}
-            max={Math.log(MAX_PX_PER_MIN)}
-            step={0.01}
-            value={Math.log(scale)}
-            onChange={(e) => setScale(clampScale(Math.exp(Number(e.target.value))))}
-            aria-label={`拡大率 ${zoomPercent}%`}
-            style={{ "--fill": `${zoomFill}%` } as CSSProperties}
-          />
-          <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1.25)} aria-label="拡大">
-            ＋
-          </button>
-          <button className={styles.btn} onClick={() => gridRef.current?.fitAll()} title="1日全体を画面に収める">
-            全体
-          </button>
-          <button
-            className={styles.btn}
-            onClick={() => {
-              const i = UI_SIZES.findIndex((x) => x.id === uiSize);
-              const next = UI_SIZES[(i + 1) % UI_SIZES.length].id;
-              setUiSize(next);
-              applyUiSize(next);
-            }}
-            title="文字の大きさを切り替える（この端末だけ。標準 → 大きめ → 特大）"
-            aria-label={`文字の大きさ：${UI_SIZES.find((x) => x.id === uiSize)?.label}`}
-          >
-            文字 {UI_SIZES.find((x) => x.id === uiSize)?.label}
-          </button>
-          {isToday && (
-            <button
-              className={styles.btn}
-              onClick={() => gridRef.current?.scrollToMinute(now.minutes - 30)}
-              title="現在時刻へ移動"
-            >
-              今
-            </button>
-          )}
-        </div>
-
-        <div className={styles.group}>
+        <div className={`${styles.group} ${styles.tbView}`} role="group" aria-label="表示">
           {bundle && (
             <select
               className={styles.select}
@@ -450,6 +406,51 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               ))}
             </select>
           )}
+          <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1 / 1.25)} aria-label="縮小">
+            −<span className={styles.cap}>縮小</span>
+          </button>
+          <input
+            className={styles.zoomRange}
+            type="range"
+            min={Math.log(MIN_PX_PER_MIN)}
+            max={Math.log(MAX_PX_PER_MIN)}
+            step={0.01}
+            value={Math.log(scale)}
+            onChange={(e) => setScale(clampScale(Math.exp(Number(e.target.value))))}
+            aria-label={`拡大率 ${zoomPercent}%`}
+            style={{ "--fill": `${zoomFill}%` } as CSSProperties}
+          />
+          <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1.25)} aria-label="拡大">
+            ＋<span className={styles.cap}>拡大</span>
+          </button>
+          <button className={styles.btn} onClick={() => gridRef.current?.fitAll()} title="1日全体を画面に収める">
+            全体<span className={styles.cap}>1日</span>
+          </button>
+          <button
+            className={styles.btn}
+            onClick={() => {
+              const i = UI_SIZES.findIndex((x) => x.id === uiSize);
+              const next = UI_SIZES[(i + 1) % UI_SIZES.length].id;
+              setUiSize(next);
+              applyUiSize(next);
+            }}
+            title="文字の大きさを切り替える（この端末だけ。標準 → 大きめ → 特大）"
+            aria-label={`文字の大きさ：${UI_SIZES.find((x) => x.id === uiSize)?.label}`}
+          >
+            文字{" "}<span className={styles.uiSizeLabel}>{UI_SIZES.find((x) => x.id === uiSize)?.label}</span>
+          </button>
+          {isToday && (
+            <button
+              className={styles.btn}
+              onClick={() => gridRef.current?.scrollToMinute(now.minutes - 30)}
+              title="現在時刻へ移動"
+            >
+              今<span className={styles.cap}>現在</span>
+            </button>
+          )}
+        </div>
+
+        <div className={`${styles.group} ${styles.tbTools}`}>
           <button
             className={styles.btn}
             data-active={maskNames || undefined}
@@ -458,7 +459,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             title="患者から画面が見える場所で使う"
           >
             <span className={styles.long}>氏名を伏せる</span>
-            <span className={styles.short}>伏字</span>
+            <span className={styles.short}>●●</span>
+            <span className={styles.cap}>伏字</span>
           </button>
           <button
             className={styles.btn}
@@ -467,7 +469,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             aria-pressed={showCancelled}
           >
             <span className={styles.long}>キャンセル表示</span>
-            <span className={styles.short}>取消</span>
+            <span className={styles.short}>✕</span>
+            <span className={styles.cap}>取消</span>
           </button>
           <button
             className={styles.iconBtn}
@@ -480,7 +483,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             aria-label="全画面表示"
             title="全画面表示"
           >
-            ⛶
+            ⛶<span className={styles.cap}>全画面</span>
           </button>
           {me && (
             <button
@@ -492,7 +495,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
                 window.location.replace(withBase("/login/"));
               }}
             >
-              <span className={styles.staffName}>{me.name}</span> ⇄
+              <span className={styles.staffName}>{me.name}</span> ⇄<span className={styles.cap}>{me.name}</span>
             </button>
           )}
           <button
@@ -502,14 +505,14 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             title="受付箱（LINE 予約申請）"
             style={{ position: "relative", ...(inboxCount ? { borderColor: "var(--danger, #c0392b)" } : {}) }}
           >
-            📥
+            📥<span className={styles.cap}>受付箱</span>
             {inboxCount > 0 && <span className={styles.countBadge}>{inboxCount > 99 ? "99+" : inboxCount}</span>}
           </button>
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
-            👤
+            👤<span className={styles.cap}>患者</span>
           </Link>
-                    <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
-            ⚙
+          <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
+            ⚙<span className={styles.cap}>設定</span>
           </Link>
         </div>
       </header>

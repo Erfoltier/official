@@ -2646,3 +2646,94 @@ button.stagePill[data-clickable]:disabled {
   color: var(--danger, #c0392b);
   font-size: 13px;
 }
+
+/* ===== 上のバー：スマホは「日付」「表示」「道具」の3行にそろえ、記号だけのボタンには名前を添える ===== */
+.cap {
+  display: none;
+}
+@media (max-width: 760px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .toolbar > .group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    width: 100%;
+    max-width: 100%;
+  }
+  .toolbar > .group > * {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+  .toolbar .btn,
+  .toolbar .iconBtn,
+  .toolbar .select,
+  .toolbar .dateBtn {
+    width: auto;
+    height: 34px;
+    padding: 0 4px;
+  }
+  /* 1行目：受付一覧・前日・日付・翌日・今日 */
+  .tbNav > .iconBtn {
+    flex: 0 0 34px;
+  }
+  .tbNav > .dateWrap {
+    flex: 2.2 1 0;
+    display: flex;
+  }
+  .tbNav > .dateWrap > .dateBtn {
+    width: 100%;
+    justify-content: center;
+  }
+  /* 2行目：レーン・縮小・拡大・全体・文字・今 */
+  .tbView > .select {
+    flex: 1.8 1 0;
+    max-width: none;
+  }
+  /* 2・3行目の記号ボタンは、記号の下に名前 */
+  .tbView > .iconBtn,
+  .tbView > .btn,
+  .tbTools > * {
+    flex-direction: column;
+    gap: 0;
+    height: 42px !important;
+    line-height: 1.1;
+    font-size: 15px;
+    position: relative;
+  }
+  .tbView > .btn,
+  .tbView > .select {
+    height: 42px !important;
+  }
+  .cap {
+    display: block;
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    opacity: 0.85;
+  }
+  .tbTools .staffName {
+    display: none;
+  }
+  .tbView > .btn {
+    font-size: 13px;
+  }
+  .tbView .uiSizeLabel {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  .tbTools .countBadge {
+    top: -5px;
+    right: 2px;
+  }
+}
