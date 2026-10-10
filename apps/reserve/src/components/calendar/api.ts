@@ -248,6 +248,8 @@ export interface IntakeItem {
   state: "new" | "booked" | "done" | "skip";
   reservation: { id: string; startAt: string } | null;
   handledBy: string | null;
+  /** 申請IDのメモはないが、カナ（氏名）と電話（生年月日）が合う予約があった（推定） */
+  guessed?: boolean;
 }
 
 /** LINE 予約フォームの申請の受付箱 */

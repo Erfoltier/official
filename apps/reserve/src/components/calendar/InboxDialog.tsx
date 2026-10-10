@@ -65,7 +65,7 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
         </button>
       </div>
       <p className={styles.pickedSub} style={{ margin: "0 0 8px" }}>
-        最近30日の申請のうち、希望日が今日以降のものです（希望日が過ぎた申請は出しません）。「予約を作る」で予約登録の画面に入ります。Airリザーブで予約した申請は、Air から取り込んだ予約のメモに申請IDがあれば自動で「予約済み」になります。電話などで対応した申請は「済み」にしてください。
+        最近30日の申請のうち、希望日が今日以降のものです（希望日が過ぎた申請は出しません）。「予約を作る」で予約登録の画面に入ります。Airリザーブで予約した申請は、Air から取り込んだ予約のメモに申請IDがあれば自動で「予約済み」になります。メモに申請IDがなくても、カナ（または氏名）と電話（または生年月日）の両方が合う予約があれば「予約済み（推定）」にします。電話などで対応した申請は「済み」にしてください。
       </p>
       <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, marginBottom: 8 }}>
         <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
@@ -84,6 +84,7 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
               <span className={styles.pickedSub}>{it.visitType === "initial" ? "初診" : "再診"}</span>
               <span style={{ marginLeft: "auto", fontSize: 12 }} className={styles.pickedSub}>
                 {STATE_LABEL[it.state]}
+                {it.guessed && "（推定）"}
                 {it.state === "booked" && it.reservation && `（${stamp(it.reservation.startAt)}）`}
                 {it.handledBy && `・${it.handledBy}`}
               </span>

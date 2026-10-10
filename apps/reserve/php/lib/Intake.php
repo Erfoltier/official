@@ -66,8 +66,73 @@ final class Intake
                 'handledBy' => $state === 'done' || $state === 'skip' ? ($handled[$rid]['by']['name'] ?? null) : null,
             ];
         }
+        self::guessBooked($items);
         usort($items, fn($a, $b) => strcmp($b['requestId'], $a['requestId']));
         return ['items' => $items, 'days' => $days, 'available' => is_dir(self::dir())];
+    }
+
+    /**
+     * 申請IDのメモがない予約（Air で入れた予約など）を見分ける。申請の受付日以降の予約で、患者が
+     * 「カナ（または氏名）」と「電話（または生年月日）」の両方で合うものがあれば「予約済み（推定）」にする。
+     * 画面の表示だけに使い、LINE の送り先には使わない（送り先は申請IDの照合だけ）
+     */
+    private static function guessBooked(array &$items): void
+    {
+        $open = array_filter(array_keys($items), fn($i) => $items[$i]['state'] === 'new');
+        if (!$open) {
+            return;
+        }
+        $from = min(array_map(fn($i) => substr($items[$i]['requestId'], 1, 4) . '-' . substr($items[$i]['requestId'], 5, 2) . '-' . substr($items[$i]['requestId'], 7, 2), $open));
+        $db = Db::i();
+        $byPatient = [];
+        foreach ($db->between('reservation', 'k1', $from, '9999-12-31') as $r) {
+            if (empty($r['patientId']) || in_array($r['status'] ?? '', Store::INACTIVE, true)) {
+                continue;
+            }
+            $byPatient[$r['patientId']][] = $r;
+        }
+        if (!$byPatient) {
+            return;
+        }
+        $people = [];
+        foreach (array_keys($byPatient) as $pid) {
+            $p = $db->get('patient', (string) $pid);
+            if (!$p || !empty($p['deleted'])) {
+                continue;
+            }
+            $people[] = [
+                'id' => (string) $pid,
+                'kana' => search_key($p['kana'] ?? ''),
+                'name' => fold_name_variants(search_key($p['name'] ?? '')),
+                'phone' => digits_only($p['phone'] ?? ''),
+                'birth' => (string) ($p['birthDate'] ?? ''),
+            ];
+        }
+        foreach ($open as $i) {
+            $it = $items[$i];
+            $kana = search_key($it['kana']);
+            $name = fold_name_variants(search_key($it['name']));
+            $phone = digits_only($it['phone']);
+            $since = substr($it['requestId'], 1, 4) . '-' . substr($it['requestId'], 5, 2) . '-' . substr($it['requestId'], 7, 2);
+            $hit = null;
+            foreach ($people as $pp) {
+                $who = ($kana !== '' && $kana === $pp['kana']) || ($name !== '' && $name === $pp['name']);
+                $sure = (strlen($phone) >= 10 && $phone === $pp['phone']) || ($it['birthDate'] !== '' && $it['birthDate'] === $pp['birth']);
+                if (!$who || !$sure) {
+                    continue;
+                }
+                foreach ($byPatient[$pp['id']] as $r) {
+                    if (clinic_date_of((string) $r['startAt']) >= $since && ($hit === null || $r['startAt'] < $hit['startAt'])) {
+                        $hit = ['id' => $r['id'], 'startAt' => $r['startAt']];
+                    }
+                }
+            }
+            if ($hit) {
+                $items[$i]['state'] = 'booked';
+                $items[$i]['reservation'] = $hit;
+                $items[$i]['guessed'] = true;
+            }
+        }
     }
 
     /** スタッフの印：done＝済み（Airなどで対応した）、skip＝見送り、null＝印を外す */
