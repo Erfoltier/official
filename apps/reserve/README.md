@@ -42,13 +42,16 @@
 ```bash
 cd apps/reserve
 npm install
-npm run dev          # http://localhost:3000
+npm run dev          # http://localhost:3000（API は PHP 版。PHP 8.1 以上が必要。デモのスタッフの PIN は 1234）
 npm test             # ロジックの単体テスト
 npm run typecheck
 npm run lint
 ```
 
 特定の日を開く：`http://localhost:3000/?date=2026-10-07`
+
+`npm run dev` は、API を本番と同じ PHP 版（`php -S`）で動かし、画面だけを `next dev` で出します。データは `.data/php/`（初回にデモデータを作る。作り直すときはこのフォルダを消す）。
+※ Node.js 版の API（`src/app/api`・`src/lib/server`）は PHP 版に一本化するため、順に取り除いています。
 
 ## 環境変数
 

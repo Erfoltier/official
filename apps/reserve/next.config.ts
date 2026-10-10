@@ -46,6 +46,13 @@ const nextConfig: NextConfig = isStatic
     }
   : {
       poweredByHeader: false,
+      // 開発時に 127.0.0.1 で開いても画面の部品を読めるようにする
+      allowedDevOrigins: ["127.0.0.1"],
+      // 開発時（npm run dev）は API を PHP 版へ回す（本番と同じ API で確かめる）
+      async rewrites() {
+        const api = process.env.RESERVE_PHP_API;
+        return api ? { beforeFiles: [{ source: "/api/:path*", destination: `${api}/api/:path*` }], afterFiles: [], fallback: [] } : { beforeFiles: [], afterFiles: [], fallback: [] };
+      },
       async headers() {
         return [
           { source: "/:path*", headers: securityHeaders },

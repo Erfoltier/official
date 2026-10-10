@@ -2651,6 +2651,9 @@ button.stagePill[data-clickable]:disabled {
 .cap {
   display: none;
 }
+.uiSizeLabel {
+  margin-left: 0.3em;
+}
 @media (max-width: 760px) {
   .toolbar {
     display: grid;
@@ -2728,6 +2731,7 @@ button.stagePill[data-clickable]:disabled {
   }
   .tbView .uiSizeLabel {
     display: block;
+    margin-left: 0;
     font-size: 10px;
     font-weight: 600;
     opacity: 0.85;
