@@ -150,7 +150,7 @@
 
 /* LANE RESERVE のロゴ（縦組み） */
 .brand {
-  margin: 0 0 18px;
+  margin: 0 auto 18px;
   line-height: 0;
   text-align: center;
 }
