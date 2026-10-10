@@ -79,6 +79,11 @@ def sync(files):
             s.post(B + "/file/upload/", data={"mode": "overWright", "overWright": "0"})
             put(local, n)
         after = rows(path)
+        # マニュアルの写真は取り込み直しで名前が変わることがあるので、手元にないものはサーバーからも消す
+        if d == "manual/img":
+            keep = {n for n, _, _ in bydir[d]}
+            for n in [n for n in after if n not in keep and n.endswith((".png", ".webp", ".svg"))]:
+                delete(path, n); stats.setdefault("removed", 0); stats["removed"] += 1
         for n, local, _ in bydir[d]:
             if after.get(n) != str(os.path.getsize(local)):
                 raise RuntimeError(f"size mismatch {path}{n}: {after.get(n)} vs {os.path.getsize(local)}")
