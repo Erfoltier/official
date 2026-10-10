@@ -332,7 +332,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     <div className={styles.app} data-panel-open={selected ? true : undefined}>
       <header className={styles.toolbar} data-ui-zoom>
         {/* eslint-disable-next-line @next/next/no-img-element -- 静的書き出しのため最適化なしの画像で表示 */}
-        <img src={withBase("/brand/lane-reserve-logo-horizontal.svg")} alt="LANE RESERVE" className={styles.brandBar} />
+        <img src={withBase("/brand/lane-reserve-logo-wordmark.svg")} alt="LANE RESERVE" className={styles.brandBar} />
         <div className={styles.group}>
           <button
             className={styles.btn}

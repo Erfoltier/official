@@ -2620,10 +2620,10 @@ button.stagePill[data-clickable]:disabled {
 /* 上のバーの LANE RESERVE（横組み）。幅の広い画面だけ。スマホ・タブレットでは出さず、予約表の幅を優先する */
 .brandBar {
   display: none;
-  height: 22px;
+  height: 20px;
   width: auto;
   flex: none;
-  margin-right: 6px;
+  margin: 0 14px 0 4px;
   align-self: center;
 }
 @media (min-width: 1280px) {
