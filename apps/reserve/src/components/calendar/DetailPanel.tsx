@@ -30,7 +30,7 @@ const REMINDER_REASON: Record<string, string> = {
   optout: "不要の患者",
   no_contact: "送り先なし",
   line_quota: "LINE の残り通数が少ない",
-  line_token: "LINE の鍵を確認",
+  line_token: "LINE チャネルアクセストークンを確認",
   line_limit: "LINE の上限",
   mail_failed: "メール送信の失敗",
   request_mismatch: "申請の名前・生年月日が患者と合わない",

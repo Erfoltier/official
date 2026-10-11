@@ -15,7 +15,7 @@ function stamp(iso: string): string {
 
 /**
  * リマインド（予約のお知らせ）の設定（院長・管理者）。
- * LINE の鍵はここで入れ、暗号化して保存する（画面には二度と出さない）
+ * LINE チャネルアクセストークンはここで入れ、暗号化して保存する（画面には二度と出さない）
  */
 export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unknown) => void }) {
   const [s, setS] = useState<ReminderSettings | null>(null);
@@ -58,6 +58,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         replyTo: draft.replyTo,
         lineReserve: draft.lineReserve,
         appendNotes: draft.appendNotes,
+        pauseUntil: draft.pauseUntil,
         template: draft.template,
         ...(extra?.lineToken !== undefined && { lineToken: extra.lineToken }),
       });
@@ -79,7 +80,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
       if (!r.ran) {
         props.notify(r.reason === "disabled" ? "リマインドが「止めている」状態です" : "少し前に確認したばかりです");
       } else {
-        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => `${k}：送信 ${x.sent}・送らない ${x.skipped}・失敗 ${x.failed}`);
+        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => (x.paused ? `${k}：自動送信を止めている日のため送りませんでした` : `${k}：送信済 ${x.sent}・未送信 ${x.skipped}・送信失敗 ${x.failed}`));
         props.notify(parts.length ? parts.join("／") : "いまは送る時刻ではありません（決めた時刻から3時間のあいだに送ります）");
       }
       setS(await fetchReminderSettings());
@@ -166,6 +167,19 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         <small>時刻は 6:00〜21:00。決めた時刻から3時間のあいだに送ります。当日の回は、30分より先の来院だけに送ります。回をなくすと、自動では送りません。</small>
       </div>
 
+      <div className={styles.prefRow}>
+        <b>自動送信を止める日</b>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <input className={styles.input} style={{ width: "auto" }} type="date" value={draft.pauseUntil} onChange={(e) => set("pauseUntil", e.target.value)} aria-label="自動送信を止める日" />
+          {draft.pauseUntil && (
+            <button type="button" className={styles.btn} onClick={() => set("pauseUntil", "")}>
+              止めない
+            </button>
+          )}
+        </div>
+        <small>この日までの予約には、自動でリマインドを送りません（「保存する」で反映）。空欄なら止めません。</small>
+      </div>
+
       <div className={styles.m3Cols}>
         <label>
           <span>LINE で送る</span>
@@ -223,35 +237,36 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
       </div>
 
       <div className={styles.prefRow} style={{ marginTop: 14 }}>
-        <b>LINE の鍵</b>
-        <span>{s.lineConfigured ? "入れてあります" : "まだ入れていません"}</span>
-        <small>LINE Developers の Messaging API チャネルの「チャネルアクセストークン（長期）」を入れます。保存すると画面には二度と表示しません。</small>
+        <b>LINE チャネルアクセストークン</b>
+        <span>{s.lineConfigured ? "設定済み" : "未設定"}</span>
+        <small>LINE Developers の Messaging API チャネルにある「チャネルアクセストークン（長期）」を貼り付けて保存してください。保存後は画面に表示されません。</small>
       </div>
       <div className={styles.actions}>
-        <input className={styles.input} type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="チャネルアクセストークン" style={{ flex: 1, minWidth: 200 }} />
+        <input className={styles.input} type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="チャネルアクセストークン（長期）" style={{ flex: 1, minWidth: 200 }} />
         <button type="button" className={styles.btn} disabled={busy || token.trim() === ""} onClick={() => void save({ lineToken: token.trim() })}>
-          鍵を入れる
+          保存
         </button>
         {s.lineConfigured && (
-          <button type="button" className={styles.btn} disabled={busy} onClick={() => window.confirm("LINE の鍵を消します。LINE ではリマインドを送れなくなります。よろしいですか？") && void save({ lineToken: "" })}>
-            鍵を消す
+          <button type="button" className={styles.btn} disabled={busy} onClick={() => window.confirm("LINE チャネルアクセストークンを削除します。LINE でリマインドを送れなくなります。よろしいですか？") && void save({ lineToken: "" })}>
+            削除
           </button>
         )}
       </div>
 
       <div className={styles.actions}>
         <button type="button" className={styles.btn} disabled={busy} onClick={() => void runNow()}>
-          今すぐ確認して送る
+          未送信分を今すぐ送る
         </button>
       </div>
-      <p className={styles.hint}>決めた時刻を過ぎていれば、まだ送っていない来院へ送ります（同じ来院・同じ回には二度送りません）。</p>
+      <p className={styles.hint}>送信時刻を過ぎた回のうち、まだリマインドを送っていない予約に送ります。同じ予約に同じ回のリマインドを二度送ることはありません。</p>
 
       <PreviewSection fail={props.fail} />
     </div>
   );
 }
 
-const CHANNEL_LABEL = { line: "LINE", email: "メール", none: "送れない" } as const;
+const STATUS_LABEL = { sent: "送信済", pending: "未送信", failed: "送信失敗" } as const;
+const METHOD_LABEL = { line: "LINE", email: "メール" } as const;
 
 const stampShort = (iso: string) => new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -277,8 +292,8 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
   };
   return (
     <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-      <b>送り先の確認（送りません）</b>
-      <p className={styles.hint}>その日の来院ごとに、LINE・メールのどちらで届くか、届かない理由、すでに送ったか（送信）を出します。メールアドレスは一部を伏せて表示します。</p>
+      <b>リマインド送信状況の確認</b>
+      <p className={styles.hint}>日付を選ぶと、その日の予約ごとに送信状況・送信方法・詳細を表示します（この画面からは送信しません）。メールアドレスは一部を伏せて表示します。</p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <input className={styles.input} type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="確かめる日" />
         <button type="button" className={styles.btn} disabled={busy || !date} onClick={() => void check()}>
@@ -288,9 +303,10 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
       {data && (
         <>
           <p className={styles.hint}>
-            {data.date}：LINE {data.count.line}件・メール {data.count.email}件・送れない {data.count.none}件
+            {data.date}：送信済 {data.count.sent}件・未送信 {data.count.pending}件（うち送信方法なし {data.count.noMethod}件）・送信失敗 {data.count.failed}件
             {data.lineRemaining !== null && `（LINE の今月の残り ${data.lineRemaining}通）`}
           </p>
+          {data.paused && <p className={styles.hint}>※ {data.pauseUntil} までの予約は、自動送信を止めています。</p>}
           {data.items.length === 0 ? (
             <p className={styles.hint}>この日の来院はありません</p>
           ) : (
@@ -300,8 +316,8 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
                   <tr>
                     <th>時刻</th>
                     <th>患者</th>
-                    <th>送り先</th>
-                    <th>送信</th>
+                    <th>送信状況</th>
+                    <th>送信方法</th>
                     <th>LINE</th>
                     <th>メール</th>
                     <th>詳細</th>
@@ -309,20 +325,18 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
                 </thead>
                 <tbody>
                   {data.items.map((it, i) => (
-                    <tr key={i} data-none={it.channel === "none" || undefined}>
+                    <tr key={i} data-none={(it.status === "pending" && !it.method) || it.status === "failed" || undefined}>
                       <td>{it.time}</td>
                       <td>
                         <Link href={patientPath(it.patientId)}>{it.name}</Link>
                       </td>
                       <td>
-                        <b>{CHANNEL_LABEL[it.channel]}</b>
+                        <b>{STATUS_LABEL[it.status]}</b>
+                        {it.at && <small> {stampShort(it.at)}</small>}
                       </td>
-                      <td>
-                        {it.sent?.status === "sent" ? (it.sent.channel === "email" ? "メール送信済" : "LINE送信済") : it.sent?.status === "failed" ? "送信失敗" : "未送信"}
-                        {it.sent && it.sent.status !== "skipped" && it.sent.at && <small> {stampShort(it.sent.at)}</small>}
-                      </td>
-                      <td>{it.line ? "あり" : "—"}</td>
-                      <td>{it.email ?? "—"}</td>
+                      <td>{it.method ? METHOD_LABEL[it.method] : "—"}</td>
+                      <td>{it.line ? "連携済" : "未連携"}</td>
+                      <td>{it.email ?? "未回答"}</td>
                       <td>{it.why.join("／")}</td>
                     </tr>
                   ))}
