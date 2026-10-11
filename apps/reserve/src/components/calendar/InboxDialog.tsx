@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, fetchIntake, markIntake, type IntakeItem } from "./api";
 import styles from "./calendar.module.css";
 
-const STATE_LABEL: Record<IntakeItem["state"], string> = { new: "未対応", booked: "予約済み", done: "済み", skip: "見送り" };
+const STATE_LABEL: Record<IntakeItem["state"], string> = { new: "未対応", booked: "予約済み", done: "対応済み", skip: "見送り" };
 
 function dateJa(iso: string): string {
   if (!iso) return "";
@@ -65,15 +65,15 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
         </button>
       </div>
       <p className={styles.pickedSub} style={{ margin: "0 0 8px" }}>
-        最近30日の申請のうち、希望日が今日以降のものです（希望日が過ぎた申請は出しません）。「予約を作る」で予約登録の画面に入ります。Airリザーブで予約した申請は、Air から取り込んだ予約のメモに申請IDがあれば自動で「予約済み」になります。メモに申請IDがなくても、カナ（または氏名）と電話（または生年月日）の両方が合う予約があれば「予約済み（推定）」にします。電話などで対応した申請は「済み」にしてください。
+        最近30日の申請のうち、希望日が今日以降のものを表示します。「予約を登録」で予約登録の画面を開きます。Airリザーブで予約した申請は、取り込んだ予約のメモに予約申請IDがあれば自動で「予約済み」になります。予約申請IDがなくても、カナ（または氏名）と電話（または生年月日）が一致する予約があれば「予約済み（推定）」になります。電話などで対応した申請は「対応済み」にしてください。
       </p>
       <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, marginBottom: 8 }}>
         <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-        予約済み・済み・見送りも表示
+        予約済み・対応済み・見送りも表示
       </label>
       {error && <p className={styles.error}>{error}</p>}
       {!items && !error && <p>読み込み中…</p>}
-      {items && !available && <p>申請の保存場所が見つかりません（この版では使えません）</p>}
+      {items && !available && <p>申請の保存先が見つかりません。このバージョンでは利用できません。</p>}
       {items && available && shown.length === 0 && <p>{showAll ? "最近30日の申請はありません" : "未対応の申請はありません"}</p>}
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
         {shown.map((it) => (
@@ -115,13 +115,13 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
               {it.state !== "booked" && (
                 <button type="button" className={styles.primaryBtn} onClick={() => props.onBook(it)}>
-                  予約を作る{it.preferredDate && `（${dateJa(it.preferredDate)}）`}
+                  予約を登録{it.preferredDate && `（${dateJa(it.preferredDate)}）`}
                 </button>
               )}
               {it.state === "new" && (
                 <>
                   <button type="button" className={styles.btn} onClick={() => void mark(it, "done")}>
-                    済み
+                    対応済み
                   </button>
                   <button type="button" className={styles.btn} onClick={() => void mark(it, "skip")}>
                     見送り

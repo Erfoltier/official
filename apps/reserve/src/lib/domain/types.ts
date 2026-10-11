@@ -248,7 +248,7 @@ export type EstimateLineKind = "menu" | "product" | "custom";
 
 export interface EstimateLine {
   kind: EstimateLineKind;
-  /** メニュー・スキンケア＆内服のID（自由入力の行はなし） */
+  /** メニュー・スキンケア・内服のID（自由入力の行はなし） */
   refId?: string;
   name: string;
   unitYen: number;

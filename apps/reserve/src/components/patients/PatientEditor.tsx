@@ -243,7 +243,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
 
       {!readOnly && (
       <details className={styles.section} open={dirty || undefined}>
-        <summary className={styles.sectionTitle}>基本情報の表示/編集</summary>
+        <summary className={styles.sectionTitle}>基本情報の表示・編集</summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -295,7 +295,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         </div>
         <details className={styles.contactBox}>
           <summary className={styles.contactSummary}>
-            連絡先情報
+            連絡先
             <span className={styles.contactPeek}>{[form.phone, form.address && "住所あり"].filter(Boolean).join("・")}</span>
           </summary>
           <div className={styles.grid2}>
@@ -305,18 +305,18 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             <Field label="メール" changed={changedKeys.includes("email")}>
               <input className={styles.input} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} maxLength={200} />
             </Field>
-            <Field label="リマインドの送り先" changed={changedKeys.includes("contactPref")}>
+            <Field label="リマインドの送信方法" changed={changedKeys.includes("contactPref")}>
               <select className={styles.input} value={form.contactPref} onChange={(e) => set("contactPref", e.target.value)}>
-                <option value="auto">自動（LINE がつながっていれば LINE、なければメール）</option>
+                <option value="auto">自動（LINE 連携済なら LINE、未連携ならメール）</option>
                 <option value="line">LINE</option>
                 <option value="email">メール</option>
-                <option value="none">送らない</option>
+                <option value="none">送信しない</option>
               </select>
             </Field>
             <Field label="リマインド" changed={changedKeys.includes("reminderOptOut")}>
               <span style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 36 }}>
                 <input type="checkbox" checked={form.reminderOptOut} onChange={(e) => set("reminderOptOut", e.target.checked)} />
-                リマインド不要（自動では送らない）
+                自動配信しない
               </span>
             </Field>
             <Field label="郵便番号" changed={changedKeys.includes("postalCode")}>
@@ -343,7 +343,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           <input type="checkbox" checked={form.caution} onChange={(e) => set("caution", e.target.checked)} />
           注意事項あり（予約表に <span className={styles.caution}>!</span> を表示）
         </label>
-        <Field label="重要事項（アルコール綿禁止・薬疹・アレルギー・禁忌など。カルテの上に目立つように出ます）" changed={changedKeys.includes("cautionNote")}>
+        <Field label="重要事項" hint="アルコール綿禁止・薬疹・アレルギー・禁忌など。カルテの上部に目立つように表示されます" changed={changedKeys.includes("cautionNote")}>
           <textarea className={styles.textarea} value={form.cautionNote} onChange={(e) => set("cautionNote", e.target.value)} maxLength={500} rows={2} />
         </Field>
         <Field label="既往歴" changed={changedKeys.includes("history")}>
@@ -352,7 +352,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
         <Field label="内服歴・服用中の薬" changed={changedKeys.includes("medications")}>
           <textarea className={styles.textarea} value={form.medications} onChange={(e) => set("medications", e.target.value)} maxLength={2000} rows={2} placeholder="例：ロキソニン頓用、低用量ピル" />
         </Field>
-        <Field label="その他の問診票情報（既往歴・内服歴・アレルギー・連絡先以外の問診票の回答。問診票が届くたびに日付付きで足されます）" changed={changedKeys.includes("questionnaireOther")}>
+        <Field label="その他の問診票情報" hint="既往歴・内服歴・アレルギー・連絡先以外の回答です。問診票が届くたびに日付付きで追記されます" changed={changedKeys.includes("questionnaireOther")}>
           <textarea className={styles.textarea} value={form.questionnaireOther} onChange={(e) => set("questionnaireOther", e.target.value)} maxLength={8000} rows={3} />
         </Field>
         <QuestionnaireAnswers patientId={p.id} />
@@ -372,7 +372,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           </div>
         ) : (
           <p className={styles.muted}>
-            未連携です。紐付けは、患者さま本人が受付でQRコードを読み取る方法で行います（今後実装）。
+            未連携です。患者本人が受付で QR コードを読み取って紐付けます（準備中）。
           </p>
         )}
       </fieldset>
@@ -427,7 +427,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           {canManage && !readOnly && (
             <>
               <button type="button" className={styles.btn} onClick={() => setMergeWith(null)}>
-                重複している患者をまとめる
+                重複患者の統合
               </button>
               <button type="button" className={styles.dangerBtn} onClick={() => setDeleting(true)}>
                 この患者を削除
@@ -445,7 +445,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>変更履歴</h2>
         {detail.history.length === 0 ? (
-          <p className={styles.muted}>この画面での変更はまだありません</p>
+          <p className={styles.muted}>変更履歴はありません</p>
         ) : (
           <ul className={styles.history}>
             {detail.history.slice(0, 20).map((h, i) => (

@@ -16,7 +16,7 @@ export function FileThumbs(props: { files: PatientFile[]; canDelete?: boolean; o
   const [open, setOpen] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const remove = async (f: PatientFile) => {
-    if (!window.confirm(`「${f.name}」を削除しますか？（記録としては残ります）`)) return;
+    if (!window.confirm(`「${f.name}」を削除します。よろしいですか？\n（記録としては残ります）`)) return;
     try {
       await deleteFile(f.id);
       setError(null);
@@ -118,7 +118,7 @@ function Viewer(props: {
             type="button"
             className={styles.viewerBtn}
             onClick={async () => {
-              if (!window.confirm(`「${f.name}」を削除しますか？（記録としては残ります）`)) return;
+              if (!window.confirm(`「${f.name}」を削除します。よろしいですか？\n（記録としては残ります）`)) return;
               try {
                 await deleteFile(f.id);
                 props.onDeleted(f.id);

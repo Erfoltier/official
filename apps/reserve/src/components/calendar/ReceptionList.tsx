@@ -98,7 +98,7 @@ export function ReceptionList(props: Props) {
               </option>
             ))}
           </select>
-          <button className={styles.iconBtn} onClick={props.onClose} aria-label="受付一覧をたたむ" title="たたむ">
+          <button className={styles.iconBtn} onClick={props.onClose} aria-label="受付一覧を閉じる" title="閉じる">
             «
           </button>
         </div>
@@ -158,7 +158,7 @@ export function ReceptionList(props: Props) {
                       onClick={() => setPickerFor(open ? null : r.id)}
                       disabled={inactive}
                       aria-expanded={open}
-                      title="押すと状態を変えられます"
+                      title="押すと状態を変更できます"
                     >
                       {sv.at && !sv.plain && <b className={styles.stageAt}>{sv.at}</b>}
                       {sv.label}
@@ -217,12 +217,12 @@ function StagePicker(props: {
   const min = parseHm(time);
   const stages = props.bundle.stages.filter((s) => !s.free && !s.deleted && (s.active || s.id === props.currentId));
   return (
-    <div className={styles.receptionPicker} role="group" aria-label="状態を変える">
+    <div className={styles.receptionPicker} role="group" aria-label="状態を変更">
       <div className={styles.receptionPickerHead}>
         <StageTimeInput className={styles.stageTime} value={time} onChange={setTime} />
         {min !== undefined && props.currentId && props.reservation.stageAt && (
-          <button type="button" className={styles.btn} onClick={() => props.onTimeOnly(min)} title="状態はそのままで時刻だけ直す">
-            時刻だけ直す
+          <button type="button" className={styles.btn} onClick={() => props.onTimeOnly(min)} title="状態はそのままで、時刻のみ修正します">
+            時刻のみ修正
           </button>
         )}
         <button type="button" className={styles.iconBtn} onClick={props.onClose} aria-label="閉じる">
@@ -302,7 +302,7 @@ function MemoCell({ patient, memo, masked, onSave }: { patient: Patient; memo: s
       className={styles.receptionMemo}
       data-empty={!memo || undefined}
       onClick={() => setDraft(memo)}
-      title={masked ? "受付メモ（押すと書けます）" : richToPlain(memo) || "押すと受付メモ（当日の進行状況など）を書けます"}
+      title={masked ? "受付メモ（押すと入力できます）" : richToPlain(memo) || "押すと受付メモ（当日の進行状況など）を入力できます"}
     >
       {masked ? (memo ? "（メモあり）" : "") : memo ? <RichText value={memo} inline /> : "受付メモ"}
     </button>

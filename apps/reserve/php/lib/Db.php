@@ -58,7 +58,7 @@ final class Db
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
-            throw new RuntimeException('この保存方式では控えを作れません（SQLite のファイルだけ）');
+            throw new RuntimeException('この保存方式では控えを作成できません（SQLite のみ対応）');
         }
         $dir = dirname(substr($dsn, 7)) . '/backups';
         if (!is_dir($dir)) {
@@ -90,7 +90,7 @@ final class Db
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
-            throw new RuntimeException('この保存方式では控えを作れません（SQLite のファイルだけ）');
+            throw new RuntimeException('この保存方式では控えを作成できません（SQLite のみ対応）');
         }
         $dir = dirname(substr($dsn, 7)) . '/backups';
         if (!is_dir($dir)) {
@@ -213,7 +213,7 @@ final class Db
     {
         $plain = openssl_decrypt(substr($blob, 28), 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, substr($blob, 0, 12), substr($blob, 12, 16));
         if ($plain === false) {
-            throw new RuntimeException('データを読めません（暗号鍵が違う可能性があります）');
+            throw new RuntimeException('データを読み込めません（暗号鍵が異なる可能性があります）');
         }
         return json_decode($plain, true, 512, JSON_THROW_ON_ERROR);
     }
@@ -260,12 +260,12 @@ final class Db
     {
         $path = $this->blobPath($dir, $id);
         if (!is_dir(dirname($path)) && !@mkdir(dirname($path), 0700, true) && !is_dir(dirname($path))) {
-            throw new RuntimeException('ファイルの置き場所を作れません');
+            throw new RuntimeException('ファイルの保存先を作成できません');
         }
         $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
         if (@file_put_contents($tmp, $sealed, LOCK_EX) !== strlen($sealed)) {
             @unlink($tmp);
-            throw new RuntimeException('ファイルを保存できません（空き容量を確かめてください）');
+            throw new RuntimeException('ファイルを保存できません（空き容量を確認してください）');
         }
         @chmod($tmp, 0600);
         if (!@rename($tmp, $path)) {
@@ -278,7 +278,7 @@ final class Db
     {
         $plain = openssl_decrypt(substr($sealed, 28), 'aes-256-gcm', $this->key, OPENSSL_RAW_DATA, substr($sealed, 0, 12), substr($sealed, 12, 16));
         if ($plain === false) {
-            throw new RuntimeException('ファイルを読めません（暗号鍵が違う可能性があります）');
+            throw new RuntimeException('ファイルを読み込めません（暗号鍵が異なる可能性があります）');
         }
         return $plain;
     }
@@ -310,7 +310,7 @@ final class Db
             if (is_file($path)) {
                 $sealed = @file_get_contents($path);
                 if ($sealed === false) {
-                    throw new RuntimeException('ファイルを読めません');
+                    throw new RuntimeException('ファイルを読み込めません');
                 }
                 return $this->openBlob($sealed);
             }
@@ -358,7 +358,7 @@ final class Db
     {
         $dir = $this->blobDir();
         if ($dir === null) {
-            throw new RuntimeException('この保存方式ではファイルに移せません（SQLite のファイルだけ）');
+            throw new RuntimeException('この保存方式ではファイルを移動できません（SQLite のみ対応）');
         }
         $start = microtime(true);
         $moved = 0;
@@ -382,7 +382,7 @@ final class Db
                 if (!is_file($path)) {
                     $this->writeBlobFile($dir, $id, $sealed);
                     if (@file_get_contents($path) !== $sealed) {
-                        throw new RuntimeException('移したファイルを確かめられませんでした（' . $moved . '件は移し終えています）');
+                        throw new RuntimeException('移動したファイルを確認できませんでした（' . $moved . '件は移動済みです）');
                     }
                     $this->openBlob($sealed);
                 }
@@ -403,7 +403,7 @@ final class Db
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
-            throw new RuntimeException('この保存方式では小さくできません（SQLite のファイルだけ）');
+            throw new RuntimeException('この保存方式では縮小できません（SQLite のみ対応）');
         }
         $file = substr($dsn, 7);
         $before = (int) filesize($file);

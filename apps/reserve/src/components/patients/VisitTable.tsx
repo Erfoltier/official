@@ -116,7 +116,7 @@ interface Props {
 
 /**
  * 施術歴：今回の予約／過去の履歴／今後の予約。
- * 表は 日付・施術内容・メモ・スキンケア＆内服・ファイル の5列。メニューは色分けし、何回目かを付ける
+ * 表は 日付・施術内容・メモ・スキンケア・内服・ファイル の5列。メニューは色分けし、何回目かを付ける
  */
 export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, canManage, onReservationChanged }: Props) {
   const today = nowInClinic().date;
@@ -152,7 +152,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
   const past = rows.filter((v) => v.date !== today);
   const next = detail.upcoming.find((r) => !INACTIVE_STATUSES.has(r.status));
 
-  /** その日より前で、スキンケア＆内服が記録されている直近の内容 */
+  /** その日より前で、スキンケア・内服が記録されている直近の内容 */
   const previousSkincare = (date: string) => rows.find((v) => v.date < date && v.skincare.length > 0)?.skincare ?? [];
   const [prices, setPrices] = useState<PriceItem[]>([]);
   useEffect(() => {
@@ -310,7 +310,7 @@ function HistoryTable({ rows, ...p }: RowProps & { rows: VisitRow[] }) {
           <th className={styles.colDate}>日付</th>
           <th className={styles.colMenu}>施術内容</th>
           <th className={styles.colNote}>メモ</th>
-          <th className={styles.colSkin}>スキンケア＆内服</th>
+          <th className={styles.colSkin}>スキンケア・内服</th>
         </tr>
       </thead>
       <tbody>
@@ -417,15 +417,15 @@ function Row({ v, detail, nth, today, readOnly, priceOf, editing, onEdit, onFile
           </button>
         ))}
       </td>
-      <td className={styles.colSkin} data-label="スキンケア＆内服">
+      <td className={styles.colSkin} data-label="スキンケア・内服">
         <SkincareCell items={v.skincare} priceOf={priceOf} />
       </td>
     </tr>
   );
 }
 
-/** スキンケア＆内服：普段は2件まで。押すと全項目と価格を出す */
-/** スキンケア＆内服：2つまで出し、ほかは「すべて表示」で開く。開いたときは高さを抑えて中で動かせるようにする */
+/** スキンケア・内服：普段は2件まで。押すと全項目と価格を出す */
+/** スキンケア・内服：2つまで出し、ほかは「すべて表示」で開く。開いたときは高さを抑えて中で動かせるようにする */
 function SkincareCell({ items, priceOf }: { items: string[]; priceOf: Map<string, number | null> }) {
   const [open, setOpen] = useState(false);
   if (items.length === 0) return <span className={styles.muted}>—</span>;
@@ -460,7 +460,7 @@ function SkincareCell({ items, priceOf }: { items: string[]; priceOf: Map<string
       </ul>
       {total > 0 && <span className={styles.total}>合計 {yen(total)}（{items.length}点）</span>}
       <button type="button" className={styles.skinToggle} onClick={() => setOpen(false)} aria-expanded>
-        ▲ たたむ
+        ▲ 閉じる
       </button>
     </div>
   );
@@ -489,7 +489,7 @@ function AddRecord({ today, onPick }: { today: string; onPick: (date: string) =>
           setOpen(false);
         }}
       >
-        この日に書く
+        この日の記録を作成
       </button>
       <button type="button" className={styles.linkBtn} onClick={() => setOpen(false)}>
         やめる
@@ -524,11 +524,11 @@ function EditRow(props: { visit: VisitRow; options: SkincareOption[]; previous: 
           />
         </div>
         <div className={styles.field}>
-          <span className={styles.label}>スキンケア＆内服（タップで追加・もう一度で外す）</span>
+          <span className={styles.label}>スキンケア・内服（タップで追加、もう一度タップで解除）</span>
           <SkincarePicker value={skincare} onChange={setSkincare} options={props.options} previous={props.previous} />
         </div>
         <div className={styles.editActions}>
-          <span className={styles.muted}>メモとスキンケア＆内服を両方空にして保存すると、この日の記録を消します</span>
+          <span className={styles.muted}>メモとスキンケア・内服を両方空にして保存すると、この日の記録は削除されます</span>
           <button type="button" className={styles.btn} onClick={props.onCancel} disabled={saving}>
             やめる
           </button>

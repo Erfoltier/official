@@ -17,7 +17,7 @@ export function MoveConfirm({ detail, onYes, onCancel }: { detail: string[]; onY
   return (
     <dialog ref={ref} className={`${styles.dialog} ${styles.confirm}`} onCancel={onCancel} aria-labelledby="move-confirm-title">
       <p id="move-confirm-title" className={styles.confirmTitle}>
-        予約時間を移動してよろしいですか？
+        予約を移動します。よろしいですか？
       </p>
       <div className={styles.confirmDetail}>
         {detail.map((line) => (
@@ -26,7 +26,7 @@ export function MoveConfirm({ detail, onYes, onCancel }: { detail: string[]; onY
       </div>
       <div className={styles.confirmActions}>
         <button type="button" className={styles.btn} onClick={onCancel}>
-          キャンセル
+          やめる
         </button>
         <button ref={yesRef} type="button" className={styles.primaryBtn} onClick={onYes}>
           はい

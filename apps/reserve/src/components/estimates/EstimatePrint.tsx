@@ -67,12 +67,12 @@ export function EstimatePrint({ id, kind: kind0 = "estimate" }: { id: string; ki
           ))}
         </span>
         <button type="button" className={styles.printBtn} onClick={() => window.print()}>
-          🖨 印刷する
+          🖨 印刷
         </button>
         <button type="button" className={styles.closeBtn} onClick={() => window.close()}>
           閉じる
         </button>
-        <span>印刷画面で「PDFに保存」を選ぶとPDFにもできます</span>
+        <span>印刷画面で「PDFに保存」を選ぶと、PDF で保存できます</span>
       </div>
 
       <article className={styles.sheet} aria-label={doc.tab}>

@@ -26,7 +26,7 @@ export function EstimateList(props: { patientId: string; patientName: string; re
   useEffect(load, [load]);
 
   const remove = async (e: Estimate) => {
-    if (!window.confirm(`見積書 No.${e.no}（${yen(e.totalYen)}）を削除しますか？`)) return;
+    if (!window.confirm(`見積書 No.${e.no}（${yen(e.totalYen)}）を削除します。よろしいですか？`)) return;
     try {
       await deleteEstimate(e.id, e.version);
       load();
@@ -40,7 +40,7 @@ export function EstimateList(props: { patientId: string; patientName: string; re
     <div>
       {error && <p className={styles.error}>{error}</p>}
       {items === null && !error && <p className={styles.muted}>読み込み中…</p>}
-      {items?.length === 0 && <p className={styles.muted}>まだ見積書はありません</p>}
+      {items?.length === 0 && <p className={styles.muted}>見積書はまだありません</p>}
       {items && items.length > 0 && (
         <table className={styles.list}>
           <thead>
@@ -74,7 +74,7 @@ export function EstimateList(props: { patientId: string; patientName: string; re
                     </a>
                     {!props.readOnly && (
                       <button type="button" className={styles.btn} onClick={() => setEditing(e)}>
-                        直す
+                        編集
                       </button>
                     )}
                     {!props.readOnly && props.canManage && (
@@ -92,7 +92,7 @@ export function EstimateList(props: { patientId: string; patientName: string; re
       {!props.readOnly && (
         <div className={styles.actions} style={{ justifyContent: "flex-start" }}>
           <button type="button" className={styles.btn} onClick={() => setEditing("new")}>
-            ＋見積・会計を作る
+            ＋見積・会計を作成
           </button>
         </div>
       )}

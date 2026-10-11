@@ -23,7 +23,7 @@ const stamp = (iso?: string) =>
 
 /**
  * 外部機器の連携。いまはネオボワール（肌診断機）の写真の取り込み。
- * 院のパソコンに置く「取り込み係」が写真フォルダを見張って送り、氏名で患者に結びつける。
+ * 院のパソコンに置く「取り込みツール」が写真フォルダを見張って送り、氏名で患者に結びつける。
  */
 export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolean; canEdit: boolean; notify: (t: string) => void; fail: (e: unknown) => void }) {
   const [status, setStatus] = useState<DeviceLinksStatus | null>(null);
@@ -66,7 +66,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   return (
     <section className={`${styles.clinic} ${styles.devices}`}>
       <p className={styles.lead}>
-        院で使っている機器とLANE RESERVEをつなぎます。つないだ機器のデータは、患者の施術歴（その日の写真）に自動で入ります。
+        院内の機器と LANE RESERVE を連携します。連携した機器のデータは、患者の施術歴（その日の写真）に自動で登録されます。
       </p>
 
       <div className={styles.clinicCard}>
@@ -74,19 +74,19 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           ネオボワール（肌診断機）の写真 <span className={styles.optionBadge}>オプション</span>
         </h3>
         <p className={styles.hint}>
-          ネオボワールの写真が見られるパソコン（親機または子機）に「取り込み係」を置くと、撮った写真を5分ごとにLANE RESERVEへ送ります。
-          写真のファイル名の<b>氏名</b>で患者を探し、1人に決まればその日の施術歴に入ります。ファイル名の<b>顧客番号</b>は一度結びつくと覚えるので、次からは同姓同名でも確実です。
-          同じ名前の人が2人以上いる・見つからないときは、下の「照合待ちの写真」に入ります（送るのは撮影したままの写真だけで、解析の画像は送りません）。
+          ネオボワールの写真を閲覧できるパソコン（親機または子機）に「取り込みツール」を設置すると、撮影した写真を5分ごとに LANE RESERVE へ送信します。
+          写真のファイル名の<b>氏名</b>で患者を検索し、1人に絞れればその日の施術歴に登録します。ファイル名の<b>顧客番号</b>は一度紐付くと記憶するため、次回からは同姓同名でも確実に照合できます。
+          同じ名前の患者が2人以上いる場合や該当者がいない場合は、下の「照合待ちの写真」に入ります。送信するのは撮影した写真のみで、解析画像は送信しません。
         </p>
 
         {isAdmin && status && (
           <>
             <div className={styles.priceStatus}>
               {active.length === 0 ? (
-                <span>まだつながっていません</span>
+                <span>未連携</span>
               ) : (
                 <span>
-                  つながっています：受け取り {status.received}枚・最後に受け取った日時 {stamp(status.lastReceivedAt)}
+                  連携済：受信 {status.received}枚・最終受信 {stamp(status.lastReceivedAt)}
                 </span>
               )}
             </div>
@@ -94,18 +94,18 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
               <div key={l.id} className={styles.prefRow}>
                 <b>{l.name}</b>
                 <small>
-                  鍵を作った日 {stamp(l.createdAt)}（{l.createdBy.name}）・受け取り {l.received}枚・最後 {stamp(l.lastUsedAt)}
+                  作成日 {stamp(l.createdAt)}（{l.createdBy.name}）・受信 {l.received}枚・最終受信 {stamp(l.lastUsedAt)}
                 </small>
-                <OptionsEditor key={JSON.stringify(l.options ?? null)} link={l} busy={busy} onSave={(o) => run(() => saveDeviceOptions(l.id, o), "取り込み方を保存しました（取り込み係は5分以内に従います）")} />
+                <OptionsEditor key={JSON.stringify(l.options ?? null)} link={l} busy={busy} onSave={(o) => run(() => saveDeviceOptions(l.id, o), "取り込み設定を保存しました（5分以内に取り込みツールへ反映されます）")} />
                 <div>
                   <button
                     className={styles.btn}
                     disabled={busy}
                     onClick={() => {
-                      if (window.confirm(`「${l.name}」の鍵を使えなくしますか？（取り込み係は写真を送れなくなります）`)) run(() => revokeDeviceLink(l.id), "連携を止めました");
+                      if (window.confirm(`「${l.name}」の接続キーを無効にします。取り込みツールから写真を送信できなくなります。よろしいですか？`)) run(() => revokeDeviceLink(l.id), "連携を停止しました");
                     }}
                   >
-                    この鍵を止める
+                    このキーを無効化
                   </button>
                 </div>
               </div>
@@ -113,17 +113,17 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
 
             {newToken ? (
               <div className={styles.importBox}>
-                <b>接続用の鍵（この画面を閉じると二度と表示されません）</b>
+                <b>接続キー（この画面を閉じると再表示できません）</b>
                 <code className={styles.tokenBox}>{newToken}</code>
                 <div className={styles.actions}>
-                  <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newToken).then(() => notify("鍵をコピーしました"), () => {})}>
+                  <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newToken).then(() => notify("接続キーをコピーしました"), () => {})}>
                     コピー
                   </button>
                   <button className={styles.btn} onClick={() => setNewToken(null)}>
                     閉じる
                   </button>
                 </div>
-                <p className={styles.hint}>取り込み係の準備（下の手順の 3）で、この鍵を貼り付けてください。チャットやメールには貼らないでください。</p>
+                <p className={styles.hint}>下の「連携手順」の 3 で、この接続キーを貼り付けてください。チャットやメールには貼り付けないでください。</p>
               </div>
             ) : (
               <div className={styles.actions}>
@@ -137,46 +137,46 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
                     })
                   }
                 >
-                  接続用の鍵を作る
+                  接続キーを発行
                 </button>
               </div>
             )}
 
             <details className={styles.priceUrls}>
-              <summary>つなぎ方（ネオボワールの写真が見られるパソコンで行います。親機・子機のどちらでも可）</summary>
+              <summary>連携手順（ネオボワールの写真を閲覧できるパソコンで行います）</summary>
               <ol className={styles.steps}>
                 <li>
-                  上の「接続用の鍵を作る」を押し、表示された鍵を控えます。
+                  上の「接続キーを発行」を押し、表示された接続キーを控えます。
                 </li>
                 <li>
-                  ネオボワールの写真が見られるパソコン（親機でも子機でも。診療中に電源が入っている時間が長いほうがおすすめ）で{" "}
+                  ネオボワールの写真を閲覧できるパソコン（親機・子機のどちらでも可。診療中に電源が入っている時間が長いほうがおすすめ）で{" "}
                   <a href={withBase("/integrations/neovoir-agent.ps1")} download>
-                    取り込み係（neovoir-agent.ps1）
+                    取り込みツール（neovoir-agent.ps1）
                   </a>{" "}
-                  をダウンロードし、分かりやすい場所（例：ドキュメント）に置きます。
+                  をダウンロードし、分かりやすい場所（例：ドキュメント）に保存します。
                 </li>
                 <li>
-                  スタートメニューで「PowerShell」を<b>普通に</b>開き（「管理者として実行」では親機の共有フォルダが見えないことがあります）、次を入力します（ファイルの場所に合わせて）。
+                  スタートメニューから「PowerShell」を<b>通常どおり</b>開き、次のコマンドを入力します（パスはファイルの保存場所に合わせてください）。「管理者として実行」で開くと、親機の共有フォルダが見えないことがあります。
                   <code className={styles.tokenBox}>powershell -ExecutionPolicy Bypass -File &quot;$env:USERPROFILE\Documents\neovoir-agent.ps1&quot; -Setup</code>
-                  聞かれた順に、LANE RESERVEのアドレス <code>{serverUrl}</code>、鍵、入口のID・パスワード（LANE RESERVEをブラウザで開くときに聞かれるもの。聞かれないなら Enter）、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。そのまま Enter でこれになります）、氏名を読む場所（そのまま Enter で「ネオボワールのファイル名」）、何日前の写真から送るかを入れます。
+                  画面の案内に従い、LANE RESERVE のアドレス <code>{serverUrl}</code>、接続キー、入口の ID・パスワード（LANE RESERVE をブラウザで開くときに求められるもの。求められない場合は Enter）、写真のフォルダ（いしだ皮フ科では <code>\\NEOVOIR\NeoVoirI\Image</code>。Enter のみでこの値になります）、氏名の読み取り元（Enter のみで「ネオボワールのファイル名」）、何日前の写真から送信するかを入力します。
                 </li>
                 <li>
-                  <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送らずに「どの写真から、どんな氏名・顧客番号を読むか」をそのパソコンの画面で確かめられます（患者さんの名前が出るので、チャットなどには貼らないでください）。正しく読めていれば準備完了です（あとは5分ごとに自動で送ります）。
+                  <code>-Setup</code> を <code>-Preview</code> に変えて実行すると、送信せずに、どの写真からどの氏名・顧客番号を読み取るかをそのパソコンで確認できます（患者名が表示されるため、チャットなどには貼り付けないでください）。正しく読み取れていれば準備完了です。以降は5分ごとに自動で送信します。
                 </li>
                 <li>
-                  過去に撮った写真も入れるときは、<b>Airリザーブからの患者の移行が終わってから</b>、<code>-Setup</code> を <code>-Backfill</code> に変えて実行し、何日前の分から送るかを入れます（そのまま Enter で全部）。上の「取り込む写真」の設定のとおりに、5分ごとの自動送信で順に送ります。
+                  過去の写真も取り込む場合は、<b>Airリザーブからの患者の移行が完了してから</b>、<code>-Setup</code> を <code>-Backfill</code> に変えて実行し、何日前の写真から送信するかを入力します（Enter のみで全期間）。上の「取り込む写真」の設定に従い、5分ごとの自動送信で順に送ります。
                 </li>
               </ol>
               <p className={styles.hint}>
-                入口のID・パスワードを変えたときは、<code>-Setup</code> を <code>-SetBasic</code> に変えて実行し、入れ直してください。
+                入口の ID・パスワードを変更した場合は、<code>-Setup</code> を <code>-SetBasic</code> に変えて実行し、入力し直してください。
               </p>
               <p className={styles.hint}>
-                鍵はそのパソコンのWindowsユーザーだけが読める形で保存されます。パソコンを入れ替えるときや鍵が漏れたかもしれないときは、上の「この鍵を止める」で止めて、新しい鍵を作り直してください。
+                接続キーは、そのパソコンの Windows ユーザーだけが読める形で保存されます。パソコンを入れ替える場合や接続キーが漏れた可能性がある場合は、「このキーを無効化」を押して、新しい接続キーを発行してください。
               </p>
             </details>
           </>
         )}
-        {!isAdmin && <p className={styles.muted}>つなぐ設定は院長・管理者ができます。</p>}
+        {!isAdmin && <p className={styles.muted}>連携の設定は院長・管理者のみ行えます。</p>}
       </div>
 
       {isAdmin && status && (
@@ -191,7 +191,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
             })
           }
           onRevoke={(l) => {
-            if (window.confirm(`「${l.name}」の鍵を使えなくしますか？（この鍵を入れたスクリプトは送れなくなります）`)) run(() => revokeDeviceLink(l.id), "鍵を止めました");
+            if (window.confirm(`「${l.name}」の接続キーを無効にします。このキーを設定したスクリプトから送信できなくなります。よろしいですか？`)) run(() => revokeDeviceLink(l.id), "接続キーを無効にしました");
           }}
           newKey={newGoogleKey}
           onCloseKey={() => setNewGoogleKey(null)}
@@ -202,7 +202,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
       <div className={styles.clinicCard}>
         <h3 className={styles.cardTitle}>照合待ちの写真{inbox ? `（${inbox.length}枚）` : ""}</h3>
         <p className={styles.hint}>
-          氏名で患者が1人に決まらなかった写真です。患者を選んで結びつけてください。Airリザーブから患者を移したあとなどは「もう一度名前で照合」でまとめて結びつけられます。
+          氏名で患者を1人に絞れなかった写真です。患者を選んで紐付けてください。Airリザーブから患者を移行した後などは、「名前で再照合」でまとめて紐付けられます。
         </p>
         {canEdit && (
           <div className={styles.actions}>
@@ -212,18 +212,18 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
               onClick={() =>
                 run(async () => {
                   const r = await rematchPhotoInbox();
-                  notify(`${r.matched}枚を患者に結びつけました（残り${r.remaining}枚）`);
+                  notify(`${r.matched}枚を患者に紐付けました（残り${r.remaining}枚）`);
                 })
               }
             >
-              もう一度名前で照合
+              名前で再照合
             </button>
           </div>
         )}
         {!inbox ? (
           <p className={styles.muted}>読み込み中…</p>
         ) : inbox.length === 0 ? (
-          <p className={styles.muted}>ありません</p>
+          <p className={styles.muted}>照合待ちの写真はありません</p>
         ) : (
           <div className={styles.inboxGrid}>
             {inbox.map((item) => (
@@ -249,7 +249,7 @@ function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDe
       <div>
         <b>{item.patientName || "（氏名なし）"}</b>
         <small>
-          {item.date}・{item.reason === "ambiguous" ? "同じ名前が2人以上" : "その名前の患者がいない"}
+          {item.date}・{item.reason === "ambiguous" ? "同じ名前の患者が2人以上" : "該当する患者なし"}
         </small>
       </div>
       <form
@@ -259,17 +259,17 @@ function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDe
           searchPatients(q).then(setHits, () => setHits([]));
         }}
       >
-        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="氏名・フリガナ・診察券番号" aria-label="患者をさがす" />
+        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="氏名・フリガナ・診察券番号" aria-label="患者を検索" />
         <button className={styles.btn} type="submit">
-          さがす
+          検索
         </button>
       </form>
       {hits && (
         <ul className={styles.hitList}>
-          {hits.length === 0 && <li className={styles.muted}>見つかりません</li>}
+          {hits.length === 0 && <li className={styles.muted}>該当する患者はいません</li>}
           {hits.slice(0, 6).map((p) => (
             <li key={p.id}>
-              <button className={styles.btn} disabled={busy} onClick={() => run(() => assignPhotoInbox(item.id, p.id), `${p.name} さんの写真にしました`)}>
+              <button className={styles.btn} disabled={busy} onClick={() => run(() => assignPhotoInbox(item.id, p.id), `${p.name} さんに紐付けました`)}>
                 {p.name}
                 {p.chartNo && <small>（{p.chartNo}）</small>}
                 {p.birthDate && <small> {p.birthDate}</small>}
@@ -283,7 +283,7 @@ function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDe
           className={styles.linkDanger}
           disabled={busy}
           onClick={() => {
-            if (window.confirm("この写真を削除しますか？（元に戻せません）")) run(() => deletePhotoInbox(item.id), "削除しました");
+            if (window.confirm("この写真を削除します。元に戻せません。よろしいですか？")) run(() => deletePhotoInbox(item.id), "削除しました");
           }}
         >
           削除
@@ -295,12 +295,12 @@ function InboxCard({ item, canDelete, busy, run }: { item: PhotoInboxItem; canDe
 
 const LIGHT_LABEL: Record<NeovoirLight, string> = { NL: "NL（通常光）", PL: "PL（偏光）", SL: "SL", UV: "UV（紫外線）" };
 const SIZES = [
-  { v: 2000, label: "縮小（長い辺 2000px まで・1枚 約1MB 以内）" },
-  { v: 3000, label: "やや縮小（長い辺 3000px まで・1枚 約1MB 以内）" },
-  { v: 0, label: "原寸のまま（1枚1.5〜2MB）" },
+  { v: 2000, label: "縮小（長辺 2000px まで・1枚 約1MB 以内）" },
+  { v: 3000, label: "やや縮小（長辺 3000px まで・1枚 約1MB 以内）" },
+  { v: 0, label: "原寸（1枚 1.5〜2MB）" },
 ];
 
-/** 取り込み方：どの光源を取り込むか・縮小するか（取り込み係が毎回読みにくる） */
+/** 取り込み方：どの光源を取り込むか・縮小するか（取り込みツールが毎回読みにくる） */
 function OptionsEditor({ link, busy, onSave }: { link: DeviceLink; busy: boolean; onSave: (o: DeviceOptions) => void }) {
   const cur = link.options ?? DEFAULT_DEVICE_OPTIONS;
   const [lights, setLights] = useState<NeovoirLight[]>(cur.lights);
@@ -330,11 +330,11 @@ function OptionsEditor({ link, busy, onSave }: { link: DeviceLink; busy: boolean
         ))}
       </select>
       <small>
-        1回の撮影で {lights.length * 3}枚（正面・左・右 × {lights.length}種類）、およそ {perShot}MB。
+        1回の撮影で {lights.length * 3}枚（正面・左・右 × {lights.length}種類）、約 {perShot}MB です。
       </small>
       <div>
         <button className={styles.primary} disabled={busy || !dirty || lights.length === 0} onClick={() => onSave({ lights, maxSide })}>
-          取り込み方を保存
+          取り込み設定を保存
         </button>
       </div>
     </div>
@@ -356,60 +356,60 @@ function GoogleKeysCard(props: {
   const api = `${serverUrl}/api/v1/integration`;
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>Googleの問診票・同意書・料金表の鍵</h3>
+      <h3 className={styles.cardTitle}>Google 連携の接続キー（問診票・同意書・料金表）</h3>
       <p className={styles.hint}>
-        Googleフォームの問診票・同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVEへ送るときに使う鍵です。
-        各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に入れます。
+        問診票（Google フォーム）・同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVE へ送信するときに使う接続キーです。
+        各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に設定してください。
       </p>
       {keys.map((l) => (
         <div key={l.id} className={styles.prefRow}>
           <b>{l.name}</b>
           <small>
-            鍵を作った日 {stamp(l.createdAt)}（{l.createdBy.name}）・最後に使われた日時 {stamp(l.lastUsedAt)}
+            作成日 {stamp(l.createdAt)}（{l.createdBy.name}）・最終利用 {stamp(l.lastUsedAt)}
           </small>
           <div>
             <button className={styles.btn} disabled={busy} onClick={() => onRevoke(l)}>
-              この鍵を止める
+              このキーを無効化
             </button>
           </div>
         </div>
       ))}
       {newKey ? (
         <div className={styles.importBox}>
-          <b>鍵（この画面を閉じると二度と表示されません）</b>
+          <b>接続キー（この画面を閉じると再表示できません）</b>
           <code className={styles.tokenBox}>{newKey}</code>
           <div className={styles.actions}>
-            <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newKey).then(() => notify("鍵をコピーしました"), () => {})}>
+            <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newKey).then(() => notify("接続キーをコピーしました"), () => {})}>
               コピー
             </button>
             <button className={styles.btn} onClick={onCloseKey}>
               閉じる
             </button>
           </div>
-          <p className={styles.hint}>各スクリプトの TOKEN に貼り付けてください。チャットやメールには貼らないでください。</p>
+          <p className={styles.hint}>各スクリプトの TOKEN に貼り付けてください。チャットやメールには貼り付けないでください。</p>
         </div>
       ) : (
         <div className={styles.actions}>
           <button className={styles.primary} disabled={busy} onClick={onCreate}>
-            {keys.length ? "鍵をもう1つ作る" : "鍵を作る"}
+            {keys.length ? "接続キーを追加発行" : "接続キーを発行"}
           </button>
         </div>
       )}
       <details className={styles.priceUrls}>
-        <summary>スクリプト プロパティに入れるもの</summary>
+        <summary>スクリプト プロパティの設定内容</summary>
         <ul className={styles.steps}>
           <li>
-            <code>TOKEN</code>：上で作った鍵（3つのスクリプトとも同じ鍵で構いません）
+            <code>TOKEN</code>：上で発行した接続キー（3つのスクリプトで同じキーを使えます）
           </li>
           <li>
             <code>RESERVE_URL</code>：問診票は <code>{api}/questionnaires</code>、同意書は <code>{api}/consent-templates</code>、料金表は <code>{api}/prices</code>
           </li>
           <li>
-            <code>BASIC_USER</code>・<code>BASIC_PASS</code>：LANE RESERVEをブラウザで開くときに聞かれる ID・パスワード
+            <code>BASIC_USER</code>・<code>BASIC_PASS</code>：LANE RESERVE をブラウザで開くときに求められる ID・パスワード
           </li>
-          <li>入れ終わったら、エディタで <code>setup</code> を1回実行します（自動で送る時刻の登録）。</li>
+          <li>設定後、エディタで <code>setup</code> を1回実行します（自動送信の時刻が登録されます）。</li>
         </ul>
-        <p className={styles.hint}>鍵が漏れたかもしれないときは「この鍵を止める」で止め、新しい鍵を作って各スクリプトに入れ直してください。</p>
+        <p className={styles.hint}>接続キーが漏れた可能性がある場合は「このキーを無効化」を押し、新しい接続キーを発行して各スクリプトに設定し直してください。</p>
       </details>
     </div>
   );

@@ -18,7 +18,7 @@ final class Store
         'name' => '氏名', 'kana' => 'フリガナ', 'nameAlt' => '別の表記', 'phone' => '電話', 'email' => 'メール', 'postalCode' => '郵便番号', 'address' => '住所', 'sex' => '性別',
         'chartNo' => '診察券番号', 'm3ChartNo' => 'M3カルテ番号', 'birthDate' => '生年月日', 'caution' => '注意事項あり', 'cautionNote' => '注意事項',
         'memo' => 'メモ', 'history' => '既往歴', 'medications' => '内服歴', 'questionnaireOther' => 'その他の問診票情報', 'lineUserId' => 'LINE紐付け',
-        'contactPref' => '連絡先の希望', 'reminderOptOut' => 'リマインド不要',
+        'contactPref' => 'リマインドの送信方法', 'reminderOptOut' => 'リマインドの自動配信',
     ];
     private const FILLABLE = ['kana', 'nameAlt', 'phone', 'email', 'postalCode', 'address', 'sex', 'birthDate', 'm3ChartNo'];
     public const MIN_ACTIVE_LANES = 1;
@@ -547,7 +547,7 @@ final class Store
         return ['current' => self::summarize(self::settingsData()), 'points' => $points];
     }
 
-    /** 設定（診療時間・レーン・メニュー・状態・スキンケア＆内服）を、指定した時点の状態に戻す */
+    /** 設定（診療時間・レーン・メニュー・状態・スキンケア・内服）を、指定した時点の状態に戻す */
     public static function restoreSettings(string $key, ?array $by = null): void
     {
         self::ensureBaseline();
@@ -1425,7 +1425,7 @@ final class Store
         // リマインドなどの連絡の受け取り先（auto は「LINE がつながっていれば LINE、なければメール」。既定なので保存しない）
         if (isset($input['contactPref'])) {
             if (!in_array($input['contactPref'], ['auto', 'line', 'email', 'none'], true)) {
-                throw new StoreError('invalid', '連絡先の希望は 自動・LINE・メール・送らない から選んでください');
+                throw new StoreError('invalid', 'リマインドの送信方法は 自動・LINE・メール・送信しない から選んでください');
             }
             $out['contactPref'] = $input['contactPref'] === 'auto' ? null : $input['contactPref'];
         }
@@ -1530,7 +1530,7 @@ final class Store
         }
         $type = self::sniffType($bytes);
         if (!$type || !isset(self::FILE_TYPES[$type])) {
-            throw new StoreError('invalid', '追加できるのは 写真（JPEG・PNG・WebP・HEIC）・PDF・Word です');
+            throw new StoreError('invalid', '追加できるのは写真（JPEG・PNG・WebP・HEIC）・PDF・Word のみです');
         }
         $id = 'f-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(4));
         $meta = ['id' => $id, 'patientId' => $patientId, 'date' => $input['date']];
@@ -1882,7 +1882,7 @@ final class Store
         }
         $type = self::sniffType($bytes);
         if (!$type || (self::FILE_TYPES[$type] ?? null) !== 'image') {
-            throw new StoreError('invalid', '受け取れるのは写真（JPEG・PNG・WebP・HEIC）だけです');
+            throw new StoreError('invalid', '受信できるのは写真（JPEG・PNG・WebP・HEIC）のみです');
         }
         $db = Db::i();
         $id = 'nv-' . substr(hash('sha256', $bytes), 0, 24);
@@ -1951,7 +1951,7 @@ final class Store
         }
         $p = self::patient($patientId);
         if (!empty($p['deleted'])) {
-            throw new StoreError('invalid', '削除された患者には結びつけられません');
+            throw new StoreError('invalid', '削除された患者には紐付けできません');
         }
         $meta = self::inboxToFile($item, $patientId, $by);
         $db->transaction(function () use ($db, $id, $meta, $item, $patientId) {
@@ -3284,12 +3284,12 @@ final class Store
     {
         $url = js_trim($input['url']);
         if ($url !== '' && !preg_match('#^(https://[^\s/]+|http://127\.0\.0\.1(:\d+)?)(/\S*)?$#', $url)) {
-            throw new StoreError('invalid', '読み込み元のアドレスは https:// で始まるものにしてください');
+            throw new StoreError('invalid', '読み込み元の URL は https:// で始まるものを入力してください');
         }
         $cur = self::priceSheetSource();
         $key = isset($input['key']) ? js_trim($input['key']) : ($cur['key'] ?? '');
         if ($url !== '' && $key === '') {
-            throw new StoreError('invalid', '合言葉（キー）を入れてください');
+            throw new StoreError('invalid', 'KEY を入力してください');
         }
         Db::i()->setMeta('priceSheetSource', $url !== '' ? ['url' => $url, 'key' => $key] : null);
         if ($by) {
@@ -3330,7 +3330,7 @@ final class Store
         try {
             $in = Schema::integrationPrices(json_decode($body, true, 32, JSON_THROW_ON_ERROR));
         } catch (Throwable) {
-            $note(false, 0, '合言葉が違うか、形が正しくありません');
+            $note(false, 0, 'KEY が違うか、形式が正しくありません');
             return;
         }
         self::receiveSheetPrices($in['sheet'], $in['items']);
@@ -3383,7 +3383,7 @@ final class Store
             throw new StoreError('not_found', '料金が見つかりません');
         }
         if ($cur['source'] !== 'manual') {
-            throw new StoreError('invalid', 'ホームページから取り込んだ料金は、ホームページで直してください');
+            throw new StoreError('invalid', 'ホームページから取り込んだ料金は、ホームページで修正してください');
         }
         return $cur;
     }
@@ -3524,7 +3524,7 @@ final class Store
         self::init();
         $t = self::getConsentTemplate($id);
         if (!self::isUploadedTemplate($t)) {
-            throw new StoreError('invalid', 'Googleドライブのひな形は、ドライブのフォルダから消してください');
+            throw new StoreError('invalid', 'Google ドライブのひな形は、ドライブのフォルダから削除してください');
         }
         Db::i()->put('consentTemplate', $id, [...$t, 'removed' => true]);
         if ($by) {
@@ -3537,7 +3537,7 @@ final class Store
     {
         $target = google_export_url($input);
         if (!$target) {
-            throw new StoreError('invalid', 'Googleスプレッドシートかドキュメントの共有リンクを入れてください');
+            throw new StoreError('invalid', 'Google スプレッドシートかドキュメントの共有リンクを入力してください');
         }
         $url = $target['url'];
         $denied = '読み込めませんでした。共有の設定を「リンクを知っている全員（閲覧者）」にしてください';
@@ -3574,7 +3574,7 @@ final class Store
             }
             return ['kind' => $target['kind'], 'text' => $body];
         }
-        throw new StoreError('invalid', '読み込めませんでした（転送が多すぎます）');
+        throw new StoreError('invalid', '読み込めませんでした（リダイレクトが多すぎます）');
     }
 
     public static function setConsentTemplateMenus(string $id, array $menuIds, ?array $by = null): array
@@ -3616,7 +3616,7 @@ final class Store
         self::init();
         $p = self::patient($patientId);
         if (!empty($p['deleted'])) {
-            throw new StoreError('invalid', '削除された患者には同意書を作れません');
+            throw new StoreError('invalid', '削除された患者には同意書を作成できません');
         }
         $t = self::getConsentTemplate($input['templateId']);
         $treatment = isset($input['treatment']) ? self::checkText('施術名', $input['treatment'], 120, false) : '';
@@ -3708,12 +3708,12 @@ final class Store
         $url = js_trim($input['url']);
         // https のみ（動作確認用に手元の 127.0.0.1 だけ http を許す）
         if ($url !== '' && !preg_match('#^(https://[^\s/]+|http://127\.0\.0\.1(:\d+)?)(/\S*)?$#', $url)) {
-            throw new StoreError('invalid', '読み込み元のアドレスは https:// で始まるものにしてください');
+            throw new StoreError('invalid', '読み込み元の URL は https:// で始まるものを入力してください');
         }
         $cur = self::consentSource();
         $key = isset($input['key']) ? js_trim($input['key']) : ($cur['key'] ?? '');
         if ($url !== '' && $key === '') {
-            throw new StoreError('invalid', '合言葉（キー）を入れてください');
+            throw new StoreError('invalid', 'KEY を入力してください');
         }
         Db::i()->setMeta('consentSource', $url !== '' ? ['url' => $url, 'key' => $key] : null);
         if ($by) {
@@ -3847,7 +3847,7 @@ final class Store
                 throw new StoreError('invalid', 'メニューが見つかりません');
             }
             if ($l['kind'] === 'product' && (empty($l['refId']) || !isset(self::products()[$l['refId']]))) {
-                throw new StoreError('invalid', 'スキンケア＆内服が見つかりません');
+                throw new StoreError('invalid', 'スキンケア・内服の商品が見つかりません');
             }
             $name = self::checkText('項目名', $l['name'], 120, true);
             $row = ['kind' => $l['kind']];
@@ -3866,7 +3866,7 @@ final class Store
             $total += $l['unitYen'] * $l['qty'];
         }
         if ($total < 0) {
-            throw new StoreError('invalid', '合計がマイナスになっています（割引が大きすぎます）');
+            throw new StoreError('invalid', '合計がマイナスです（割引が大きすぎます）');
         }
         if ($total > self::MAX_ESTIMATE_YEN) {
             throw new StoreError('invalid', '合計が大きすぎます');
@@ -3919,7 +3919,7 @@ final class Store
         $e = Db::i()->transaction(function () use ($patientId, $input, $by) {
             $p = self::patient($patientId);
             if (!empty($p['deleted'])) {
-                throw new StoreError('invalid', '削除された患者には見積書を作れません');
+                throw new StoreError('invalid', '削除された患者には見積書を作成できません');
             }
             if (!empty($input['reservationId'])) {
                 $r = Db::i()->get('reservation', $input['reservationId']);
@@ -4479,7 +4479,7 @@ final class Store
         self::init();
         $p = self::patient($patientId);
         if (!empty($p['deleted'])) {
-            throw new StoreError('invalid', '削除された患者にはカルテを書けません');
+            throw new StoreError('invalid', '削除された患者にはカルテを作成できません');
         }
         if (!empty($input['reservationId'])) {
             $r = Db::i()->get('reservation', $input['reservationId']);
@@ -4542,7 +4542,7 @@ final class Store
         self::init();
         $cur = self::liveChart($id);
         if (!$staff['canManage'] && ($cur['createdBy']['id'] ?? null) !== $staff['id']) {
-            throw new AuthError('forbidden', '書いた本人か、管理操作のできるスタッフだけが削除できます');
+            throw new AuthError('forbidden', '作成者本人か、管理操作を許可されたスタッフのみ削除できます');
         }
         if ($cur['version'] !== $version) {
             throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');

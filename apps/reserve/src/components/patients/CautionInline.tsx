@@ -54,7 +54,7 @@ export function CautionInline({ note, onSave }: { note?: string; onSave?: (text:
     <button
       type="button"
       className={note ? styles.textBtn : styles.add}
-      title="押すと注意事項を書き足し・直しできます"
+      title="押すと注意事項を編集できます"
       onClick={() => {
         setDraft(note ?? "");
         setEditing(true);

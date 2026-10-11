@@ -114,12 +114,6 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
             </span>
           </div>
 
-          <label>患者に見せる名前</label>
-          <input className={styles.input} value={publicName} onChange={(e) => setPublicName(e.target.value)} maxLength={40} placeholder={`空欄なら「${name || "メニュー名"}」`} aria-label="患者に見せる名前" />
-
-          <label>来院前の案内</label>
-          <textarea className={styles.input} rows={2} value={preVisitNote} onChange={(e) => setPreVisitNote(e.target.value)} maxLength={300} placeholder="例：当日はメイクを落としやすい状態でお越しください（リマインドに入ります）" aria-label="来院前の案内" style={{ fontFamily: "inherit" }} />
-
           <label>提供時間</label>
           <div>
             <div className={styles.inline}>
@@ -129,7 +123,7 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
               </label>
               <label className={styles.toggle}>
                 <input type="radio" checked={kind === "range"} onChange={() => setKind("range")} />
-                最小〜最大（予約ごとに決める）
+                範囲（予約ごとに指定）
               </label>
             </div>
             {kind === "fixed" ? (
@@ -185,7 +179,7 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             inputMode="numeric"
-            placeholder="空欄＝設定しない"
+            placeholder="空欄の場合は設定なし"
           />
 
           <label>同時予約数</label>
@@ -194,10 +188,10 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
             value={capacity}
             onChange={(e) => setCapacity(e.target.value)}
             inputMode="numeric"
-            placeholder="空欄＝設定しない"
+            placeholder="空欄の場合は設定なし"
           />
 
-          <label>行えるレーン</label>
+          <label>対応レーン</label>
           <div className={styles.inline}>
             {lanes.map((l) => (
               <label key={l.id} className={styles.toggle}>
@@ -213,11 +207,18 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
             ))}
           </div>
 
-          <label>予約の選択肢</label>
+          <label>予約時の選択肢</label>
           <label className={styles.toggle}>
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-            予約登録の選択肢に出す
+            予約登録の選択肢に表示する
           </label>
+
+          {/* リマインドで患者に送る内容（院内の略称を患者に見せないため） */}
+          <label>患者に送信する名前</label>
+          <input className={styles.input} value={publicName} onChange={(e) => setPublicName(e.target.value)} maxLength={40} placeholder={`空欄の場合は「${name || "メニュー名"}」`} aria-label="患者に送信する名前" />
+
+          <label>来院前のご案内</label>
+          <textarea className={styles.input} rows={2} value={preVisitNote} onChange={(e) => setPreVisitNote(e.target.value)} maxLength={300} placeholder="例：当日はメイクを落としやすい状態でお越しください" aria-label="来院前のご案内" style={{ fontFamily: "inherit" }} />
         </div>
 
         <div className={styles.actions}>

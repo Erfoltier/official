@@ -46,10 +46,9 @@ export function StaffTab({ notify, fail }: Props) {
   return (
     <section>
       <p className={styles.lead}>
-        スタッフごとにPINでログインし、予約や患者情報の変更は「誰が」行ったかが記録されます。
-        PINの変更・利用停止・役割の変更をすると、その人のログインは切れます。
-        「管理操作」にチェックがある人は、レーン・メニュー・スキンケア＆内服・料金表などの設定の変更や、予約の取り消し・見積書や同意書の控えの削除ができます
-        （最初は院長・管理者と受付だけ。院長・管理者は常にできます）。
+        スタッフごとに PIN でログインし、予約や患者情報を誰が変更したかが記録されます。PIN・役割の変更や利用停止をすると、そのスタッフはログアウトされます。
+        「管理操作」を許可したスタッフは、レーン・メニュー・スキンケア・内服・料金表などの設定変更、予約の取り消し、見積書・同意書の控えの削除ができます。
+        初期状態では院長・管理者と受付のみ許可されています（院長・管理者は常に可）。
       </p>
       <table className={styles.table}>
         <thead>
@@ -98,22 +97,22 @@ export function StaffTab({ notify, fail }: Props) {
                 </label>
               </td>
               <td>
-                <label className={styles.toggle} title="設定の変更・削除などができるか">
+                <label className={styles.toggle} title="設定の変更・削除などを許可するか">
                   <input
                     type="checkbox"
                     checked={s.canManage}
                     disabled={s.role === "admin"}
                     aria-label={`${s.name}の管理操作`}
-                    onChange={(e) => update(s.id, { canManage: e.target.checked }, e.target.checked ? "管理操作を許可しました" : "管理操作をできないようにしました")}
+                    onChange={(e) => update(s.id, { canManage: e.target.checked }, e.target.checked ? "管理操作を許可しました" : "管理操作の許可を取り消しました")}
                   />
-                  {s.role === "admin" ? "常に可" : s.canManage ? "できる" : "見るだけ"}
+                  {s.role === "admin" ? "常に可" : s.canManage ? "許可" : "閲覧のみ"}
                 </label>
               </td>
               <td>
                 <button
                   className={styles.btn}
                   onClick={() => {
-                    const next = window.prompt(`${s.name} の新しいPIN（6〜8桁の数字）`);
+                    const next = window.prompt(`${s.name} の新しい PIN を入力してください（6〜8桁の数字）`);
                     if (next) update(s.id, { pin: next }, "PINを変更しました");
                   }}
                 >
@@ -135,7 +134,9 @@ export function StaffTab({ notify, fail }: Props) {
                 ))}
               </select>
             </td>
-            <td>
+            <td />
+            <td />
+            <td style={{ display: "flex", gap: 6 }}>
               <input
                 className={styles.input}
                 value={pin}
@@ -143,10 +144,8 @@ export function StaffTab({ notify, fail }: Props) {
                 placeholder="初期PIN（6〜8桁）"
                 inputMode="numeric"
                 aria-label="初期PIN"
+                style={{ maxWidth: "11em" }}
               />
-            </td>
-            <td />
-            <td>
               <button
                 className={styles.primary}
                 disabled={!name.trim() || pin.length < 4}
@@ -206,7 +205,7 @@ export function AuditTab({ fail }: { fail: (err: unknown) => void }) {
             ))}
             {items?.length === 0 && (
               <tr>
-                <td colSpan={4}>まだ操作はありません</td>
+                <td colSpan={4}>操作の記録はありません</td>
               </tr>
             )}
           </tbody>

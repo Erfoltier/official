@@ -45,11 +45,9 @@ export function StagesTab({
   return (
     <section>
       <p className={styles.lead}>
-        予約の詳細（カルテ画面）に並ぶ「状態」のボタンです。押すと、カレンダーの予約枠の右端に色・文字・時刻で出ます。
-        「段階」は大まかな進み具合で、前日リマインドの対象や施術の回数の数え方に使います。
-        「自由入力」にした状態は、ほかの状態と一緒に出せる一言になります。
-        しばらく使わない状態は「予約詳細に出す」を外すと隠れ（あとで戻せます）、不要になった状態は「削除」できます
-        （削除しても、その状態を付けた過去の予約の表示は残ります）。
+        予約詳細に並ぶ「状態」ボタンです。押すと、カレンダーの予約枠の右端に色・名前・時刻が表示されます。
+        「段階」は大まかな進み具合で、リマインドの対象や施術回数の数え方に使います。「自由入力」にした状態は、ほかの状態と併せて表示できる一言メモになります。
+        使わない状態は「予約詳細に表示」を外すと非表示になります。削除しても、その状態を付けた過去の予約の表示は残ります。
       </p>
       <table className={styles.table}>
         <thead>
@@ -59,7 +57,7 @@ export function StagesTab({
             <th>色</th>
             <th>段階</th>
             <th>自由入力</th>
-            <th>予約詳細に出す</th>
+            <th>予約詳細に表示</th>
             <th />
             <th />
           </tr>
@@ -76,7 +74,7 @@ export function StagesTab({
               onDown={() => move(i, 1)}
               onSave={(body) => run(() => saveStage(s.id, body), "保存しました")}
               onDelete={() => {
-                if (!window.confirm(`状態「${s.label}」を削除しますか？\n（この状態を付けた過去の予約の表示は残ります）`)) return;
+                if (!window.confirm(`状態「${s.label}」を削除します。よろしいですか？\nこの状態を付けた過去の予約の表示は残ります。`)) return;
                 run(() => deleteStage(s.id), "削除しました");
               }}
             />
@@ -180,7 +178,7 @@ function StageRow(props: {
       <td>
         <label className={styles.toggle}>
           <input type="checkbox" checked={s.active} disabled={!canEdit} onChange={(e) => props.onSave({ active: e.target.checked })} />
-          {s.active ? "出す" : "しばらく出さない"}
+          {s.active ? "表示" : "非表示"}
         </label>
       </td>
       <td>
@@ -192,7 +190,7 @@ function StageRow(props: {
       </td>
       <td>
         {canEdit && s.id !== "stage-booked" && (
-          <button className={styles.btn} onClick={props.onDelete} title="不要になった状態を削除します（過去の予約の表示は残ります）">
+          <button className={styles.btn} onClick={props.onDelete} title="過去の予約の表示は残ります">
             削除
           </button>
         )}

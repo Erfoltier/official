@@ -11,14 +11,14 @@ function stamp(iso: string): string {
 function Summary({ s }: { s: RestoreSummary }) {
   return (
     <span className={styles.muted}>
-      {s.clinic}・レーン{s.lanes}・メニュー{s.menus}・状態{s.stages}・スキンケア/内服{s.products}
+      {s.clinic}・レーン{s.lanes}・メニュー{s.menus}・状態{s.stages}・スキンケア・内服{s.products}
     </span>
   );
 }
 
 /**
  * 設定の復元。設定を変えるたびに自動で記録しているので、誤って変えたときに前の状態へ戻せる。
- * 対象：診療時間・レーン・メニュー・状態・スキンケア＆内服（予約・患者・記録は対象外）
+ * 対象：診療時間・レーン・メニュー・状態・スキンケア・内服（予約・患者・記録は対象外）
  */
 const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)}MB`;
 
@@ -34,7 +34,7 @@ function StorageCard({ notify, fail }: { notify: (t: string) => void; fail: (e: 
   }, []);
   if (!st || !st.external) return null;
   const move = async () => {
-    if (!window.confirm(`データベースの中にある写真など ${st.inDb}件（${mb(st.inDbBytes)}）を、サーバーの中の別の場所へ移します。\n中身は暗号化したままで、外には送りません。移している間も使えます。始めますか？`)) return;
+    if (!window.confirm(`データベース内の写真など ${st.inDb}件（${mb(st.inDbBytes)}）を、サーバー内の別の場所へ移動します。\n暗号化したまま移動し、外部には送信しません。移動中も利用できます。よろしいですか？`)) return;
     setBusy("move");
     let total = 0;
     try {
@@ -45,7 +45,7 @@ function StorageCard({ notify, fail }: { notify: (t: string) => void; fail: (e: 
         setBusy(`move:${r.left}`);
         if (r.left === 0 || r.moved === 0) break;
       }
-      notify(`写真など ${total}件を移しました`);
+      notify(`写真など ${total}件を移動しました`);
     } catch (e) {
       fail(e);
     } finally {
@@ -53,12 +53,12 @@ function StorageCard({ notify, fail }: { notify: (t: string) => void; fail: (e: 
     }
   };
   const compact = async () => {
-    if (!window.confirm("データベースの空いた場所を詰めて小さくします。数十秒かかることがあり、その間は保存が待たされます。よろしいですか？")) return;
+    if (!window.confirm("データベースの空き領域を詰めて容量を減らします。数十秒かかることがあり、その間は保存が待機状態になります。よろしいですか？")) return;
     setBusy("compact");
     try {
       const r = await compactStorage();
       setSt(r.stats);
-      notify(`データベースを ${mb(r.before)} → ${mb(r.after)} にしました`);
+      notify(`データベースを ${mb(r.before)} → ${mb(r.after)} に縮小しました`);
     } catch (e) {
       fail(e);
     } finally {
@@ -67,23 +67,23 @@ function StorageCard({ notify, fail }: { notify: (t: string) => void; fail: (e: 
   };
   return (
     <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
-      <h3 className={styles.cardTitle}>写真などの置き場所</h3>
+      <h3 className={styles.cardTitle}>写真などの保存場所</h3>
       <p className={styles.hint}>
-        写真・PDF などはデータベースの外（サーバーの中の別の場所）に置き、控えを軽く速くしています。中身は暗号化したままです。上の「控え」には写真などは入りません（写真は消さない限り、そのまま残ります）。
+        写真・PDF などはデータベースの外（サーバー内の別の場所）に暗号化して保存し、控えを軽くしています。上の「データの控え」には写真などは含まれません（写真は削除しない限り残ります）。
       </p>
       <p className={styles.hint}>
-        データベースの外：{st.files}件（{mb(st.fileBytes)}）／ データベースの中：{st.inDb}件（{mb(st.inDbBytes)}）
-        {st.dbBytes !== null && `／ データベースの大きさ ${mb(st.dbBytes)}`}
+        データベース外：{st.files}件（{mb(st.fileBytes)}）／ データベース内：{st.inDb}件（{mb(st.inDbBytes)}）
+        {st.dbBytes !== null && `／ データベースの容量 ${mb(st.dbBytes)}`}
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         {st.inDb > 0 && (
           <button type="button" className={styles.primary} disabled={!!busy} onClick={() => void move()}>
-            {busy?.startsWith("move") ? `移しています…（残り ${busy.split(":")[1] ?? st.inDb}件）` : `前からある写真など ${st.inDb}件を外へ移す`}
+            {busy?.startsWith("move") ? `移動中…（残り ${busy.split(":")[1] ?? st.inDb}件）` : `既存の写真など ${st.inDb}件をデータベース外へ移動`}
           </button>
         )}
         {st.inDb === 0 && st.dbBytes !== null && (
           <button type="button" className={styles.btn} disabled={!!busy} onClick={() => void compact()}>
-            {busy === "compact" ? "小さくしています…" : "データベースを小さくする"}
+            {busy === "compact" ? "縮小中…" : "データベースを縮小"}
           </button>
         )}
       </div>
@@ -99,7 +99,7 @@ function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
     <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
       <h3 className={styles.cardTitle}>データの控え（バックアップ）</h3>
       <p className={styles.hint}>
-        予約・患者・記録・設定をまとめた控えを、サーバーの中に今すぐ作ります。大きな変更（取り込み・統合・一括の直し）の前に押してください。控えは外に送らず、サーバーの中にだけ置きます。
+        予約・患者・記録・設定をまとめた控えを、サーバー内に作成します。取り込み・統合・一括修正などの大きな変更の前に作成してください。控えは外部に送信しません。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <button
@@ -107,12 +107,12 @@ function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
           className={styles.primary}
           disabled={busy}
           onClick={async () => {
-            if (!window.confirm("いまのデータの控えを作ります。少し時間がかかることがあります。よろしいですか？")) return;
+            if (!window.confirm("現在のデータの控えを作成します。少し時間がかかることがあります。よろしいですか？")) return;
             setBusy(true);
             try {
               const r = await createBackup();
               setLast({ ...r, at: new Date().toISOString() });
-              notify(`控えを作りました（${(r.bytes / 1024 / 1024).toFixed(1)}MB・確認 ${r.integrity}）`);
+              notify(`控えを作成しました（${(r.bytes / 1024 / 1024).toFixed(1)}MB・整合性チェック ${r.integrity}）`);
             } catch (e) {
               fail(e);
             } finally {
@@ -120,12 +120,12 @@ function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
             }
           }}
         >
-          {busy ? "控えを作っています…" : "今すぐ控えを取る"}
+          {busy ? "作成中…" : "今すぐ控えを作成"}
         </button>
       </div>
       {last && (
         <p className={styles.hint}>
-          {stamp(last.at)} に作成：{last.file}（{(last.bytes / 1024 / 1024).toFixed(1)}MB・データの確認 {last.integrity}）
+          {stamp(last.at)} に作成：{last.file}（{(last.bytes / 1024 / 1024).toFixed(1)}MB・整合性チェック {last.integrity}）
         </p>
       )}
     </div>
@@ -149,21 +149,20 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
   return (
     <section>
       <BackupCard notify={notify} fail={fail} />
-      <StorageCard notify={notify} fail={fail} />
+      <h3 className={styles.cardTitle}>設定の復元</h3>
       <p className={styles.lead}>
-        誤って設定を変えてしまったときに、前の状態へ戻せます。設定を変えるたびに自動で記録しています。
-        対象は 診療時間・レーン・メニュー・状態・スキンケア＆内服 です（予約・患者・施術歴は変わりません）。
-        あとから作ったレーンやメニューは消さずに隠すので、それを使った予約もそのまま残ります。
-        戻す直前の状態も記録されるので、戻したあとで「1日前」などからやり直すこともできます。
+        誤って設定を変更した場合に、以前の状態へ戻せます。設定は変更のたびに自動で記録されます。
+        対象は診療時間・レーン・メニュー・状態・スキンケア・内服で、予約・患者・施術歴は変わりません。
+        戻した時点より後に作成したレーンやメニューは削除せず非表示にするため、それを使った予約も残ります。戻す直前の状態も記録されるので、やり直しもできます。
       </p>
       <p>
-        いまの設定：<Summary s={data.current} />
+        現在の設定：<Summary s={data.current} />
       </p>
       <table className={styles.table}>
         <thead>
           <tr>
             <th>戻す時点</th>
-            <th>その時点で有効だった設定</th>
+            <th>その時点の設定</th>
             <th>内容</th>
             <th />
           </tr>
@@ -180,10 +179,10 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
                 ) : p.at ? (
                   <>
                     {stamp(p.at)} の変更後
-                    {p.oldest && <div className={styles.muted}>（これより前の記録はありません）</div>}
+                    {p.oldest && <div className={styles.muted}>これより前の記録はありません</div>}
                   </>
                 ) : (
-                  <span>記録を始めた時点の設定（これより前の記録はありません）</span>
+                  <span>記録開始時点の設定（これより前の記録はありません）</span>
                 )}
               </td>
               <td>{p.summary && <Summary s={p.summary} />}</td>
@@ -192,7 +191,7 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
                   className={styles.btn}
                   disabled={!p.available || busy !== null}
                   onClick={async () => {
-                    if (!window.confirm(`設定を「${p.label}」の状態に戻しますか？\n（いまの設定も記録されるので、あとで戻し直せます）`)) return;
+                    if (!window.confirm(`設定を「${p.label}」の状態に戻します。よろしいですか？\n現在の設定も記録されるため、後から元に戻せます。`)) return;
                     setBusy(p.key);
                     try {
                       setData(await restoreSettings(p.key));
@@ -205,13 +204,16 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
                     }
                   }}
                 >
-                  {busy === p.key ? "戻しています…" : "この時点に戻す"}
+                  {busy === p.key ? "復元中…" : "この時点に戻す"}
                 </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <div style={{ marginTop: 16 }}>
+        <StorageCard notify={notify} fail={fail} />
+      </div>
     </section>
   );
 }

@@ -120,7 +120,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   const applyRequest = async (text: string = pasteText) => {
     const r = parseBookingRequest(text);
     if (!r.requestId && !r.name && !r.phone) {
-      setPasteNote("予約申請の文面を読み取れませんでした（「項目名：内容」の形の文面を貼り付けてください）");
+      setPasteNote("予約申請の文面を読み取れませんでした。「項目名：内容」の形式の文面を貼り付けてください");
       return;
     }
     setParsed(r);
@@ -147,7 +147,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
     } else {
       setPatient(null);
       setNewPatient({ name: "", kana: "", nameAlt: "", phone: "", m3ChartNo: "", birthDate: "", ...fromRequest(r) });
-      notes.push("新しい患者として入力しました。内容を確かめて登録してください");
+      notes.push("新しい患者として入力しました。内容を確認して登録してください");
     }
     setPasteNote(notes.join("\n"));
     setPasteOpen(false);
@@ -165,7 +165,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
   const submit = async () => {
     setError(null);
     if (requestId && !REQUEST_ID_RE.test(requestId)) return setError("予約申請IDは英数字・ハイフンで入力してください");
-    if (!patient && !newPatient) return setError("患者を選ぶか、新しい患者として登録してください");
+    if (!patient && !newPatient) return setError("患者を選ぶか、新しい患者を入力してください");
     if (selectedMenus.length === 0) return setError("メニューを選んでください");
     if (start + dur > clinic.dayEndMin) return setError("診療時間を超えています");
     setSaving(true);
@@ -437,7 +437,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
           </div>
           {onMenusChanged && (
             <button type="button" className={styles.menuManageBtn} onClick={() => setManageMenus(true)}>
-              ⚙ メニューの追加・削除
+              ⚙ メニューの追加・編集
             </button>
           )}
           {manageMenus && onMenusChanged && (

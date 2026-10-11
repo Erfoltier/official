@@ -139,7 +139,7 @@ final class Intake
     public static function mark(string $rid, ?string $action, array $by): array
     {
         if (!preg_match(self::ID_RE, $rid)) {
-            throw new StoreError('invalid', '予約申請IDの形が正しくありません');
+            throw new StoreError('invalid', '予約申請IDの形式が正しくありません');
         }
         $h = self::handled();
         if ($action === null) {

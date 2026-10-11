@@ -45,7 +45,7 @@ export function MenuManagerDialog({ onClose, onChanged }: { onClose: () => void;
   const list = (menus ?? []).filter((m) => !key || searchKey(`${m.name}${m.abbr}`).includes(key));
 
   const remove = async (m: Menu) => {
-    if (!window.confirm(`「${m.name}」を削除しますか？\n予約登録の選択肢から消えます（これまでの予約の表示はそのまま残ります）`)) return;
+    if (!window.confirm(`「${m.name}」を削除します。よろしいですか？\n予約登録の選択肢から消えます。これまでの予約の表示は残ります。`)) return;
     try {
       await deleteMenu(m.id);
       setMessage({ text: `「${m.name}」を削除しました` });
@@ -67,10 +67,10 @@ export function MenuManagerDialog({ onClose, onChanged }: { onClose: () => void;
         onClose();
       }}
       onCancel={(e) => e.stopPropagation()}
-      aria-label="メニューの追加・削除"
+      aria-label="メニューの追加・編集・削除"
     >
       <div className={styles.managerHead}>
-        <h2>メニューの追加・削除</h2>
+        <h2>メニューの追加・編集・削除</h2>
         <button type="button" className={styles.btn} onClick={() => ref.current?.close()}>
           閉じる
         </button>
@@ -90,13 +90,13 @@ export function MenuManagerDialog({ onClose, onChanged }: { onClose: () => void;
         {menus === null && <p className={styles.muted}>読み込み中…</p>}
         {list.map((m) => (
           <div key={m.id} className={styles.managerRow} data-inactive={!m.active || undefined}>
-            <button type="button" className={styles.nameBtn} onClick={() => setEditing(m)} title="押すと変更">
+            <button type="button" className={styles.nameBtn} onClick={() => setEditing(m)} title="押すと編集">
               <span className={styles.swatch} style={{ background: m.color }} />
               {m.name}
               <small className={styles.muted}>
                 {" "}
                 {durationLabel(m.duration)}・{m.laneIds.length === 0 ? "すべてのレーン" : m.laneIds.map((id) => laneName.get(id) ?? "?").join("・")}
-                {!m.active && "・選択肢に出さない"}
+                {!m.active && "・非表示"}
               </small>
             </button>
             <button type="button" className={styles.btn} onClick={() => remove(m)} aria-label={`${m.name}を削除`}>

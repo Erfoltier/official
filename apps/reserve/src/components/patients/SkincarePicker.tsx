@@ -10,7 +10,7 @@ const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every
 const tidy = (s: string) => s.trim().replace(/\s+/g, " ").slice(0, 60);
 
 /**
- * スキンケア＆内服を選ぶ：最近使ったものだけをボタンで出し、ほかは検索か「すべての商品から選ぶ」の一覧から。
+ * スキンケア・内服を選ぶ：最近使ったものだけをボタンで出し、ほかは検索か「すべての商品から選ぶ」の一覧から。
  * 一覧にないものは名前をそのまま入れて追加できる。
  * この端末で最近選んだもの（商品名だけ。患者の情報は入れない）は端末に覚えておく。
  */
@@ -83,7 +83,7 @@ export function SkincarePicker({
         </button>
         {previous.length > 0 && (
           <button type="button" className={styles.smallBtn} onClick={() => onChange([...new Set([...value, ...previous])])} title={previous.join("、")}>
-            前回と同じ内容を入れる
+            前回と同じ内容を入力
           </button>
         )}
       </div>
@@ -148,7 +148,7 @@ function AllProductsDialog({ options, value, onToggle, onClose }: { options: Ski
       </div>
       <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="名前・分類で検索" aria-label="商品を検索" autoFocus />
       <div className={styles.allBody}>
-        {groups.length === 0 && <p className={styles.muted}>見つかりません。閉じて、名前を入れて自由入力で追加できます。</p>}
+        {groups.length === 0 && <p className={styles.muted}>見つかりません。閉じてから名前を入力すると、自由入力で追加できます。</p>}
         {groups.map(([g, list]) => (
           <section key={g}>
             <h4>{g}</h4>

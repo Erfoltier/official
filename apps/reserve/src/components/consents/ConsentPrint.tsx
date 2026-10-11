@@ -31,7 +31,7 @@ export function ConsentPrint({ id }: { id: string }) {
       <style>{`@page { size: A4 portrait; margin: ${margin}; }`}</style>
       <div className={styles.printBar}>
         <button type="button" className={styles.primaryBtn} onClick={() => window.print()}>
-          🖨 印刷する
+          🖨 印刷
         </button>
         <button type="button" className={styles.btn} onClick={() => window.close()}>
           閉じる

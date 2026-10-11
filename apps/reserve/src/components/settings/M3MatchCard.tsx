@@ -34,7 +34,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
     try {
       const all = parseCsv(decodeCsv(await f.arrayBuffer()));
       const [header, ...rows] = all;
-      if (!header || rows.length === 0) throw new Error("CSV の中身が読めませんでした");
+      if (!header || rows.length === 0) throw new Error("CSV の内容を読み込めませんでした");
       setFile({ name: f.name, header, rows });
       setCol(guessColumns(header));
     } catch (e) {
@@ -59,7 +59,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
 
   const apply = async () => {
     if (!result?.fills.length) return;
-    if (!window.confirm(`${result.fills.length}名の氏名に漢字を入れます。先にサーバーで控え（バックアップ）を取ってから書き換えます。よろしいですか？`)) return;
+    if (!window.confirm(`${result.fills.length}名の氏名に漢字を反映します。書き換えの前に、サーバーで控え（バックアップ）を作成します。よろしいですか？`)) return;
     const items = result.fills.map(({ before: _before, ...x }) => x);
     const p = { done: 0, total: items.length, updated: 0, skipped: 0, finished: false };
     setBusy(true);
@@ -74,7 +74,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
         setProgress({ ...p });
       }
       setProgress({ ...p, finished: true });
-      props.notify(`${p.updated}名の氏名に漢字を入れました（入れなかった ${p.skipped}名）`);
+      props.notify(`${p.updated}名の氏名に漢字を反映しました（未反映 ${p.skipped}名）`);
       setResult(null);
       setFile(null);
     } catch (e) {
@@ -87,7 +87,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
 
   const select = (value: number, onChange: (v: number) => void) => (
     <select className={styles.input} value={value} onChange={(e) => onChange(Number(e.target.value))}>
-      <option value={-1}>（使わない）</option>
+      <option value={-1}>（使用しない）</option>
       {file!.header.map((h, i) => (
         <option key={i} value={i}>
           {h || `${i + 1}列目`}
@@ -98,24 +98,24 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
 
   return (
     <div className={styles.importBox}>
-      <h3>電子カルテなどの患者一覧（CSV）と照合し不足情報を補う</h3>
+      <h3>電子カルテの患者一覧（CSV）で氏名の漢字を補完</h3>
       <p className={styles.hint}>
-        予約システムなどからカタカナだけで入った患者に、電子カルテ（M3 など、ソフトは問いません）から書き出した患者一覧の漢字の氏名を入れます。選んだ CSV はこのパソコンのブラウザの中だけで読み、ファイルそのものはどこにも送りません。
-        サーバーへ送るのは、照合できた患者の分（漢字の氏名など）だけです。
+        予約システムなどからカタカナのみで登録された患者に、電子カルテ（M3 など）から書き出した患者一覧の漢字の氏名を反映します。CSV はこのブラウザ内でのみ読み込み、ファイル自体は送信しません。
+        サーバーに送るのは、照合できた患者の情報（漢字の氏名など）のみです。
       </p>
       <p className={styles.hint}>
-        決まり：フリガナ・生年月日・電話番号・カルテ番号のうち 2 つ以上が合い、候補が 1 人に決まった人だけ。書き換えるのはカタカナだけの氏名と、空いている欄だけです（もとのカタカナはフリガナに残します）。反映の前にサーバーで控えを取ります。
+        照合条件：フリガナ・生年月日・電話番号・カルテ番号のうち2つ以上が一致し、候補が1人に絞れた患者のみ反映します。書き換えるのはカタカナのみの氏名と空欄だけで、元のカタカナはフリガナに残します。反映の前にサーバーで控えを作成します。
       </p>
       <div className={styles.actions}>
         <label className={styles.btn}>
-          {file ? `選び直す（${file.name}・${file.rows.length.toLocaleString()}件）` : "患者一覧の CSV を選ぶ"}
+          {file ? `選び直す（${file.name}・${file.rows.length.toLocaleString()}件）` : "患者一覧の CSV を選択"}
           <input type="file" accept=".csv,text/csv" hidden disabled={busy} onChange={(e) => pick(e.target.files?.[0])} />
         </label>
       </div>
 
       {file && col && (
         <>
-          <p className={styles.hint}>列の当てはめ（違っていれば選び直してください）</p>
+          <p className={styles.hint}>列の対応（違う場合は選び直してください）</p>
           <div className={styles.m3Cols}>
             {FIELDS.map((f) => (
               <label key={f.key}>
@@ -136,7 +136,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
           </div>
           <div className={styles.actions}>
             <button className={styles.btn} disabled={busy || col.name < 0} onClick={run}>
-              照合する（まだ書き換えません）
+              照合（まだ書き換えません）
             </button>
           </div>
         </>
@@ -146,16 +146,16 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
         <div className={styles.priceStatus} role="status">
           {progress.error ? (
             <span>
-              途中で止まりました（{progress.done.toLocaleString()} / {progress.total.toLocaleString()}名まで送信・漢字を入れた {progress.updated.toLocaleString()}名）：{progress.error}
-              。もう一度 CSV を選んで照合すると、残りの人だけが出ます。
+              途中で中断しました（{progress.done.toLocaleString()} / {progress.total.toLocaleString()}名まで送信、反映済 {progress.updated.toLocaleString()}名）：{progress.error}
+              。もう一度 CSV を選んで照合すると、残りの患者だけが表示されます。
             </span>
           ) : progress.finished ? (
             <span>
-              反映が終わりました：漢字を入れた <b>{progress.updated.toLocaleString()}名</b>／入れなかった {progress.skipped.toLocaleString()}名
+              反映が完了しました：反映済 <b>{progress.updated.toLocaleString()}名</b>／未反映 {progress.skipped.toLocaleString()}名
             </span>
           ) : (
             <span>
-              {progress.done === 0 ? "サーバーで控え（バックアップ）を取っています…" : "反映しています…"} {progress.done.toLocaleString()} / {progress.total.toLocaleString()}名
+              {progress.done === 0 ? "サーバーで控え（バックアップ）を作成中…" : "反映中…"} {progress.done.toLocaleString()} / {progress.total.toLocaleString()}名
               <progress max={progress.total} value={progress.done} />
             </span>
           )}
@@ -165,13 +165,13 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
       {result && (
         <>
           <div className={styles.priceStatus}>
-            氏名がカタカナだけの患者 {result.total.toLocaleString()}名 → 漢字を入れられる <b>{result.fills.length.toLocaleString()}名</b>／候補が2人以上 {result.ambiguous.toLocaleString()}名／見つからない{" "}
+            氏名がカタカナのみの患者 {result.total.toLocaleString()}名 → 反映できる <b>{result.fills.length.toLocaleString()}名</b>／候補が2人以上 {result.ambiguous.toLocaleString()}名／該当なし{" "}
             {result.notFound.toLocaleString()}名
           </div>
           {result.fills.length > 0 && (
             <>
               <details className={styles.priceUrls}>
-                <summary>入れる内容を確かめる（最初の50名）</summary>
+                <summary>反映内容の確認（最初の50名）</summary>
                 <ul className={styles.m3Preview}>
                   {result.fills.slice(0, 50).map((f) => (
                     <li key={f.id}>
@@ -182,7 +182,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
               </details>
               <div className={styles.actions}>
                 <button className={styles.primary} disabled={busy} onClick={apply}>
-                  {busy && progress ? "反映しています…" : `${result.fills.length.toLocaleString()}名に反映する`}
+                  {busy && progress ? "反映中…" : `${result.fills.length.toLocaleString()}名に反映`}
                 </button>
               </div>
             </>

@@ -88,17 +88,17 @@ final class Reminder
         }
         if (array_key_exists('rounds', $in)) {
             if (!is_array($in['rounds']) || count($in['rounds']) > 3) {
-                throw new StoreError('invalid', '送る回は3回までにしてください');
+                throw new StoreError('invalid', '送信時刻は3回までにしてください');
             }
             $rounds = [];
             foreach ($in['rounds'] as $r) {
                 $days = is_array($r) && is_int($r['daysBefore'] ?? null) ? $r['daysBefore'] : -1;
                 if ($days < 0 || $days > 14) {
-                    throw new StoreError('invalid', '何日前に送るかは 当日〜14日前 から選んでください');
+                    throw new StoreError('invalid', '送信日は当日〜14日前から選んでください');
                 }
                 $t = $time($r['time'] ?? null, '送る時刻');
                 if ($t === null || $t < '06:00' || $t > '21:00') {
-                    throw new StoreError('invalid', '送る時刻は 6:00〜21:00 のあいだにしてください（夜遅く・早朝に届かないように）');
+                    throw new StoreError('invalid', '送信時刻は 6:00〜21:00 の間で設定してください');
                 }
                 $rounds[$days . '@' . $t] = ['daysBefore' => $days, 'time' => $t];
             }
@@ -111,11 +111,11 @@ final class Reminder
                 $next[$k] = (bool) $in[$k];
             }
         }
-        foreach (['fromEmail' => '送信元のメール', 'replyTo' => '返信先のメール'] as $k => $label) {
+        foreach (['fromEmail' => '送信元メールアドレス', 'replyTo' => '返信先メールアドレス'] as $k => $label) {
             if (array_key_exists($k, $in)) {
                 $v = trim((string) $in[$k]);
                 if ($v !== '' && !filter_var($v, FILTER_VALIDATE_EMAIL)) {
-                    throw new StoreError('invalid', "{$label}の形が正しくありません");
+                    throw new StoreError('invalid', "{$label}の形式が正しくありません");
                 }
                 $next[$k] = $v;
             }
@@ -126,7 +126,7 @@ final class Reminder
         if (array_key_exists('pauseUntil', $in)) {
             $d = trim((string) $in['pauseUntil']);
             if ($d !== '' && !is_date_string($d)) {
-                throw new StoreError('invalid', '自動送信を止める日が正しくありません');
+                throw new StoreError('invalid', '自動配信の一時停止日が正しくありません');
             }
             $next['pauseUntil'] = $d;
         }
@@ -148,7 +148,7 @@ final class Reminder
         if (array_key_exists('lineToken', $in)) {
             $tok = trim((string) $in['lineToken']);
             if ($tok !== '' && !preg_match('/^[A-Za-z0-9+\/=._-]{20,1000}$/', $tok)) {
-                throw new StoreError('invalid', 'LINE のチャネルアクセストークンの形が正しくありません');
+                throw new StoreError('invalid', 'LINE チャネルアクセストークンの形式が正しくありません');
             }
             Db::i()->setMeta('reminderSecrets', ['lineToken' => $tok]);
             Auth::audit($by, $tok === '' ? 'リマインドの LINE チャネルアクセストークンを削除' : 'リマインドの LINE チャネルアクセストークンを保存');
@@ -308,7 +308,7 @@ final class Reminder
             $why = [];
             if (!empty($p['reminderOptOut']) || $pref === 'none') {
                 $ch = 'none';
-                $why[] = 'リマインド不要の患者';
+                $why[] = '送信不要の患者';
             } else {
                 $order = $pref === 'email' ? ['email', 'line'] : ['line', 'email'];
                 $ch = 'none';
@@ -319,12 +319,12 @@ final class Reminder
                     }
                 }
                 if ($ch !== 'line') {
-                    $why[] = $lineTo === '' ? (!empty($v['requestNotFound']) ? '申請IDの LINE が見つからない' : (!empty($v['requestMismatch']) ? '申請の名前・生年月日が患者と合わない' : 'LINE未連携'))
-                        : (!$s['useLine'] ? 'LINE で送る設定が「送らない」' : (self::lineToken() === '' ? 'LINE チャネルアクセストークン未設定' : ($lineLow ? 'LINE の残り通数が少ない' : '')));
+                    $why[] = $lineTo === '' ? (!empty($v['requestNotFound']) ? '予約申請IDの LINE が見つからない' : (!empty($v['requestMismatch']) ? '申請の氏名・生年月日が患者と不一致' : 'LINE未連携'))
+                        : (!$s['useLine'] ? 'LINE で送信「しない」設定' : (self::lineToken() === '' ? 'LINE チャネルアクセストークン未設定' : ($lineLow ? 'LINE の残り通数不足' : '')));
                 }
                 if ($ch !== 'email') {
-                    $why[] = !$emailOk ? ($email === '' ? 'メールアドレス未回答' : 'メールアドレスの形が正しくない')
-                        : (!$s['useEmail'] ? 'メールで送る設定が「送らない」' : ($s['fromEmail'] === '' ? '送信元メールアドレス未設定' : ''));
+                    $why[] = !$emailOk ? ($email === '' ? 'メールアドレス未回答' : 'メールアドレスの形式が不正')
+                        : (!$s['useEmail'] ? 'メールで送信「しない」設定' : ($s['fromEmail'] === '' ? '送信元メールアドレス未設定' : ''));
                 }
             }
             // 送信状況は予約に書いた結果から：送信済・送信失敗、それ以外（送らなかった・まだ）は未送信
@@ -367,7 +367,7 @@ final class Reminder
             }
         }
         if ($visit === null) {
-            throw new StoreError('invalid', 'キャンセル・承認待ちの予約には送れません');
+            throw new StoreError('invalid', 'キャンセル・承認待ちの予約には送信できません');
         }
         $quota = ['remaining' => null, 'checked' => false];
         $days = (int) (new DateTimeImmutable(now_in_clinic()['date'], jst()))->diff(new DateTimeImmutable($date, jst()))->format('%r%a');
@@ -376,7 +376,7 @@ final class Reminder
         $res = self::deliver($visit, $round, $quota, true);
         Auth::audit($by, 'リマインドを手動で送信（' . ($res['channel'] ?? 'なし') . '・' . $res['status'] . '）', $r['patientId']);
         if ($res['status'] !== 'sent') {
-            $detail = ($res['reason'] ?? '') === 'no_contact' && self::$lastWhy ? '送り先がありません：' . implode('／', array_unique(self::$lastWhy)) : self::reasonText($res['reason'] ?? '');
+            $detail = ($res['reason'] ?? '') === 'no_contact' && self::$lastWhy ? '送信先がありません：' . implode('／', array_unique(self::$lastWhy)) : self::reasonText($res['reason'] ?? '');
             throw new StoreError('invalid', $detail);
         }
         return $res;
@@ -385,15 +385,15 @@ final class Reminder
     public static function reasonText(string $reason): string
     {
         return match ($reason) {
-            'optout' => 'この患者は「リマインド不要」です',
-            'no_contact' => '送り先がありません（LINE のつながり・メールアドレス・送信の設定を確かめてください）',
-            'line_quota' => 'LINE の今月の残り通数が少ないため送りませんでした',
-            'line_token' => 'LINE にチャネルアクセストークンを拒否されました（Messaging API チャネルの「チャネルアクセストークン（長期）」か、再発行で古くなっていないかを確かめてください）',
-            'line_400' => 'LINE に送り先を断られました（予約フォームと公式アカウントが同じプロバイダーか、相手が公式アカウントを友だち追加しているかを確かめてください）',
-            'line_403' => 'LINE にこの送り方を許可されていません（チャネルの設定を確かめてください）',
+            'optout' => 'この患者は自動配信しない設定です',
+            'no_contact' => '送信先がありません（LINE 連携・メールアドレス・送信方法の設定を確認してください）',
+            'line_quota' => 'LINE の今月の残り通数が不足しているため、送信しませんでした',
+            'line_token' => 'LINE チャネルアクセストークンが拒否されました（Messaging API チャネルの「チャネルアクセストークン（長期）」であるか、再発行で無効になっていないかを確認してください）',
+            'line_400' => 'LINE で送信先が拒否されました（予約フォームと公式アカウントが同じプロバイダーか、患者が公式アカウントを友だち追加しているかを確認してください）',
+            'line_403' => 'LINE でこの送信方法が許可されていません（チャネルの設定を確認してください）',
             'line_limit' => 'LINE の送信上限に達しました（今月の無料通数を使い切った可能性があります）',
-            'request_mismatch' => '予約申請の名前・生年月日がこの患者と合わないため、LINE では送りませんでした（申請IDを確かめてください）',
-            default => '送れませんでした' . ($reason !== '' ? "（{$reason}）" : ''),
+            'request_mismatch' => '予約申請の氏名・生年月日がこの患者と一致しないため、LINE では送信しませんでした（予約申請IDを確認してください）',
+            default => '送信できませんでした' . ($reason !== '' ? "（{$reason}）" : ''),
         };
     }
 
@@ -414,10 +414,10 @@ final class Reminder
         foreach ($order as $ch) {
             if ($ch === 'line') {
                 if (!$s['useLine'] || self::lineToken() === '' || $lineTo === '') {
-                    $why[] = !$s['useLine'] ? 'LINE で送る設定が「送らない」'
+                    $why[] = !$s['useLine'] ? 'LINE で送信「しない」設定'
                         : (self::lineToken() === '' ? 'LINE チャネルアクセストークン未設定'
                         : (!empty($v['requestNotFound']) ? '予約申請ID（申請IDの欄・メモ）の LINE が見つからない'
-                        : (!empty($v['requestMismatch']) ? '予約申請の名前・生年月日が患者と合わない' : 'LINE未連携（申請IDなし）')));
+                        : (!empty($v['requestMismatch']) ? '予約申請の氏名・生年月日が患者と不一致' : 'LINE未連携（申請IDなし）')));
                     continue;
                 }
                 if (!$quota['checked']) {
@@ -442,8 +442,8 @@ final class Reminder
                 $lastError = $err;
             } else {
                 if (!$s['useEmail'] || $s['fromEmail'] === '' || empty($p['email']) || !filter_var($p['email'], FILTER_VALIDATE_EMAIL)) {
-                    $why[] = !$s['useEmail'] ? 'メールで送る設定が「送らない」'
-                        : ($s['fromEmail'] === '' ? '送信元メールアドレス未設定' : (empty($p['email']) ? 'メールアドレス未回答' : '患者のメールアドレスの形が正しくない'));
+                    $why[] = !$s['useEmail'] ? 'メールで送信「しない」設定'
+                        : ($s['fromEmail'] === '' ? '送信元メールアドレス未設定' : (empty($p['email']) ? 'メールアドレス未回答' : '患者のメールアドレスの形式が不正'));
                     continue;
                 }
                 $m = self::compose($v, $round, 'email');

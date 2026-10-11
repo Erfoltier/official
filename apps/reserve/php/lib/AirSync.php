@@ -60,13 +60,13 @@ final class AirSync
         }
         if (array_key_exists('time', $in)) {
             if (!is_string($in['time']) || !preg_match('/^(0[5-9]|1[0-6]):[0-5]\d$/', $in['time'])) {
-                throw new StoreError('invalid', '取り込む時刻は 5:00〜16:59 で入れてください（18時のリマインドより前）');
+                throw new StoreError('invalid', '取り込み時刻は 5:00〜16:59 の間で設定してください（リマインドの送信時刻より前）');
             }
             $s['time'] = $in['time'];
         }
         if (array_key_exists('groupId', $in)) {
             if (!is_string($in['groupId']) || !preg_match('/^[A-Za-z0-9]{1,20}$/', $in['groupId'])) {
-                throw new StoreError('invalid', 'カレンダー番号の形が正しくありません');
+                throw new StoreError('invalid', 'カレンダー番号の形式が正しくありません');
             }
             $s['groupId'] = $in['groupId'];
         }
@@ -79,7 +79,7 @@ final class AirSync
                 Auth::audit($by, 'Airリザーブのログイン情報を消去');
             } else {
                 if ($id === '' || $pw === '' || mb_strlen($id) > 100 || strlen($pw) > 200) {
-                    throw new StoreError('invalid', 'ログイン ID とパスワードを両方入れてください');
+                    throw new StoreError('invalid', 'ログイン ID とパスワードを両方入力してください');
                 }
                 Db::i()->setMeta('airSyncSecrets', ['id' => $id, 'password' => $pw]);
                 Auth::audit($by, 'Airリザーブのログイン情報を保存');
@@ -158,7 +158,7 @@ final class AirSync
         $today = now_in_clinic()['date'];
         $max = (new DateTimeImmutable($today, jst()))->modify('+60 day')->format('Y-m-d');
         if ($date < $today || $date > $max) {
-            throw new StoreError('invalid', '取り込めるのは今日から60日先までです');
+            throw new StoreError('invalid', '取り込めるのは今日から60日後までです');
         }
         $last = Db::i()->meta('airSyncLast');
         $last = is_array($last) ? $last : [];
@@ -200,13 +200,13 @@ final class AirSync
     {
         $sec = self::secrets();
         if (($sec['id'] ?? '') === '' || ($sec['password'] ?? '') === '') {
-            throw new StoreError('invalid', 'Airリザーブのログイン情報が入っていません');
+            throw new StoreError('invalid', 'Airリザーブのログイン情報が設定されていません');
         }
         self::$curl = null;
         self::login($sec['id'], $sec['password']);
         $csrf = self::jsonp(self::req('GET', self::BASE . '/stateful/usestate/list', ['X-Requested-With: XMLHttpRequest'])[1])['authCsrfDto']['token'] ?? '';
         if ($csrf === '') {
-            throw new StoreError('invalid', 'Airリザーブにログインできませんでした（ID・パスワードを確かめてください）');
+            throw new StoreError('invalid', 'Airリザーブにログインできませんでした（ID・パスワードを確認してください）');
         }
         $body = json_encode(['bookingFromDt' => str_replace('-', '', $from) . '000000', 'bookingToDt' => str_replace('-', '', $to) . '240000', 'resrcSchdlGrpId' => self::settings()['groupId']]);
         [$code, $raw] = self::req('POST', self::BASE . '/stateful/booking/staff/search/calendar', [
@@ -217,7 +217,7 @@ final class AirSync
         ], $body);
         $j = self::jsonp($raw);
         if ($code !== 200 || !($j['success'] ?? false) || !is_array($j['dto'] ?? null)) {
-            throw new StoreError('invalid', 'Airリザーブから予約を読めませんでした（Air の画面の作りが変わった可能性があります）');
+            throw new StoreError('invalid', 'Airリザーブから予約を読み込めませんでした（Air の画面構成が変わった可能性があります）');
         }
         $rows = [];
         foreach ((array) ($j['dto']['staffRentalBookingRstMap'] ?? []) as $byStaff) {
@@ -251,10 +251,10 @@ final class AirSync
     public static function compare(string $from, string $to): array
     {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) || $from > $to) {
-            throw new StoreError('invalid', '期間を正しく入れてください');
+            throw new StoreError('invalid', '期間を正しく入力してください');
         }
         if ((new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->days > 62) {
-            throw new StoreError('invalid', '一度に見比べられるのは62日までです');
+            throw new StoreError('invalid', '一度に照合できるのは62日までです');
         }
         return Store::airCompare(self::fetchRange($from, $to), $from, $to);
     }
@@ -284,7 +284,7 @@ final class AirSync
             }
         }
         if (!$form) {
-            throw new StoreError('invalid', 'Airリザーブのログイン画面を読めませんでした');
+            throw new StoreError('invalid', 'Airリザーブのログイン画面を読み込めませんでした');
         }
         $fields = [];
         foreach ($form->getElementsByTagName('input') as $i) {
@@ -293,7 +293,7 @@ final class AirSync
             }
         }
         if (($fields['captchaRequired'] ?? '0') !== '0' && ($fields['captchaRequired'] ?? '') !== '') {
-            throw new StoreError('invalid', 'Airリザーブが画像認証を求めています。いったんブラウザでログインしてから、もう一度試してください');
+            throw new StoreError('invalid', 'Airリザーブで画像認証が求められています。一度ブラウザでログインしてから、もう一度お試しください');
         }
         $fields['username'] = $id;
         $fields['password'] = $pw;
@@ -301,7 +301,7 @@ final class AirSync
         $target = preg_match('#^https://#', $action) ? $action : (str_starts_with($action, '/') ? preg_replace('#^(https://[^/]+).*$#', '$1', $url) . $action : $url);
         [$code, , $after] = self::req('POST', $target, ['Content-Type: application/x-www-form-urlencoded'], http_build_query($fields));
         if (!str_starts_with($after, self::BASE . '/')) {
-            throw new StoreError('invalid', 'Airリザーブにログインできませんでした（ID・パスワードを確かめてください）');
+            throw new StoreError('invalid', 'Airリザーブにログインできませんでした（ID・パスワードを確認してください）');
         }
     }
 
@@ -344,7 +344,7 @@ final class AirSync
         }
         $out = curl_exec($ch);
         if ($out === false) {
-            throw new StoreError('invalid', 'Airリザーブにつながりませんでした');
+            throw new StoreError('invalid', 'Airリザーブに接続できませんでした');
         }
         return [(int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE), (string) $out, (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL)];
     }

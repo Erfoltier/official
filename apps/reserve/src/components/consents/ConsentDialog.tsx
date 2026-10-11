@@ -64,7 +64,7 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
         setPicked({ t, html: quick.html, stale: quick.stale, modifiedTime: quick.modifiedTime, checking: true });
       });
       if (!doc.html) {
-        setError("ドライブから同意書を読み込めませんでした。少し待ってからもう一度選んでください");
+        setError("ドライブから同意書を読み込めませんでした。しばらく待ってから、もう一度選んでください");
         if (!shown) return;
       }
       setPicked((cur) =>
@@ -116,7 +116,7 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
           <p>
             「{saved.title}」を{saved.signed ? "署名済みで保存しました。" : "発行しました（紙に署名してください）。"}
           </p>
-          <p className={styles.muted}>控えは患者画面の「同意書」に残ります。印刷画面から PDF にもできます。</p>
+          <p className={styles.muted}>控えは患者画面の「同意書」に残ります。印刷画面から PDF で保存することもできます。</p>
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={onClose}>
               閉じる
@@ -128,10 +128,10 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
         </div>
       ) : !picked ? (
         <>
-          <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="同意書をさがす" aria-label="同意書をさがす" />
+          <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="同意書を検索" aria-label="同意書を検索" />
           {templates === null && <p className={styles.muted}>読み込み中…</p>}
           {templates?.length === 0 && (
-            <p className={styles.muted}>同意書のひな形がまだありません。Google ドライブの同意書フォルダから送る設定をしてください（設定 → 同意書）。</p>
+            <p className={styles.muted}>同意書のひな形がまだありません。「設定 → 同意書」で Google ドライブとの連携を設定してください。</p>
           )}
           {ordered.matched.length > 0 && <h3 className={styles.groupTitle}>この予約のメニューの同意書</h3>}
           <div className={styles.tplList}>
@@ -166,7 +166,7 @@ export function ConsentDialog({ patient, reservation, onClose, onSaved }: Props)
               ? "前回読み込んだ文面です。ドライブの最新を確認しています…"
               : picked.stale
                 ? `⚠ ドライブから最新を読み込めなかったため、前回読み込んだ文面（${picked.modifiedTime.slice(0, 10)} 更新）です`
-                : `${picked.updated ? "ドライブで直された最新の文面に差し替えました" : "Google ドライブの最新の文面です"}（${new Date(picked.modifiedTime).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} 更新）`}
+                : `${picked.updated ? "ドライブで修正された最新の文面に差し替えました" : "Google ドライブの最新の文面です"}（${new Date(picked.modifiedTime).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} 更新）`}
           </p>
           <div className={styles.preview} data-signing={signing || undefined}>
             {clinic && <ConsentDocument html={picked.html} patient={patient} clinic={clinic} date={date} treatment={treatment || undefined} />}

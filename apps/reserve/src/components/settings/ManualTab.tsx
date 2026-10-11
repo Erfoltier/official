@@ -9,7 +9,7 @@ export function ManualTab() {
   return (
     <section className={styles.manual}>
       <p className={styles.lead}>
-        LANE RESERVE の使い方です。上の検索欄で語句を探せます。
+        LANE RESERVE の使い方です。マニュアル上部の検索欄で語句を検索できます。
         <a href={src} target="_blank" rel="noopener" style={{ marginLeft: 8 }}>
           新しいタブで開く ↗
         </a>

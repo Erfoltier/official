@@ -1051,3 +1051,13 @@ details.priceGroup > summary {
 .clinicCard > .subTitle:first-of-type {
   margin-top: 8px;
 }
+
+/* スマホ：幅の広い表は、ページ全体ではなく表の中だけを横にずらして見る */
+@media (max-width: 760px) {
+  .table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

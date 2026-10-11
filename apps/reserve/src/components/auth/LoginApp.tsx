@@ -53,7 +53,7 @@ export function LoginApp() {
       </h1>
       {!picked ? (
         <>
-          <p className={styles.lead}>あなたの名前を選んでください</p>
+          <p className={styles.lead}>名前を選んでください</p>
           <div className={styles.staffGrid}>
             {staff?.map((s) => (
               <button key={s.id} className={styles.staffBtn} onClick={() => setPicked(s)}>
@@ -92,7 +92,7 @@ export function LoginApp() {
                 {d}
               </button>
             ))}
-            <button type="button" onClick={() => setPin((p) => p.slice(0, -1))} aria-label="1文字消す">
+            <button type="button" onClick={() => setPin((p) => p.slice(0, -1))} aria-label="1文字削除">
               ⌫
             </button>
             <button type="button" onClick={() => press("0")}>

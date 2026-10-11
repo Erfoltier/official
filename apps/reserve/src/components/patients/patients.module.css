@@ -991,7 +991,7 @@ details:not([open]) > summary.histTitle {
   color: var(--accent-strong);
 }
 
-/* スキンケア＆内服 */
+/* スキンケア・内服 */
 .skinCell {
   display: block;
   width: 100%;
@@ -1125,7 +1125,7 @@ details:not([open]) > summary.histTitle {
   border-color: var(--accent);
 }
 
-/* スキンケア＆内服：すべての商品から選ぶ */
+/* スキンケア・内服：すべての商品から選ぶ */
 .allDialog {
   width: min(720px, calc(100vw - 16px));
   max-height: calc(100dvh - 32px);
@@ -1234,7 +1234,7 @@ details:not([open]) > summary.histTitle {
   font-size: 12px;
 }
 
-/* スキンケア＆内服 */
+/* スキンケア・内服 */
 .skinCell {
   display: grid;
   gap: 4px;

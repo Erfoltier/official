@@ -95,9 +95,9 @@ export function PatientsApp() {
           </div>
           {error && <div className={styles.alert}>{error}</div>}
           <div className={styles.newPatientActions}>
-            <span className={styles.muted}>登録すると患者画面を開きます（住所・メモ・注意事項などはそこで入れられます）</span>
+            <span className={styles.muted}>登録すると患者画面が開きます。住所・メモ・注意事項などはそこで入力できます。</span>
             <button type="submit" className={styles.primary} disabled={saving || !draft.name.trim()}>
-              {saving ? "登録しています…" : "登録する"}
+              {saving ? "登録中…" : "登録"}
             </button>
           </div>
         </form>

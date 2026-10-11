@@ -53,7 +53,7 @@ export function DayNoteCell({ laneName, text, onSave }: { laneName: string; text
         data-empty={!text || undefined}
         disabled={!onSave}
         title={text || undefined}
-        aria-label={`${laneName}のTodaysメモ${text ? "を直す" : "を書く"}`}
+        aria-label={`${laneName}のTodaysメモ${text ? "を編集" : "を入力"}`}
         onClick={() => {
           setDraft(text);
           setEditing(true);

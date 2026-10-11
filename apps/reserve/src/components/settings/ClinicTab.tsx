@@ -44,7 +44,7 @@ export function ClinicTab({
     try {
       await saveClinic({ name, dayStartMin: s, dayEndMin: e, slotMin: slot });
       await onChanged();
-      notify("診療時間を保存しました。カレンダーに反映されます");
+      notify("院名・診療時間を保存しました");
     } catch (err) {
       fail(err);
     } finally {
@@ -55,11 +55,11 @@ export function ClinicTab({
   return (
     <section className={styles.clinic}>
       <p className={styles.lead}>
-        カレンダーに表示する時間帯と、予約を入れるときの時間の刻みです。院ごとに変えられます。
-        時間外に入っている予約も、カレンダーには表示されます。
+        院名と、カレンダーに表示する時間帯・予約の刻みを設定します。診療時間外の予約もカレンダーに表示されます。
       </p>
       <div className={styles.clinicWide}>
       <div className={styles.clinicCard}>
+        <h3 className={styles.cardTitle}>院名・診療時間</h3>
         <label className={styles.field}>
           <span>院名</span>
           <input className={styles.input} value={name} maxLength={40} onChange={(ev) => setName(ev.target.value)} disabled={!canEdit} />
@@ -87,7 +87,7 @@ export function ClinicTab({
         </label>
         <p className={styles.hint} data-invalid={!valid || undefined}>
           {valid
-            ? `カレンダーに ${formatHm(s)}〜${formatHm(e)}（${Math.round(((e - s) / 60) * 10) / 10}時間）を表示し、${slot}分刻みで予約を入れます`
+            ? `カレンダーに ${formatHm(s)}〜${formatHm(e)}（${Math.round(((e - s) / 60) * 10) / 10}時間）を表示し、${slot}分刻みで予約を受け付けます`
             : "閉院時間は開院時間の1時間以上あとにしてください（5分単位）"}
         </p>
         {canEdit && (
@@ -128,7 +128,7 @@ export function ThemeCard({
     try {
       await saveClinic({ theme: id });
       await onChanged();
-      notify("配色を変えました。ほかの端末も、次に画面を開いたときに変わります");
+      notify("配色を変更しました。ほかの端末には、次に画面を開いたときに反映されます");
     } catch (err) {
       applyTheme(current);
       fail(err);
@@ -139,7 +139,7 @@ export function ThemeCard({
   return (
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>画面の配色</h3>
-      <p className={styles.hint}>院の好みに合わせて選べます。見積書・同意書など印刷する書類の色は変わりません。</p>
+      <p className={styles.hint}>見積書・同意書など、印刷する書類の色は変わりません。</p>
       <div className={styles.themeList} role="radiogroup" aria-label="画面の配色">
         {THEMES.map((t) => (
           <button
@@ -201,7 +201,7 @@ function DocumentCard({
     try {
       await saveClinic({ docName, address, phone, issuer, estimateValidDays: daysNum, estimateNote: note, estimatePaper: paper });
       await onChanged();
-      notify("書類に載せる院の情報を保存しました");
+      notify("書類に記載する院の情報を保存しました");
     } catch (err) {
       fail(err);
     } finally {
@@ -211,9 +211,9 @@ function DocumentCard({
 
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>見積書・同意書に載せる院の情報</h3>
+      <h3 className={styles.cardTitle}>見積書・同意書に記載する院の情報</h3>
       <label className={styles.field}>
-        <span>書類に載せる院名（空欄なら院名「{clinic.name}」）</span>
+        <span>書類に記載する院名（空欄の場合は「{clinic.name}」）</span>
         <input className={styles.input} value={docName} maxLength={60} onChange={(ev) => setDocName(ev.target.value)} disabled={!canEdit} placeholder="例：いしだ美容皮膚科" />
       </label>
       <label className={styles.field}>
@@ -222,34 +222,34 @@ function DocumentCard({
       </label>
       <div className={styles.timeRow}>
         <label className={styles.field}>
-          <span>電話番号（空欄なら載せない）</span>
+          <span>電話番号（空欄の場合は記載なし）</span>
           <input className={styles.input} value={phone} maxLength={30} onChange={(ev) => setPhone(ev.target.value)} disabled={!canEdit} inputMode="tel" />
         </label>
         <label className={styles.field}>
-          <span>発行者・医師名（空欄なら載せない）</span>
+          <span>発行者・医師名（空欄の場合は記載なし）</span>
           <input className={styles.input} value={issuer} maxLength={60} onChange={(ev) => setIssuer(ev.target.value)} disabled={!canEdit} placeholder="例：院長 石田 ○○" />
         </label>
       </div>
       <div className={styles.timeRow}>
         <label className={styles.field}>
-          <span>見積書の有効期限（発行日から何日）</span>
+          <span>見積書の有効期限（発行日からの日数）</span>
           <input className={styles.input} value={days} inputMode="numeric" onChange={(ev) => setDays(ev.target.value)} disabled={!canEdit} style={{ maxWidth: "8em" }} />
         </label>
         <label className={styles.field}>
-          <span>見積書の用紙（印刷時にも切り替え可）</span>
+          <span>見積書の用紙サイズ</span>
           <select className={styles.input} value={paper} onChange={(ev) => setPaper(ev.target.value as PaperSize)} disabled={!canEdit}>
             <option value="A4">A4</option>
             <option value="A5">A5</option>
           </select>
         </label>
       </div>
-      <p className={styles.hint}>同意書の用紙は A4 です。</p>
+      <p className={styles.hint}>見積書の用紙は印刷時にも切り替えられます。同意書は A4 で印刷します。</p>
       <label className={styles.field}>
-        <span>見積書の注意書き（リスク・副作用・個人差など。すべての見積書の下に入ります）</span>
+        <span>見積書の注意書き</span>
         <textarea className={styles.input} value={note} rows={6} maxLength={2000} onChange={(ev) => setNote(ev.target.value)} disabled={!canEdit} />
       </label>
       <p className={styles.hint} data-invalid={!valid || undefined}>
-        {valid ? "自由診療の見積書には、費用のほかリスク・副作用の説明を添えるのが一般的です。院の言葉に書き換えてください。" : "有効期限は1〜365日で入れてください"}
+        {valid ? "すべての見積書の末尾に入ります。自由診療の見積書には、費用のほかリスク・副作用・個人差の説明を添えるのが一般的です。" : "有効期限は1〜365日で入力してください"}
       </p>
       {canEdit && (
         <div className={styles.actions}>

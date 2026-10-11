@@ -135,7 +135,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
       const next = await patchReservation(r.id, { version: r.version, status: "cancelled" });
       onSaved(next, "cancelled");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "取り消せませんでした");
+      setError(err instanceof ApiError ? err.message : "取り消しできませんでした");
     } finally {
       setBusy(false);
     }
@@ -229,7 +229,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
         </div>
         {menuIds.length < MAX_MENUS && (
           <>
-            <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="メニューをさがす（追加）" aria-label="メニューをさがす" />
+            <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="メニューを検索して追加" aria-label="メニューを検索" />
             <div className={styles.candidates}>
               {candidates.map((m) => (
                 <button
@@ -269,7 +269,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
       <p className={styles.preview} data-changed={changed || undefined}>
         → {formatDateJa(date)} {formatHm(start)}–{formatHm(end)}・{laneName(laneId)}・{menuIds.map((id) => menuOf.get(id)?.name ?? "").join("、")}
       </p>
-      {end > 1440 && <p className={styles.error}>終了が日付をまたいでいます。開始か時間を直してください</p>}
+      {end > 1440 && <p className={styles.error}>終了時刻が日付をまたいでいます。開始時刻か時間を修正してください</p>}
       {error && (
         <p className={styles.error} role="alert">
           {error}
@@ -280,9 +280,9 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
         {canCancel &&
           (confirmCancel ? (
             <span className={styles.confirm}>
-              取り消しますか？
+              予約を取り消します。よろしいですか？
               <button type="button" className={styles.dangerBtn} onClick={cancelReservation} disabled={busy}>
-                はい、取り消す
+                はい
               </button>
               <button type="button" className={styles.btn} onClick={() => setConfirmCancel(false)} disabled={busy}>
                 いいえ
@@ -298,7 +298,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
           やめる
         </button>
         <button type="button" className={styles.primaryBtn} onClick={save} disabled={!changed || !valid || busy}>
-          {busy ? "保存中…" : "変更する"}
+          {busy ? "保存中…" : "保存"}
         </button>
       </div>
     </dialog>

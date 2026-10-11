@@ -387,7 +387,7 @@ try {
         $s = $me(STAFF_ADMIN);
         $in = Http::readJson(20_000);
         if (!is_array($in)) {
-            Http::json(['error' => 'invalid', 'message' => '設定を読み取れませんでした'], 400);
+            Http::json(['error' => 'invalid', 'message' => '設定を読み込めませんでした'], 400);
         }
         Http::json(Reminder::updateSettings($in, $actor($s)));
     }
@@ -409,7 +409,7 @@ try {
         $s = $me(STAFF_ADMIN);
         $in = Http::readJson(4_000);
         if (!is_array($in)) {
-            Http::json(['error' => 'invalid', 'message' => '設定を読み取れませんでした'], 400);
+            Http::json(['error' => 'invalid', 'message' => '設定を読み込めませんでした'], 400);
         }
         Http::json(AirSync::updateSettings($in, $actor($s)));
     }
@@ -513,7 +513,7 @@ try {
             Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"COMPACT"} を送ってください'], 400);
         }
         if (Db::i()->blobStats()['inDb'] > 0) {
-            Http::json(['error' => 'invalid', 'message' => '先に写真をすべて移してください'], 400);
+            Http::json(['error' => 'invalid', 'message' => '先に写真をすべて移動してください'], 400);
         }
         @set_time_limit(120);
         $r = Db::i()->compact();

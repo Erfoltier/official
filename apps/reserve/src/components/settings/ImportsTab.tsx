@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ConsentTemplate, Lane, Menu } from "@/lib/domain/types";
 import {
   deleteConsentTemplate,
@@ -24,13 +24,15 @@ interface Props {
   onChanged: () => Promise<void>;
   notify: (t: string) => void;
   fail: (e: unknown) => void;
+  /** 取り込みの各欄のあと（Google 連携の説明の前）に出す追加の欄 */
+  extra?: ReactNode;
 }
 
 /** ファイル（CSV・Excel）を表にする */
 async function readTable(file: File): Promise<Table> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (/\.xlsx$/i.test(file.name)) return parseXlsx(bytes);
-  if (/\.xls$/i.test(file.name)) throw new Error("古い Excel（.xls）は読めません。.xlsx か CSV で保存し直してください");
+  if (/\.xls$/i.test(file.name)) throw new Error("古い Excel 形式（.xls）は読み込めません。.xlsx か CSV で保存し直してください");
   return parseCsv(decodeText(bytes));
 }
 
@@ -43,39 +45,40 @@ function download(name: string, rows: string[][]) {
   URL.revokeObjectURL(url);
 }
 
-const errMsg = (e: unknown) => (e instanceof Error ? e.message : "読み込めませんでした");
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : "読み込みできませんでした");
 
 /**
  * 取り込み：メニュー・料金表・同意書を、決まった書式のファイル（CSV・Excel・Word）や
  * Googleスプレッドシート／ドキュメントの共有リンクから入れる。読む前に中身を見せて、確かめてから取り込む
  */
 export function ImportsTab(props: Props) {
-  if (!props.canEdit) return <p className={styles.lead}>取り込みは、管理操作のできるスタッフだけが使えます。</p>;
+  if (!props.canEdit) return <p className={styles.lead}>取り込みは、管理操作を許可されたスタッフのみ利用できます。</p>;
   return (
     <section>
       <p className={styles.lead}>
-        ほかのソフトや表で作ったメニュー・料金表・同意書を、まとめて取り込めます。
-        <b>CSV・Excel（.xlsx）・Word（.docx）</b>のファイルか、<b>Googleスプレッドシート／ドキュメントの共有リンク</b>（共有の設定を「リンクを知っている全員」）から読みます。
-        読み込んだら中身が表で出るので、確かめてから「取り込む」を押してください。表の書式は「書式のひな形」を開いて、その形に合わせてください（列の順番は自由です）。
+        ほかのソフトや表で作成したメニュー・料金表・同意書を、まとめて取り込めます。
+        <b>CSV・Excel（.xlsx）・Word（.docx）</b>のファイル、または<b>Google スプレッドシート／ドキュメントの共有リンク</b>（共有設定は「リンクを知っている全員」）から読み込みます。
+        読み込んだ内容が表で表示されるので、確認してから「取り込む」を押してください。表の書式は「書式のひな形」に合わせてください（列の順番は自由です）。
       </p>
       <MenuImport {...props} />
       <PriceImport {...props} mode="price" />
       <PriceImport {...props} mode="product" />
       <ConsentImport {...props} />
+      {props.extra}
       <div className={styles.importBox}>
-        <h3>Googleと自動でつなぐ</h3>
+        <h3>Google との自動連携</h3>
         <p className={styles.hint}>
-          表やフォルダを直すたびに自動で反映したいときは、配布物に入っている Apps Script を使います（置き方は各ファイルの先頭に書いてあります）。
-          <br />・料金表・自費商品：sheet-prices-standard.gs（上の「書式のひな形」と同じ形のスプレッドシートを、直すたびに送る）
-          <br />・同意書：consent-templates.gs（Googleドライブのフォルダの文書を、開くたびに最新で読む。設定 → 同意書 で読み込み元を入れる）
-          <br />・問診票：questionnaire.gs（Googleフォームの回答が届くたびに送られる）
+          表やフォルダを修正するたびに自動で反映するには、配布物の Apps Script を使います。設定手順は各ファイルの先頭を参照してください。
+          <br />・料金表・自費商品：sheet-prices-standard.gs（「書式のひな形」と同じ形のスプレッドシートを、修正のたびに送信）
+          <br />・同意書：consent-templates.gs（Google ドライブの文書を、開くたびに最新版で読み込み。読み込み元は「設定 → 同意書」で設定）
+          <br />・問診票：questionnaire.gs（Google フォームの回答を、届くたびに送信）
         </p>
       </div>
     </section>
   );
 }
 
-/** ファイルを選ぶか、Googleの共有リンクを入れて読む欄 */
+/** ファイルを選ぶか、Google の共有リンクを入れて読む欄 */
 function Source({ accept, kind, onTable, onDoc, busy }: { accept: string; kind: "sheet" | "doc"; onTable?: (t: Table, label: string) => void; onDoc?: (docs: { title: string; html: string }[]) => void; busy?: boolean }) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,7 +114,7 @@ function Source({ accept, kind, onTable, onDoc, busy }: { accept: string; kind: 
                 const docs = await Promise.all(
                   files.map(async (f) => {
                     const bytes = new Uint8Array(await f.arrayBuffer());
-                    if (/\.doc$/i.test(f.name)) throw new Error("古い Word（.doc）は読めません。.docx で保存し直してください");
+                    if (/\.doc$/i.test(f.name)) throw new Error("古い Word 形式（.doc）は読み込めません。.docx で保存し直してください");
                     const html = /\.docx$/i.test(f.name) ? docxToHtml(bytes) : decodeText(bytes);
                     return { title: f.name.replace(/\.(docx|html?|txt)$/i, ""), html };
                   }),
@@ -127,8 +130,8 @@ function Source({ accept, kind, onTable, onDoc, busy }: { accept: string; kind: 
         className={styles.input}
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        placeholder={kind === "sheet" ? "Googleスプレッドシートの共有リンク" : "Googleドキュメントの共有リンク"}
-        aria-label={kind === "sheet" ? "Googleスプレッドシートの共有リンク" : "Googleドキュメントの共有リンク"}
+        placeholder={kind === "sheet" ? "Google スプレッドシートの共有リンク" : "Google ドキュメントの共有リンク"}
+        aria-label={kind === "sheet" ? "Google スプレッドシートの共有リンク" : "Google ドキュメントの共有リンク"}
       />
       <button
         type="button"
@@ -137,13 +140,13 @@ function Source({ accept, kind, onTable, onDoc, busy }: { accept: string; kind: 
         onClick={() =>
           run(async () => {
             const r = await importFetch(url.trim());
-            if (r.kind !== kind) throw new Error(kind === "sheet" ? "スプレッドシートのリンクを入れてください" : "ドキュメントのリンクを入れてください");
+            if (r.kind !== kind) throw new Error(kind === "sheet" ? "スプレッドシートのリンクを入力してください" : "ドキュメントのリンクを入力してください");
             if (kind === "sheet") onTable?.(parseCsv(r.text), "Googleスプレッドシート");
             else onDoc?.([{ title: /<title>([^<]*)<\/title>/i.exec(r.text)?.[1]?.trim() || "Googleドキュメント", html: r.text }]);
           })
         }
       >
-        {loading ? "読み込み中…" : "リンクから読む"}
+        {loading ? "読み込み中…" : "リンクから読み込む"}
       </button>
       {error && <span className={styles.importError}>{error}</span>}
     </div>
@@ -165,7 +168,7 @@ function MenuImport({ menus, lanes, onChanged, notify, fail }: Props) {
           書式のひな形（CSV）
         </button>
       </h3>
-      <p className={styles.hint}>同じ名前のメニューは中身を入れ替え、ない名前は新しく足します（今あるほかのメニューはそのまま）。レーンは設定のレーンの名前で「・」区切り、全部なら「すべて」。</p>
+      <p className={styles.hint}>同じ名前のメニューは内容を上書きし、新しい名前のメニューは追加します。ほかのメニューは変わりません。レーンはレーン名を「・」区切りで、すべてのレーンなら「すべて」と入力してください。</p>
       <Source
         accept=".csv,.tsv,.txt,.xlsx"
         kind="sheet"
@@ -204,7 +207,7 @@ function MenuImport({ menus, lanes, onChanged, notify, fail }: Props) {
                       (r.input.duration.kind === "fixed" ? `${r.input.duration.minutes}分` : `${r.input.duration.min}〜${r.input.duration.max}分`)}
                   </td>
                   <td>{r.input && (r.input.priceYen === null ? "—" : `¥${r.input.priceYen.toLocaleString("ja-JP")}`)}</td>
-                  <td>{r.error ? <span className={styles.importError}>✕ {r.error}</span> : existing(r.name) ? "入れ替え" : "新しく足す"}</td>
+                  <td>{r.error ? <span className={styles.importError}>✕ {r.error}</span> : existing(r.name) ? "上書き" : "追加"}</td>
                 </tr>
               ))}
             </tbody>
@@ -225,7 +228,7 @@ function MenuImport({ menus, lanes, onChanged, notify, fail }: Props) {
                 setRows(null);
               } catch (e) {
                 fail(e);
-                if (done) notify(`${done}件まで取り込みました。残りは直してからもう一度`);
+                if (done) notify(`${done}件まで取り込みました。残りは修正してから、もう一度取り込んでください`);
               } finally {
                 setBusy(false);
                 await onChanged();
@@ -244,14 +247,14 @@ const PRICE_MODE = {
   price: {
     title: "料金表（見積・会計の候補）",
     template: ["料金表の書式.csv", PRICE_TEMPLATE] as const,
-    hint: "施術と商品をまとめた料金表です。「種類」の列に「施術」か「商品」を入れます（空なら、分類に「商品」「スキンケア」「内服」「外用」などがある行を商品として扱います）。商品はスキンケア＆内服の候補に出て、割引の「商品のみ」の対象になります。",
+    hint: "施術と商品をまとめた料金表です。「種類」の列に「施術」か「商品」を入力します。空欄の場合は、分類に「商品」「スキンケア」「内服」「外用」などを含む行を商品として扱います。商品はスキンケア・内服の候補に表示され、割引の「商品のみ」の対象になります。",
     defaultKind: undefined,
     defaultLabel: "",
   },
   product: {
     title: "自費商品（スキンケア・内服・外用）",
     template: ["自費商品の書式.csv", PRODUCT_TEMPLATE] as const,
-    hint: "販売する商品の一覧です。すべて商品として、患者画面のスキンケア＆内服と、見積・会計の「スキンケア＆内服」に出ます。分類（ゼオスキンヘルス・内服・外用など）は全リストの見出しになります。1つずつ足すときは「設定 → スキンケア・内服」からも入れられます。",
+    hint: "販売する商品の一覧です。すべて商品として、患者画面と見積・会計の「スキンケア・内服」に表示されます。分類（ゼオスキンヘルス・内服・外用など）は一覧の見出しになります。1件ずつ追加する場合は「設定 → スキンケア・内服」を使ってください。",
     defaultKind: "product" as const,
     defaultLabel: "自費商品",
   },
@@ -274,7 +277,7 @@ function PriceImport({ notify, fail, mode }: Props & { mode: keyof typeof PRICE_
       </h3>
       <p className={styles.hint}>
         {m.hint}
-        同じ「取り込みの名前」で取り込み直すと、前に取り込んだ分とまるごと入れ替わります。
+        同じ「取り込みの名前」で取り込み直すと、前回取り込んだ内容がすべて置き換わります。
       </p>
       <Source
         accept=".csv,.tsv,.txt,.xlsx"
@@ -296,7 +299,7 @@ function PriceImport({ notify, fail, mode }: Props & { mode: keyof typeof PRICE_
       {rows && (
         <>
           <label className={styles.hint}>
-            取り込みの名前（料金表の画面での見出し）
+            取り込みの名前（料金表での見出し）
             <input className={styles.input} value={label} onChange={(e) => setLabel(e.target.value)} maxLength={40} aria-label="取り込みの名前" style={{ maxWidth: 260, marginLeft: 6 }} />
           </label>
           <table className={styles.table}>
@@ -337,7 +340,7 @@ function PriceImport({ notify, fail, mode }: Props & { mode: keyof typeof PRICE_
               setBusy(true);
               try {
                 const r = await importPrices(`${IMPORT_SHEET_PREFIX}${label.trim()}`.slice(0, 60), ok.map((x) => x.item!));
-                notify(`${m.title}を${r.count}件取り込みました（設定 → 料金表 で見られます）`);
+                notify(`${m.title}を${r.count}件取り込みました（「設定 → 料金表」で確認できます）`);
                 setRows(null);
               } catch (e) {
                 fail(e);
@@ -368,8 +371,8 @@ function ConsentImport({ notify, fail }: Props) {
     <div className={styles.importBox}>
       <h3>同意書のひな形</h3>
       <p className={styles.hint}>
-        Word（.docx）・Googleドキュメント・HTML のファイルを、同意書のひな形として取り込みます（いくつでも同時に選べます）。名前はファイル名で、同じ名前は入れ替えます。
-        「令和　年　月　日　氏名」の行に、日付と患者の名前が入ります。取り込んだあと 設定 → 同意書 でメニューと結びつけられます。
+        Word（.docx）・Google ドキュメント・HTML のファイルを、同意書のひな形として取り込みます（複数選択できます）。名前はファイル名になり、同じ名前のひな形は上書きします。
+        「令和　年　月　日　氏名」の行に、日付と患者名が入ります。取り込み後、「設定 → 同意書」でメニューを設定できます。
       </p>
       <Source accept=".docx,.html,.htm" kind="doc" busy={busy} onDoc={(d) => setDocs(d)} />
       {docs && (
@@ -420,7 +423,7 @@ function ConsentImport({ notify, fail }: Props) {
                     type="button"
                     className={styles.btn}
                     onClick={async () => {
-                      if (!window.confirm(`「${t.title}」を削除しますか？（発行済みの控えはそのまま残ります）`)) return;
+                      if (!window.confirm(`「${t.title}」を削除します。よろしいですか？\n発行済みの控えは残ります。`)) return;
                       try {
                         await deleteConsentTemplate(t.id);
                         invalidateConsentTemplates();

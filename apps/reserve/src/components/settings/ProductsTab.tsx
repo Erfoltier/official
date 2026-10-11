@@ -69,11 +69,9 @@ export function ProductsTab({
   return (
     <section>
       <p className={styles.lead}>
-        スキンケア＆内服の候補は「料金表」の商品（スプレッドシート・ホームページ・取り込みから入ったもの）から自動で入ります。
-        ここでは、料金表にない商品を1つずつ手で足せます（施術歴や見積・会計で「院で追加した商品」として出ます）。価格（税込）も入れておけます。
-        たくさんの商品をまとめて入れるときは「設定 → 取り込み」の「自費商品」から、表（CSV・Excel・Googleスプレッドシート）で入れられます。
-        しばらく使わないものは「候補に出す」を外すと隠れ（あとで戻せます）、不要になったものは「削除」できます。
-        どちらも、施術歴に記録した内容はそのまま残ります。
+        スキンケア・内服の候補には、「料金表」の商品が自動で入ります。ここでは料金表にない商品を追加でき、施術歴・見積・会計で「院で追加した商品」として表示されます。
+        まとめて登録する場合は「設定 → 取り込み」の「自費商品」から、CSV・Excel・Googleスプレッドシートで取り込めます。
+        使わない商品は「候補に表示」を外すと非表示になります。非表示・削除しても、施術歴に記録した内容は残ります。
       </p>
       <table className={styles.table}>
         <thead>
@@ -81,8 +79,8 @@ export function ProductsTab({
             <th className={styles.orderCol}>順番</th>
             <th>名前</th>
             <th>種類</th>
-            <th>価格（円）</th>
-            <th>候補に出す</th>
+            <th>価格（税込・円）</th>
+            <th>候補に表示</th>
             <th />
             <th />
           </tr>
@@ -99,7 +97,7 @@ export function ProductsTab({
               onDown={() => move(i, 1)}
               onSave={(body) => run(() => saveProduct(p.id, body), "保存しました")}
               onDelete={() => {
-                if (!window.confirm(`「${p.name}」を削除しますか？\n（施術歴に記録した内容はそのまま残ります）`)) return;
+                if (!window.confirm(`「${p.name}」を削除します。よろしいですか？\n施術歴に記録した内容は残ります。`)) return;
                 run(() => deleteProduct(p.id), "削除しました");
               }}
             />
@@ -141,14 +139,14 @@ export function ProductsTab({
         </tbody>
       </table>
 
-      <h3 className={styles.subhead}>料金表から自動で入っている商品{prices ? `（${fromCount}件）` : ""}</h3>
+      <h3 className={styles.subhead}>料金表から自動で入る商品{prices ? `（${fromCount}件）` : ""}</h3>
       <p className={styles.hint}>
-        施術歴・見積・会計の候補には、上で足した商品に加えて、次の商品が出ます。値段を直すときは、元のスプレッドシート・ホームページ（または「料金表」の自由入力）を直してください。
+        施術歴・見積・会計の候補には、上で追加した商品に加えて次の商品が表示されます。価格を変更する場合は、元のスプレッドシート・ホームページ、または「料金表」の自由入力を修正してください。
       </p>
       {!prices ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : fromCount === 0 ? (
-        <p className={styles.muted}>まだありません（「料金表」に商品が入るとここに出ます）</p>
+        <p className={styles.muted}>まだありません。「料金表」に商品を登録すると、ここに表示されます。</p>
       ) : (
         fromPrices.map(([g, items]) => (
           <details key={g} className={styles.priceGroup}>
@@ -228,7 +226,7 @@ function ProductRow(props: {
       <td>
         <label className={styles.toggle}>
           <input type="checkbox" checked={p.active} disabled={!canEdit} onChange={(e) => props.onSave({ active: e.target.checked })} />
-          {p.active ? "出す" : "しばらく出さない"}
+          {p.active ? "表示" : "非表示"}
         </label>
       </td>
       <td>

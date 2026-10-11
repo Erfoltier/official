@@ -72,13 +72,13 @@ function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: 
   return (
     <div className={styles.reminderMenus}>
       <p className={styles.hint}>
-        「患者に送信する名前」は、リマインドに表示するメニュー名です（空欄ならメニュー名をそのまま使います）。「来院前のご案内」は、リマインドの文末に入れる案内です。どちらも、リマインドの設定で「表示する」にしたときだけ使います。1回の来院に複数のメニューがあるときは、まとめて1回だけ入れます。
+        「患者に送信する名前」はリマインドに表示するメニュー名で、空欄の場合はメニュー名をそのまま使います。「来院前のご案内」はリマインドの文末に入る案内です。どちらも、リマインド設定で「する」にした場合だけ使います。1回の来院に複数のメニューがある場合も、案内は重複せず1回だけ入ります。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="メニューを絞り込む" aria-label="メニューを絞り込む" style={{ flex: 1, minWidth: 160 }} />
         <label style={{ display: "inline-flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}>
           <input type="checkbox" checked={onlyEmpty} onChange={(e) => setOnlyEmpty(e.target.checked)} />
-          未入力のメニューだけ表示
+          未入力のメニューのみ表示
         </label>
       </div>
       <div className={styles.rmList}>
@@ -111,7 +111,7 @@ function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: 
             </div>
           );
         })}
-        {list.length === 0 && <p className={styles.hint}>当てはまるメニューはありません</p>}
+        {list.length === 0 && <p className={styles.hint}>該当するメニューはありません</p>}
       </div>
     </div>
   );

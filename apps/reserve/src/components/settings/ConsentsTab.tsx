@@ -7,7 +7,7 @@ import { useConsentTemplates } from "@/components/consents/consentCache";
 import styles from "./settings.module.css";
 
 const stamp = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "まだ";
+  iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "不明";
 
 /** 同意書のひな形（Google ドキュメントが正本）と、候補の先頭に出すメニュー */
 export function ConsentsTab({
@@ -56,23 +56,24 @@ export function ConsentsTab({
     <section>
       <p className={styles.lead}>
         同意書は <b>Google ドライブの「同意書、承諾書、問診票」フォルダの Google ドキュメントが正本</b>です。
-        同意書を開く・発行するたびに、ドライブから<b>その時の最新の文面</b>を読み込んで印刷します（ドライブで直せば次から反映。発行済みの控えは発行時の文面のまま）。
-        患者の名前などは Google に送らず、このソフトの中で差し込みます。「令和　年　月　日　患者氏名」の行に日付と署名が入ります。
+        同意書を開く・発行するたびに、ドライブから<b>最新の文面</b>を読み込みます。ドライブで修正すると次回から反映され、発行済みの控えは発行時の文面のまま残ります。
+        患者名などの個人情報は Google に送信せず、このアプリ内で差し込みます。「令和　年　月　日　患者氏名」の行に日付と署名が入ります。
+        メニューを設定すると、そのメニューの予約で同意書を発行するときに候補の先頭に表示されます。
       </p>
       <p className={styles.hint} data-invalid={(data.source && !data.live && !checking) || !data.source || undefined}>
         {!data.source
-          ? "読み込み元（ドライブのウェブアプリ）がまだ設定されていません。下で設定するまでは、送られてきた文面を使います。"
+          ? "読み込み元（ドライブのウェブアプリ）が未設定です。設定するまでは、送信済みの文面を使います。"
           : checking
-            ? `前回読み込んだ内容です（${data.items.length}件）。ドライブの最新を確認しています…`
+            ? `前回読み込んだ文面です（${data.items.length}件）。ドライブの最新版を確認中…`
             : data.live
-            ? `✓ ドライブとつながっています（${data.items.length}件）`
-            : "⚠ ドライブにつながりませんでした。前回読み込んだ文面を使っています。"}
+            ? `✓ ドライブと連携済（${data.items.length}件）`
+            : "⚠ ドライブに接続できませんでした。前回読み込んだ文面を使っています。"}
       </p>
       {isAdmin && src && (
         <details className={styles.priceUrls} open={!src.url || undefined}>
           <summary>読み込み元（院長・管理者のみ）</summary>
           <p className={styles.muted} style={{ fontSize: 12 }}>
-            同意書フォルダの Apps Script（integrations/consent-templates.gs）を「ウェブアプリ」としてデプロイした URL と、その合言葉（KEY）を入れます。
+            同意書フォルダの Apps Script（integrations/consent-templates.gs）を「ウェブアプリ」としてデプロイした URL と、KEY を入力してください。
           </p>
           <input className={styles.input} value={srcUrl} onChange={(e) => setSrcUrl(e.target.value)} placeholder="https://script.google.com/macros/s/…/exec" aria-label="読み込み元のURL" style={{ maxWidth: 640 }} />
           <input
@@ -80,8 +81,8 @@ export function ConsentsTab({
             type="password"
             value={srcKey}
             onChange={(e) => setSrcKey(e.target.value)}
-            placeholder={src.hasKey ? "合言葉（変えるときだけ入力）" : "合言葉（KEY）"}
-            aria-label="合言葉"
+            placeholder={src.hasKey ? "KEY（変更する場合のみ入力）" : "KEY"}
+            aria-label="KEY"
             autoComplete="off"
             style={{ maxWidth: 320, marginTop: 6 }}
           />
@@ -101,12 +102,12 @@ export function ConsentsTab({
                 }
               }}
             >
-              保存してつなぐ
+              保存して接続
             </button>
           </div>
         </details>
       )}
-      {data.items.length === 0 && <p className={styles.muted}>まだひな形が届いていません。手順は integrations/consent-templates.gs の先頭に書いてあります。</p>}
+      {data.items.length === 0 && <p className={styles.muted}>ひな形がまだありません。設定手順は integrations/consent-templates.gs の先頭を参照してください。</p>}
       <table className={styles.table}>
         <tbody>
           {data.items.map((t) => (
@@ -114,7 +115,7 @@ export function ConsentsTab({
               <td>
                 <b>{t.title}</b>
                 <div className={styles.muted} style={{ fontSize: 12 }}>
-                  前回読み込んだ文面：{stamp(t.modifiedTime)} 更新
+                  文面の最終更新：{stamp(t.modifiedTime)}
                 </div>
               </td>
               <td>
@@ -154,7 +155,7 @@ export function ConsentsTab({
                     </div>
                   </div>
                 ) : (
-                  <span className={styles.muted}>{t.menuIds.length ? t.menuIds.map(menuName).join("、") : "（メニュー未設定）"}</span>
+                  <span className={styles.muted}>{t.menuIds.length ? t.menuIds.map(menuName).join("、") : "メニュー未設定"}</span>
                 )}
               </td>
               <td>
@@ -166,7 +167,7 @@ export function ConsentsTab({
                       setSel(t.menuIds);
                     }}
                   >
-                    メニューを選ぶ
+                    メニューを設定
                   </button>
                 )}
               </td>

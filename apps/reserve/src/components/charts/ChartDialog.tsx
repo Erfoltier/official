@@ -121,14 +121,14 @@ export function ChartDialog(props: Props) {
               !props.readOnly && (
                 <>
                   <button type="button" className={styles.btn} onClick={() => setEditing(c)} disabled={editing !== null}>
-                    直す
+                    編集
                   </button>
                   {(me?.canManage || c.createdBy?.id === me?.id) && (
                     <button
                       type="button"
                       className={styles.btn}
                       onClick={async () => {
-                        if (!window.confirm(`「${c.treatment}」のカルテを削除しますか？`)) return;
+                        if (!window.confirm(`「${c.treatment}」のカルテを削除します。よろしいですか？`)) return;
                         try {
                           await deleteChart(c.id, c.version);
                           await changed();
@@ -434,7 +434,7 @@ function PatientNotes({ patient: p, readOnly, onSaved }: { patient: Patient; rea
           <span className={styles.cautionText}>{p.cautionNote}</span>
           {!readOnly && (
             <button type="button" className={styles.linkBtn} onClick={() => setEditing("caution")}>
-              直す
+              編集
             </button>
           )}
         </div>
@@ -482,7 +482,7 @@ function PatientNotes({ patient: p, readOnly, onSaved }: { patient: Patient; rea
             </div>
             {!readOnly && (
               <button type="button" className={styles.linkBtn} onClick={() => setEditing("history")} style={{ justifySelf: "start" }}>
-                直す
+                編集
               </button>
             )}
           </dl>

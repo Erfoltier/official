@@ -27,13 +27,13 @@ function roundLabel(round?: string): string {
 }
 
 const REMINDER_REASON: Record<string, string> = {
-  optout: "不要の患者",
-  no_contact: "送り先なし",
-  line_quota: "LINE の残り通数が少ない",
+  optout: "送信不要の患者",
+  no_contact: "送信先なし",
+  line_quota: "LINE の残り通数不足",
   line_token: "LINE チャネルアクセストークンを確認",
-  line_limit: "LINE の上限",
-  mail_failed: "メール送信の失敗",
-  request_mismatch: "申請の名前・生年月日が患者と合わない",
+  line_limit: "LINE の送信上限",
+  mail_failed: "メール送信失敗",
+  request_mismatch: "申請の氏名・生年月日が患者と不一致",
 };
 
 /** リマインドの状態は「未送信／LINE送信済／メール送信済／送信失敗」の4つで見せる（送らなかった来院は未送信＋理由） */
@@ -137,7 +137,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               <span
                 className={styles.subGap}
                 style={{ color: "var(--danger, #c0392b)", fontSize: "0.8em", whiteSpace: "nowrap" }}
-                title="Airリザーブから取り込んだとき、既存の患者と結びつけられずに新しく登録した患者です。同じ人がいれば患者画面で統合し、別の人なら設定（院の情報）の「Airリザーブの取り込み」で確認済みにしてください"
+                title="Airリザーブからの取り込み時に、既存の患者と結びつけられず新規登録した患者です。同じ人がいれば患者画面で統合し、別の人なら「設定 → リマインド」の「Airリザーブの取り込み」で確認済みにしてください"
               >
                 要確認
               </span>
@@ -164,7 +164,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                       />
                     </span>
                   ) : (
-                    <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・変更">
+                    <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・編集">
                       {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
                     </button>
                   )}
@@ -175,8 +175,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                         r.requestLine === "ok"
                           ? "リマインドは、この申請を送った LINE に届きます"
                           : r.requestLine === "mismatch"
-                            ? "申請の名前・生年月日がこの患者と合いません。申請IDを確かめてください（LINE では送りません）"
-                            : "この申請IDの LINE が見つかりません（LINE では送りません）"
+                            ? "申請の氏名・生年月日がこの患者と一致しません。予約申請IDを確認してください（LINE では送信しません）"
+                            : "この予約申請IDの LINE が見つかりません（LINE では送信しません）"
                       }
                       style={r.requestLine === "ok" ? undefined : { color: "var(--danger, #c0392b)" }}
                     >
@@ -189,13 +189,13 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                       className={styles.idBtn}
                       title="この申請の LINE を患者に紐付けます。電話・窓口で取った予約にも LINE でリマインドが届くようになります"
                       onClick={async () => {
-                        if (!window.confirm(`申請の名前・生年月日が「${patient.name}」さんと合っています。\nこの LINE を患者に紐付けますか？（家族が代わりに申し込んだ場合は、紐付けないでください）`)) return;
+                        if (!window.confirm(`申請の氏名・生年月日が「${patient.name}」さんと一致しています。\nこの LINE を患者に紐付けます。よろしいですか？\n（家族が代理で申し込んだ場合は、紐付けないでください）`)) return;
                         try {
                           await linkLineFromReservation(r.id);
                           setLineLinked(true);
                           window.alert("LINE を紐付けました");
                         } catch (err) {
-                          window.alert(err instanceof ApiError ? err.message : "紐付けられませんでした");
+                          window.alert(err instanceof ApiError ? err.message : "紐付けできませんでした");
                         }
                       }}
                     >
@@ -227,7 +227,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       <div className={styles.panelLinks}>
         <span className={styles.panelLinkBtns}>
           <button type="button" className={styles.estimateBtn} onClick={onEditPatient}>
-            👤 患者情報の表示/編集
+            👤 患者情報の表示・編集
           </button>
           {!INACTIVE_STATUSES.has(r.status) && (
             <button type="button" className={styles.estimateBtn} onClick={() => setEditOpen(true)}>
@@ -244,7 +244,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               📄 同意書
             </button>
             <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
-              📝 見積/会計
+              📝 見積・会計
             </button>
           </span>
         )}
@@ -321,19 +321,19 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               style={{ marginLeft: 8 }}
               disabled={reminding}
               onClick={async () => {
-                if (!window.confirm("この来院へ、いまリマインドを送ります。よろしいですか？")) return;
+                if (!window.confirm("この予約のリマインドを今すぐ送信します。よろしいですか？")) return;
                 setReminding(true);
                 try {
                   const res = await remindNow(r.id);
-                  window.alert(`送りました（${res.channel === "line" ? "LINE" : "メール"}）`);
+                  window.alert(`送信しました（${res.channel === "line" ? "LINE" : "メール"}）`);
                 } catch (err) {
-                  window.alert(err instanceof ApiError ? err.message : "送れませんでした");
+                  window.alert(err instanceof ApiError ? err.message : "送信できませんでした");
                 } finally {
                   setReminding(false);
                 }
               }}
             >
-              {reminding ? "送っています…" : "今すぐ送る"}
+              {reminding ? "送信中…" : "今すぐ送る"}
             </button>
           )}
         </dd>
@@ -384,7 +384,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                 setStageTime("");
               }}
             >
-              時刻だけ直す
+              時刻のみ修正
             </button>
           )}
         </div>
@@ -419,7 +419,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               style={{ "--sc": freeStage.color } as CSSProperties}
               data-active={!!r.stageText || undefined}
               aria-pressed={!!r.stageText}
-              title="ほかの状態と一緒に出せる自由な一言（例：15時までに出たい）"
+              title="ほかの状態と併せて表示できる一言メモ（例：15時までに出たい）"
               onClick={() => setFreeText(r.stageText ?? "")}
             >
               {r.stageText ? `✎ ${r.stageText}` : `＋${freeStage.label}`}
@@ -462,7 +462,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                   setFreeText(null);
                 }}
               >
-                消す
+                削除
               </button>
             )}
             <button type="button" className={styles.btn} onClick={() => setFreeText(null)}>
@@ -472,7 +472,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         )}
         {(r.status === "cancelled" || r.status === "no_show") && (
           <div className={styles.restoreBar} role="status">
-            <span>この予約は{r.status === "cancelled" ? "キャンセル" : "無断キャンセル"}になっています。</span>
+            <span>この予約は{r.status === "cancelled" ? "キャンセル" : "無断キャンセル"}です。</span>
             <button
               type="button"
               className={styles.btn}
@@ -550,7 +550,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
           <button
             className={styles.btn}
             disabled
-            title={patient?.lineUserId ? "LINE連携は今後実装します" : "この患者はLINE未連携です"}
+            title={patient?.lineUserId ? "LINE での連絡は準備中です" : "この患者は LINE 未連携です"}
           >
             {patient?.lineUserId ? "LINEで連絡（準備中）" : "LINE未連携"}
           </button>
@@ -575,7 +575,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         />
       </div>
 
-      <p className={styles.hint}>予約枠をドラッグで時間・レーン変更、下端のつまみで長さ変更（5分刻み）</p>
+      <p className={styles.hint}>予約枠をドラッグすると時間・レーンを、下端のつまみで長さを変更できます（5分刻み）。</p>
     </aside>
   );
 }

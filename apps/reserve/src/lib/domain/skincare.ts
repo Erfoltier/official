@@ -1,5 +1,5 @@
 /**
- * スキンケア＆内服の候補：料金表（スプレッドシートのゼオ・内服外用・その他、ホームページの外用剤・内服）と、
+ * スキンケア・内服の候補：料金表（スプレッドシートのゼオ・内服外用・その他、ホームページの外用剤・内服）と、
  * 設定で院が足した商品をまとめる。名前の重複は先のものを使う。
  */
 import type { PriceItem, Product } from "./types";
@@ -13,7 +13,7 @@ export interface SkincareOption {
   priceYen: number | null;
 }
 
-/** ホームページの料金表のうち、スキンケア＆内服として選ぶ分類 */
+/** ホームページの料金表のうち、スキンケア・内服として選ぶ分類 */
 const HP_CATEGORY = /外用|内服|スキンケア|サプリ/;
 
 const rank = (p: PriceItem): number => {

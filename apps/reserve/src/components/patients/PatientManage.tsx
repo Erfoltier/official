@@ -80,13 +80,13 @@ export function DeletedBanner(props: { detail: PatientDetail; canManage: boolean
                 try {
                   props.onChanged(await unmergePatient(p.id, p.version));
                 } catch (err) {
-                  setError(err instanceof ApiError ? err.message : "取り消せませんでした");
+                  setError(err instanceof ApiError ? err.message : "取り消しできませんでした");
                 } finally {
                   setBusy(false);
                 }
               }}
             >
-              {busy ? "取り消しています…" : "統合を取り消す"}
+              {busy ? "取り消し中…" : "統合を取り消す"}
             </button>
           )}
         </div>
@@ -118,7 +118,7 @@ export function DuplicateBanner(props: { detail: PatientDetail; canManage: boole
   if (duplicates.length === 0) return null;
   return (
     <div className={styles.dupBanner}>
-      <strong>同じ人が重複して登録されているかもしれません</strong>
+      <strong>同じ患者が重複して登録されている可能性があります</strong>
       <div className={styles.dupNote}>姓名・セイメイ・生年月日がすべて一致する場合だけ、確認のうえ統合できます。</div>
       <ul>
         {duplicates.map((d) => (
@@ -246,7 +246,7 @@ export function MergeDialog(props: {
   return (
     <dialog ref={ref} className={styles.dialog} onClose={props.onClose} onCancel={props.onClose} aria-label="重複患者の統合">
       <div className={styles.editorHead}>
-        <div className={styles.title}>重複している患者をまとめる</div>
+        <div className={styles.title}>重複患者の統合</div>
         <button type="button" className={styles.iconBtn} onClick={props.onClose} aria-label="閉じる">
           ×
         </button>
@@ -254,7 +254,7 @@ export function MergeDialog(props: {
 
       {!other ? (
         <div className={styles.field}>
-          <span className={styles.label}>まとめる相手の患者を探す</span>
+          <span className={styles.label}>統合する相手の患者を検索</span>
           <input
             className={styles.input}
             value={query}
@@ -278,7 +278,7 @@ export function MergeDialog(props: {
         </div>
       ) : (
         <>
-          <p className={styles.muted}>残す方を選んでください。もう一方の予約・施術歴・記録は、残す方へ移ります。</p>
+          <p className={styles.muted}>残す患者を選んでください。もう一方の予約・施術歴・記録は、残す患者へ移ります。</p>
           <div className={styles.mergeGrid}>
             {[props.current, other].map((p) => {
               const isKeep = (p.id === props.current.id) === keepCurrent;
@@ -293,7 +293,7 @@ export function MergeDialog(props: {
                       setKeepCurrent(p.id === props.current.id);
                     }}
                   />
-                  <span className={styles.keepLabel}>{isKeep ? "こちらを残す" : "こちらをまとめて削除扱いにする"}</span>
+                  <span className={styles.keepLabel}>{isKeep ? "こちらを残す" : "こちらを統合して削除扱いにする"}</span>
                   <Summary p={p} />
                 </label>
               );
@@ -303,7 +303,7 @@ export function MergeDialog(props: {
           {preview && !preview.identical && (
             <div className={styles.alert}>
               姓名・セイメイ・生年月日がすべて一致しないため統合できません（一致しない項目：{preview.mismatch.join("・")}）。
-              同じ方であれば、先に患者情報を直してください。
+              同じ方であれば、先に患者情報を修正してください。
             </div>
           )}
           {preview ? (
@@ -311,15 +311,15 @@ export function MergeDialog(props: {
               <li>予約 {preview.reservations} 件を移します</li>
               <li>施術歴の記録 {preview.visitNotes} 日分を移します</li>
               {preview.sameDayNotes.length > 0 && (
-                <li>同じ日に両方の記録がある日（{preview.sameDayNotes.map(formatDateFull).join("、")}）は、メモをつなげ、スキンケアを合わせます</li>
+                <li>同じ日に両方の記録がある日（{preview.sameDayNotes.map(formatDateFull).join("、")}）は、メモを連結し、スキンケアをまとめます</li>
               )}
               {preview.filledFields.length > 0 && <li>残す方の空欄を埋めます：{preview.filledFields.join("・")}</li>}
-              <li>注意事項・院内メモはつなげます</li>
+              <li>注意事項・院内メモは連結します</li>
               {preview.lineConflict && (
-                <li className={styles.warn}>両方がLINEと紐付いています。残す方の紐付けを使い、もう一方の紐付けは外します</li>
+                <li className={styles.warn}>両方が LINE と紐付いています。残す患者の紐付けを使い、もう一方の紐付けは解除します</li>
               )}
               <li>
-                まとめた側（診察券 {preview.dup.chartNo}）は削除扱いで記録として残り、検索には出なくなります。<strong>統合は元に戻せません。</strong>
+                統合される側（診察券 {preview.dup.chartNo}）は削除扱いの記録として残り、検索には表示されなくなります。<strong>統合は元に戻せません。</strong>
               </li>
             </ul>
           ) : (
@@ -328,13 +328,13 @@ export function MergeDialog(props: {
           {error && <div className={styles.alert}>{error}</div>}
           <div className={styles.editActions}>
             <button type="button" className={styles.linkBtn} onClick={() => { setOther(null); setPreview(null); }}>
-              ← 相手を選び直す
+              ← 統合相手を選び直す
             </button>
             <button type="button" className={styles.btn} onClick={props.onClose}>
               やめる
             </button>
             <button type="button" className={styles.dangerFill} disabled={!preview || !preview.identical || busy} onClick={run}>
-              統合する
+              統合
             </button>
           </div>
         </>
@@ -358,7 +358,7 @@ export function DeleteDialog(props: { patient: Patient; onClose: () => void; onD
     <dialog ref={ref} className={styles.dialogSmall} onClose={props.onClose} onCancel={props.onClose} aria-label="患者の削除">
       <div className={styles.title}>「{props.patient.name}」を削除</div>
       <p className={styles.muted}>
-        削除しても、予約・施術歴・記録は消えずに残ります（診療の記録は保存が必要なため）。検索や一覧には出なくなり、あとから復元できます。
+        削除しても、診療記録として予約・施術歴・記録は残ります。検索や一覧には表示されなくなり、後から復元できます。
         今日以降の予約がある場合は削除できません。
       </p>
       <div className={styles.field}>
@@ -393,7 +393,7 @@ export function DeleteDialog(props: { patient: Patient; onClose: () => void; onD
             }
           }}
         >
-          削除する
+          削除
         </button>
       </div>
     </dialog>

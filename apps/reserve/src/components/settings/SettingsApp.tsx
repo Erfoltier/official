@@ -142,7 +142,7 @@ export function SettingsApp() {
       )}
 
       {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic") && (
-        <p className={styles.lead}>このログインでは見るだけです。変更・削除は、院長・管理者と受付、または院長が「設定 → スタッフ」で許可したスタッフができます。</p>
+        <p className={styles.lead}>このログインでは閲覧のみできます。変更・削除できるのは院長・管理者・受付と、「設定 → スタッフ」で許可されたスタッフです。</p>
       )}
       {tab === "staff" && isAdmin ? (
         <StaffTab notify={notify} fail={fail} />
@@ -159,10 +159,15 @@ export function SettingsApp() {
       ) : !data ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : tab === "imports" ? (
-        <>
-          <ImportsTab menus={data.menus} lanes={data.lanes} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
-          {isAdmin && <M3MatchCard notify={notify} fail={fail} />}
-        </>
+        <ImportsTab
+          menus={data.menus}
+          lanes={data.lanes}
+          canEdit={canEdit}
+          onChanged={load}
+          notify={notify}
+          fail={fail}
+          extra={isAdmin && <M3MatchCard notify={notify} fail={fail} />}
+        />
       ) : tab === "questionnaires" ? (
         <QuestionnairesTab canEdit={canEdit} isAdmin={isAdmin} notify={notify} fail={fail} />
       ) : tab === "consents" ? (
@@ -175,7 +180,7 @@ export function SettingsApp() {
         <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "reminders" ? (
         <section>
-          <p className={styles.lead}>予約のお知らせ（リマインド）と、Airリザーブからの予約の取り込みの設定です。</p>
+          <p className={styles.lead}>リマインドの配信と、Airリザーブからの予約取り込みの設定です。</p>
           <div className={styles.clinicWide}>
             {isAdmin && <ReminderCard menus={data.menus} onChanged={load} notify={notify} fail={fail} />}
             {isAdmin && <AirSyncCard notify={notify} fail={fail} />}
@@ -183,7 +188,7 @@ export function SettingsApp() {
         </section>
       ) : tab === "appearance" ? (
         <section className={styles.clinic}>
-          <p className={styles.lead}>画面の見た目の設定です。配色は院で1つ（すべての端末に反映）、その下の表示はこの端末ごとに選べます。</p>
+          <p className={styles.lead}>配色は院で共通（すべての端末に反映）です。その下の表示設定は端末ごとに保存されます。</p>
           <ThemeCard key={data.clinic.theme ?? "default"} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
           <DisplayPrefsCard />
         </section>
@@ -242,9 +247,8 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
   return (
     <section>
       <p className={styles.lead}>
-        予約表の列です。表示できるレーンは{MIN_LANES}〜{MAX_LANES}本で、名前の変更・並べ替え・追加ができます（一番上が左端）。
-        使わなくなったレーンは「表示」を外すとカレンダーから消えます（過去の予約は残ります）。予約の記録が一度もないレーンは削除できます。
-        今日以降の予約が残っているレーンは、予約を移してから外してください。
+        予約表の列です（{MIN_LANES}〜{MAX_LANES}本、一番上が左端）。使わないレーンは「表示」を外すと予約表から消え、過去の予約は残ります。
+        今日以降の予約があるレーンは、予約を移してから非表示にしてください。予約が一度もないレーンは削除できます。
       </p>
       <table className={styles.table}>
         <thead>
@@ -267,7 +271,7 @@ function LanesTab({ lanes, onChanged, notify, fail }: TabProps & { lanes: Lane[]
               onUp={() => doReorder(i, -1)}
               onDown={() => doReorder(i, 1)}
               onDelete={async () => {
-                if (!window.confirm(`「${l.name}」を削除しますか？`)) return;
+                if (!window.confirm(`「${l.name}」を削除します。よろしいですか？`)) return;
                 try {
                   await deleteLane(l.id);
                   await onChanged();
@@ -406,7 +410,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
   };
 
   const doDelete = async (m: Menu) => {
-    if (!window.confirm(`「${m.name}」を削除しますか？\n予約登録の選択肢から消えます（これまでの予約の表示はそのまま残ります）`)) return false;
+    if (!window.confirm(`「${m.name}」を削除します。よろしいですか？\n予約登録の選択肢から消えます。これまでの予約の表示は残ります。`)) return false;
     try {
       await deleteMenu(m.id);
       await onChanged();
@@ -421,7 +425,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
   return (
     <section>
       <p className={styles.lead}>
-        予約登録で選ぶメニューです。「＋ 新しいメニュー」で追加、行を押して変更、「削除」で消せます（削除しても、これまでの予約の表示はそのまま残ります）。略称は予約表の短い枠に、色は枠の色に使います。
+        予約登録で選ぶメニューです。行を押すと編集できます。略称は予約表の短い枠に、色は予約枠の色に使います。削除しても、これまでの予約の表示は残ります。
       </p>
       <div className={styles.toolbar}>
         <input
@@ -433,7 +437,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
         />
         <label className={styles.toggle}>
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-          使わないメニューも表示
+          非表示のメニューも表示
         </label>
         <button className={styles.primary} onClick={() => setEditing("new")}>
           ＋ 新しいメニュー
@@ -450,7 +454,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
               <th>提供時間</th>
               <th>料金（税込）</th>
               <th>レーン</th>
-              <th>予約の選択肢</th>
+              <th>予約時の選択肢</th>
               <th aria-label="削除" />
             </tr>
           </thead>
@@ -488,7 +492,7 @@ function MenusTab({ data, onChanged, notify, fail }: TabProps & { data: Settings
                 <td className={styles.lanesCell}>
                   {m.laneIds.length === 0 ? "すべて" : m.laneIds.map((id) => laneName.get(id) ?? "?").join("・")}
                 </td>
-                <td>{m.active ? "出す" : "出さない"}</td>
+                <td>{m.active ? "表示" : "非表示"}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <button className={styles.btn} onClick={() => doDelete(m)} aria-label={`${m.name}を削除`}>
                     削除

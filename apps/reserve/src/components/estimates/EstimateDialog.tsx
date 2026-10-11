@@ -165,12 +165,12 @@ export function EstimateDialog(props: Props) {
     const list: { id: string; name: string; label?: string; price: number | null; sub?: string; text?: string }[] =
       tab === "price"
         ? (prices ?? []).map((p) => ({ id: p.id, name: lineName(p), label: p.name, price: p.priceYen, sub: p.category, text: p.priceText }))
-        : // 患者画面のスキンケア＆内服と同じ候補（料金表のゼオ・内服外用・外用剤など＋設定で足した商品）
+        : // 患者画面のスキンケア・内服と同じ候補（料金表のゼオ・内服外用・外用剤など＋設定で足した商品）
           skincareOptions(prices ?? [], products).map((o) => ({ id: `sk:${o.name}`, name: o.name, price: o.priceYen, sub: o.group }));
     return key ? list.filter((x) => searchKey(`${x.sub ?? ""} ${x.name}`).includes(key)) : list;
   }, [tab, q, products, prices]);
 
-  /** 料金表・スキンケア＆内服の項目は「自由入力の行」として入れる（見積書には名前と値段を写して残す） */
+  /** 料金表・スキンケア・内服の項目は「自由入力の行」として入れる（見積書には名前と値段を写して残す） */
   const add = (tab0: "price" | "product", id: string, name: string, price: number | null) => {
     const p = tab0 === "price" ? prices?.find((x) => x.id === id) : undefined;
     const cat: LineCat = tab0 === "product" ? "product" : p ? priceCat(p) : "treatment";
@@ -224,7 +224,7 @@ export function EstimateDialog(props: Props) {
     <dialog ref={ref} className={styles.dialog} onCancel={props.onClose} aria-label="見積・会計">
       <div className={styles.head}>
         <h2>
-          {props.estimate ? `${DOC_LABEL[kind]} No.${props.estimate.no} を直す` : `${DOC_LABEL[kind]}を作る`}
+          {props.estimate ? `${DOC_LABEL[kind]} No.${props.estimate.no} を編集` : `${DOC_LABEL[kind]}を作成`}
           <small>{props.patientName} 様</small>
         </h2>
         <div className={styles.kindSwitch} role="radiogroup" aria-label="書類の種類">
@@ -261,9 +261,9 @@ export function EstimateDialog(props: Props) {
                 料金表
               </button>
               <button type="button" role="tab" aria-selected={tab === "product"} data-active={tab === "product" || undefined} onClick={() => setTab("product")}>
-                スキンケア＆内服
+                スキンケア・内服
               </button>
-              <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="さがす" aria-label="項目をさがす" />
+              <input className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="検索" aria-label="項目を検索" />
             </div>
             {related.length > 0 && tab === "price" && !q && (
               <div className={styles.related}>
@@ -279,11 +279,11 @@ export function EstimateDialog(props: Props) {
                 </div>
               </div>
             )}
-            <span className={styles.allLabel}>{tab === "price" ? "全メニュー一覧" : "スキンケア＆内服の一覧"}</span>
+            <span className={styles.allLabel}>{tab === "price" ? "全メニュー一覧" : "スキンケア・内服の一覧"}</span>
             <div className={`${styles.chips} ${styles.allList}`}>
               {prices === null && <span className={styles.muted}>読み込み中…</span>}
               {prices !== null && candidates.length === 0 && (
-                <span className={styles.muted}>{tab === "price" && !q ? "料金表が空です（設定 → 料金表）" : "見つかりません"}</span>
+                <span className={styles.muted}>{tab === "price" && !q ? "料金表が空です（「設定 → 料金表」で登録してください）" : "該当する項目はありません"}</span>
               )}
               {candidates.map((c) => (
                 <button key={c.id} type="button" className={styles.chip} onClick={() => add(tab, c.id, c.name, c.price)} title={c.text ? `${c.name}：${c.text}` : "押すと見積に追加"}>
@@ -309,7 +309,7 @@ export function EstimateDialog(props: Props) {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.empty}>
-                    上の料金表・スキンケア＆内服を押すと追加されます
+                    上の料金表・スキンケア・内服を押すと追加されます
                   </td>
                 </tr>
               )}
@@ -363,7 +363,7 @@ export function EstimateDialog(props: Props) {
                   </td>
                   <td className={styles.num}>{parsed[i] === null ? "—" : yen(parsed[i]! * r.qty)}</td>
                   <td>
-                    <button type="button" className={styles.remove} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label="この行を消す">
+                    <button type="button" className={styles.remove} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label="この行を削除">
                       ×
                     </button>
                   </td>
@@ -405,7 +405,7 @@ export function EstimateDialog(props: Props) {
                   </td>
                   <td className={styles.num}>{yen(amount)}</td>
                   <td>
-                    <button type="button" className={styles.remove} onClick={() => setDiscounts((ds) => ds.filter((x) => x.key !== d.key))} aria-label="この割引を消す">
+                    <button type="button" className={styles.remove} onClick={() => setDiscounts((ds) => ds.filter((x) => x.key !== d.key))} aria-label="この割引を削除">
                       ×
                     </button>
                   </td>
@@ -467,14 +467,14 @@ export function EstimateDialog(props: Props) {
               {error}
             </p>
           )}
-          {total < 0 && <p className={styles.error}>合計がマイナスです。割引の金額を確かめてください</p>}
+          {total < 0 && <p className={styles.error}>合計がマイナスです。割引の金額を確認してください</p>}
 
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={props.onClose}>
               やめる
             </button>
             <button type="button" className={styles.primaryBtn} onClick={save} disabled={invalid || saving}>
-              {saving ? "保存中…" : props.estimate ? "保存する" : `${DOC_LABEL[kind]}を作る`}
+              {saving ? "保存中…" : props.estimate ? "保存" : `${DOC_LABEL[kind]}を作成`}
             </button>
           </div>
         </>

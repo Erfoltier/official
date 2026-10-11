@@ -82,10 +82,10 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
     try {
       const r = await runRemindersNow();
       if (!r.ran) {
-        props.notify(r.reason === "disabled" ? "自動配信が「しない」になっています" : "少し前に確認したばかりです。1分ほど待ってからもう一度押してください");
+        props.notify(r.reason === "disabled" ? "自動配信が「しない」になっています" : "直前に確認したばかりです。1分ほど待ってからもう一度押してください");
       } else {
-        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => (x.paused ? `${k}：自動配信を止める日のため送りませんでした` : `${k}：送信済 ${x.sent}・未送信 ${x.skipped}・送信失敗 ${x.failed}`));
-        props.notify(parts.length ? parts.join("／") : "いまは送信時刻ではありません（送信時刻から3時間以内に送ります）");
+        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => (x.paused ? `${k}：一時停止中のため送信しませんでした` : `${k}：送信済 ${x.sent}・未送信 ${x.skipped}・送信失敗 ${x.failed}`));
+        props.notify(parts.length ? parts.join("／") : "送信時刻ではないため、送信する予約はありません。送信時刻から3時間以内に送ります");
       }
       setS(await fetchReminderSettings());
     } catch (e) {
@@ -99,10 +99,10 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>リマインド（予約のお知らせ）</h3>
       <p className={styles.hint}>
-        予約のある患者に、来院1回につき1通のお知らせを送ります。LINE 連携済みの患者には LINE、それ以外の患者にはメールで送ります（患者ごとに送信方法・送信不要を変えられます）。キャンセル・承認待ちの予約には送りません。
+        予約のある患者に、来院1回につき1通お知らせを送ります。LINE 連携済の患者には LINE、それ以外の患者にはメールで送ります。送信方法は患者ごとに変更でき、送信しない設定もできます。キャンセル・承認待ちの予約には送りません。
       </p>
 
-      <h4 className={styles.subTitle}>自動配信</h4>
+      <h4 className={styles.subTitle}>配信スケジュール</h4>
       <div className={styles.prefRow}>
         <b>自動配信</b>
         <div className={styles.segment} role="radiogroup" aria-label="自動配信">
@@ -124,8 +124,8 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
           </button>
         </div>
         <small>
-          {s.lastRun ? `最終確認：${stamp(s.lastRun.at)}` : "まだ一度も確認していません"}
-          {`　定期実行（cron）：${s.cronSeenAt ? stamp(s.cronSeenAt) : "未確認（サーバーの cron の設定を確かめてください）"}`}
+          {s.lastRun ? `最終確認：${stamp(s.lastRun.at)}` : "最終確認：未実行"}
+          {`　定期実行（cron）：${s.cronSeenAt ? stamp(s.cronSeenAt) : "未確認（サーバーの cron 設定を確認してください）"}`}
           {s.lineConfigured && s.lineRemaining !== null && `　LINE の今月の残り：${s.lineRemaining}通`}
         </small>
       </div>
@@ -173,16 +173,16 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
       </div>
 
       <div className={styles.prefRow}>
-        <b>自動配信を止める日</b>
+        <b>自動配信の一時停止</b>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <input className={styles.input} style={{ width: "auto" }} type="date" value={draft.pauseUntil} onChange={(e) => set("pauseUntil", e.target.value)} aria-label="自動配信を止める日" />
+          <input className={styles.input} style={{ width: "auto" }} type="date" value={draft.pauseUntil} onChange={(e) => set("pauseUntil", e.target.value)} aria-label="一時停止する最終日" />
           {draft.pauseUntil && (
             <button type="button" className={styles.btn} onClick={() => set("pauseUntil", "")}>
               解除
             </button>
           )}
         </div>
-        <small>この日までの予約には自動配信しません。空欄なら止めません（「保存」で反映）。</small>
+        <small>選んだ日までの予約には自動配信しません。空欄にすると停止しません。下の「保存」で反映されます。</small>
       </div>
 
       <h4 className={styles.subTitle}>送信方法</h4>
@@ -195,7 +195,7 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
           </select>
         </label>
         <label>
-          <span>LINE の取り置き通数</span>
+          <span>LINE の予備通数</span>
           <input className={styles.input} type="number" min={0} value={draft.lineReserve} onChange={(e) => set("lineReserve", Number(e.target.value) || 0)} />
         </label>
         <label>
@@ -219,13 +219,13 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         </label>
       </div>
       <p className={styles.hint}>
-        LINE の今月の残り通数が「取り置き通数」以下になったら、LINE ではなくメールで送ります（メールアドレスのない患者には送りません）。LINE の無料プランは月200通です。送信元メールアドレスが空欄だと、メールは送れません。
+        LINE の今月の残り通数が予備通数以下になると、LINE の代わりにメールで送ります。メールアドレス未回答の患者には送りません。LINE の無料プランは月200通です。送信元メールアドレスが未設定の場合、メールは送信できません。
       </p>
 
       <div className={styles.prefRow} style={{ marginTop: 10 }}>
         <b>LINE チャネルアクセストークン</b>
         <span>{s.lineConfigured ? "設定済み" : "未設定"}</span>
-        <small>LINE Developers の Messaging API チャネルにある「チャネルアクセストークン（長期）」を貼り付けて保存してください。保存後は画面に表示されません。</small>
+        <small>LINE Developers の Messaging API チャネルで発行した「チャネルアクセストークン（長期）」を貼り付けて保存してください。保存後は画面に表示されません。</small>
       </div>
       <div className={styles.actions}>
         <input className={styles.input} type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="チャネルアクセストークン（長期）" style={{ flex: 1, minWidth: 200 }} />
@@ -266,7 +266,7 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         </label>
       </div>
       <p className={styles.hint}>
-        「する」にすると、文面に {"{メニュー}"}・{"{来院前のご案内}"} がなくても、メニュー名は日時の下に、来院前のご案内は文末に入ります。メニュー名と来院前のご案内は「患者に送信するメニュー名の編集」で、メニューごとに設定します。
+        「する」にすると、文面に {"{メニュー}"}・{"{来院前のご案内}"} がなくても、メニュー名は日時の下、来院前のご案内は文末に入ります。内容はメニューごとに「患者に送信するメニュー名の編集」で設定します。
       </p>
       <div className={styles.actions}>
         <button type="button" className={styles.btn} onClick={() => set("template", s.defaultTemplate)} disabled={busy}>
@@ -283,7 +283,7 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
           未送信分を今すぐ送る
         </button>
       </div>
-      <p className={styles.hint}>送信時刻を過ぎた回のうち、まだリマインドを送っていない予約に送ります。同じ予約に同じ回のリマインドを二度送ることはありません。</p>
+      <p className={styles.hint}>送信時刻を過ぎた回のうち、未送信の予約に送ります。同じ予約に同じ回のリマインドを二重に送ることはありません。</p>
 
       {menusOpen && <ReminderMenusDialog menus={props.menus} onChanged={props.onChanged} notify={props.notify} fail={props.fail} onClose={() => setMenusOpen(false)} />}
       <PreviewSection fail={props.fail} />
@@ -301,7 +301,7 @@ function tomorrow(): string {
   return t.toISOString().slice(0, 10);
 }
 
-/** 送らずに、その日の来院ごとの送り先と、送信済みかを確かめる（メールアドレスが入っているか・LINE がつながっているか） */
+/** 送信せずに、指定日の予約ごとの送信方法と送信状況を確認する */
 function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
   const [date, setDate] = useState(tomorrow);
   const [data, setData] = useState<ReminderPreview | null>(null);
@@ -317,13 +317,13 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
     }
   };
   return (
-    <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-      <b>リマインド送信状況の確認</b>
-      <p className={styles.hint}>日付を選ぶと、その日の予約ごとに送信状況・送信方法・詳細を表示します（この画面からは送信しません）。メールアドレスは一部を伏せて表示します。</p>
+    <div>
+      <h4 className={styles.subTitle}>リマインド送信状況の確認</h4>
+      <p className={styles.hint}>選んだ日の予約ごとに、送信状況・送信方法を表示します。ここからは送信しません。メールアドレスは一部を伏せて表示します。</p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
-        <input className={styles.input} type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="確かめる日" />
+        <input className={styles.input} type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="確認する日" />
         <button type="button" className={styles.btn} disabled={busy || !date} onClick={() => void check()}>
-          {busy ? "確かめています…" : "確かめる"}
+          {busy ? "確認中…" : "確認"}
         </button>
       </div>
       {data && (
@@ -332,9 +332,9 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
             {data.date}：送信済 {data.count.sent}件・未送信 {data.count.pending}件（うち送信方法なし {data.count.noMethod}件）・送信失敗 {data.count.failed}件
             {data.lineRemaining !== null && `（LINE の今月の残り ${data.lineRemaining}通）`}
           </p>
-          {data.paused && <p className={styles.hint}>※ {data.pauseUntil} までの予約は、自動送信を止めています。</p>}
+          {data.paused && <p className={styles.hint}>※ {data.pauseUntil} までの予約は、自動配信を一時停止しています。</p>}
           {data.items.length === 0 ? (
-            <p className={styles.hint}>この日の来院はありません</p>
+            <p className={styles.hint}>この日の予約はありません</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className={styles.previewTable}>

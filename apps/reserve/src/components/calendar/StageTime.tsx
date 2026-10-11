@@ -13,13 +13,13 @@ export function StageTimeInput({ value, onChange, className }: { value: string; 
   return (
     <label className={className}>
       <span>時刻</span>
-      <input type="time" step={60} value={value} onChange={(e) => onChange(e.target.value)} aria-label="状態を変えた時刻（空欄なら今の時刻）" />
+      <input type="time" step={60} value={value} onChange={(e) => onChange(e.target.value)} aria-label="状態を変更した時刻（空欄の場合は現在時刻）" />
       {value ? (
         <button type="button" onClick={() => onChange("")} aria-label="時刻を空欄に戻す">
           ×
         </button>
       ) : (
-        <small>空欄＝今</small>
+        <small>空欄は現在時刻</small>
       )}
     </label>
   );

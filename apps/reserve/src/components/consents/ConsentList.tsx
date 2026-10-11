@@ -28,7 +28,7 @@ export function ConsentList(props: { patient: Pick<Patient, "id" | "name" | "kan
     <div>
       {error && <p className={styles.error}>{error}</p>}
       {items === null && !error && <p className={styles.muted}>読み込み中…</p>}
-      {items?.length === 0 && <p className={styles.muted}>まだ同意書はありません</p>}
+      {items?.length === 0 && <p className={styles.muted}>同意書はまだありません</p>}
       {items && items.length > 0 && (
         <table className={styles.list}>
           <thead>
@@ -57,7 +57,7 @@ export function ConsentList(props: { patient: Pick<Patient, "id" | "name" | "kan
                         type="button"
                         className={styles.btn}
                         onClick={async () => {
-                          if (!window.confirm(`「${c.title}」（${c.date}）の控えを削除しますか？`)) return;
+                          if (!window.confirm(`「${c.title}」（${c.date}）の控えを削除します。よろしいですか？`)) return;
                           try {
                             await deleteConsent(c.id);
                             load();
@@ -79,7 +79,7 @@ export function ConsentList(props: { patient: Pick<Patient, "id" | "name" | "kan
       {!props.readOnly && (
         <div className={styles.actions} style={{ justifyContent: "flex-start" }}>
           <button type="button" className={styles.btn} onClick={() => setOpen(true)}>
-            ＋同意書を作る
+            ＋同意書を作成
           </button>
         </div>
       )}

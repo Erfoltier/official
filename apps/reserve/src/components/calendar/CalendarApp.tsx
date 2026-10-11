@@ -434,7 +434,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               setUiSize(next);
               applyUiSize(next);
             }}
-            title="文字の大きさを切り替える（この端末だけ。標準 → 大きめ → 特大）"
+            title="文字の大きさを切り替え（この端末のみ。標準 → 大きめ → 特大）"
             aria-label={`文字の大きさ：${UI_SIZES.find((x) => x.id === uiSize)?.label}`}
           >
             文字{" "}<span className={styles.uiSizeLabel}>{UI_SIZES.find((x) => x.id === uiSize)?.label}</span>
@@ -456,7 +456,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             data-active={maskNames || undefined}
             onClick={() => setMaskNames((v) => !v)}
             aria-pressed={maskNames}
-            title="患者から画面が見える場所で使う"
+            title="患者から画面が見える場所で使います"
           >
             <span className={styles.long}>氏名を伏せる</span>
             <span className={styles.short}>●●</span>
@@ -478,7 +478,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               const el = document.documentElement;
               if (document.fullscreenElement) document.exitFullscreen?.();
               else if (el.requestFullscreen) el.requestFullscreen().catch(() => showToast("全画面表示にできませんでした"));
-              else showToast("この端末は全画面表示に対応していません。ホーム画面に追加すると広く使えます");
+              else showToast("この端末は全画面表示に対応していません。ホーム画面に追加すると、画面を広く使えます");
             }}
             aria-label="全画面表示"
             title="全画面表示"
@@ -490,7 +490,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               className={styles.btn}
               title="ログイン中のスタッフ（押すと交代）"
               onClick={async () => {
-                if (!window.confirm(`${me.name} をログアウトして、スタッフを交代しますか？`)) return;
+                if (!window.confirm(`${me.name} をログアウトして、スタッフを交代します。よろしいですか？`)) return;
                 await logout();
                 window.location.replace(withBase("/login/"));
               }}
@@ -511,7 +511,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
             👤<span className={styles.cap}>患者</span>
           </Link>
-          <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
+          <Link href="/settings" className={styles.iconBtn} aria-label="設定" title="設定">
             ⚙<span className={styles.cap}>設定</span>
           </Link>
         </div>
