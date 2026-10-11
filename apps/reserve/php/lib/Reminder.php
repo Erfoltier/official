@@ -34,6 +34,8 @@ final class Reminder
             'lineReserve' => 20,
             // メニューの「来院前の案内」を本文の最後に足すか（院の好み。既定は足さない）
             'appendNotes' => false,
+            // メニュー名を文面に入れるか（文面に {メニュー} がなければ日時の下に入れる。既定は入れない）
+            'showMenu' => false,
             // この日（を含む）までの来院には自動で送らない（空なら止めない）。確認が済むまでの安全のため、最初は 2026-10-12 まで止めておく
             'pauseUntil' => '2026-10-12',
             'template' => self::DEFAULT_TEMPLATE,
@@ -104,7 +106,7 @@ final class Reminder
             usort($rounds, fn($a, $b) => ($b['daysBefore'] <=> $a['daysBefore']) ?: strcmp($a['time'], $b['time']));
             $next['rounds'] = array_values($rounds);
         }
-        foreach (['useLine', 'useEmail', 'appendNotes'] as $k) {
+        foreach (['useLine', 'useEmail', 'appendNotes', 'showMenu'] as $k) {
             if (array_key_exists($k, $in)) {
                 $next[$k] = (bool) $in[$k];
             }
@@ -495,10 +497,21 @@ final class Reminder
             },
             '{日付}' => $d->format('n') . '月' . $d->format('j') . "日（{$week}）",
             '{時刻}' => $d->format('G:i'),
-            '{メニュー}' => implode('・', $v['menuNames']),
+            '{メニュー}' => $s['showMenu'] ? implode('・', $v['menuNames']) : '',
         ];
         $vars['{来院前のご案内}'] = $s['appendNotes'] ? implode("\n", $v['notes'] ?? []) : '';
         $text = strtr((string) $s['template'], $vars);
+        // 「メニュー名を表示」がオンで、文面に {メニュー} がなければ、日時の行の下（なければ文末）に入れる
+        if ($s['showMenu'] && !str_contains((string) $s['template'], '{メニュー}') && $vars['{メニュー}'] !== '') {
+            $line = 'メニュー：' . $vars['{メニュー}'];
+            $count = 0;
+            $text = (string) preg_replace('/^(日時：.*)$/mu', "$1\n{$line}", $text, 1, $count);
+            if ($count === 0) {
+                $text = rtrim($text) . "\n\n{$line}";
+            }
+        }
+        // 項目を空にしたあとに残る「メニュー：」だけの行は消す
+        $text = (string) preg_replace('/^[^\n：]{1,10}：[ 　]*(\n|$)/mu', '', $text);
         // 「来院前の案内を足す」がオンなら、文面に {来院前のご案内} がなくても最後に足す
         if ($s['appendNotes'] && !str_contains((string) $s['template'], '{来院前のご案内}') && !empty($v['notes'])) {
             $text = rtrim($text) . "\n\n【ご来院前のご案内】\n" . $vars['{来院前のご案内}'];

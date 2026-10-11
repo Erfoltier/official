@@ -17,7 +17,6 @@ import { ImportsTab } from "./ImportsTab";
 import { M3MatchCard } from "./M3MatchCard";
 import { ReminderCard } from "./ReminderCard";
 import { AirSyncCard } from "./AirSyncCard";
-import { ReminderMenusCard } from "./ReminderMenusCard";
 import { ProductsTab } from "./ProductsTab";
 import { StagesTab } from "./StagesTab";
 import { RestoreTab } from "./RestoreTab";
@@ -176,11 +175,10 @@ export function SettingsApp() {
         <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "reminders" ? (
         <section>
-          <p className={styles.lead}>予約のお知らせ（リマインド）の送り方、患者に見せるメニュー名と来院前の案内、Airリザーブからの予約の取り込みをまとめています。</p>
+          <p className={styles.lead}>予約のお知らせ（リマインド）と、Airリザーブからの予約の取り込みの設定です。</p>
           <div className={styles.clinicWide}>
-            {isAdmin && <ReminderCard notify={notify} fail={fail} />}
+            {isAdmin && <ReminderCard menus={data.menus} onChanged={load} notify={notify} fail={fail} />}
             {isAdmin && <AirSyncCard notify={notify} fail={fail} />}
-            <ReminderMenusCard menus={data.menus} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
           </div>
         </section>
       ) : tab === "appearance" ? (

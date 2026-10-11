@@ -1039,3 +1039,15 @@ details.priceGroup > summary {
 .previewTable tr[data-none] td {
   background: color-mix(in srgb, var(--danger, #c0392b) 8%, transparent);
 }
+
+/* カードの中の小見出し（リマインドの設定などで段落を分ける） */
+.subTitle {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 18px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.clinicCard > .subTitle:first-of-type {
+  margin-top: 8px;
+}

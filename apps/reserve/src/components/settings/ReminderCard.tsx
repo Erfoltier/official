@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchReminderSettings, previewReminders, runRemindersNow, saveReminderSettings, type ReminderPreview, type ReminderSettings } from "@/components/calendar/api";
 import { patientPath } from "@/lib/paths";
+import type { Menu } from "@/lib/domain/types";
+import { ReminderMenusDialog } from "./ReminderMenusCard";
 import styles from "./settings.module.css";
 
 const DAY_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 14];
@@ -17,11 +19,12 @@ function stamp(iso: string): string {
  * リマインド（予約のお知らせ）の設定（院長・管理者）。
  * LINE チャネルアクセストークンはここで入れ、暗号化して保存する（画面には二度と出さない）
  */
-export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unknown) => void }) {
+export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; notify: (m: string) => void; fail: (e: unknown) => void }) {
   const [s, setS] = useState<ReminderSettings | null>(null);
   const [draft, setDraft] = useState<ReminderSettings | null>(null);
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
+  const [menusOpen, setMenusOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         replyTo: draft.replyTo,
         lineReserve: draft.lineReserve,
         appendNotes: draft.appendNotes,
+        showMenu: draft.showMenu,
         pauseUntil: draft.pauseUntil,
         template: draft.template,
         ...(extra?.lineToken !== undefined && { lineToken: extra.lineToken }),
@@ -78,10 +82,10 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
     try {
       const r = await runRemindersNow();
       if (!r.ran) {
-        props.notify(r.reason === "disabled" ? "リマインドが「止めている」状態です" : "少し前に確認したばかりです");
+        props.notify(r.reason === "disabled" ? "自動配信が「しない」になっています" : "少し前に確認したばかりです。1分ほど待ってからもう一度押してください");
       } else {
-        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => (x.paused ? `${k}：自動送信を止めている日のため送りませんでした` : `${k}：送信済 ${x.sent}・未送信 ${x.skipped}・送信失敗 ${x.failed}`));
-        props.notify(parts.length ? parts.join("／") : "いまは送る時刻ではありません（決めた時刻から3時間のあいだに送ります）");
+        const parts = Object.entries(r.rounds ?? {}).map(([k, x]) => (x.paused ? `${k}：自動配信を止める日のため送りませんでした` : `${k}：送信済 ${x.sent}・未送信 ${x.skipped}・送信失敗 ${x.failed}`));
+        props.notify(parts.length ? parts.join("／") : "いまは送信時刻ではありません（送信時刻から3時間以内に送ります）");
       }
       setS(await fetchReminderSettings());
     } catch (e) {
@@ -95,14 +99,15 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>リマインド（予約のお知らせ）</h3>
       <p className={styles.hint}>
-        送る回ごとに、来院ごとに1通、LINE がつながっている人には LINE、ほかはメールで送ります（患者ごとに「リマインドの送り先」「リマインド不要」を変えられます）。キャンセル・承認待ちの予約と、当日に取った予約の当日の回には送りません。
+        予約のある患者に、来院1回につき1通のお知らせを送ります。LINE 連携済みの患者には LINE、それ以外の患者にはメールで送ります（患者ごとに送信方法・送信不要を変えられます）。キャンセル・承認待ちの予約には送りません。
       </p>
 
+      <h4 className={styles.subTitle}>自動配信</h4>
       <div className={styles.prefRow}>
-        <b>状態</b>
-        <div className={styles.segment} role="radiogroup" aria-label="リマインドの状態">
+        <b>自動配信</b>
+        <div className={styles.segment} role="radiogroup" aria-label="自動配信">
           <button type="button" role="radio" aria-checked={!s.enabled} disabled={busy} onClick={() => s.enabled && void save({ enabled: false })}>
-            止めている
+            しない
           </button>
           <button
             type="button"
@@ -111,22 +116,22 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
             disabled={busy}
             onClick={() => {
               if (s.enabled) return;
-              if (!window.confirm("自動送信を始めます。決めた時刻になると、予約のある患者へ LINE・メールが届きます。よろしいですか？")) return;
+              if (!window.confirm("自動配信を始めます。送信時刻になると、予約のある患者に LINE・メールでお知らせが届きます。よろしいですか？")) return;
               void save({ enabled: true });
             }}
           >
-            自動で送る
+            する
           </button>
         </div>
         <small>
-          {s.lastRun ? `最後に確認：${stamp(s.lastRun.at)}` : "まだ一度も確認していません"}
-          {`　cron の最終実行：${s.cronSeenAt ? stamp(s.cronSeenAt) : "まだ（サーバーの cron 設定を確かめてください）"}`}
+          {s.lastRun ? `最終確認：${stamp(s.lastRun.at)}` : "まだ一度も確認していません"}
+          {`　定期実行（cron）：${s.cronSeenAt ? stamp(s.cronSeenAt) : "未確認（サーバーの cron の設定を確かめてください）"}`}
           {s.lineConfigured && s.lineRemaining !== null && `　LINE の今月の残り：${s.lineRemaining}通`}
         </small>
       </div>
 
       <div className={styles.prefRow}>
-        <b>送る回（最大3回）</b>
+        <b>送信時刻（最大3回）</b>
         <div style={{ display: "grid", gap: 6 }}>
           {draft.rounds.map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -151,92 +156,73 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
                 max="21:00"
                 value={r.time}
                 onChange={(e) => set("rounds", draft.rounds.map((x, j) => (j === i ? { ...x, time: e.target.value } : x)))}
-                aria-label="送る時刻"
+                aria-label="送信時刻"
               />
               <button type="button" className={styles.btn} onClick={() => set("rounds", draft.rounds.filter((_, j) => j !== i))}>
-                この回をなくす
+                削除
               </button>
             </div>
           ))}
           {draft.rounds.length < 3 && (
             <button type="button" className={styles.btn} style={{ justifySelf: "start" }} onClick={() => set("rounds", [...draft.rounds, { daysBefore: 1, time: "18:00" }])}>
-              ＋ 回を足す
+              ＋ 送信時刻を追加
             </button>
           )}
         </div>
-        <small>時刻は 6:00〜21:00。決めた時刻から3時間のあいだに送ります。当日の回は、30分より先の来院だけに送ります。回をなくすと、自動では送りません。</small>
+        <small>6:00〜21:00 の間で設定できます。送信時刻から3時間以内に送ります。当日の回は、30分以上先の予約にだけ送ります。</small>
       </div>
 
       <div className={styles.prefRow}>
-        <b>自動送信を止める日</b>
+        <b>自動配信を止める日</b>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <input className={styles.input} style={{ width: "auto" }} type="date" value={draft.pauseUntil} onChange={(e) => set("pauseUntil", e.target.value)} aria-label="自動送信を止める日" />
+          <input className={styles.input} style={{ width: "auto" }} type="date" value={draft.pauseUntil} onChange={(e) => set("pauseUntil", e.target.value)} aria-label="自動配信を止める日" />
           {draft.pauseUntil && (
             <button type="button" className={styles.btn} onClick={() => set("pauseUntil", "")}>
-              止めない
+              解除
             </button>
           )}
         </div>
-        <small>この日までの予約には、自動でリマインドを送りません（「保存する」で反映）。空欄なら止めません。</small>
+        <small>この日までの予約には自動配信しません。空欄なら止めません（「保存」で反映）。</small>
       </div>
 
+      <h4 className={styles.subTitle}>送信方法</h4>
       <div className={styles.m3Cols}>
         <label>
-          <span>LINE で送る</span>
+          <span>LINE で送信</span>
           <select className={styles.input} value={draft.useLine ? "1" : ""} onChange={(e) => set("useLine", !!e.target.value)}>
-            <option value="1">送る</option>
-            <option value="">送らない</option>
+            <option value="1">する</option>
+            <option value="">しない</option>
           </select>
         </label>
         <label>
-          <span>LINE の残しておく通数</span>
+          <span>LINE の取り置き通数</span>
           <input className={styles.input} type="number" min={0} value={draft.lineReserve} onChange={(e) => set("lineReserve", Number(e.target.value) || 0)} />
         </label>
         <label>
-          <span>メールで送る</span>
+          <span>メールで送信</span>
           <select className={styles.input} value={draft.useEmail ? "1" : ""} onChange={(e) => set("useEmail", !!e.target.value)}>
-            <option value="1">送る</option>
-            <option value="">送らない</option>
+            <option value="1">する</option>
+            <option value="">しない</option>
           </select>
         </label>
         <label>
-          <span>メニューの「来院前の案内」</span>
-          <select className={styles.input} value={draft.appendNotes ? "1" : ""} onChange={(e) => set("appendNotes", !!e.target.value)}>
-            <option value="">本文に足さない</option>
-            <option value="1">本文の最後に足す</option>
-          </select>
+          <span>送信元メールアドレス</span>
+          <input className={styles.input} type="email" value={draft.fromEmail} placeholder="info@ishidahihuka.jp" onChange={(e) => set("fromEmail", e.target.value)} />
         </label>
         <label>
-          <span>送信元のメール</span>
-          <input className={styles.input} type="email" value={draft.fromEmail} placeholder="reserve@ishidahihuka.jp" onChange={(e) => set("fromEmail", e.target.value)} />
-        </label>
-        <label>
-          <span>送信元の名前（空欄＝院名）</span>
+          <span>送信者名（空欄なら院名）</span>
           <input className={styles.input} value={draft.fromName} onChange={(e) => set("fromName", e.target.value)} maxLength={40} />
         </label>
         <label>
-          <span>返信先のメール（空欄＝送信元）</span>
+          <span>返信先メールアドレス（空欄なら送信元）</span>
           <input className={styles.input} type="email" value={draft.replyTo} onChange={(e) => set("replyTo", e.target.value)} />
         </label>
       </div>
       <p className={styles.hint}>
-        LINE の残り通数が「残しておく通数」以下になったら、LINE ではなくメールで送ります（メールがない人には送りません）。無料プランは月200通です。
+        LINE の今月の残り通数が「取り置き通数」以下になったら、LINE ではなくメールで送ります（メールアドレスのない患者には送りません）。LINE の無料プランは月200通です。送信元メールアドレスが空欄だと、メールは送れません。
       </p>
 
-      <label className={styles.field} style={{ display: "block", marginTop: 10 }}>
-        <span>文面（差し込み：{PLACEHOLDERS.join(" ")}）</span>
-        <textarea className={styles.input} rows={8} value={draft.template} onChange={(e) => set("template", e.target.value)} style={{ width: "100%", fontFamily: "inherit" }} />
-      </label>
-      <div className={styles.actions}>
-        <button type="button" className={styles.btn} onClick={() => set("template", s.defaultTemplate)} disabled={busy}>
-          標準の文面に戻す
-        </button>
-        <button type="button" className={styles.primary} onClick={() => void save()} disabled={busy}>
-          保存する
-        </button>
-      </div>
-
-      <div className={styles.prefRow} style={{ marginTop: 14 }}>
+      <div className={styles.prefRow} style={{ marginTop: 10 }}>
         <b>LINE チャネルアクセストークン</b>
         <span>{s.lineConfigured ? "設定済み" : "未設定"}</span>
         <small>LINE Developers の Messaging API チャネルにある「チャネルアクセストークン（長期）」を貼り付けて保存してください。保存後は画面に表示されません。</small>
@@ -253,13 +239,53 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         )}
       </div>
 
+      <h4 className={styles.subTitle}>文面</h4>
+      <label className={styles.field} style={{ display: "block" }}>
+        <span>差し込める項目：{PLACEHOLDERS.join(" ")}</span>
+        <textarea className={styles.input} rows={8} value={draft.template} onChange={(e) => set("template", e.target.value)} style={{ width: "100%", fontFamily: "inherit" }} />
+      </label>
+      <div className={styles.actions} style={{ marginTop: 6, justifyContent: "flex-start" }}>
+        <button type="button" className={styles.btn} onClick={() => setMenusOpen(true)}>
+          患者に送信するメニュー名の編集
+        </button>
+      </div>
+      <div className={styles.m3Cols}>
+        <label>
+          <span>メニュー名を表示</span>
+          <select className={styles.input} value={draft.showMenu ? "1" : ""} onChange={(e) => set("showMenu", !!e.target.value)}>
+            <option value="">しない</option>
+            <option value="1">する</option>
+          </select>
+        </label>
+        <label>
+          <span>来院前のご案内を表示</span>
+          <select className={styles.input} value={draft.appendNotes ? "1" : ""} onChange={(e) => set("appendNotes", !!e.target.value)}>
+            <option value="">しない</option>
+            <option value="1">する</option>
+          </select>
+        </label>
+      </div>
+      <p className={styles.hint}>
+        「する」にすると、文面に {"{メニュー}"}・{"{来院前のご案内}"} がなくても、メニュー名は日時の下に、来院前のご案内は文末に入ります。メニュー名と来院前のご案内は「患者に送信するメニュー名の編集」で、メニューごとに設定します。
+      </p>
       <div className={styles.actions}>
+        <button type="button" className={styles.btn} onClick={() => set("template", s.defaultTemplate)} disabled={busy}>
+          標準の文面に戻す
+        </button>
+        <button type="button" className={styles.primary} onClick={() => void save()} disabled={busy}>
+          保存
+        </button>
+      </div>
+
+      <h4 className={styles.subTitle}>手動送信</h4>
+      <div className={styles.actions} style={{ justifyContent: "flex-start", marginTop: 0 }}>
         <button type="button" className={styles.btn} disabled={busy} onClick={() => void runNow()}>
           未送信分を今すぐ送る
         </button>
       </div>
       <p className={styles.hint}>送信時刻を過ぎた回のうち、まだリマインドを送っていない予約に送ります。同じ予約に同じ回のリマインドを二度送ることはありません。</p>
 
+      {menusOpen && <ReminderMenusDialog menus={props.menus} onChanged={props.onChanged} notify={props.notify} fail={props.fail} onClose={() => setMenusOpen(false)} />}
       <PreviewSection fail={props.fail} />
     </div>
   );
