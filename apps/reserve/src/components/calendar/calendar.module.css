@@ -2766,3 +2766,17 @@ button.stagePill[data-clickable]:disabled {
 .panelName .idSlot > * {
   white-space: nowrap;
 }
+/* 名前の側は縮められるようにし（長い申請IDは「…」で省く）、閉じる ✕ は縮めない */
+.panelHead > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.panelHead > :not(:first-child) {
+  flex-shrink: 0;
+}
+.panelName .idSlot > .idBtn {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
