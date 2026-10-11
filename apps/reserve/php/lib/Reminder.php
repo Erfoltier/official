@@ -32,6 +32,8 @@ final class Reminder
             'fromName' => '',
             'replyTo' => '',
             'lineReserve' => 20,
+            // メニューの「来院前の案内」を本文の最後に足すか（院の好み。既定は足さない）
+            'appendNotes' => false,
             'template' => self::DEFAULT_TEMPLATE,
         ];
     }
@@ -100,7 +102,7 @@ final class Reminder
             usort($rounds, fn($a, $b) => ($b['daysBefore'] <=> $a['daysBefore']) ?: strcmp($a['time'], $b['time']));
             $next['rounds'] = array_values($rounds);
         }
-        foreach (['useLine', 'useEmail'] as $k) {
+        foreach (['useLine', 'useEmail', 'appendNotes'] as $k) {
             if (array_key_exists($k, $in)) {
                 $next[$k] = (bool) $in[$k];
             }
@@ -319,6 +321,8 @@ final class Reminder
                 'line' => $lineTo !== '',
                 'email' => $emailOk ? (string) preg_replace('/^(.{1,2})[^@]*@/u', '$1***@', $email) : null,
                 'why' => array_values(array_filter($why)),
+                // すでに送ったか（予約に書いた状態。送った回・手段・時刻）
+                'sent' => ($rem = $v['reservations'][0]['reminder'] ?? null) && ($rem['status'] ?? '') !== 'pending' ? ['status' => $rem['status'], 'channel' => $rem['channel'] ?? null, 'at' => $rem['updatedAt'] ?? null] : null,
             ];
         }
         usort($items, fn($a, $b) => strcmp($a['time'], $b['time']));
@@ -473,10 +477,10 @@ final class Reminder
             '{時刻}' => $d->format('G:i'),
             '{メニュー}' => implode('・', $v['menuNames']),
         ];
-        $vars['{来院前のご案内}'] = implode("\n", $v['notes'] ?? []);
+        $vars['{来院前のご案内}'] = $s['appendNotes'] ? implode("\n", $v['notes'] ?? []) : '';
         $text = strtr((string) $s['template'], $vars);
-        // 文面に {来院前のご案内} がなくても、メニューに案内があれば最後に足す
-        if (!str_contains((string) $s['template'], '{来院前のご案内}') && !empty($v['notes'])) {
+        // 「来院前の案内を足す」がオンなら、文面に {来院前のご案内} がなくても最後に足す
+        if ($s['appendNotes'] && !str_contains((string) $s['template'], '{来院前のご案内}') && !empty($v['notes'])) {
             $text = rtrim($text) . "\n\n【ご来院前のご案内】\n" . $vars['{来院前のご案内}'];
         }
         $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);

@@ -53,7 +53,7 @@ export function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onCh
     <div className={`${styles.clinicCard} ${styles.reminderMenus}`}>
       <h3 className={styles.cardTitle}>リマインドで見せるメニュー</h3>
       <p className={styles.hint}>
-        「患者に見せる名前」はリマインドの {"{メニュー}"} に入ります（空欄ならメニュー名）。「来院前の案内」は本文の最後（または {"{来院前のご案内}"} の場所）に入ります。1回の来院に複数のメニューがあるときは、まとめて1回だけ入れます。
+        「患者に見せる名前」は、リマインドの文面に {"{メニュー}"} を書いたときだけその場所に入ります（空欄ならメニュー名）。「来院前の案内」は、上の「メニューの『来院前の案内』」を「本文の最後に足す」にしたときだけ入ります（文面に {"{来院前のご案内}"} を書けばその場所）。1回の来院に複数のメニューがあるときは、まとめて1回だけ入れます。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="メニューを絞り込む" aria-label="メニューを絞り込む" style={{ flex: 1, minWidth: 160 }} />

@@ -278,6 +278,8 @@ export interface ReminderSettings {
   fromName: string;
   replyTo: string;
   lineReserve: number;
+  /** メニューの「来院前の案内」を本文の最後に足すか */
+  appendNotes: boolean;
   template: string;
   defaultTemplate: string;
   lineConfigured: boolean;
@@ -299,7 +301,7 @@ export interface ReminderPreview {
   date: string;
   lineRemaining: number | null;
   count: { line: number; email: number; none: number };
-  items: { time: string; patientId: string; name: string; channel: "line" | "email" | "none"; line: boolean; email: string | null; why: string[] }[];
+  items: { time: string; patientId: string; name: string; channel: "line" | "email" | "none"; line: boolean; email: string | null; why: string[]; sent: { status: "sent" | "skipped" | "failed"; channel: "line" | "email" | null; at: string | null } | null }[];
 }
 
 /** 送らずに、その日の来院ごとの送り先（LINE・メール・なし）を見る */

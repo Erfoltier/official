@@ -57,6 +57,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         fromName: draft.fromName,
         replyTo: draft.replyTo,
         lineReserve: draft.lineReserve,
+        appendNotes: draft.appendNotes,
         template: draft.template,
         ...(extra?.lineToken !== undefined && { lineToken: extra.lineToken }),
       });
@@ -185,6 +186,13 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
           </select>
         </label>
         <label>
+          <span>メニューの「来院前の案内」</span>
+          <select className={styles.input} value={draft.appendNotes ? "1" : ""} onChange={(e) => set("appendNotes", !!e.target.value)}>
+            <option value="">本文に足さない</option>
+            <option value="1">本文の最後に足す</option>
+          </select>
+        </label>
+        <label>
           <span>送信元のメール</span>
           <input className={styles.input} type="email" value={draft.fromEmail} placeholder="reserve@ishidahihuka.jp" onChange={(e) => set("fromEmail", e.target.value)} />
         </label>
@@ -244,13 +252,15 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
 }
 
 const CHANNEL_LABEL = { line: "LINE", email: "メール", none: "送れない" } as const;
+const SENT_LABEL = { sent: "送信済み", skipped: "送らず", failed: "失敗" } as const;
+const stampShort = (iso: string) => new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 function tomorrow(): string {
   const t = new Date(Date.now() + 9 * 3600e3 + 864e5);
   return t.toISOString().slice(0, 10);
 }
 
-/** 送らずに、その日の来院ごとの送り先を確かめる（メールアドレスが入っているか・LINE がつながっているか） */
+/** 送らずに、その日の来院ごとの送り先と、送信済みかを確かめる（メールアドレスが入っているか・LINE がつながっているか） */
 function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
   const [date, setDate] = useState(tomorrow);
   const [data, setData] = useState<ReminderPreview | null>(null);
@@ -268,7 +278,7 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
   return (
     <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
       <b>送り先の確認（送りません）</b>
-      <p className={styles.hint}>その日の来院ごとに、LINE・メールのどちらで届くか、届かない理由を出します。メールアドレスは一部を伏せて表示します。</p>
+      <p className={styles.hint}>その日の来院ごとに、LINE・メールのどちらで届くか、届かない理由、すでに送ったか（送信）を出します。メールアドレスは一部を伏せて表示します。</p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <input className={styles.input} type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="確かめる日" />
         <button type="button" className={styles.btn} disabled={busy || !date} onClick={() => void check()}>
@@ -291,6 +301,7 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
                     <th>時刻</th>
                     <th>患者</th>
                     <th>送り先</th>
+                    <th>送信</th>
                     <th>LINE</th>
                     <th>メール</th>
                     <th>届かない・使わない理由</th>
@@ -306,6 +317,7 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
                       <td>
                         <b>{CHANNEL_LABEL[it.channel]}</b>
                       </td>
+                      <td>{it.sent ? `${SENT_LABEL[it.sent.status]}${it.sent.channel ? `（${CHANNEL_LABEL[it.sent.channel]}）` : ""}${it.sent.at ? ` ${stampShort(it.sent.at)}` : ""}` : "まだ"}</td>
                       <td>{it.line ? "あり" : "—"}</td>
                       <td>{it.email ?? "—"}</td>
                       <td>{it.why.join("／")}</td>
