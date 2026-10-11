@@ -101,4 +101,15 @@ describe("花粉症", () => {
     expect(cc.cautionNote).toBeUndefined();
     expect(cc.caution).toBeFalsy();
   });
+  it("メールアドレスの回答を、患者のメールが空のときだけ写す（全角でも拾う。入っているメールは変えない）", async () => {
+    const c = await h.srv.as("staff-admin");
+    const a = await c.post("/patients", { name: "問診 めーる", birthDate: "1991-02-03" });
+    const b = await c.post("/patients", { name: "問診 すでに", birthDate: "1992-03-04", email: "keep@example.jp" });
+    await receive([
+      { key: "m1", submittedAt: "2026/10/06 10:00:00", name: "問診 めーる", birthDate: "1991-02-03", answers: [{ q: "メールアドレス", a: "ｈａｎａ．ｋｏ＠ｅｘａｍｐｌｅ．ｊｐ" }] },
+      { key: "m2", submittedAt: "2026/10/06 10:05:00", name: "問診 すでに", birthDate: "1992-03-04", answers: [{ q: "Eメール", a: "new@example.jp" }] },
+    ]);
+    expect((await patientOf(c, a.id)).email).toBe("hana.ko@example.jp");
+    expect((await patientOf(c, b.id)).email).toBe("keep@example.jp");
+  });
 });

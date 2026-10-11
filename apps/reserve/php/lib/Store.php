@@ -4309,7 +4309,7 @@ final class Store
 
     /**
      * 結びついた問診票の回答を患者の基本情報へ写す（院長の決定：患者の欄が空のときだけ）。
-     * 住所・電話 → 連絡先情報、アレルギー → 注意事項、既往歴・内服歴、どれにも当てはまらない回答 → その他の問診票情報（日付付きで足す）
+     * 住所・電話・メール → 連絡先情報、アレルギー → 注意事項、既往歴・内服歴、どれにも当てはまらない回答 → その他の問診票情報（日付付きで足す）
      */
     private static function fillPatientFromQuestionnaire(string $patientId, array $q): void
     {
@@ -4337,6 +4337,11 @@ final class Store
         }
         if (empty($cur['birthDate']) && !empty($q['birthDate'])) {
             $wanted['birthDate'] = $q['birthDate'];
+        }
+        // メール（フォームの「メールアドレスを収集する」の列や、メールを聞く設問）。リマインドをメールで送るときに使う
+        $mailAnswer = $find('/メール|e-?mail/iu');
+        if (empty($cur['email']) && $mailAnswer !== null && preg_match('/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/', normalize_width($mailAnswer), $mm) && filter_var($mm[0], FILTER_VALIDATE_EMAIL)) {
+            $wanted['email'] = $mm[0];
         }
         $sexAnswer = $find('/性別/u');
         if (empty($cur['sex']) && $sexAnswer !== null && self::sexOf($sexAnswer) !== null) {
