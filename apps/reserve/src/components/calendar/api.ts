@@ -295,6 +295,18 @@ export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defau
   return call("/api/v1/admin/reminders", { method: "PUT", body: JSON.stringify(body) });
 }
 
+export interface ReminderPreview {
+  date: string;
+  lineRemaining: number | null;
+  count: { line: number; email: number; none: number };
+  items: { time: string; patientId: string; name: string; channel: "line" | "email" | "none"; line: boolean; email: string | null; why: string[] }[];
+}
+
+/** 送らずに、その日の来院ごとの送り先（LINE・メール・なし）を見る */
+export function previewReminders(date: string): Promise<ReminderPreview> {
+  return call(`/api/v1/admin/reminders/preview?date=${encodeURIComponent(date)}`);
+}
+
 export function runRemindersNow(): Promise<{ ran: boolean; reason?: string; rounds?: Record<string, Record<string, number>> }> {
   return call("/api/v1/admin/reminders/run", { method: "POST", body: "{}" });
 }

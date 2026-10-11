@@ -1018,3 +1018,24 @@ details.priceGroup > summary {
   border-radius: 10px;
   background: #fff;
 }
+
+/* リマインドの送り先の確認 */
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.previewTable th,
+.previewTable td {
+  border-bottom: 1px solid var(--line);
+  padding: 5px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+.previewTable td:last-child {
+  white-space: normal;
+  min-width: 12em;
+}
+.previewTable tr[data-none] td {
+  background: color-mix(in srgb, var(--danger, #c0392b) 8%, transparent);
+}

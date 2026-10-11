@@ -2741,3 +2741,11 @@ button.stagePill[data-clickable]:disabled {
     right: 2px;
   }
 }
+/* 幅の狭いスマホ（iPhone SE など）では、名前の長いボタンの字を少し詰める */
+@media (max-width: 360px) {
+  .tbNav > .btn,
+  .tbView > .btn {
+    font-size: 11.5px;
+    letter-spacing: -0.04em;
+  }
+}

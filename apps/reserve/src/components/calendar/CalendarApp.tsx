@@ -342,7 +342,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             title="その日の予約と状態を時刻順に一覧（受付一覧）"
           >
             ☰<span className={styles.long}> 受付一覧</span>
-            <span className={styles.short}> 受付</span>
+            <span className={styles.short}>受付一覧</span>
           </button>
           <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, -1))} aria-label="前の日">
             ‹
@@ -424,7 +424,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             ＋<span className={styles.cap}>拡大</span>
           </button>
           <button className={styles.btn} onClick={() => gridRef.current?.fitAll()} title="1日全体を画面に収める">
-            全体<span className={styles.cap}>1日</span>
+            全体表示
           </button>
           <button
             className={styles.btn}
@@ -445,7 +445,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               onClick={() => gridRef.current?.scrollToMinute(now.minutes - 30)}
               title="現在時刻へ移動"
             >
-              今<span className={styles.cap}>現在</span>
+              現時刻
             </button>
           )}
         </div>

@@ -391,6 +391,10 @@ try {
         }
         Http::json(Reminder::updateSettings($in, $actor($s)));
     }
+    if ($route === 'GET admin/reminders/preview') {
+        $me(STAFF_ADMIN);
+        Http::json(Reminder::preview(V::date($q('date'))));
+    }
     if ($route === 'POST admin/reminders/run') {
         $me(STAFF_ADMIN);
         Http::json(Reminder::tick(true));

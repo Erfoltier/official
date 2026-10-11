@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchReminderSettings, runRemindersNow, saveReminderSettings, type ReminderSettings } from "@/components/calendar/api";
+import Link from "next/link";
+import { fetchReminderSettings, previewReminders, runRemindersNow, saveReminderSettings, type ReminderPreview, type ReminderSettings } from "@/components/calendar/api";
+import { patientPath } from "@/lib/paths";
 import styles from "./settings.module.css";
 
 const DAY_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 14];
@@ -235,6 +237,86 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
         </button>
       </div>
       <p className={styles.hint}>決めた時刻を過ぎていれば、まだ送っていない来院へ送ります（同じ来院・同じ回には二度送りません）。</p>
+
+      <PreviewSection fail={props.fail} />
+    </div>
+  );
+}
+
+const CHANNEL_LABEL = { line: "LINE", email: "メール", none: "送れない" } as const;
+
+function tomorrow(): string {
+  const t = new Date(Date.now() + 9 * 3600e3 + 864e5);
+  return t.toISOString().slice(0, 10);
+}
+
+/** 送らずに、その日の来院ごとの送り先を確かめる（メールアドレスが入っているか・LINE がつながっているか） */
+function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
+  const [date, setDate] = useState(tomorrow);
+  const [data, setData] = useState<ReminderPreview | null>(null);
+  const [busy, setBusy] = useState(false);
+  const check = async () => {
+    setBusy(true);
+    try {
+      setData(await previewReminders(date));
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+      <b>送り先の確認（送りません）</b>
+      <p className={styles.hint}>その日の来院ごとに、LINE・メールのどちらで届くか、届かない理由を出します。メールアドレスは一部を伏せて表示します。</p>
+      <div className={styles.actions} style={{ marginTop: 0 }}>
+        <input className={styles.input} type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="確かめる日" />
+        <button type="button" className={styles.btn} disabled={busy || !date} onClick={() => void check()}>
+          {busy ? "確かめています…" : "確かめる"}
+        </button>
+      </div>
+      {data && (
+        <>
+          <p className={styles.hint}>
+            {data.date}：LINE {data.count.line}件・メール {data.count.email}件・送れない {data.count.none}件
+            {data.lineRemaining !== null && `（LINE の今月の残り ${data.lineRemaining}通）`}
+          </p>
+          {data.items.length === 0 ? (
+            <p className={styles.hint}>この日の来院はありません</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className={styles.previewTable}>
+                <thead>
+                  <tr>
+                    <th>時刻</th>
+                    <th>患者</th>
+                    <th>送り先</th>
+                    <th>LINE</th>
+                    <th>メール</th>
+                    <th>届かない・使わない理由</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((it, i) => (
+                    <tr key={i} data-none={it.channel === "none" || undefined}>
+                      <td>{it.time}</td>
+                      <td>
+                        <Link href={patientPath(it.patientId)}>{it.name}</Link>
+                      </td>
+                      <td>
+                        <b>{CHANNEL_LABEL[it.channel]}</b>
+                      </td>
+                      <td>{it.line ? "あり" : "—"}</td>
+                      <td>{it.email ?? "—"}</td>
+                      <td>{it.why.join("／")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -269,6 +269,62 @@ final class Reminder
         return $count;
     }
 
+    /**
+     * 送らずに、その日の来院ごとの送り先（LINE・メール・なし）と理由を見る（院長・管理者の確認用）。
+     * 送り先の選び方は deliver と同じ。メールアドレスは一部を伏せて返す
+     */
+    public static function preview(string $date): array
+    {
+        $s = self::settings();
+        $remaining = $s['useLine'] && self::lineToken() !== '' ? self::lineRemaining() : null;
+        $lineLow = $remaining !== null && $remaining <= (int) $s['lineReserve'];
+        $items = [];
+        $count = ['line' => 0, 'email' => 0, 'none' => 0];
+        foreach (self::visitsOn($date) as $v) {
+            $p = $v['patient'];
+            $pref = $p['contactPref'] ?? 'auto';
+            $lineTo = $v['lineTo'] ?? ($p['lineUserId'] ?? '');
+            $email = (string) ($p['email'] ?? '');
+            $emailOk = $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
+            $canLine = $s['useLine'] && self::lineToken() !== '' && $lineTo !== '' && !$lineLow;
+            $canMail = $s['useEmail'] && $s['fromEmail'] !== '' && $emailOk;
+            $why = [];
+            if (!empty($p['reminderOptOut']) || $pref === 'none') {
+                $ch = 'none';
+                $why[] = 'リマインド不要の患者';
+            } else {
+                $order = $pref === 'email' ? ['email', 'line'] : ['line', 'email'];
+                $ch = 'none';
+                foreach ($order as $c) {
+                    if (($c === 'line' && $canLine) || ($c === 'email' && $canMail)) {
+                        $ch = $c;
+                        break;
+                    }
+                }
+                if ($ch !== 'line') {
+                    $why[] = $lineTo === '' ? (!empty($v['requestNotFound']) ? '申請IDの LINE が見つからない' : (!empty($v['requestMismatch']) ? '申請の名前・生年月日が患者と合わない' : 'LINE のつながりなし'))
+                        : (!$s['useLine'] ? 'LINE で送る設定が「送らない」' : (self::lineToken() === '' ? 'LINE の鍵が入っていない' : ($lineLow ? 'LINE の残り通数が少ない' : '')));
+                }
+                if ($ch !== 'email') {
+                    $why[] = !$emailOk ? ($email === '' ? 'メールアドレスなし' : 'メールアドレスの形が正しくない')
+                        : (!$s['useEmail'] ? 'メールで送る設定が「送らない」' : ($s['fromEmail'] === '' ? '送信元のメールが未設定' : ''));
+                }
+            }
+            $count[$ch]++;
+            $items[] = [
+                'time' => (new DateTimeImmutable((string) $v['arrivalAt']))->setTimezone(jst())->format('H:i'),
+                'patientId' => $p['id'],
+                'name' => (string) ($p['name'] ?? ''),
+                'channel' => $ch,
+                'line' => $lineTo !== '',
+                'email' => $emailOk ? (string) preg_replace('/^(.{1,2})[^@]*@/u', '$1***@', $email) : null,
+                'why' => array_values(array_filter($why)),
+            ];
+        }
+        usort($items, fn($a, $b) => strcmp($a['time'], $b['time']));
+        return ['date' => $date, 'lineRemaining' => $remaining, 'count' => $count, 'items' => $items];
+    }
+
     /** スタッフが「今すぐ送る」：その予約の来院へ。不要の印があっても送る（スタッフの判断） */
     public static function sendNow(string $reservationId, array $by): array
     {
