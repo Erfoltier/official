@@ -2749,3 +2749,20 @@ button.stagePill[data-clickable]:disabled {
     letter-spacing: -0.04em;
   }
 }
+
+/* 申請ID の行：申請ID・「LINE（申込者）」・「＋患者に紐付け」が入りきらないときは次の行へ折り返す（横にはみ出さない） */
+.panelName .nameSide {
+  flex: 1 1 0;
+}
+.panelName .nameSide .idSlot,
+.panelName .idSlot {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+.panelName .idSlot > * {
+  white-space: nowrap;
+}
