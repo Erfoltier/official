@@ -252,7 +252,7 @@ export function ReminderCard(props: { notify: (m: string) => void; fail: (e: unk
 }
 
 const CHANNEL_LABEL = { line: "LINE", email: "メール", none: "送れない" } as const;
-const SENT_LABEL = { sent: "送信済み", skipped: "送らず", failed: "失敗" } as const;
+
 const stampShort = (iso: string) => new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 function tomorrow(): string {
@@ -317,7 +317,10 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
                       <td>
                         <b>{CHANNEL_LABEL[it.channel]}</b>
                       </td>
-                      <td>{it.sent ? `${SENT_LABEL[it.sent.status]}${it.sent.channel ? `（${CHANNEL_LABEL[it.sent.channel]}）` : ""}${it.sent.at ? ` ${stampShort(it.sent.at)}` : ""}` : "まだ"}</td>
+                      <td>
+                        {it.sent?.status === "sent" ? (it.sent.channel === "email" ? "メール送信済" : "LINE送信済") : it.sent?.status === "failed" ? "送信失敗" : "未送信"}
+                        {it.sent && it.sent.status !== "skipped" && it.sent.at && <small> {stampShort(it.sent.at)}</small>}
+                      </td>
                       <td>{it.line ? "あり" : "—"}</td>
                       <td>{it.email ?? "—"}</td>
                       <td>{it.why.join("／")}</td>

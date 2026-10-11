@@ -36,12 +36,12 @@ const REMINDER_REASON: Record<string, string> = {
   request_mismatch: "申請の名前・生年月日が患者と合わない",
 };
 
-const REMINDER_LABEL = {
-  pending: "未送信",
-  sent: "送信済み",
-  skipped: "送信しない",
-  failed: "送信失敗",
-} as const;
+/** リマインドの状態は「未送信／LINE送信済／メール送信済／送信失敗」の4つで見せる（送らなかった来院は未送信＋理由） */
+function reminderLabel(m: { status: string; channel?: string | null }): string {
+  if (m.status === "sent") return m.channel === "email" ? "メール送信済" : "LINE送信済";
+  if (m.status === "failed") return "送信失敗";
+  return "未送信";
+}
 
 interface Props {
   bundle: DayBundle;
@@ -311,8 +311,8 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         )}
         <dt>リマインド</dt>
         <dd>
-          {REMINDER_LABEL[r.reminder.status]}
-          {r.reminder.status === "sent" && r.reminder.channel && `（${roundLabel(r.reminder.round)}・${r.reminder.channel === "line" ? "LINE" : "メール"}）`}
+          {reminderLabel(r.reminder)}
+          {r.reminder.status === "sent" && r.reminder.round && `（${roundLabel(r.reminder.round)}）`}
           {r.reminder.status !== "sent" && r.reminder.reason && `（${REMINDER_REASON[r.reminder.reason] ?? r.reminder.reason}）`}
           {!["cancelled", "no_show"].includes(r.status) && (
             <button
