@@ -23,7 +23,6 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
   const [name, setName] = useState(menu?.name ?? "");
   const [abbr, setAbbr] = useState(menu?.abbr ?? "");
   const [publicName, setPublicName] = useState(menu?.publicName ?? "");
-  const [preVisitNote, setPreVisitNote] = useState(menu?.preVisitNote ?? "");
   const [color, setColor] = useState(menu?.color ?? "#64748b");
   const [kind, setKind] = useState<MenuDuration["kind"]>(menu?.duration.kind ?? "fixed");
   const [fixedMin, setFixedMin] = useState(menu?.duration.kind === "fixed" ? menu.duration.minutes : 15);
@@ -53,7 +52,6 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
         name,
         abbr,
         publicName,
-        preVisitNote,
         color,
         duration,
         defaultMinutes: kind === "fixed" ? fixedMin : Math.min(rangeMax, Math.max(rangeMin, defaultMinutes)),
@@ -213,12 +211,9 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
             予約登録の選択肢に表示する
           </label>
 
-          {/* リマインドで患者に送る内容（院内の略称を患者に見せないため） */}
-          <label>患者に送信する名前</label>
-          <input className={styles.input} value={publicName} onChange={(e) => setPublicName(e.target.value)} maxLength={40} placeholder={`空欄の場合は「${name || "メニュー名"}」`} aria-label="患者に送信する名前" />
-
-          <label>来院前のご案内</label>
-          <textarea className={styles.input} rows={2} value={preVisitNote} onChange={(e) => setPreVisitNote(e.target.value)} maxLength={300} placeholder="例：当日はメイクを落としやすい状態でお越しください" aria-label="来院前のご案内" style={{ fontFamily: "inherit" }} />
+          {/* リマインドの {メニュー} に入る名前（院内の略称を患者に見せないため） */}
+          <label>{"{メニュー}"} に表示する名前</label>
+          <input className={styles.input} value={publicName} onChange={(e) => setPublicName(e.target.value)} maxLength={40} placeholder={`空欄の場合は「${name || "メニュー名"}」`} aria-label="{メニュー} に表示する名前" />
         </div>
 
         <div className={styles.actions}>

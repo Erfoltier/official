@@ -13,6 +13,8 @@ declare(strict_types=1);
 final class Reminder
 {
     private const LINE_API = 'https://api.line.me/v2/bot';
+    /** この日（を含む）までの来院には自動配信しない（院長の指示による一時的な止め。過ぎれば効かない） */
+    private const HOLD_UNTIL = '2026-10-12';
     private const DEFAULT_TEMPLATE = "{患者名} 様\n\n{院名}です。{いつ}のご予約のお知らせです。\n\n日時：{日付} {時刻}\n\n表示の時刻はご来院の目安です。ご変更・キャンセルは、ご予約いただいた方法（LINE・お電話など）でご連絡ください。";
 
     /** 試験用：送信を差し替える（null なら本当に送る） */
@@ -32,12 +34,6 @@ final class Reminder
             'fromName' => '',
             'replyTo' => '',
             'lineReserve' => 20,
-            // メニューの「来院前の案内」を本文の最後に足すか（院の好み。既定は足さない）
-            'appendNotes' => false,
-            // メニュー名を文面に入れるか（文面に {メニュー} がなければ日時の下に入れる。既定は入れない）
-            'showMenu' => false,
-            // この日（を含む）までの来院には自動で送らない（空なら止めない）。確認が済むまでの安全のため、最初は 2026-10-12 まで止めておく
-            'pauseUntil' => '2026-10-12',
             'template' => self::DEFAULT_TEMPLATE,
         ];
     }
@@ -106,7 +102,7 @@ final class Reminder
             usort($rounds, fn($a, $b) => ($b['daysBefore'] <=> $a['daysBefore']) ?: strcmp($a['time'], $b['time']));
             $next['rounds'] = array_values($rounds);
         }
-        foreach (['useLine', 'useEmail', 'appendNotes', 'showMenu'] as $k) {
+        foreach (['useLine', 'useEmail'] as $k) {
             if (array_key_exists($k, $in)) {
                 $next[$k] = (bool) $in[$k];
             }
@@ -122,13 +118,6 @@ final class Reminder
         }
         if (array_key_exists('fromName', $in)) {
             $next['fromName'] = mb_substr(preg_replace('/[\r\n<>"]/u', '', (string) $in['fromName']) ?? '', 0, 40);
-        }
-        if (array_key_exists('pauseUntil', $in)) {
-            $d = trim((string) $in['pauseUntil']);
-            if ($d !== '' && !is_date_string($d)) {
-                throw new StoreError('invalid', '自動配信の一時停止日が正しくありません');
-            }
-            $next['pauseUntil'] = $d;
         }
         if (array_key_exists('lineReserve', $in)) {
             $next['lineReserve'] = max(0, min(10000, (int) $in['lineReserve']));
@@ -175,7 +164,7 @@ final class Reminder
                 continue;
             }
             $key = $date . '|' . ($r['visitId'] ?? $r['patientId']);
-            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'notes' => [], 'arrivalAt' => null, 'createdAt' => null];
+            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'arrivalAt' => null, 'createdAt' => null];
             $v['reservations'][] = $r;
             // LINE 予約フォームから入った予約は、申し込んだ LINE（予約ごとに記録）へ返す。名前での照合はしない
             if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
@@ -199,13 +188,9 @@ final class Reminder
                 $v['createdAt'] = $r['createdAt'];
             }
             foreach ($r['menuIds'] as $mid) {
-                $n = $menus[$mid]['publicName'] ?? $menus[$mid]['name'] ?? '';
+                $n = trim((string) ($menus[$mid]['publicName'] ?? '')) ?: (string) ($menus[$mid]['name'] ?? '');
                 if ($n !== '' && !in_array($n, $v['menuNames'], true)) {
                     $v['menuNames'][] = $n;
-                }
-                $note = trim((string) ($menus[$mid]['preVisitNote'] ?? ''));
-                if ($note !== '' && !in_array($note, $v['notes'], true)) {
-                    $v['notes'][] = $note;
                 }
             }
             $visits[$key] = $v;
@@ -254,8 +239,8 @@ final class Reminder
             $target = (new DateTimeImmutable($now['date'], jst()))->modify("+{$days} day")->format('Y-m-d');
             // 当日の回：まだ先（30分より後）の来院だけ、今日とった予約には送らない
             $label = ($days === 0 ? '当日' : ($days === 1 ? '前日' : "{$days}日前")) . ' ' . $r['time'];
-            if ($s['pauseUntil'] !== '' && $target <= $s['pauseUntil']) {
-                $result['rounds'][$label] = ['paused' => 1];
+            // 院長の指示で 2026-10-12 の来院までは自動では送らない（この日を過ぎれば何もしない）
+            if ($target <= self::HOLD_UNTIL) {
                 continue;
             }
             $result['rounds'][$label] = self::runRound('d' . $days, $target, $quota, $days === 0 ? $now['minutes'] + 30 : null);
@@ -268,7 +253,12 @@ final class Reminder
     private static function runRound(string $round, string $date, array &$quota, ?int $afterMinute = null): array
     {
         $count = ['sent' => 0, 'skipped' => 0, 'failed' => 0];
+        $nowMs = time() * 1000;
         foreach (self::visitsOn($date) as $v) {
+            // 来院の時刻を過ぎた予約には送らない（自動配信を途中から「する」にしたときも、過去の予約には届かない）
+            if (parse_ms((string) $v['arrivalAt']) <= $nowMs) {
+                continue;
+            }
             if ($afterMinute !== null && minutes_of_day($v['arrivalAt']) <= $afterMinute) {
                 continue;
             }
@@ -348,7 +338,7 @@ final class Reminder
             ];
         }
         usort($items, fn($a, $b) => strcmp($a['time'], $b['time']));
-        return ['date' => $date, 'lineRemaining' => $remaining, 'paused' => $s['pauseUntil'] !== '' && $date <= $s['pauseUntil'], 'pauseUntil' => $s['pauseUntil'], 'count' => $count, 'items' => $items];
+        return ['date' => $date, 'lineRemaining' => $remaining, 'count' => $count, 'items' => $items];
     }
 
     /** スタッフが「今すぐ送る」：その予約の来院へ。不要の印があっても送る（スタッフの判断） */
@@ -365,6 +355,9 @@ final class Reminder
             if ($v['key'] === $key) {
                 $visit = $v;
             }
+        }
+        if ($visit !== null && parse_ms((string) $visit['arrivalAt']) <= time() * 1000) {
+            throw new StoreError('invalid', '来院の時刻を過ぎた予約には送れません');
         }
         if ($visit === null) {
             throw new StoreError('invalid', 'キャンセル・承認待ちの予約には送信できません');
@@ -497,25 +490,10 @@ final class Reminder
             },
             '{日付}' => $d->format('n') . '月' . $d->format('j') . "日（{$week}）",
             '{時刻}' => $d->format('G:i'),
-            '{メニュー}' => $s['showMenu'] ? implode('・', $v['menuNames']) : '',
+            // 文面に {メニュー} を書いたときだけ入る。名前はメニューごとの「{メニュー} に表示する名前」（空ならメニュー名）
+            '{メニュー}' => implode('・', $v['menuNames']),
         ];
-        $vars['{来院前のご案内}'] = $s['appendNotes'] ? implode("\n", $v['notes'] ?? []) : '';
         $text = strtr((string) $s['template'], $vars);
-        // 「メニュー名を表示」がオンで、文面に {メニュー} がなければ、日時の行の下（なければ文末）に入れる
-        if ($s['showMenu'] && !str_contains((string) $s['template'], '{メニュー}') && $vars['{メニュー}'] !== '') {
-            $line = 'メニュー：' . $vars['{メニュー}'];
-            $count = 0;
-            $text = (string) preg_replace('/^(日時：.*)$/mu', "$1\n{$line}", $text, 1, $count);
-            if ($count === 0) {
-                $text = rtrim($text) . "\n\n{$line}";
-            }
-        }
-        // 項目を空にしたあとに残る「メニュー：」だけの行は消す
-        $text = (string) preg_replace('/^[^\n：]{1,10}：[ 　]*(\n|$)/mu', '', $text);
-        // 「来院前の案内を足す」がオンなら、文面に {来院前のご案内} がなくても最後に足す
-        if ($s['appendNotes'] && !str_contains((string) $s['template'], '{来院前のご案内}') && !empty($v['notes'])) {
-            $text = rtrim($text) . "\n\n【ご来院前のご案内】\n" . $vars['{来院前のご案内}'];
-        }
         $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
         return ['subject' => '【' . $vars['{院名}'] . '】' . $vars['{いつ}'] . 'のご予約のお知らせ', 'text' => $text];
     }

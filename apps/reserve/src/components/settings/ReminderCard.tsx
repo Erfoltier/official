@@ -9,7 +9,7 @@ import { ReminderMenusDialog } from "./ReminderMenusCard";
 import styles from "./settings.module.css";
 
 const DAY_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 14];
-const PLACEHOLDERS = ["{患者名}", "{院名}", "{いつ}", "{日付}", "{時刻}", "{メニュー}", "{来院前のご案内}", "{院の電話}"];
+const PLACEHOLDERS = ["{患者名}", "{院名}", "{いつ}", "{日付}", "{時刻}", "{メニュー}", "{院の電話}"];
 
 function stamp(iso: string): string {
   return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -60,9 +60,6 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         fromName: draft.fromName,
         replyTo: draft.replyTo,
         lineReserve: draft.lineReserve,
-        appendNotes: draft.appendNotes,
-        showMenu: draft.showMenu,
-        pauseUntil: draft.pauseUntil,
         template: draft.template,
         ...(extra?.lineToken !== undefined && { lineToken: extra.lineToken }),
       });
@@ -172,18 +169,6 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         <small>6:00〜21:00 の間で設定できます。送信時刻から3時間以内に送ります。当日の回は、30分以上先の予約にだけ送ります。</small>
       </div>
 
-      <div className={styles.prefRow}>
-        <b>自動配信の一時停止</b>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <input className={styles.input} style={{ width: "auto" }} type="date" value={draft.pauseUntil} onChange={(e) => set("pauseUntil", e.target.value)} aria-label="一時停止する最終日" />
-          {draft.pauseUntil && (
-            <button type="button" className={styles.btn} onClick={() => set("pauseUntil", "")}>
-              解除
-            </button>
-          )}
-        </div>
-        <small>選んだ日までの予約には自動配信しません。空欄にすると停止しません。下の「保存」で反映されます。</small>
-      </div>
 
       <h4 className={styles.subTitle}>送信方法</h4>
       <div className={styles.m3Cols}>
@@ -246,28 +231,10 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
       </label>
       <div className={styles.actions} style={{ marginTop: 6, justifyContent: "flex-start" }}>
         <button type="button" className={styles.btn} onClick={() => setMenusOpen(true)}>
-          患者に送信するメニュー名の編集
+          {"{メニュー}"} に表示するメニュー名を編集
         </button>
       </div>
-      <div className={styles.m3Cols}>
-        <label>
-          <span>メニュー名を表示</span>
-          <select className={styles.input} value={draft.showMenu ? "1" : ""} onChange={(e) => set("showMenu", !!e.target.value)}>
-            <option value="">しない</option>
-            <option value="1">する</option>
-          </select>
-        </label>
-        <label>
-          <span>来院前のご案内を表示</span>
-          <select className={styles.input} value={draft.appendNotes ? "1" : ""} onChange={(e) => set("appendNotes", !!e.target.value)}>
-            <option value="">しない</option>
-            <option value="1">する</option>
-          </select>
-        </label>
-      </div>
-      <p className={styles.hint}>
-        「する」にすると、文面に {"{メニュー}"}・{"{来院前のご案内}"} がなくても、メニュー名は日時の下、来院前のご案内は文末に入ります。内容はメニューごとに「患者に送信するメニュー名の編集」で設定します。
-      </p>
+      <p className={styles.hint} style={{ marginTop: 4 }}>{"{メニュー}"} を使うときに、予約カレンダー上のメニュー名と患者に送信したいメニュー名が異なる場合にご使用ください。</p>
       <div className={styles.actions}>
         <button type="button" className={styles.btn} onClick={() => set("template", s.defaultTemplate)} disabled={busy}>
           標準の文面に戻す
@@ -332,7 +299,6 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
             {data.date}：送信済 {data.count.sent}件・未送信 {data.count.pending}件（うち送信方法なし {data.count.noMethod}件）・送信失敗 {data.count.failed}件
             {data.lineRemaining !== null && `（LINE の今月の残り ${data.lineRemaining}通）`}
           </p>
-          {data.paused && <p className={styles.hint}>※ {data.pauseUntil} までの予約は、自動配信を一時停止しています。</p>}
           {data.items.length === 0 ? (
             <p className={styles.hint}>この日の予約はありません</p>
           ) : (

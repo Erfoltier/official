@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
 import { DialogBackdropClose } from "@/components/DialogBackdropClose";
+import { APPLE_ICON_180, FAVICON_32 } from "./icons";
 
 export const metadata: Metadata = {
   title: { default: "LANE RESERVE", template: "%s｜LANE RESERVE" },
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   applicationName: "LANE RESERVE",
   manifest: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/manifest.webmanifest`,
+  icons: { icon: [{ url: FAVICON_32, type: "image/png", sizes: "32x32" }], apple: [{ url: APPLE_ICON_180, sizes: "180x180" }] },
   appleWebApp: { capable: true, title: "LANE RESERVE", statusBarStyle: "default" },
 };
 

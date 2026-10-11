@@ -8,7 +8,7 @@ import { saveMenu } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 /**
- * 患者に送信するメニュー名と来院前のご案内を、メニューごとにまとめて編集する画面（リマインドの設定から開く）。
+ * リマインドの {メニュー} に表示するメニュー名を、メニューごとにまとめて編集する画面（リマインドの設定から開く）。
  * 院内の略称（【再診】など）を患者に出さないため。空欄ならメニュー名をそのまま使う
  */
 export function ReminderMenusDialog(props: { menus: Menu[]; onChanged: () => void; notify: (m: string) => void; fail: (e: unknown) => void; onClose: () => void }) {
@@ -17,9 +17,9 @@ export function ReminderMenusDialog(props: { menus: Menu[]; onChanged: () => voi
     ref.current?.showModal();
   }, []);
   return createPortal(
-    <dialog ref={ref} className={styles.dialog} style={{ width: "min(1100px, calc(100vw - 24px))" }} onClose={props.onClose} aria-label="患者に送信するメニュー名の編集">
+    <dialog ref={ref} className={styles.dialog} style={{ width: "min(1100px, calc(100vw - 24px))" }} onClose={props.onClose} aria-label="{メニュー} に表示するメニュー名を編集">
       <div className={styles.managerHead}>
-        <h2>患者に送信するメニュー名の編集</h2>
+        <h2>{"{メニュー}"} に表示するメニュー名を編集</h2>
         <button type="button" className={styles.btn} onClick={() => ref.current?.close()}>
           閉じる
         </button>
@@ -33,7 +33,7 @@ export function ReminderMenusDialog(props: { menus: Menu[]; onChanged: () => voi
 function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: () => void; notify: (m: string) => void; fail: (e: unknown) => void }) {
   const [q, setQ] = useState("");
   const [onlyEmpty, setOnlyEmpty] = useState(false);
-  const [draft, setDraft] = useState<Record<string, { publicName: string; preVisitNote: string }>>({});
+  const [draft, setDraft] = useState<Record<string, { publicName: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   const list = useMemo(() => {
@@ -41,15 +41,15 @@ function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: 
     return props.menus
       .filter((m) => !m.deleted && m.active)
       .filter((m) => !k || searchKey(`${m.name} ${m.publicName ?? ""}`).includes(k))
-      .filter((m) => !onlyEmpty || (!m.publicName && !m.preVisitNote));
+      .filter((m) => !onlyEmpty || !m.publicName);
   }, [props.menus, q, onlyEmpty]);
 
-  const value = (m: Menu) => draft[m.id] ?? { publicName: m.publicName ?? "", preVisitNote: m.preVisitNote ?? "" };
+  const value = (m: Menu) => draft[m.id] ?? { publicName: m.publicName ?? "" };
   const dirty = (m: Menu) => {
     const v = draft[m.id];
-    return !!v && (v.publicName !== (m.publicName ?? "") || v.preVisitNote !== (m.preVisitNote ?? ""));
+    return !!v && v.publicName !== (m.publicName ?? "");
   };
-  const set = (m: Menu, patch: Partial<{ publicName: string; preVisitNote: string }>) => setDraft((d) => ({ ...d, [m.id]: { ...value(m), ...patch } }));
+  const set = (m: Menu, patch: Partial<{ publicName: string }>) => setDraft((d) => ({ ...d, [m.id]: { ...value(m), ...patch } }));
 
   const save = async (m: Menu) => {
     setBusy(m.id);
@@ -72,7 +72,7 @@ function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: 
   return (
     <div className={styles.reminderMenus}>
       <p className={styles.hint}>
-        「患者に送信する名前」はリマインドに表示するメニュー名で、空欄の場合はメニュー名をそのまま使います。「来院前のご案内」はリマインドの文末に入る案内です。どちらも、リマインド設定で「する」にした場合だけ使います。1回の来院に複数のメニューがある場合も、案内は重複せず1回だけ入ります。
+        リマインドの文面に {"{メニュー}"} を入れたとき、予約カレンダー上のメニュー名と患者に送信したいメニュー名が異なる場合にご使用ください。空欄のメニューは、予約カレンダー上のメニュー名をそのまま送ります。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="メニューを絞り込む" aria-label="メニューを絞り込む" style={{ flex: 1, minWidth: 160 }} />
@@ -83,9 +83,8 @@ function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: 
       </div>
       <div className={styles.rmList}>
         <div className={styles.rmHead} aria-hidden>
-          <span>メニュー（院内での名前）</span>
-          <span>患者に送信する名前</span>
-          <span>来院前のご案内</span>
+          <span>予約カレンダー上のメニュー名</span>
+          <span>{"{メニュー}"} に表示する名前</span>
           <span />
         </div>
         {list.map((m) => {
@@ -96,12 +95,8 @@ function ReminderMenusCard(props: { menus: Menu[]; canEdit: boolean; onChanged: 
                 {m.name}
               </span>
               <label className={styles.rmField}>
-                <span>患者に送信する名前</span>
+                <span>{"{メニュー}"} に表示する名前</span>
                 <input className={styles.input} value={v.publicName} maxLength={40} placeholder={m.name} onChange={(e) => set(m, { publicName: e.target.value })} disabled={!props.canEdit} />
-              </label>
-              <label className={styles.rmField}>
-                <span>来院前のご案内</span>
-                <textarea className={styles.input} rows={1} value={v.preVisitNote} maxLength={300} placeholder="例：当日はメイクを落としやすい状態でお越しください" onChange={(e) => set(m, { preVisitNote: e.target.value })} disabled={!props.canEdit} style={{ fontFamily: "inherit", resize: "vertical", minHeight: 38, height: 38 }} />
               </label>
               {props.canEdit && (
                 <button type="button" className={dirty(m) ? styles.primary : styles.btn} disabled={!dirty(m) || busy === m.id} onClick={() => void save(m)}>
