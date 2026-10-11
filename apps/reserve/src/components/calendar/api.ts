@@ -79,6 +79,40 @@ export function compactStorage(): Promise<{ before: number; after: number; stats
 }
 
 /** 結びついている問診票を、患者の空いている欄へ写し直す（院長・管理者） */
+export type MonshinType = "text" | "textarea" | "date" | "tel" | "email" | "choice" | "multi";
+export interface MonshinQuestion {
+  id?: string;
+  label: string;
+  type: MonshinType;
+  required: boolean;
+  options: string[];
+}
+export interface MonshinForm {
+  title: string;
+  intro: string;
+  done: string;
+  questions: MonshinQuestion[];
+}
+
+/** 患者が入力する問診票の質問（院長・管理者） */
+export function fetchMonshinForm(): Promise<{ form: MonshinForm; defaults: MonshinForm }> {
+  return call(`/api/v1/monshin/form`);
+}
+
+export function saveMonshinForm(form: MonshinForm): Promise<MonshinForm> {
+  return call(`/api/v1/monshin/form`, { method: "POST", body: JSON.stringify(form) });
+}
+
+/** これまでに取り込んだ問診票の質問の見出し（回答の中身は含まない） */
+export function fetchMonshinHeadings(): Promise<{ items: { label: string; count: number; type: MonshinType }[] }> {
+  return call(`/api/v1/monshin/headings`);
+}
+
+/** 問診票の回答の CSV の取り出し口（院長・管理者。開くとダウンロードされ、操作の記録に残る） */
+export function questionnaireCsvUrl(from: string, to: string): string {
+  return apiUrl(`/api/v1/questionnaires/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+}
+
 export function refillQuestionnaires(): Promise<{ questionnaires: number; patients: number }> {
   return call(`/api/v1/questionnaires/refill`, { method: "POST", body: "{}" });
 }

@@ -704,6 +704,37 @@ try {
         Http::json(['id' => $id, 'deleted' => true]);
     }
 
+    // ---- 患者が入力する問診票の質問（院長・管理者）。送信の受け口は monshin/index.php ----
+    if ($route === 'GET monshin/form') {
+        $me(STAFF_ADMIN);
+        Http::json(['form' => Monshin::form(), 'defaults' => Monshin::defaults()]);
+    }
+    if ($route === 'POST monshin/form') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson(262_144);
+        if (!is_array($in) || !isset($in['questions']) || !is_array($in['questions']) || !array_is_list($in['questions'])) {
+            throw new InputError();
+        }
+        foreach ($in['questions'] as $x) {
+            if (!is_array($x)) {
+                throw new InputError();
+            }
+        }
+        Http::json(Monshin::saveForm($in, $actor($s)));
+    }
+    if ($route === 'GET monshin/headings') {
+        $me(STAFF_ADMIN);
+        Http::json(['items' => Monshin::pastHeadings()]);
+    }
+    // 回答を CSV で書き出す（院長・管理者）。その場で作って返し、サーバーにファイルは残さない。書き出したことは操作の記録に残す
+    if ($route === 'GET questionnaires/export') {
+        $s = $me(STAFF_ADMIN);
+        $from = (string) ($q('from') ?? '');
+        $to = (string) ($q('to') ?? '');
+        $csv = Monshin::exportCsv($from, $to, $actor($s));
+        Http::file(['kind' => 'doc', 'type' => 'text/csv; charset=utf-8', 'name' => "問診票_{$from}_{$to}.csv"], $csv);
+    }
+
     // ---- 問診票 ----
     if ($p[0] === 'questionnaires') {
         if ($method === 'GET' && $n === 2 && $p[1] === 'unmatched') {

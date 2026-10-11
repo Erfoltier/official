@@ -45,7 +45,7 @@ final class Store
     }
 
     /** 初回だけ、Airリザーブから移したレーン・メニューを入れる */
-    private static function init(): void
+    public static function init(): void
     {
         static $done = false;
         if ($done) {
