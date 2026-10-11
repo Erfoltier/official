@@ -304,7 +304,7 @@ function PreviewSection({ fail }: { fail: (e: unknown) => void }) {
                     <th>送信</th>
                     <th>LINE</th>
                     <th>メール</th>
-                    <th>届かない・使わない理由</th>
+                    <th>詳細</th>
                   </tr>
                 </thead>
                 <tbody>

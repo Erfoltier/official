@@ -304,11 +304,11 @@ final class Reminder
                     }
                 }
                 if ($ch !== 'line') {
-                    $why[] = $lineTo === '' ? (!empty($v['requestNotFound']) ? '申請IDの LINE が見つからない' : (!empty($v['requestMismatch']) ? '申請の名前・生年月日が患者と合わない' : 'LINE のつながりなし'))
+                    $why[] = $lineTo === '' ? (!empty($v['requestNotFound']) ? '申請IDの LINE が見つからない' : (!empty($v['requestMismatch']) ? '申請の名前・生年月日が患者と合わない' : 'LINE未連携'))
                         : (!$s['useLine'] ? 'LINE で送る設定が「送らない」' : (self::lineToken() === '' ? 'LINE の鍵が入っていない' : ($lineLow ? 'LINE の残り通数が少ない' : '')));
                 }
                 if ($ch !== 'email') {
-                    $why[] = !$emailOk ? ($email === '' ? 'メールアドレスなし' : 'メールアドレスの形が正しくない')
+                    $why[] = !$emailOk ? ($email === '' ? 'メールアドレス未回答' : 'メールアドレスの形が正しくない')
                         : (!$s['useEmail'] ? 'メールで送る設定が「送らない」' : ($s['fromEmail'] === '' ? '送信元のメールが未設定' : ''));
                 }
             }
@@ -395,7 +395,7 @@ final class Reminder
                     $why[] = !$s['useLine'] ? 'LINE で送る設定が「送らない」'
                         : (self::lineToken() === '' ? 'LINE の鍵が入っていない'
                         : (!empty($v['requestNotFound']) ? '予約申請ID（申請IDの欄・メモ）の LINE が見つからない'
-                        : (!empty($v['requestMismatch']) ? '予約申請の名前・生年月日が患者と合わない' : '申請IDの欄にもメモにも予約申請IDがなく、LINE の紐付けもない')));
+                        : (!empty($v['requestMismatch']) ? '予約申請の名前・生年月日が患者と合わない' : 'LINE未連携（申請IDなし）')));
                     continue;
                 }
                 if (!$quota['checked']) {
@@ -421,7 +421,7 @@ final class Reminder
             } else {
                 if (!$s['useEmail'] || $s['fromEmail'] === '' || empty($p['email']) || !filter_var($p['email'], FILTER_VALIDATE_EMAIL)) {
                     $why[] = !$s['useEmail'] ? 'メールで送る設定が「送らない」'
-                        : ($s['fromEmail'] === '' ? '送信元のメールが未設定' : (empty($p['email']) ? '患者のメールアドレスがない' : '患者のメールアドレスの形が正しくない'));
+                        : ($s['fromEmail'] === '' ? '送信元のメールが未設定' : (empty($p['email']) ? 'メールアドレス未回答' : '患者のメールアドレスの形が正しくない'));
                     continue;
                 }
                 $m = self::compose($v, $round, 'email');
