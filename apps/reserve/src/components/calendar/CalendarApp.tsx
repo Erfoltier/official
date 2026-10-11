@@ -1,0 +1,635 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
+import { INACTIVE_STATUSES } from "@/lib/domain/types";
+import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
+import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
+import { ApiError, fetchDay, fetchIntake, fetchMe, logout, patchReservation, putDayNote, putReceptionNote, updatePatient } from "./api";
+import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
+import { DetailPanel } from "./DetailPanel";
+import { CreateDialog } from "./CreateDialog";
+import { InboxDialog } from "./InboxDialog";
+import type { IntakeItem } from "./api";
+import { DatePicker } from "./DatePicker";
+import { ReceptionList } from "./ReceptionList";
+import { MoveConfirm } from "./MoveConfirm";
+import { displayName } from "./names";
+import { ChevronDown } from "./Chevron";
+import { PatientDialog } from "@/components/patients/PatientDialog";
+import { isBoolean, isNumber, isString, usePref } from "./usePref";
+import styles from "./calendar.module.css";
+import { withBase } from "@/lib/paths";
+import { isBlockInfo, type BlockInfo, UI_SIZES, applyUiSize, isUiSize, type UiSize } from "@/lib/displayPrefs";
+
+const POLL_MS = 20_000;
+const ALL_LANES = "all";
+
+export function CalendarApp({ initialDate }: { initialDate: string }) {
+  const [date, setDate] = useState(initialDate);
+  const [bundle, setBundle] = useState<DayBundle | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; kind: "info" | "error" } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [createAt, setCreateAt] = useState<{ laneId: string; minute: number; requestText?: string } | null>(null);
+  /** 受付箱：未対応の申請の数と、開いているか */
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxCount, setInboxCount] = useState(0);
+  /** 受付箱の「予約を作る」：その日を読み込んでから予約登録を開く */
+  const [pendingBook, setPendingBook] = useState<{ date: string; text: string } | null>(null);
+  const [editPatientId, setEditPatientId] = useState<string | null>(null);
+  const [me, setMe] = useState<StaffPublic | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
+
+  useEffect(() => {
+    fetchMe().then(setMe, () => {});
+  }, []);
+  // 未対応の申請の数（5分ごとに見直す）
+  useEffect(() => {
+    const get = () => fetchIntake(30).then((r) => setInboxCount(r.items.filter((x) => x.state === "new").length), () => {});
+    get();
+    const t = setInterval(get, 5 * 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const [now, setNow] = useState(() => nowInClinic());
+
+  const [scale, setScale] = usePref("scale", DEFAULT_PX_PER_MIN, isNumber);
+  const [maskNames, setMaskNames] = usePref("maskNames", false, isBoolean);
+  const [blockInfo] = usePref<BlockInfo>("blockInfo", "all", isBlockInfo);
+  // 文字の大きさ（この端末だけ。設定 → この端末の表示 と同じもの）
+  const [uiSize, setUiSize] = usePref<UiSize>("uiSize", "m", isUiSize);
+  const [showCancelled, setShowCancelled] = usePref("showCancelled", false, isBoolean);
+  const [laneFilter, setLaneFilter] = usePref("laneFilter", ALL_LANES, isString);
+  const [receptionLane, setReceptionLane] = usePref("receptionLane", ALL_LANES, isString);
+  /** 受付一覧：自分で開閉するまでは端末に合わせる（パソコンは開く・スマホ/タブレットはたたむ） */
+  const [receptionPref, setReceptionPref] = usePref("reception", "auto", isString);
+  const [wideScreen, setWideScreen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1100px) and (pointer: fine)");
+    const on = () => setWideScreen(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  const receptionOpen = receptionPref === "auto" ? wideScreen : receptionPref === "open";
+  /** 受付一覧をボタンで開いたときだけスライドインする（ページを開いたときは動かさない） */
+  const [receptionSlide, setReceptionSlide] = useState(false);
+  const setReceptionOpen = (open: boolean) => {
+    setReceptionSlide(open);
+    setReceptionPref(open ? "open" : "closed");
+  };
+
+  useEffect(() => {
+    if (!pendingBook || !bundle || bundle.date !== pendingBook.date) return;
+    const lane = bundle.lanes.find((l) => l.active) ?? bundle.lanes[0];
+    // 選んだ日の読み込みが終わってから開く（読み込みの完了に合わせるため effect の中で開く）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (lane) setCreateAt({ laneId: lane.id, minute: bundle.clinic.dayStartMin, requestText: pendingBook.text });
+    setPendingBook(null);
+  }, [pendingBook, bundle]);
+  const bookFromInbox = (it: IntakeItem) => {
+    setInboxOpen(false);
+    const d = it.preferredDate || date;
+    setPendingBook({ date: d, text: it.message });
+    if (d !== date) setDate(d);
+  };
+
+  const gridRef = useRef<DayGridHandle>(null);
+  const busyRef = useRef(false);
+  /** 別の日へ移した予約を、その日の読み込み後に選ぶ */
+  const pendingSelect = useRef<string | null>(null);
+  const didInitialScroll = useRef<string | null>(null);
+
+  const showToast = useCallback((text: string, kind: "info" | "error" = "info") => {
+    setToast({ text, kind });
+    window.setTimeout(() => setToast((t) => (t?.text === text ? null : t)), 3500);
+  }, []);
+
+  const load = useCallback(
+    async (d: string, signal?: AbortSignal) => {
+      try {
+        const b = await fetchDay(d, signal);
+        setBundle(b);
+        if (pendingSelect.current && b.reservations.some((x) => x.id === pendingSelect.current)) {
+          setSelectedId(pendingSelect.current);
+          pendingSelect.current = null;
+        }
+        setLoadError(null);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setLoadError(err instanceof ApiError ? err.message : "予約を読み込めませんでした");
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const ac = new AbortController();
+    // 日付を変えたら選択を解除してから読み込む
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedId(null);
+    load(date, ac.signal);
+    return () => ac.abort();
+  }, [date, load]);
+
+  // 他の端末での変更を取り込む（ドラッグ中・保存中は止める）
+  useEffect(() => {
+    const tick = () => {
+      setNow(nowInClinic());
+      if (document.visibilityState === "visible" && !busyRef.current) load(date);
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    const onVisible = () => document.visibilityState === "visible" && tick();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [date, load]);
+
+  // 初回表示：今日なら現在時刻の少し前へ
+  useEffect(() => {
+    if (!bundle || didInitialScroll.current === bundle.date) return;
+    didInitialScroll.current = bundle.date;
+    const target = bundle.date === now.date ? now.minutes - 30 : bundle.clinic.dayStartMin;
+    requestAnimationFrame(() => gridRef.current?.scrollToMinute(target));
+  }, [bundle, now]);
+
+  const lanes = useMemo(() => {
+    if (!bundle) return [];
+    const sorted = [...bundle.lanes].sort((a, b) => a.order - b.order);
+    if (laneFilter === ALL_LANES) return sorted;
+    const one = sorted.filter((l) => l.id === laneFilter);
+    return one.length ? one : sorted;
+  }, [bundle, laneFilter]);
+
+  const applyLocal = (next: Reservation) =>
+    setBundle((b) => (b ? { ...b, reservations: b.reservations.map((r) => (r.id === next.id ? next : r)) } : b));
+
+  const save = async (r: Reservation, patch: Parameters<typeof patchReservation>[1], optimistic: Reservation) => {
+    busyRef.current = true;
+    applyLocal(optimistic);
+    try {
+      applyLocal(await patchReservation(r.id, patch));
+    } catch (err) {
+      applyLocal(r);
+      showToast(err instanceof ApiError ? err.message : "保存できませんでした", "error");
+      if (err instanceof ApiError && err.status === 409) load(date);
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
+  /** ドラッグで動かした予約（確認ダイアログで「はい」を押すまで保存しない） */
+  const [pendingMove, setPendingMove] = useState<{ r: Reservation; to: MoveTarget } | null>(null);
+
+  const onSaveNote = async (laneId: string, text: string): Promise<boolean> => {
+    if (!bundle) return false;
+    const date = bundle.date;
+    try {
+      const saved = await putDayNote(date, laneId, text);
+      setBundle((b) => {
+        if (!b || b.date !== date) return b;
+        const dayNotes = { ...b.dayNotes };
+        if (saved.text) dayNotes[laneId] = saved.text;
+        else delete dayNotes[laneId];
+        return { ...b, dayNotes };
+      });
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "メモを保存できませんでした", "error");
+      return false;
+    }
+  };
+
+  const onMove = (r: Reservation, to: MoveTarget) => {
+    const same = to.laneId === r.laneId && toIso(date, to.startMin) === r.startAt && toIso(date, to.endMin) === r.endAt;
+    if (!same) setPendingMove({ r, to });
+  };
+
+  const moveDetail = (r: Reservation, to: MoveTarget) => {
+    const laneName = (id: string) => bundle?.lanes.find((l) => l.id === id)?.shortName ?? "";
+    const from = `${formatHm(minutesOfDay(r.startAt))}–${formatHm(minutesOfDay(r.endAt))}`;
+    const next = `${formatHm(to.startMin)}–${formatHm(to.endMin)}`;
+    return [
+      displayName(bundle?.patients.find((p) => p.id === r.patientId), maskNames),
+      from === next ? `時間：${from}（変更なし）` : `時間：${from} → ${next}`,
+      to.laneId !== r.laneId ? `レーン：${laneName(r.laneId)} → ${laneName(to.laneId)}` : "",
+    ].filter(Boolean);
+  };
+
+  const doMove = (r: Reservation, to: MoveTarget) => {
+    const startAt = toIso(date, to.startMin);
+    const endAt = toIso(date, to.endMin);
+    save(r, { version: r.version, laneId: to.laneId, startAt, endAt }, { ...r, laneId: to.laneId, startAt, endAt });
+  };
+
+  const onStatus = (r: Reservation, status: ReservationStatus) => {
+    save(r, { version: r.version, status }, { ...r, status });
+  };
+
+  /**
+   * 同じ日の同じ患者の、ほかの予約（取り消し・無断キャンセルを除く）。
+   * 1人が複数の枠（例：ネオボ撮影→脱毛説明→脱毛→注射）にまたがるとき、状態は全部の枠でそろえる
+   */
+  const siblingsOf = (r: Reservation) =>
+    (bundle?.reservations ?? []).filter((x) => x.patientId === r.patientId && x.id !== r.id && !INACTIVE_STATUSES.has(x.status));
+
+  /** 院で決めた状態を選ぶ。段階（status）と変えた時刻も合わせて変わる。同じ人のほかの枠にもそろえる（取り消し系はその枠だけ） */
+  const onStage = (r: Reservation, stageId: string, min?: number) => {
+    const st = bundle?.stages.find((s) => s.id === stageId);
+    if (!st) return;
+    const stageAt = min !== undefined ? toIso(date, min) : new Date().toISOString();
+    const targets = INACTIVE_STATUSES.has(st.phase) || INACTIVE_STATUSES.has(r.status) ? [r] : [r, ...siblingsOf(r)];
+    for (const t of targets) {
+      save(t, { version: t.version, stageId, ...(min !== undefined && { stageMin: min }) }, { ...t, stageId, status: st.phase, stageAt });
+    }
+  };
+
+  /** 状態はそのままで、変えた時刻だけ直す（同じ人のほかの枠にもそろえる） */
+  const onStageTime = (r: Reservation, min: number) => {
+    for (const t of [r, ...siblingsOf(r)]) save(t, { version: t.version, stageMin: min }, { ...t, stageAt: toIso(date, min) });
+  };
+
+  /** 患者情報のメモ（患者画面のメモと同じ）を受付一覧から保存する */
+  const onPatientCaution = async (p: Patient, text: string) => {
+    try {
+      const d = await updatePatient(p.id, { version: p.version, cautionNote: text, caution: !!text });
+      setBundle((b) => (b ? { ...b, patients: b.patients.map((x) => (x.id === p.id ? d.patient : x)) } : b));
+      showToast("注意事項を保存しました");
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "注意事項を保存できませんでした", "error");
+      if (err instanceof ApiError && err.status === 409) load(date);
+      return false;
+    }
+  };
+
+  /** 受付メモ（その日の進行状況など。患者情報のメモとは別）を受付一覧から保存する */
+  const onReceptionNote = async (p: Patient, text: string) => {
+    if (!bundle) return false;
+    const day = bundle.date;
+    try {
+      const saved = await putReceptionNote(day, p.id, text);
+      setBundle((b) => {
+        if (!b || b.date !== day) return b;
+        const receptionNotes = { ...b.receptionNotes };
+        if (saved.text) receptionNotes[p.id] = saved.text;
+        else delete receptionNotes[p.id];
+        return { ...b, receptionNotes };
+      });
+      showToast("受付メモを保存しました");
+      return true;
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "受付メモを保存できませんでした", "error");
+      return false;
+    }
+  };
+
+  /** 自由入力の一言（状態とは別に出す。空で消す） */
+  const onFreeNote = (r: Reservation, text: string) => {
+    for (const t of [r, ...siblingsOf(r)]) save(t, { version: t.version, stageText: text }, { ...t, stageText: text || undefined });
+  };
+
+  const onMemo = (r: Reservation, memo: string) => {
+    save(r, { version: r.version, memo }, { ...r, memo });
+  };
+
+  /** 「予約を変更」のあと。別の日へ移したときはその日を表示する */
+  const onChanged = (next: Reservation, kind: "changed" | "cancelled") => {
+    if (kind === "cancelled") {
+      applyLocal(next);
+      showToast("予約を取り消しました");
+      return;
+    }
+    const nextDate = clinicDateOf(next.startAt);
+    if (nextDate !== date) {
+      showToast(`${formatDateJa(nextDate)} に移動しました`);
+      pendingSelect.current = next.id;
+      setDate(nextDate);
+    } else {
+      applyLocal(next);
+      showToast("予約を変更しました");
+    }
+  };
+
+  const onRequestId = (r: Reservation, requestId: string) => {
+    save(r, { version: r.version, requestId }, { ...r, requestId: requestId || undefined });
+  };
+
+  const selected = bundle?.reservations.find((r) => r.id === selectedId) ?? null;
+  const isToday = date === now.date;
+  const activeCount = bundle?.reservations.filter((r) => r.status !== "cancelled" && r.status !== "no_show").length ?? 0;
+  const zoomPercent = Math.round((scale / DEFAULT_PX_PER_MIN) * 100);
+  // 拡大縮小バーの色つき部分の長さ（つまみの位置まで）
+  const zoomFill = ((Math.log(scale) - Math.log(MIN_PX_PER_MIN)) / (Math.log(MAX_PX_PER_MIN) - Math.log(MIN_PX_PER_MIN))) * 100;
+
+  return (
+    <div className={styles.app} data-panel-open={selected ? true : undefined}>
+      <header className={styles.toolbar} data-ui-zoom>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 静的書き出しのため最適化なしの画像で表示 */}
+        <img src={withBase("/brand/lane-reserve-logo-wordmark.svg")} alt="LANE RESERVE" className={styles.brandBar} />
+        <div className={`${styles.group} ${styles.tbNav}`}>
+          <button
+            className={styles.btn}
+            data-active={receptionOpen || undefined}
+            onClick={() => setReceptionOpen(!receptionOpen)}
+            aria-pressed={receptionOpen}
+            title="その日の予約と状態を時刻順に一覧（受付一覧）"
+          >
+            ☰<span className={styles.long}> 受付一覧</span>
+            <span className={styles.short}> 受付</span>
+          </button>
+          <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, -1))} aria-label="前の日">
+            ‹
+          </button>
+          <span className={styles.dateWrap}>
+            <button
+              type="button"
+              className={styles.dateBtn}
+              data-datepicker-toggle
+              data-open={pickerOpen || undefined}
+              onClick={() => setPickerOpen((v) => !v)}
+              aria-haspopup="dialog"
+              aria-expanded={pickerOpen}
+              title="カレンダーから日付を選ぶ"
+            >
+              {formatDateJa(date)}
+              <ChevronDown className={styles.dateCaret} />
+            </button>
+            {pickerOpen && (
+              <DatePicker
+                value={date}
+                today={now.date}
+                onPick={(d) => {
+                  setDate(d);
+                  setPickerOpen(false);
+                  if (d === now.date) didInitialScroll.current = null;
+                }}
+                onClose={closePicker}
+              />
+            )}
+          </span>
+          <button className={styles.iconBtn} onClick={() => setDate((d) => addDays(d, 1))} aria-label="次の日">
+            ›
+          </button>
+          <button
+            className={styles.btn}
+            data-active={isToday || undefined}
+            onClick={() => {
+              setDate(now.date);
+              didInitialScroll.current = null;
+            }}
+          >
+            今日
+          </button>
+          <span className={styles.count}>{activeCount}件</span>
+        </div>
+
+        <div className={`${styles.group} ${styles.tbView}`} role="group" aria-label="表示">
+          {bundle && (
+            <select
+              className={styles.select}
+              value={laneFilter}
+              onChange={(e) => setLaneFilter(e.target.value)}
+              aria-label="表示するレーン"
+            >
+              <option value={ALL_LANES}>全レーン</option>
+              {bundle.lanes.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.shortName}
+                </option>
+              ))}
+            </select>
+          )}
+          <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1 / 1.25)} aria-label="縮小">
+            −<span className={styles.cap}>縮小</span>
+          </button>
+          <input
+            className={styles.zoomRange}
+            type="range"
+            min={Math.log(MIN_PX_PER_MIN)}
+            max={Math.log(MAX_PX_PER_MIN)}
+            step={0.01}
+            value={Math.log(scale)}
+            onChange={(e) => setScale(clampScale(Math.exp(Number(e.target.value))))}
+            aria-label={`拡大率 ${zoomPercent}%`}
+            style={{ "--fill": `${zoomFill}%` } as CSSProperties}
+          />
+          <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1.25)} aria-label="拡大">
+            ＋<span className={styles.cap}>拡大</span>
+          </button>
+          <button className={styles.btn} onClick={() => gridRef.current?.fitAll()} title="1日全体を画面に収める">
+            全体<span className={styles.cap}>1日</span>
+          </button>
+          <button
+            className={styles.btn}
+            onClick={() => {
+              const i = UI_SIZES.findIndex((x) => x.id === uiSize);
+              const next = UI_SIZES[(i + 1) % UI_SIZES.length].id;
+              setUiSize(next);
+              applyUiSize(next);
+            }}
+            title="文字の大きさを切り替える（この端末だけ。標準 → 大きめ → 特大）"
+            aria-label={`文字の大きさ：${UI_SIZES.find((x) => x.id === uiSize)?.label}`}
+          >
+            文字{" "}<span className={styles.uiSizeLabel}>{UI_SIZES.find((x) => x.id === uiSize)?.label}</span>
+          </button>
+          {isToday && (
+            <button
+              className={styles.btn}
+              onClick={() => gridRef.current?.scrollToMinute(now.minutes - 30)}
+              title="現在時刻へ移動"
+            >
+              今<span className={styles.cap}>現在</span>
+            </button>
+          )}
+        </div>
+
+        <div className={`${styles.group} ${styles.tbTools}`}>
+          <button
+            className={styles.btn}
+            data-active={maskNames || undefined}
+            onClick={() => setMaskNames((v) => !v)}
+            aria-pressed={maskNames}
+            title="患者から画面が見える場所で使う"
+          >
+            <span className={styles.long}>氏名を伏せる</span>
+            <span className={styles.short}>●●</span>
+            <span className={styles.cap}>伏字</span>
+          </button>
+          <button
+            className={styles.btn}
+            data-active={showCancelled || undefined}
+            onClick={() => setShowCancelled((v) => !v)}
+            aria-pressed={showCancelled}
+          >
+            <span className={styles.long}>キャンセル表示</span>
+            <span className={styles.short}>✕</span>
+            <span className={styles.cap}>取消</span>
+          </button>
+          <button
+            className={styles.iconBtn}
+            onClick={() => {
+              const el = document.documentElement;
+              if (document.fullscreenElement) document.exitFullscreen?.();
+              else if (el.requestFullscreen) el.requestFullscreen().catch(() => showToast("全画面表示にできませんでした"));
+              else showToast("この端末は全画面表示に対応していません。ホーム画面に追加すると広く使えます");
+            }}
+            aria-label="全画面表示"
+            title="全画面表示"
+          >
+            ⛶<span className={styles.cap}>全画面</span>
+          </button>
+          {me && (
+            <button
+              className={styles.btn}
+              title="ログイン中のスタッフ（押すと交代）"
+              onClick={async () => {
+                if (!window.confirm(`${me.name} をログアウトして、スタッフを交代しますか？`)) return;
+                await logout();
+                window.location.replace(withBase("/login/"));
+              }}
+            >
+              <span className={styles.staffName}>{me.name}</span> ⇄<span className={styles.cap}>{me.name}</span>
+            </button>
+          )}
+          <button
+            className={styles.iconBtn}
+            onClick={() => setInboxOpen(true)}
+            aria-label={`受付箱（LINE 予約申請）${inboxCount ? `・未対応 ${inboxCount}件` : ""}`}
+            title="受付箱（LINE 予約申請）"
+            style={{ position: "relative", ...(inboxCount ? { borderColor: "var(--danger, #c0392b)" } : {}) }}
+          >
+            📥<span className={styles.cap}>受付箱</span>
+            {inboxCount > 0 && <span className={styles.countBadge}>{inboxCount > 99 ? "99+" : inboxCount}</span>}
+          </button>
+          <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
+            👤<span className={styles.cap}>患者</span>
+          </Link>
+          <Link href="/settings" className={styles.iconBtn} aria-label="設定（レーン・メニュー）" title="設定（レーン・メニュー）">
+            ⚙<span className={styles.cap}>設定</span>
+          </Link>
+        </div>
+      </header>
+
+      <main className={styles.main}>
+        {loadError && !bundle && <div className={styles.empty}>{loadError}</div>}
+        {!bundle && !loadError && <div className={styles.empty}>読み込み中…</div>}
+        {bundle && receptionOpen && (
+          <ReceptionList
+            animate={receptionSlide}
+            bundle={bundle}
+            laneFilter={receptionLane}
+            onLaneFilter={setReceptionLane}
+            maskNames={maskNames}
+            showCancelled={showCancelled}
+            selectedId={selectedId}
+            nowMinutes={isToday ? now.minutes : null}
+            onSelect={(id) => {
+              setSelectedId(id);
+              const r = bundle.reservations.find((x) => x.id === id);
+              if (r) gridRef.current?.scrollToMinute(minutesOfDay(r.startAt) - 30);
+              // 狭い画面では一覧が重なるので、選んだら閉じて詳細を見せる
+              if (window.matchMedia("(max-width: 760px)").matches) setReceptionOpen(false);
+            }}
+            onClose={() => setReceptionOpen(false)}
+            onStage={onStage}
+            onStageTime={onStageTime}
+            onReceptionNote={onReceptionNote}
+          />
+        )}
+        {bundle && (
+          <DayGrid
+            ref={gridRef}
+            bundle={bundle}
+            lanes={lanes}
+            scale={scale}
+            onScaleChange={setScale}
+            maskNames={maskNames}
+            blockInfo={blockInfo}
+            showCancelled={showCancelled}
+            selectedId={selectedId}
+            nowMinutes={isToday ? now.minutes : null}
+            onSelect={setSelectedId}
+            onMove={onMove}
+            onCreateAt={(laneId, minute) => setCreateAt({ laneId, minute })}
+            onSaveNote={onSaveNote}
+          />
+        )}
+        {bundle && selected && (
+          <DetailPanel
+            key={selected.id}
+            bundle={bundle}
+            reservation={selected}
+            maskNames={maskNames}
+            onClose={() => setSelectedId(null)}
+            onStatus={(s) => onStatus(selected, s)}
+            onStage={(id, min) => onStage(selected, id, min)}
+            onStageTime={(min) => onStageTime(selected, min)}
+            onFreeNote={(text) => onFreeNote(selected, text)}
+            onMemo={(m) => onMemo(selected, m)}
+            onRequestId={(v) => onRequestId(selected, v)}
+            onChanged={onChanged}
+            canManage={!!me?.canManage}
+            onEditPatient={() => setEditPatientId(selected.patientId)}
+            onCaution={(text) => {
+              const p = bundle.patients.find((x) => x.id === selected.patientId);
+              return p ? onPatientCaution(p, text) : Promise.resolve(false);
+            }}
+          />
+        )}
+      </main>
+
+      {bundle && createAt && (
+        <CreateDialog
+          bundle={bundle}
+          date={date}
+          laneId={createAt.laneId}
+          minute={createAt.minute}
+          initialRequestText={createAt.requestText}
+          onClose={() => setCreateAt(null)}
+          onMenusChanged={me?.canManage ? () => load(date) : undefined}
+          onCreated={(r) => {
+            setCreateAt(null);
+            showToast("予約を登録しました");
+            load(date).then(() => setSelectedId(r.id));
+          }}
+        />
+      )}
+
+      {inboxOpen && <InboxDialog onClose={() => setInboxOpen(false)} onBook={bookFromInbox} onCount={setInboxCount} />}
+
+      {editPatientId && (
+        <PatientDialog
+          patientId={editPatientId}
+          onClose={() => setEditPatientId(null)}
+          onSaved={() => load(date)}
+        />
+      )}
+
+      {pendingMove && (
+        <MoveConfirm
+          detail={moveDetail(pendingMove.r, pendingMove.to)}
+          onCancel={() => setPendingMove(null)}
+          onYes={() => {
+            const { r, to } = pendingMove;
+            setPendingMove(null);
+            // 確認中に他の端末で変わっていたら最新の版で保存する（中身が変わっていれば保存側で弾かれる）
+            doMove(bundle?.reservations.find((x) => x.id === r.id) ?? r, to);
+          }}
+        />
+      )}
+
+      {toast && (
+        <div className={styles.toast} data-kind={toast.kind} role="status">
+          {toast.text}
+        </div>
+      )}
+    </div>
+  );
+}

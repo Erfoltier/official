@@ -1,0 +1,296 @@
+/* 日付ジャンプ用カレンダー。パソコンでは日付ボタンの下に、スマホでは画面下から出す */
+.picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 320px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 18%);
+  font-weight: 400;
+  cursor: default;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.nav,
+.today,
+.title {
+  height: 32px;
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  border-radius: var(--radius);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.nav {
+  width: 32px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 15px;
+  border-color: transparent;
+}
+
+.title:hover,
+.nav:hover,
+.today:hover {
+  background: var(--bg-subtle);
+}
+
+.caret {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  margin-left: 2px;
+  color: var(--accent);
+  transition: transform 0.15s;
+}
+
+.title[aria-expanded="true"] .caret {
+  transform: rotate(180deg);
+}
+
+.today {
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.week,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.week span {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0 4px;
+}
+
+.week span[data-sat],
+.day[data-sat] .num {
+  color: #1d6fe0;
+}
+
+.week span[data-sun],
+.day[data-sun] .num,
+.hol {
+  color: var(--danger);
+}
+
+.grid {
+  gap: 2px;
+}
+
+.day {
+  position: relative;
+  height: 44px;
+  padding: 3px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.day:hover {
+  background: var(--bg-subtle);
+}
+
+.day[data-out] {
+  opacity: 0.4;
+}
+
+.num {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.hol {
+  font-size: 9px;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cnt {
+  font-size: 10px;
+  line-height: 1;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+
+/* 今日：Airリザーブと同じ緑 */
+.day[data-today] {
+  border-color: #6bbf1f;
+}
+
+.day[data-today] .num {
+  color: #3f8f0a;
+}
+
+.day[data-selected] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.day[data-selected] .num,
+.day[data-selected] .hol {
+  color: #fff;
+}
+
+.day[data-selected] .cnt {
+  background: rgb(255 255 255 / 25%);
+  color: #fff;
+}
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 4px 0 8px;
+}
+
+.month {
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.month:hover {
+  background: var(--bg-subtle);
+}
+
+.month[data-this] {
+  border-color: #6bbf1f;
+}
+
+.month[data-current] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.jumps {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.jumps button {
+  flex: 1;
+  height: 30px;
+  border: 1px solid var(--btn-line);
+  border-radius: var(--radius);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.jumps button:hover {
+  background: var(--bg-subtle);
+}
+
+@media (max-width: 600px) {
+  .picker {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    border-radius: 14px 14px 0 0;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .day {
+    height: 50px;
+  }
+}
+
+/* ===== 配色（グラデーション） ===== */
+.picker {
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 40px rgb(var(--shadow-rgb) / 18%);
+  background: linear-gradient(180deg, var(--tint) 0%, var(--surface) 90px);
+}
+
+.picker::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  border-radius: 10px 10px 0 0;
+  background: var(--grad-line);
+}
+
+.title {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.title .caret {
+  color: var(--accent);
+}
+
+.today {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+}
+
+.day[data-selected] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.month[data-current] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cnt {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}

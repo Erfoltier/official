@@ -1,0 +1,31 @@
+{
+  "name": "reserve",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "typecheck": "next typegen && tsc --noEmit",
+    "build:static": "BUILD_TARGET=static NEXT_PUBLIC_BASE_PATH=${BASE_PATH:-/reserve} NEXT_PUBLIC_METHOD_OVERRIDE=1 next build",
+    "build:lolipop": "bash scripts/build-lolipop.sh"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "next": "16.3.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "typescript": "^5",
+    "vitest": "^5.0.3"
+  }
+}

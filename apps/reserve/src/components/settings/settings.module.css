@@ -1,0 +1,1020 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px 48px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.head h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.back {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.tabs button {
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.lead {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.message {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: #e8f5ec;
+  color: #1c6b37;
+  font-size: 13px;
+}
+
+.message[data-kind="error"] {
+  background: #fdecec;
+  color: var(--danger);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 10px;
+}
+
+.toolbar .input {
+  max-width: 260px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line-strong);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.table tr[data-inactive] td {
+  color: var(--text-faint);
+  background: #fafafa;
+}
+
+.clickRow {
+  cursor: pointer;
+}
+
+.clickRow:hover td {
+  background: #f5f9ff;
+}
+
+.orderCol {
+  width: 64px;
+  white-space: nowrap;
+}
+
+.arrow {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  border-radius: 4px;
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+.arrow:disabled {
+  opacity: 0.3;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.nameBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  text-align: left;
+  font-size: 13px;
+}
+
+.lanesCell {
+  white-space: nowrap;
+}
+
+.input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0 8px;
+  background: var(--field-bg);
+  font-size: 14px;
+}
+
+.btn,
+.primary {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.btn:disabled,
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.addRow td {
+  background: var(--bg-subtle);
+}
+
+.dialog {
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  border: none;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
+}
+
+.dialog::backdrop {
+  background: rgb(15 23 42 / 0.35);
+}
+
+.dialog h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  gap: 10px 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.grid > label {
+  color: var(--text-muted);
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.inline .input {
+  width: auto;
+  min-width: 90px;
+}
+
+.color {
+  width: 40px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: none;
+}
+
+.preview {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border-left: 3px solid var(--c);
+  background: color-mix(in srgb, var(--c) 15%, var(--surface));
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .grid > label {
+    margin-top: 6px;
+  }
+  .tabs {
+    margin-left: 0;
+  }
+}
+
+/* ---- 診療時間 ---- */
+.clinicCard {
+  max-width: 520px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-grad, var(--bg));
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.field .input {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.timeRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.timeRow .field {
+  flex: 1;
+}
+
+.timeSep {
+  padding-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.hint[data-invalid] {
+  color: var(--danger);
+}
+
+/* ===== 配色（グラデーション） ===== */
+.head h1 {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.primary:disabled {
+  background: var(--bg-muted);
+  color: var(--text-faint);
+  box-shadow: none;
+}
+
+/* 選んでいるタブは単色で（グラデーションは保存などの決定ボタンだけ） */
+.tabs button[aria-selected="true"] {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
+  box-shadow: none;
+}
+
+.clinicCard {
+  background: var(--grad-soft);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.stagePreview {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.7;
+  vertical-align: middle;
+}
+
+.clinic {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clinicCard textarea.input {
+  height: auto;
+  min-height: 7em;
+  padding: 8px 10px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* ===== 料金表 ===== */
+.priceStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  font-size: 13px;
+}
+
+.priceStatus > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.priceSource {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.priceSource[data-ok] {
+  color: #15803d;
+}
+
+.priceUrls {
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.priceUrls textarea {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  margin: 6px 0;
+  padding: 6px 8px;
+  font-family: inherit;
+}
+
+.priceGroup {
+  margin: 14px 0;
+}
+
+.priceGroup h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--accent-strong);
+}
+
+.priceCol {
+  width: 9em;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.priceCol input {
+  text-align: right;
+}
+
+.priceAdd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 720px;
+}
+
+.priceAdd input:nth-child(1) {
+  flex: 1 1 8em;
+}
+
+.priceAdd input:nth-child(2) {
+  flex: 3 1 14em;
+}
+
+.priceAdd input:nth-child(3) {
+  flex: 1 1 7em;
+}
+
+.priceGroup table {
+  table-layout: fixed;
+  width: 100%;
+  max-width: 900px;
+}
+
+.priceGroup td:last-child:not(.priceCol) {
+  width: 18em;
+}
+
+/* ===== 同意書 ===== */
+.menuPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.menuPickItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.menuPickItem[data-on] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* 予約登録から開くメニューの追加・削除 */
+.managerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.managerHead h2 {
+  margin: 0;
+}
+
+.managerList {
+  max-height: 55dvh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.managerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.managerRow:last-child {
+  border-bottom: none;
+}
+
+.managerRow .nameBtn {
+  flex: 1;
+  text-align: left;
+}
+
+.managerRow[data-inactive] .nameBtn {
+  opacity: 0.55;
+}
+
+/* 取り込み */
+.importBox {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.importBox h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.importSource {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.importSource .input {
+  flex: 1 1 260px;
+}
+
+.importSource label.btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+.importError {
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
+.importBox .linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* タブ：文字は折り返さず、入りきらないときはボタンごと次の行へ */
+.tabs {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  margin-left: 0;
+  gap: 6px;
+}
+
+.tabs button {
+  flex: none;
+  height: auto;
+  min-height: 34px;
+  padding: 6px 14px;
+  white-space: nowrap;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .tabs button {
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+}
+
+/* スキンケア・内服タブ：料金表から入っている商品（見るだけ） */
+.subhead {
+  margin: 24px 0 4px;
+  font-size: 15px;
+  color: var(--accent-strong);
+}
+
+details.priceGroup > summary {
+  cursor: pointer;
+  padding: 6px 0;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+/* 画面の配色 */
+.themeList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.themeOpt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  text-align: left;
+}
+
+.themeOpt b {
+  display: block;
+  font-size: 14px;
+}
+
+.themeOpt small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.themeOpt[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.themeOpt:disabled {
+  cursor: default;
+}
+
+.themeOpt:disabled:not([aria-checked="true"]) {
+  opacity: 0.7;
+}
+
+.themeSwatch {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 60%);
+}
+
+/* この端末の表示 */
+.prefRow {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.prefRow:first-of-type {
+  border-top: none;
+}
+
+.prefRow small {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.segment button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--btn-line);
+  border-radius: 999px;
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  font-size: 13px;
+}
+
+.segment button[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+/* 外部機器の連携 */
+.optionBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.tokenBox {
+  display: block;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  font-size: 12px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.steps {
+  margin: 8px 0;
+  padding-left: 1.4em;
+  line-height: 1.7;
+  font-size: 13px;
+}
+
+.steps li {
+  margin-bottom: 8px;
+}
+
+.inboxGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.inboxCard {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.inboxCard img {
+  display: block;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg-muted);
+}
+
+.inboxCard small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.hitList {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hitList button {
+  width: 100%;
+  text-align: left;
+}
+
+.linkDanger {
+  justify-self: start;
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.optionsBox {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+/* 外部機器の連携：左に寄せず、左右の余白をそろえて広く使う */
+.devices {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.devices .clinicCard {
+  max-width: none;
+}
+
+/* M3 照合：列の当てはめ */
+.m3Cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 12px;
+  margin: 6px 0 10px;
+}
+
+.m3Cols label {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.m3Preview {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 院の情報：PC の広い画面では、左に診療時間・書類の院の情報、右にリマインドの2列（右半分を空けない） */
+.clinicWide {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+
+.clinicWide .clinicCard {
+  max-width: none;
+}
+
+@media (min-width: 1100px) {
+  .clinicWide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1099px) {
+  .clinicWide .clinicCard {
+    max-width: 720px;
+  }
+}
+
+/* ===== リマインドのタブ：メニューの見せ方（PCは表、スマホ・タブレットはカード） ===== */
+.reminderMenus {
+  grid-column: 1 / -1;
+}
+.rmList {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.rmHead {
+  display: none;
+}
+.rmRow {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.rmName {
+  font-weight: 700;
+  border-left: 4px solid var(--c, var(--line-strong));
+  padding-left: 8px;
+  overflow-wrap: anywhere;
+}
+.rmField {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.rmRow > button {
+  justify-self: end;
+}
+@media (min-width: 900px) {
+  .rmHead {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(220px, 2fr) 72px;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 0 10px;
+  }
+  .rmRow {
+    grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(220px, 2fr) 72px;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 10px;
+  }
+  .rmField > span {
+    display: none;
+  }
+  .rmRow > button {
+    justify-self: stretch;
+  }
+}
+
+/* スマホ：カードが中身に押し広げられて横にはみ出さないように */
+.clinicWide {
+  grid-template-columns: minmax(0, 1fr);
+}
+.clinicCard,
+.clinicCard > * {
+  min-width: 0;
+}
+.clinicCard input,
+.clinicCard select,
+.clinicCard textarea {
+  max-width: 100%;
+}
+.m3Cols {
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+}
+@media (min-width: 1100px) {
+  .clinicWide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.clinicCard .actions {
+  flex-wrap: wrap;
+}
+.rmRow textarea {
+  min-height: 38px;
+  height: 38px;
+}
+
+/* 操作マニュアル：画面の残りの高さいっぱいに出す */
+.manual {
+  display: flex;
+  flex-direction: column;
+}
+.manualFrame {
+  width: 100%;
+  height: calc(100dvh - 210px);
+  min-height: 480px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}

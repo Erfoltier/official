@@ -1,0 +1,1456 @@
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 16px 48px;
+}
+
+.pageHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.pageHead h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.back {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.loading {
+  padding: 24px;
+  color: var(--text-muted);
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 15px;
+  background: var(--field-bg);
+}
+
+.input {
+  height: 38px;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.list a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.list a:hover {
+  background: var(--bg-subtle);
+}
+
+.listName {
+  font-weight: 700;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.caution {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.8em;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.lineBadge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #06c755;
+  border: 1px solid #06c755;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* ===== 編集画面 ===== */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editorHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  margin: 6px 0;
+}
+
+.section legend {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.grid2 .field {
+  margin-top: 0;
+}
+
+.field[data-changed] .input,
+.field[data-changed] .textarea {
+  border-color: #f2994a;
+  background: #fffaf3;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.lineRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.saveBar .muted {
+  margin-right: auto;
+}
+
+.btn,
+.primary,
+.dangerBtn,
+.iconBtn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.iconBtn {
+  width: 36px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.dangerBtn {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  height: 32px;
+  font-size: 13px;
+}
+
+.btn:disabled,
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  color: var(--accent);
+  padding: 0 4px;
+  text-decoration: underline;
+}
+
+.alert {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: #fdecec;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.notice {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: #e8f5ec;
+  color: #1c6b37;
+  font-size: 13px;
+}
+
+.resBlock + .resBlock {
+  margin-top: 10px;
+}
+
+.resList {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.resList li {
+  display: grid;
+  grid-template-columns: 9.5em 1fr auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.resList li[data-status="cancelled"],
+.resList li[data-status="no_show"] {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.resList a {
+  color: var(--accent);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.history li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.history span {
+  display: inline-block;
+  min-width: 11em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* カレンダーから開くダイアログ */
+.dialog {
+  width: min(760px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  border: none;
+  border-radius: 10px;
+  padding: 14px 16px 0;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
+}
+
+.dialog::backdrop {
+  background: rgb(15 23 42 / 0.35);
+}
+
+@media (max-width: 640px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .resList li {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+/* ===== 患者画面：セクション ===== */
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+details.section > summary.sectionTitle {
+  cursor: pointer;
+  margin: 0;
+  padding: 2px 0;
+  color: var(--accent);
+}
+
+details.section[open] > summary.sectionTitle {
+  margin-bottom: 8px;
+}
+
+.subSection {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  margin: 6px 0;
+}
+
+.subSection legend {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.contactBox {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.contactBox[open] {
+  padding-bottom: 10px;
+}
+
+.contactSummary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.contactPeek {
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.contactBox[open] .contactPeek {
+  display: none;
+}
+
+.contactBox[open] .contactSummary {
+  margin-bottom: 6px;
+}
+
+.cautionBox {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: #fdecec;
+  color: #9b1c1c;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.sub .lineBadge {
+  margin-left: 6px;
+}
+
+/* ===== 施術歴・今後の予約の表 ===== */
+.tableTools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.visitTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.visitTable th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.visitTable td {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.visitTable tr[data-today] td {
+  background: #f3f8ff;
+}
+
+.visitTable tr[data-inactive] td {
+  color: var(--text-faint);
+}
+
+.colDate {
+  width: 8.6em;
+}
+
+.colMenu {
+  width: 24%;
+}
+
+.colSkin {
+  width: 24%;
+}
+
+.colAct {
+  width: 4.5em;
+  text-align: right;
+}
+
+.dateLink {
+  color: var(--accent);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.todayChip {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.resLine + .resLine {
+  margin-top: 4px;
+}
+
+.resLine[data-inactive] {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.resMemo {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.noteText {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--now) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--now) 30%, #fff);
+  color: color-mix(in srgb, var(--now) 45%, #000);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.chip button {
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0 0 0 4px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.smallBtn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--btn-line);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.smallBtn:disabled {
+  opacity: 0.45;
+}
+
+.moreBtn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  height: 34px;
+  border: 1px dashed var(--btn-line);
+  border-radius: var(--radius);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-shadow);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.inlineForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.inlineForm .input {
+  width: auto;
+  flex: 1 1 220px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.editRow td {
+  background: #fffbf2;
+  border-bottom: 2px solid #f2c48a;
+}
+
+.editHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.editActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.editActions .muted {
+  margin-right: auto;
+}
+
+/* スマホでは表を1日ずつのカードにする */
+@media (max-width: 640px) {
+  .visitTable,
+  .visitTable tbody,
+  .visitTable tr,
+  .visitTable td {
+    display: block;
+    width: 100%;
+  }
+  .visitTable thead {
+    display: none;
+  }
+  .visitTable tr {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 4px 0;
+  }
+  .visitTable td {
+    border-bottom: none;
+    padding: 4px 10px;
+  }
+  .visitTable td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .visitTable td.colDate::before {
+    display: none;
+  }
+  .visitTable td.colDate {
+    font-weight: 700;
+  }
+  .colAct {
+    text-align: left;
+  }
+}
+
+.who {
+  display: inline-block;
+  min-width: 7em;
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+.writer {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ===== 削除・重複・統合 ===== */
+.deletedBanner,
+.dupBanner {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.deletedBanner {
+  background: #f1f2f4;
+  border: 1px solid var(--line-strong);
+}
+
+.dupBanner {
+  background: #fff7e6;
+  border: 1px solid #f2c48a;
+  color: #6b4100;
+}
+
+.dupBanner ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.dupBanner li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 3px 0;
+}
+
+.manageRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dangerFill {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.dangerFill:disabled {
+  opacity: 0.45;
+}
+
+.dialogSmall {
+  width: min(480px, calc(100vw - 16px));
+  border: none;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
+}
+
+.dialogSmall::backdrop {
+  background: rgb(15 23 42 / 0.35);
+}
+
+.pickRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  width: 100%;
+  padding: 9px 6px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: left;
+}
+
+.pickRow:hover {
+  background: var(--bg-subtle);
+}
+
+.mergeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.mergeChoice {
+  display: block;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.mergeChoice[data-keep] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.keepLabel {
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.mergeCard dl {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: 2px 6px;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.mergeCard dt {
+  color: var(--text-muted);
+}
+
+.mergeCard dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.mergeName {
+  font-weight: 700;
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+.previewList {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.warn {
+  color: #8a5300;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .mergeGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== 配色（グラデーション） ===== */
+.pageHead h1 {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.primary {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+
+.primary:disabled {
+  background: var(--bg-muted);
+  color: var(--text-faint);
+  box-shadow: none;
+}
+
+.todayChip {
+  background: var(--grad);
+}
+
+.reqId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.dupNote {
+  font-size: 12px;
+  color: #8a6100;
+  margin: 2px 0 4px;
+}
+
+.mergeBtn {
+  margin-left: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.noMerge {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #a15c00;
+}
+
+/* ===== 施術歴（今回・過去・今後） ===== */
+.treatHistory {
+  display: grid;
+  gap: 14px;
+}
+
+.histBlock {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.histBlock[data-kind="now"] {
+  border-color: var(--accent-line);
+  background: var(--grad-soft);
+}
+
+.histTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-strong);
+  cursor: default;
+}
+
+summary.histTitle {
+  cursor: pointer;
+  list-style: revert;
+}
+
+details:not([open]) > summary.histTitle {
+  margin-bottom: 0;
+}
+
+.histCount {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.nextLine {
+  margin: 0;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.colFiles {
+  width: 17%;
+}
+
+.colTime {
+  width: 7.5em;
+}
+
+.colNote {
+  width: auto;
+}
+
+.colMenu {
+  width: 27%;
+}
+
+.colSkin {
+  width: 20%;
+}
+
+/* メニューの色分けと回数 */
+.menuChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+/* 名前は普通の文字として折り返し、〈N回目〉はひとかたまりで次の行へ送る */
+.menuChip {
+  display: inline-block;
+  padding: 1px 7px 1px 6px;
+  border-left: 3px solid var(--c);
+  border-radius: 4px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 26%, var(--surface)), color-mix(in srgb, var(--c) 10%, var(--surface)));
+  color: color-mix(in srgb, var(--c) 55%, var(--text));
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.menuChip[data-inactive] {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.nth {
+  display: inline-block;
+  margin-left: 3px;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--accent-strong);
+}
+
+/* スキンケア＆内服 */
+.skinCell {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.price {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.more {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--accent-strong);
+}
+
+.total {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.presetGroup {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.presetLabel {
+  flex: none;
+  width: 5.5em;
+  padding-top: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.preset {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.preset small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.preset[data-on] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.preset[data-on] small {
+  color: rgb(255 255 255 / 85%);
+}
+
+.filesCell {
+  display: grid;
+  gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .presetGroup {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.colFiles {
+  width: 19%;
+}
+
+.visitTable td.colFiles {
+  overflow: hidden;
+}
+
+.todayChip {
+  display: inline-block;
+  width: auto;
+  max-width: max-content;
+  vertical-align: middle;
+  line-height: 1.6;
+  padding: 0 7px;
+  font-weight: 700;
+}
+
+/* 予約の「変更」ボタン（今回の予約・今後の予約） */
+.changeBtn {
+  height: 26px;
+  margin-left: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.changeBtn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* スキンケア＆内服：すべての商品から選ぶ */
+.allDialog {
+  width: min(720px, calc(100vw - 16px));
+  max-height: calc(100dvh - 32px);
+  border: none;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 16px 50px rgb(var(--shadow-rgb) / 0.28);
+  color: var(--text);
+  display: none;
+}
+
+.allDialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.allDialog::backdrop {
+  background: rgb(15 23 42 / 0.4);
+}
+
+.allHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.allHead button {
+  margin-left: auto;
+}
+
+.allBody {
+  overflow: auto;
+  min-height: 0;
+}
+
+.allBody h4 {
+  margin: 10px 0 4px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* 施術歴のメモ欄に出すカルテ（押すとカルテの画面） */
+.chartLink {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ===== 施術歴：左の列にメモ・カルテ・撮影・ファイル（2×2）。ファイルの列はなくし、メモとスキンケアを広く ===== */
+@media (min-width: 641px) {
+  .visitTable .colDate {
+    width: 184px;
+  }
+
+  .visitTable .colMenu {
+    width: 21%;
+  }
+
+  .visitTable .colSkin {
+    width: 28%;
+  }
+}
+
+.actGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 6px 0 4px;
+}
+
+.actBtn {
+  min-height: 30px;
+  padding: 2px 4px;
+  border: 1px solid var(--accent-line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.actBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 撮影・ファイルのボタン（ファイルの部品）を2つ目の行に並べる */
+.actGrid > [data-compact] {
+  grid-column: 1 / -1;
+}
+
+.actGrid > [data-compact] button {
+  flex: 1 1 0;
+  min-height: 30px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* スキンケア＆内服 */
+.skinCell {
+  display: grid;
+  gap: 4px;
+  cursor: default;
+}
+
+.skinToggle {
+  justify-self: start;
+  padding: 2px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 開いたときは高さを抑え、多いときは中で上下に動かす */
+.skinList {
+  margin: 0;
+  padding: 4px 6px;
+  list-style: none;
+  max-height: 11.5em;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.skinList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+}
+
+.skinList li:last-child {
+  border-bottom: none;
+}
+
+.skinList .price {
+  flex: none;
+}
+
+/* 撮影・ファイルは折り返さずに横に2つ（ファイルの部品の小さいボタンの決まりより強くする） */
+.actGrid.actGrid > [data-compact] > div {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.actGrid.actGrid > [data-compact] > div > button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* スマホ：縦に並べるときは幅を決めない */
+@media (max-width: 640px) {
+  .visitTable td.colDate,
+  .visitTable td.colMenu,
+  .visitTable td.colSkin,
+  .visitTable td.colNote {
+    width: auto;
+  }
+  .actGrid {
+    max-width: 320px;
+  }
+}
+
+/* 縦に並べる表示でも幅に余裕があれば、メモ・カルテ・撮影・ファイルを1段に4つ（スマホは窮屈なので2×2のまま） */
+@media (min-width: 480px) and (max-width: 640px) {
+  .actGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: 480px;
+  }
+  .actGrid > [data-compact] {
+    grid-column: span 2;
+  }
+}
+
+
+/* 注意事項（アレルギー・アルコール綿禁止など）は名前のすぐ横に赤で */
+.nameCaution {
+  margin-left: 10px;
+  color: #c62828;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  vertical-align: middle;
+}
+
+/* 名前の横の「34歳・女性」 */
+.nameAge {
+  margin-left: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* 今後の予約：予約メモ・申請ID に一番幅を取り、ほかは最小限 */
+.upTable .upDate {
+  width: 9em;
+}
+
+.upTable .upTime {
+  width: 7.6em;
+  white-space: nowrap;
+}
+
+.upTable .upMenu {
+  width: 10em;
+}
+
+.upTable .upLane {
+  width: 6.5em;
+}
+
+.upTable .upStatus {
+  width: 4.8em;
+}
+
+.upTable .changeBtn {
+  margin-top: 4px;
+}
+
+/* 患者画面の中央の窓：PCは広めに、スマホは画面いっぱい */
+.dialog.patientDialog {
+  width: min(1120px, calc(100vw - 40px));
+}
+
+@media (max-width: 640px) {
+  .dialog.patientDialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    padding: 10px 10px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* スマホは1件ずつのカード表示なので、列の幅は決めない */
+  .upTable .upDate,
+  .upTable .upTime,
+  .upTable .upMenu,
+  .upTable .upLane,
+  .upTable .upStatus {
+    width: auto;
+  }
+}
+
+/* 施術歴の「予約変更」：日付の横に1つ。複数の予約があるときは選ぶ */
+.changePick {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 6px;
+  border: 1px solid var(--accent-line, var(--line-strong));
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.changePickBtn {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-subtle, #f7f7fb);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.changePickBtn:hover {
+  border-color: var(--accent-line, var(--line-strong));
+  background: var(--accent-soft, #f3efff);
+}
+
+.resNo {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-strong, #6d28d9);
+}
+
+.colDate .changeBtn {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* 患者の検索画面の「＋新規登録」 */
+.newPatientBox {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.newPatientActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
