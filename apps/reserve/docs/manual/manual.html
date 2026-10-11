@@ -401,7 +401,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p>予約申請IDが入った予約の詳細では、名前の行に <strong>「申請 R…」</strong>（①）が出ます。申請IDの申込者の LINE が見つかり、申請の氏名・フリガナ・電話のどれか、または生年月日が患者と合うとき（生年月日が両方に入っていて違うときは不一致）は <strong>「LINE（申込者）」</strong>（②）と出て、リマインドはその LINE に届きます。患者にまだ LINE が紐付いていなければ <strong>「＋患者に紐付け」</strong>（③）も出ます。</p>
 <ul>
 <li>申請IDの申請が見つからないときは赤い字で「LINE 不明」、名前・生年月日が合わないときは「⚠ 申請と患者が不一致」と出ます。このときは LINE では送りません。申請IDを確かめてください。</li>
-<li>名前の行が長いと、詳細パネルの右に隠れることがあります。詳細パネルを横にずらす（スクロールする）と見えます。</li>
+<li>名前の行に入りきらないときは、「LINE（申込者）」や「＋患者に紐付け」が次の行に折り返して出ます。</li>
 </ul>
 <figure><button class="zoom" type="button" data-src="img/19-line-request-badge.png" aria-label="拡大：申請のLINE"><img src="img/19-line-request-badge.png" alt="申請のLINE" width="1440" height="900" loading="lazy"></button><figcaption>申請のLINE</figcaption></figure>
 <p>「＋患者に紐付け」を押すと、「申請の名前・生年月日が『○○』さんと合っています。この LINE を患者に紐付けますか？」とブラウザの確認が出ます。<strong>OK</strong>（①）で紐付け（「LINE を紐付けました」と出ます）、<strong>キャンセル</strong>（②）でやめます。紐付けると、電話・窓口で取った予約にも LINE でリマインドが届くようになります。<strong>家族が代わりに申し込んだ場合は、紐付けないでください。</strong>（この写真は、ブラウザの枠ごと撮っています）</p>
