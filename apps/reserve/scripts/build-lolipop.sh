@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-BASE_PATH="${BASE_PATH:-/reserve}"
+BASE_PATH="${BASE_PATH-/reserve}"
 DEMO="${DEMO:-1}"
 DIST="dist/lolipop"
 APP="$DIST$BASE_PATH"

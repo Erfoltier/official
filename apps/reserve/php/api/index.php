@@ -708,7 +708,7 @@ try {
     if ($route === 'GET monshin/form') {
         $me(STAFF_ADMIN);
         // 患者向けのページ（monshin/）を置いていないサーバーでは、設定画面にも出さない
-        Http::json(['form' => Monshin::form(), 'defaults' => Monshin::defaults(), 'enabled' => is_file(RESERVE_ROOT . '/monshin/index.php')]);
+        Http::json(['form' => Monshin::form(), 'defaults' => Monshin::defaults(), 'enabled' => is_file(RESERVE_ROOT . '/monshin/index.php'), 'url' => (string) (config()['monshin_url'] ?? '')]);
     }
     if ($route === 'POST monshin/form') {
         $s = $me(STAFF_ADMIN);

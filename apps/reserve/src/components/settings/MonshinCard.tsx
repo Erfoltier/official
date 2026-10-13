@@ -22,6 +22,8 @@ export function MonshinCard({ notify, fail }: { notify: (t: string) => void; fai
   const [form, setForm] = useState<MonshinForm | null>(null);
   const [defaults, setDefaults] = useState<MonshinForm | null>(null);
   const [saving, setSaving] = useState(false);
+  // 患者向けのページを別のアドレス（monshin.… など）に置くときは config.php の monshin_url
+  const [url, setUrl] = useState("");
   const [from, setFrom] = useState(() => ymd(new Date(Date.now() - 30 * 86400_000)));
   const [to, setTo] = useState(() => ymd(new Date()));
 
@@ -29,6 +31,7 @@ export function MonshinCard({ notify, fail }: { notify: (t: string) => void; fai
     fetchMonshinForm()
       .then((r) => {
         if (!r.enabled) return;
+        setUrl(r.url);
         setForm(r.form);
         setDefaults(r.defaults);
       })
@@ -36,7 +39,7 @@ export function MonshinCard({ notify, fail }: { notify: (t: string) => void; fai
   }, [fail]);
 
   if (!form) return null;
-  const pageUrl = typeof window === "undefined" ? "" : window.location.origin + withBase("/monshin/");
+  const pageUrl = url || (typeof window === "undefined" ? "" : window.location.origin + withBase("/monshin/"));
   const setQ = (i: number, patch: Partial<MonshinQuestion>) => setForm({ ...form, questions: form.questions.map((q, j) => (j === i ? { ...q, ...patch } : q)) });
   const move = (i: number, d: number) => {
     const qs = [...form.questions];

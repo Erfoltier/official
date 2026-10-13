@@ -95,7 +95,7 @@ export interface MonshinForm {
 }
 
 /** 患者が入力する問診票の質問（院長・管理者） */
-export function fetchMonshinForm(): Promise<{ form: MonshinForm; defaults: MonshinForm; enabled: boolean }> {
+export function fetchMonshinForm(): Promise<{ form: MonshinForm; defaults: MonshinForm; enabled: boolean; url: string }> {
   return call(`/api/v1/monshin/form`);
 }
 

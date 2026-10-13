@@ -26,4 +26,7 @@ return [
 
     // 外部連携API用のトークン（32文字以上。使わないなら空のまま）
     'integration_token' => '',
+
+    // 患者が入力する問診票（monshin/）を別のアドレスで公開するときの URL（例 https://monshin.example.jp/）。設定画面に表示するだけ
+    // 'monshin_url' => '',
 ];
