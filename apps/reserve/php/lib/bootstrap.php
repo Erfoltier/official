@@ -23,6 +23,7 @@ require_once __DIR__ . '/Reminder.php';
 require_once __DIR__ . '/AirSync.php';
 require_once __DIR__ . '/Intake.php';
 require_once __DIR__ . '/Monshin.php';
+require_once __DIR__ . '/LineLink.php';
 require_once __DIR__ . '/Http.php';
 
 function config(): array

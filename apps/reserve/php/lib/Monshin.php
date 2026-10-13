@@ -117,7 +117,7 @@ final class Monshin
         return $form;
     }
 
-    private static function findRole(array $qs, string $role): ?array
+    public static function findRole(array $qs, string $role): ?array
     {
         foreach ($qs as $x) {
             if (preg_match(self::ROLES[$role], $x['label'])) {
@@ -194,7 +194,7 @@ final class Monshin
     }
 
     /** 回数制限。数えるのは送り元の IP の要約（そのままの IP は残さない） */
-    private static function checkRate(string $ip, int $now): void
+    public static function checkRate(string $ip, int $now): void
     {
         $id = hash('sha256', 'monshin:' . $ip);
         $rec = Db::i()->get('monshinIp', $id) ?? ['at' => []];
@@ -224,10 +224,48 @@ final class Monshin
         }
         self::checkStamp((string) ($post['stamp'] ?? ''), $now);
         $form = self::form();
+        [$errors, $answers, $values] = self::validate($form['questions'], $post);
+        if ($errors) {
+            return $errors;
+        }
+        $get = function (string $role) use ($form, $values): string {
+            $x = self::findRole($form['questions'], $role);
+            return $x ? ($values[$x['id']] ?? '') : '';
+        };
+        $r = [
+            'key' => 'web-' . bin2hex(random_bytes(16)),
+            'submittedAt' => date('Y/m/d H:i:s', intdiv($now, 1000)),
+            'name' => $get('name'),
+            'answers' => $answers,
+        ];
+        foreach (['kana', 'phone', 'history', 'medications', 'allergies'] as $k) {
+            if (($v = $get($k)) !== '') {
+                $r[$k] = $v;
+            }
+        }
+        if (($b = $get('birthDate')) !== '') {
+            $r['birthDate'] = str_replace('/', '-', $b);
+        }
+        Db::i()->transaction(function () use ($ip, $now, $r) {
+            self::checkRate($ip, $now);
+            Store::receiveQuestionnaires([$r]);
+        });
+        return [];
+    }
+
+    /**
+     * フォームの値を質問どおりに確かめる。$skip の質問（LINE で本人確認済みの氏名など）は見ない。
+     * 戻り値：[誤り（質問id => 文）, 回答（[q, a] の並び）, 値（質問id => 値）]
+     */
+    public static function validate(array $questions, array $post, array $skip = []): array
+    {
         $errors = [];
         $answers = [];
         $values = [];
-        foreach ($form['questions'] as $x) {
+        foreach ($questions as $x) {
+            if (isset($skip[$x['id']])) {
+                continue;
+            }
             $raw = $post['q_' . $x['id']] ?? '';
             if ($x['type'] === 'multi') {
                 $picked = array_values(array_filter((array) $raw, fn($v) => is_string($v) && in_array($v, $x['options'], true)));
@@ -265,32 +303,7 @@ final class Monshin
             $values[$x['id']] = $v;
             $answers[] = ['q' => $x['label'], 'a' => $v];
         }
-        if ($errors) {
-            return $errors;
-        }
-        $get = function (string $role) use ($form, $values): string {
-            $x = self::findRole($form['questions'], $role);
-            return $x ? ($values[$x['id']] ?? '') : '';
-        };
-        $r = [
-            'key' => 'web-' . bin2hex(random_bytes(16)),
-            'submittedAt' => date('Y/m/d H:i:s', intdiv($now, 1000)),
-            'name' => $get('name'),
-            'answers' => $answers,
-        ];
-        foreach (['kana', 'phone', 'history', 'medications', 'allergies'] as $k) {
-            if (($v = $get($k)) !== '') {
-                $r[$k] = $v;
-            }
-        }
-        if (($b = $get('birthDate')) !== '') {
-            $r['birthDate'] = str_replace('/', '-', $b);
-        }
-        Db::i()->transaction(function () use ($ip, $now, $r) {
-            self::checkRate($ip, $now);
-            Store::receiveQuestionnaires([$r]);
-        });
-        return [];
+        return [$errors, $answers, $values];
     }
 
     // ---- CSV の書き出し（院長・管理者） ----

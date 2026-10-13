@@ -46,7 +46,7 @@ final class Reminder
         return $s;
     }
 
-    private static function lineToken(): string
+    public static function lineToken(): string
     {
         $s = Db::i()->meta('reminderSecrets');
         return is_array($s) ? (string) ($s['lineToken'] ?? '') : '';

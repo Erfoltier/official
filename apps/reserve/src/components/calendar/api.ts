@@ -103,6 +103,23 @@ export function saveMonshinForm(form: MonshinForm): Promise<MonshinForm> {
   return call(`/api/v1/monshin/form`, { method: "POST", body: JSON.stringify(form) });
 }
 
+export interface LineLinkSettings {
+  liffId: string;
+  loginChannelId: string;
+  secretConfigured: boolean;
+  tokenConfigured: boolean;
+  liffUrl: string;
+}
+
+/** LINE の問診票連携（院長・管理者）。チャネルシークレットは送るだけで、読み出せない */
+export function fetchLineLink(): Promise<LineLinkSettings> {
+  return call(`/api/v1/line-link`);
+}
+
+export function saveLineLink(body: { liffId?: string; loginChannelId?: string; channelSecret?: string }): Promise<LineLinkSettings> {
+  return call(`/api/v1/line-link`, { method: "POST", body: JSON.stringify(body) });
+}
+
 /** これまでに取り込んだ問診票の質問の見出し（回答の中身は含まない） */
 export function fetchMonshinHeadings(): Promise<{ items: { label: string; count: number; type: MonshinType }[] }> {
   return call(`/api/v1/monshin/headings`);

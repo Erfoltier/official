@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchMonshinForm, fetchMonshinHeadings, questionnaireCsvUrl, saveMonshinForm, type MonshinForm, type MonshinQuestion, type MonshinType } from "@/components/calendar/api";
 import { withBase } from "@/lib/paths";
+import { LineLinkCard } from "./LineLinkCard";
 import styles from "./settings.module.css";
 
 const TYPES: { v: MonshinType; label: string }[] = [
@@ -179,6 +180,8 @@ export function MonshinCard({ notify, fail }: { notify: (t: string) => void; fai
           {saving ? "保存中…" : "質問を保存"}
         </button>
       </div>
+
+      {pageUrl && <LineLinkCard pageUrl={pageUrl} notify={notify} fail={fail} />}
 
       <h3 className={styles.subhead}>問診票の回答を CSV で書き出す</h3>
       <p className={styles.muted}>送信日が期間内の回答を書き出します。書き出した操作は操作の記録に残ります。ファイルはこの端末にだけ保存され、サーバーには残りません。</p>

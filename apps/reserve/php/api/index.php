@@ -723,6 +723,19 @@ try {
         }
         Http::json(Monshin::saveForm($in, $actor($s)));
     }
+    // LINE の問診票連携（LIFF ID・チャネルシークレット）。院長・管理者
+    if ($route === 'GET line-link') {
+        $me(STAFF_ADMIN);
+        Http::json(LineLink::view());
+    }
+    if ($route === 'POST line-link') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        if (!is_array($in)) {
+            throw new InputError();
+        }
+        Http::json(LineLink::update($in, $actor($s)));
+    }
     if ($route === 'GET monshin/headings') {
         $me(STAFF_ADMIN);
         Http::json(['items' => Monshin::pastHeadings()]);

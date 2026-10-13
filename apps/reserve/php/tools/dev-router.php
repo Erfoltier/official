@@ -3,8 +3,14 @@
 $uri = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 // 患者の問診票（ログイン不要の送信ページ）
 if ($uri === '/monshin' || str_starts_with($uri, '/monshin/')) {
-    $_SERVER['SCRIPT_NAME'] = '/monshin/index.php';
-    require __DIR__ . '/../monshin/index.php';
+    $file = match (true) {
+        $uri === '/monshin/line.php' => 'line.php',
+        $uri === '/monshin/liff/api.php' => 'liff/api.php',
+        str_starts_with($uri, '/monshin/liff') => 'liff/index.php',
+        default => 'index.php',
+    };
+    $_SERVER['SCRIPT_NAME'] = '/monshin/' . $file;
+    require __DIR__ . '/../monshin/' . $file;
     return true;
 }
 if (!str_starts_with($uri, '/api/')) {

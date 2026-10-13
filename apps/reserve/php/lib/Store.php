@@ -1242,6 +1242,45 @@ final class Store
         return $nameOk || $birthOk ? [$uid, 'ok'] : [null, 'mismatch'];
     }
 
+    /**
+     * LINE の利用者（LIFF で本人確認済みの ID）の、これからの予約（今日から $days 日先まで、取り消しを除く）。
+     * 患者に紐付いた LINE か、予約申請IDから引いた LINE（requestLine と同じ照合）が一致するものだけ
+     */
+    public static function upcomingForLine(string $lineUserId, int $days = 90): array
+    {
+        self::init();
+        $today = now_in_clinic()['date'];
+        $out = [];
+        for ($i = 0; $i <= $days; $i++) {
+            foreach (self::byStart(self::reservationsOn(add_days($today, $i))) as $r) {
+                if (in_array($r['status'] ?? 'booked', self::INACTIVE, true) || empty($r['patientId'])) {
+                    continue;
+                }
+                $p = self::patients()[$r['patientId']] ?? null;
+                if (!$p || !empty($p['deleted'])) {
+                    continue;
+                }
+                $mine = ($p['lineUserId'] ?? '') === $lineUserId || self::reservationLine($r, $p)[0] === $lineUserId;
+                if ($mine) {
+                    $out[] = ['reservation' => $r, 'patient' => $p];
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** 問診票（key で探す。消したものは除く） */
+    public static function questionnaireByKey(string $key): ?array
+    {
+        self::init();
+        foreach (Db::i()->all('questionnaire') as $q) {
+            if (($q['key'] ?? '') === $key && empty($q['deleted'])) {
+                return $q;
+            }
+        }
+        return null;
+    }
+
     /** 外部連携：電子カルテ（M3）などからカルテ番号を書き込む */
     public static function setPatientM3ChartNo(string $id, string $m3ChartNo): array
     {
@@ -4079,10 +4118,11 @@ final class Store
         return count($hits) === 1 ? $hits[0] : null;
     }
 
-    public static function receiveQuestionnaires(array $responses): array
+    /** @param array<string, string> $forced 回答の key => 患者ID（LINE で本人確認済みの回答は、名前で探さずにその患者へ結びつける） */
+    public static function receiveQuestionnaires(array $responses, array $forced = []): array
     {
         self::init();
-        return Db::i()->transaction(function () use ($responses) {
+        return Db::i()->transaction(function () use ($responses, $forced) {
             $known = [];
             foreach (Db::i()->all('questionnaire') as $q) {
                 $known[$q['key']] = true;
@@ -4100,7 +4140,7 @@ final class Store
                 $name = $name !== '' ? $name : '（氏名なし）';
                 $kana = self::extLine($r['kana'] ?? '', 60);
                 $phone = self::extLine($r['phone'] ?? '', 30);
-                $patientId = self::matchQuestionnaire($name, $kana, $birthDate, $phone);
+                $patientId = isset($forced[$key]) && isset(self::patients()[$forced[$key]]) ? $forced[$key] : self::matchQuestionnaire($name, $kana, $birthDate, $phone);
                 $answers = [];
                 foreach ($r['answers'] as $a) {
                     $qq = self::extLine($a['q'], 200);
