@@ -75,7 +75,7 @@ export function SignaturePad({ onDone, onCancel, busy }: { onDone(png: string): 
         </button>
         <span className={styles.spacer} />
         <button type="button" className={styles.btn} onClick={onCancel} disabled={busy}>
-          やめる
+          キャンセル
         </button>
         <button type="button" className={styles.primaryBtn} disabled={empty || busy} onClick={() => onDone(ref.current!.toDataURL("image/png"))}>
           {busy ? "保存中…" : "署名して保存"}

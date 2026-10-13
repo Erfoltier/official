@@ -519,7 +519,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
 
         <div className={styles.dialogActions}>
           <button type="button" className={styles.btn} onClick={onClose}>
-            やめる
+            キャンセル
           </button>
           <button type="submit" className={styles.primaryBtn} disabled={saving}>
             {formatHm(start)}–{formatHm(start + dur)} で登録

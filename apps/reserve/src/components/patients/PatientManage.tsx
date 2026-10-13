@@ -331,7 +331,7 @@ export function MergeDialog(props: {
               ← 統合相手を選び直す
             </button>
             <button type="button" className={styles.btn} onClick={props.onClose}>
-              やめる
+              キャンセル
             </button>
             <button type="button" className={styles.dangerFill} disabled={!preview || !preview.identical || busy} onClick={run}>
               統合
@@ -376,7 +376,7 @@ export function DeleteDialog(props: { patient: Patient; onClose: () => void; onD
       {error && <div className={styles.alert}>{error}</div>}
       <div className={styles.editActions}>
         <button type="button" className={styles.btn} onClick={props.onClose}>
-          やめる
+          キャンセル
         </button>
         <button
           type="button"

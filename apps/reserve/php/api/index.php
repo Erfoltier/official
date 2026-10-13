@@ -707,7 +707,8 @@ try {
     // ---- 患者が入力する問診票の質問（院長・管理者）。送信の受け口は monshin/index.php ----
     if ($route === 'GET monshin/form') {
         $me(STAFF_ADMIN);
-        Http::json(['form' => Monshin::form(), 'defaults' => Monshin::defaults()]);
+        // 患者向けのページ（monshin/）を置いていないサーバーでは、設定画面にも出さない
+        Http::json(['form' => Monshin::form(), 'defaults' => Monshin::defaults(), 'enabled' => is_file(RESERVE_ROOT . '/monshin/index.php')]);
     }
     if ($route === 'POST monshin/form') {
         $s = $me(STAFF_ADMIN);

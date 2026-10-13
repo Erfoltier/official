@@ -287,7 +287,7 @@ function MemoCell({ patient, memo, masked, onSave }: { patient: Patient; memo: s
         />
         <div className={styles.receptionMemoBtns}>
           <button type="button" className={styles.btn} onMouseDown={(e) => e.preventDefault()} onClick={() => setDraft(null)} disabled={busy}>
-            やめる
+            キャンセル
           </button>
           <button type="button" className={styles.primaryBtn} onClick={save} disabled={busy}>
             {busy ? "保存中…" : "保存"}

@@ -64,7 +64,7 @@ export function PatientsApp() {
             setError(null);
           }}
         >
-          {draft ? "やめる" : "＋新規登録"}
+          {draft ? "キャンセル" : "＋新規登録"}
         </button>
       </header>
       {draft && (

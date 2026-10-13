@@ -135,7 +135,7 @@ export function ConsentsTab({
                       ))}
                     <div>
                       <button className={styles.btn} onClick={() => setEditing(null)}>
-                        やめる
+                        キャンセル
                       </button>
                       <button
                         className={styles.primary}

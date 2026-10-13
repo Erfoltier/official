@@ -44,7 +44,7 @@ export function CautionInline({ note, onSave }: { note?: string; onSave?: (text:
             保存
           </button>
           <button type="button" className={styles.cancel} disabled={saving} onClick={() => setEditing(false)}>
-            やめる
+            キャンセル
           </button>
         </span>
       </span>

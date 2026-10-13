@@ -492,7 +492,7 @@ function AddRecord({ today, onPick }: { today: string; onPick: (date: string) =>
         この日の記録を作成
       </button>
       <button type="button" className={styles.linkBtn} onClick={() => setOpen(false)}>
-        やめる
+        キャンセル
       </button>
     </span>
   );
@@ -530,7 +530,7 @@ function EditRow(props: { visit: VisitRow; options: SkincareOption[]; previous: 
         <div className={styles.editActions}>
           <span className={styles.muted}>メモとスキンケア・内服を両方空にして保存すると、この日の記録は削除されます</span>
           <button type="button" className={styles.btn} onClick={props.onCancel} disabled={saving}>
-            やめる
+            キャンセル
           </button>
           <button
             type="button"

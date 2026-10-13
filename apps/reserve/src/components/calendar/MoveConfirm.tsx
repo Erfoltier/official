@@ -26,7 +26,7 @@ export function MoveConfirm({ detail, onYes, onCancel }: { detail: string[]; onY
       </div>
       <div className={styles.confirmActions}>
         <button type="button" className={styles.btn} onClick={onCancel}>
-          やめる
+          キャンセル
         </button>
         <button ref={yesRef} type="button" className={styles.primaryBtn} onClick={onYes}>
           はい

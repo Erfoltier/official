@@ -28,6 +28,7 @@ export function MonshinCard({ notify, fail }: { notify: (t: string) => void; fai
   useEffect(() => {
     fetchMonshinForm()
       .then((r) => {
+        if (!r.enabled) return;
         setForm(r.form);
         setDefaults(r.defaults);
       })

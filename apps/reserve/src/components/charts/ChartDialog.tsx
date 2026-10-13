@@ -371,7 +371,7 @@ function ChartForm(props: Props & { entry?: ChartEntry; me: StaffPublic | null; 
       {error && <p className={styles.error}>{error}</p>}
       <div className={styles.actions}>
         <button type="button" className={styles.btn} onClick={props.onCancel} disabled={saving}>
-          やめる
+          キャンセル
         </button>
         <button type="button" className={styles.primaryBtn} onClick={save} disabled={saving}>
           {saving ? "保存中…" : "保存"}
@@ -421,7 +421,7 @@ function PatientNotes({ patient: p, readOnly, onSaved }: { patient: Patient; rea
           />
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={() => setEditing(null)} disabled={saving}>
-              やめる
+              キャンセル
             </button>
             <button type="button" className={styles.primaryBtn} disabled={saving} onClick={() => save({ cautionNote: caution, caution: !!caution.trim() || !!p.caution })}>
               保存
@@ -463,7 +463,7 @@ function PatientNotes({ patient: p, readOnly, onSaved }: { patient: Patient; rea
             </label>
             <div className={styles.actions}>
               <button type="button" className={styles.btn} onClick={() => setEditing(null)} disabled={saving}>
-                やめる
+                キャンセル
               </button>
               <button type="button" className={styles.primaryBtn} disabled={saving} onClick={() => save({ history, medications })}>
                 保存

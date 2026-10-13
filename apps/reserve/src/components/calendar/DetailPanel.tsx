@@ -466,7 +466,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               </button>
             )}
             <button type="button" className={styles.btn} onClick={() => setFreeText(null)}>
-              やめる
+              キャンセル
             </button>
           </div>
         )}

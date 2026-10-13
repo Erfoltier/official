@@ -223,7 +223,7 @@ export function MenuEditor({ menu, lanes, onClose, onSaved, onDelete, fail }: Pr
             </button>
           )}
           <button type="button" className={styles.btn} onClick={onClose}>
-            やめる
+            キャンセル
           </button>
           <button type="submit" className={styles.primary} disabled={saving || !name.trim()}>
             保存

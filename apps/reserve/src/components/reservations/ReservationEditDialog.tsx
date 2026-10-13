@@ -295,7 +295,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
           ))}
         <span className={styles.spacer} />
         <button type="button" className={styles.btn} onClick={onClose} disabled={busy}>
-          やめる
+          キャンセル
         </button>
         <button type="button" className={styles.primaryBtn} onClick={save} disabled={!changed || !valid || busy}>
           {busy ? "保存中…" : "保存"}

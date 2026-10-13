@@ -471,7 +471,7 @@ export function EstimateDialog(props: Props) {
 
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={props.onClose}>
-              やめる
+              キャンセル
             </button>
             <button type="button" className={styles.primaryBtn} onClick={save} disabled={invalid || saving}>
               {saving ? "保存中…" : props.estimate ? "保存" : `${DOC_LABEL[kind]}を作成`}
