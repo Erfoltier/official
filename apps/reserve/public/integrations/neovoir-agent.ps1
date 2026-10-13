@@ -16,7 +16,7 @@
     過去の写真も送る        powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Backfill
     止める                  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Uninstall
     入口の鍵だけ入れ直す    powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -SetBasic
-    5分ごとの起動で窓が一瞬出るのを止める（登録し直すだけ）  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Reregister
+    5分ごとの起動で窓が出るのを止める（登録し直すだけ。新しいファイルに置き換えれば自動でも直ります）  powershell -ExecutionPolicy Bypass -File neovoir-agent.ps1 -Reregister
 
   どの光源（NL・PL・SL・UV）を送るか、縮小するかは、予約カレンダーの「設定 → 外部機器の連携」で選びます
   （取り込み係は起きるたびにそれを読みにいきます）。
@@ -177,16 +177,18 @@ if ($Uninstall) {
   exit 0
 }
 
-# 5分ごとの起動を登録する。powershell.exe を直接起こすと -WindowStyle Hidden でも窓が一瞬出るため、
-# 窓を作らない conhost.exe --headless から起こす（Windows 10 1809 以降。それより古いときは従来どおり）
+# 5分ごとの起動を登録する。powershell.exe を直接起こすと -WindowStyle Hidden でも窓が一瞬出る
+# （conhost.exe --headless でも、Windows 11 で Windows Terminal が既定だと出ることがある）。
+# そこで、窓を持たない wscript.exe から「窓を出さずに起動する」小さな VBScript を通して起こす
 function Register-AgentTask {
-  $ps = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -Once'
-  $conhost = Join-Path $env:SystemRoot 'System32\conhost.exe'
-  if ([Environment]::OSVersion.Version.Build -ge 17763 -and (Test-Path $conhost)) {
-    $action = New-ScheduledTaskAction -Execute $conhost -Argument ('--headless powershell.exe ' + $ps)
-  } else {
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $ps
-  }
+  New-Item -ItemType Directory -Force -Path $Dir | Out-Null
+  $vbs = Join-Path $Dir 'run-hidden.vbs'
+  $cmd = 'powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -Once'
+  # VBScript の文字列の中の " は "" と書く。0 = 窓を出さない、True = 終わるまで待つ（前の回が終わらないうちに次を起こさないため）
+  $body = 'CreateObject("WScript.Shell").Run "' + $cmd.Replace('"', '""') + '", 0, True'
+  [IO.File]::WriteAllText($vbs, $body, [Text.Encoding]::Unicode)
+  $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
+  $action = New-ScheduledTaskAction -Execute $wscript -Argument ('//B //Nologo "' + $vbs + '"')
   $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
   Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Description '予約カレンダーへネオボワールの写真を送る' -Force | Out-Null
 }
@@ -241,6 +243,20 @@ if ($SetBasic) {
 }
 
 $c = Load-Config
+
+# 自動の起動で、まだ窓の出る古い登録（powershell.exe・conhost.exe から直接起動）のままなら、窓の出ない形に登録し直す。
+# このファイルを新しいものに置き換えるだけで、次の起動から窓が出なくなる
+if ($Once) {
+  try {
+    $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+    if ($t.Actions[0].Execute -notmatch 'wscript\.exe$') {
+      Register-AgentTask
+      Write-Log '窓の出ない起動に登録し直しました'
+    }
+  } catch {
+    Write-Log ('起動の登録の確認に失敗：' + $_.Exception.Message)
+  }
+}
 
 if ($Backfill) {
   Write-Host '過去に撮った写真も、予約カレンダーの設定（光源・縮小）のとおりに送ります。'
