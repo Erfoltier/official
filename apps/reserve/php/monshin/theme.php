@@ -37,6 +37,7 @@ input:focus,textarea:focus{outline:3px solid rgba(133,112,95,.16);border-color:v
 .known dt{color:var(--muted);font-size:.8rem}.known dd{margin:0 0 6px;font-weight:700}
 .pre,.done{white-space:pre-wrap}
 button{width:100%;border:0;border-radius:12px;padding:14px 18px;font:inherit;font-weight:700;cursor:pointer;background:linear-gradient(120deg,#8c7769,#5e534b);color:#fff;box-shadow:0 7px 18px rgba(79,65,55,.24);margin-top:8px}
+button.sub{background:rgba(255,254,251,.9);color:#5e534b;border:1px solid #8c7769;box-shadow:none}
 button:disabled{opacity:.42;box-shadow:none;cursor:not-allowed}
 .hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
 CSS;

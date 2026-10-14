@@ -70,8 +70,14 @@ describe("LINE の問診票", () => {
     expect(qs).toHaveLength(1);
     expect(qs[0].answers).toEqual(expect.arrayContaining([{ q: "お名前", a: "線 花子" }, { q: "アレルギー", a: "金属" }]));
     expect((await c.get(`/patients/${p.id}`)).patient.cautionNote).toBe("アレルギー：金属");
-    expect((await liff({ action: "context" })).data.items[0].done).toBe(true);
-    expect((await liff({ action: "submit", reservationId: r.id, answers: {} })).status).toBe(400);
+    const after = (await liff({ action: "context" })).data.items[0];
+    expect(after.done).toBe(true);
+    // 送信した内容が下書きに入り、来院日までは直せる（前の回答は置き換えとして外れ、患者画面には最新の1件）
+    expect(after.answers[`q_${allergy.id}`]).toBe("金属");
+    expect((await liff({ action: "submit", reservationId: r.id, answers: { [`q_${allergy.id}`]: "金属・アルコール" } })).data.ok).toBe(true);
+    const qs2 = (await c.get(`/patients/${p.id}/questionnaires`)).items;
+    expect(qs2).toHaveLength(1);
+    expect(qs2[0].answers).toEqual(expect.arrayContaining([{ q: "アレルギー", a: "金属・アルコール" }]));
     // ID トークンが確かめられなければ断る
     const bad = await fetch(`${h.srv.base}/monshin/liff/api.php`, { method: "POST", headers: { "Content-Type": "application/json", Origin: h.srv.base }, body: JSON.stringify({ idToken: "forged", action: "context" }) });
     expect(bad.status).toBe(403);

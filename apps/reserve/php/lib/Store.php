@@ -1325,6 +1325,44 @@ final class Store
         return ['items' => array_slice($items, 0, $limit), 'total' => count($items)];
     }
 
+    /** LINE の問診票のうち、この予約のもの（修正したときは最新）。key は liff-予約ID（修正分は liff-予約ID-番号） */
+    public static function questionnaireForReservation(string $reservationId): ?array
+    {
+        self::init();
+        $base = 'liff-' . $reservationId;
+        $hit = null;
+        foreach (Db::i()->all('questionnaire') as $q) {
+            $k = (string) ($q['key'] ?? '');
+            if (empty($q['deleted']) && ($k === $base || str_starts_with($k, $base . '-')) && ($hit === null || strcmp((string) $q['receivedAt'], (string) $hit['receivedAt']) > 0)) {
+                $hit = $q;
+            }
+        }
+        return $hit;
+    }
+
+    /** 患者のいちばん新しい問診票（前回の回答を、次の問診票の下書きにするため） */
+    public static function latestQuestionnaireOf(string $patientId): ?array
+    {
+        self::init();
+        $hit = null;
+        foreach (Db::i()->where('questionnaire', 'k2', $patientId) as $q) {
+            if (($q['patientId'] ?? '') === $patientId && empty($q['deleted']) && ($hit === null || strcmp((string) $q['receivedAt'], (string) $hit['receivedAt']) > 0)) {
+                $hit = $q;
+            }
+        }
+        return $hit;
+    }
+
+    /** 患者が LINE で問診票を直したとき、前の回答を「修正で置き換え」として外す（消さずに残す） */
+    public static function replaceQuestionnaireByPatient(string $id): void
+    {
+        self::init();
+        $q = Db::i()->get('questionnaire', $id);
+        if (is_array($q) && empty($q['deleted'])) {
+            Db::i()->put('questionnaire', $id, [...$q, 'deleted' => ['at' => now_iso(), 'reason' => 'replaced', 'by' => ['id' => 'patient', 'name' => '患者（LINE で修正）']]]);
+        }
+    }
+
     /** 問診票（key で探す。消したものは除く） */
     public static function questionnaireByKey(string $key): ?array
     {

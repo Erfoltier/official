@@ -260,16 +260,48 @@ final class LineLink
         $items = [];
         foreach (Store::upcomingForLine($sub) as ['reservation' => $r, 'patient' => $p]) {
             $known = self::prefill($form['questions'], $p);
+            $sent = Store::questionnaireForReservation($r['id']);
+            // 下書き：送信済みならその回答、まだなら前回の問診票の回答（同じ見出しの質問に入れる。本人の LINE だけに見せる）
+            $base = $sent ?? Store::latestQuestionnaireOf((string) $p['id']);
             $items[] = [
                 'reservationId' => $r['id'],
                 'startAt' => $r['startAt'],
                 'name' => (string) $p['name'],
-                'done' => Store::questionnaireByKey(self::KEY . $r['id']) !== null,
+                'done' => $sent !== null,
+                'answers' => (object) self::answersFor($form['questions'], $base, $known),
+                'fromPrevious' => $sent === null && $base !== null,
                 // 書かずに済む質問（画面では確認のために見せるだけ）
                 'known' => array_map(fn($id, $v) => ['id' => $id, 'label' => self::labelOf($form['questions'], $id), 'value' => $v], array_keys($known), $known),
             ];
         }
         return ['title' => $form['title'], 'intro' => $form['intro'], 'done' => $form['done'], 'questions' => $form['questions'], 'items' => $items];
+    }
+
+    /** 前の回答を、いまの質問（id）ごとの値にする。いまの質問にない見出しや、書かずに済む質問は入れない */
+    private static function answersFor(array $questions, ?array $q, array $known): array
+    {
+        if ($q === null) {
+            return [];
+        }
+        $byLabel = [];
+        foreach ($q['answers'] ?? [] as $a) {
+            $byLabel[(string) $a['q']] = (string) $a['a'];
+        }
+        $out = [];
+        foreach ($questions as $x) {
+            $v = $byLabel[$x['label']] ?? null;
+            if ($v === null || isset($known[$x['id']])) {
+                continue;
+            }
+            if ($x['type'] === 'multi') {
+                $out['q_' . $x['id']] = array_values(array_filter(explode('、', $v), fn($o) => in_array($o, $x['options'], true)));
+            } elseif ($x['type'] === 'date') {
+                $out['q_' . $x['id']] = str_replace('/', '-', $v);
+            } elseif ($x['type'] !== 'choice' || in_array($v, $x['options'], true)) {
+                $out['q_' . $x['id']] = $v;
+            }
+        }
+        return $out;
     }
 
     private static function labelOf(array $qs, string $id): string
@@ -295,10 +327,9 @@ final class LineLink
         if ($mine === null) {
             throw new StoreError('not_found', 'この予約の問診票は見つかりません');
         }
-        $key = self::KEY . $reservationId;
-        if (Store::questionnaireByKey($key) !== null) {
-            throw new StoreError('invalid', 'この予約の問診票は送信済みです。内容を直したいときは、お電話かLINEでお知らせください');
-        }
+        // 来院日までは直せる（前の回答は「修正で置き換え」として残す）
+        $prev = Store::questionnaireForReservation($reservationId);
+        $key = self::KEY . $reservationId . ($prev !== null ? '-' . intdiv($now, 1000) : '');
         $form = Monshin::form();
         $p = $mine['patient'];
         $known = self::prefill($form['questions'], $p);
@@ -336,8 +367,11 @@ final class LineLink
         if (!empty($p['birthDate'])) {
             $r['birthDate'] = (string) $p['birthDate'];
         }
-        Db::i()->transaction(function () use ($sub, $now, $r, $key, $p) {
+        Db::i()->transaction(function () use ($sub, $now, $r, $key, $p, $prev) {
             Monshin::checkRate('line:' . $sub, $now);
+            if ($prev !== null) {
+                Store::replaceQuestionnaireByPatient((string) $prev['id']);
+            }
             Store::receiveQuestionnaires([$r], [$key => $p['id']]);
         });
         return [];

@@ -70,18 +70,22 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     if (items.length === 0) {
       return show(el('div', { class: 'card' }, el('p', { text: 'ご予約が確定しましたら、こちらから問診票をご記入いただけます。' }), el('p', { class: 'muted', text: 'ご予約確定のご連絡後にもう一度開いてください。' })));
     }
-    if (items.length === 1) return items[0].done ? doneView() : form(items[0]);
+    if (items.length === 1) return items[0].done ? doneView(items[0]) : form(items[0]);
     show(el('p', { text: 'どのご予約の問診票を記入しますか？' }), ...items.map((it) => el('div', { class: 'card' },
       el('div', { text: `${when(it.startAt)}　${it.name} 様` }),
-      it.done ? el('p', { class: 'muted', text: '記入済みです' }) : el('button', { type: 'button', onclick: () => form(it) , text: '記入する' }),
+      it.done ? el('div', {}, el('p', { class: 'muted', text: '記入済みです（ご来院日まで修正できます）' }), el('button', { type: 'button', class: 'sub', onclick: () => form(it), text: '内容を確認・修正する' })) : el('button', { type: 'button', onclick: () => form(it), text: '記入する' }),
     )));
   }
 
-  function doneView() {
-    show(el('div', { class: 'card pre', text: ctx.done }), el('p', { class: 'muted', text: '内容を直したいときは、お電話かLINEでお知らせください。' }));
+  function doneView(it) {
+    show(
+      el('div', { class: 'card pre', text: ctx.done }),
+      el('p', { class: 'muted', text: 'ご来院日までは、内容を確認・修正できます。' }),
+      it ? el('button', { type: 'button', class: 'sub', onclick: () => form(it), text: '内容を確認・修正する' }) : null,
+    );
   }
 
-  function form(it, errors = {}, values = {}) {
+  function form(it, errors = {}, values = it.answers || {}) {
     const known = new Set(it.known.map((k) => k.id));
     const f = el('form', { novalidate: '' });
     const fields = ctx.questions.filter((q) => !known.has(q.id)).map((q) => {
@@ -120,7 +124,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
       submit.textContent = '送信中…';
       try {
         const { status, data } = await api({ action: 'submit', reservationId: it.reservationId, answers });
-        if (status === 200 && data.ok) { it.done = true; return doneView(); }
+        if (status === 200 && data.ok) { it.done = true; it.answers = answers; it.fromPrevious = false; return doneView(it); }
         if (status === 400 && data.errors && Object.keys(data.errors).length) {
           form(it, data.errors, answers);
           app.prepend(el('div', { class: 'alert', role: 'alert', text: '入力内容をご確認ください。' }));
@@ -131,7 +135,12 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         fail('通信できませんでした。電波の良いところでもう一度お試しください。');
       }
     });
-    show(el('p', { class: 'muted', text: `ご予約：${when(it.startAt)}　${it.name} 様` }), ctx.intro ? el('p', { class: 'pre', text: ctx.intro }) : null, knownCard, f);
+    const note = it.done
+      ? el('div', { class: 'intro', text: '送信済みの内容です。直したいところを書き換えて、もう一度送信してください。' })
+      : it.fromPrevious
+        ? el('div', { class: 'intro', text: '前回の問診票の内容を入れてあります。変わったところだけ書き換えて送信してください。' })
+        : null;
+    show(el('p', { class: 'muted', text: `ご予約：${when(it.startAt)}　${it.name} 様` }), ctx.intro ? el('p', { class: 'pre', text: ctx.intro }) : null, note, knownCard, f);
   }
 
   async function start() {
