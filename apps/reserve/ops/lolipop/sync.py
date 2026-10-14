@@ -90,6 +90,10 @@ def sync(files):
     return stats
 
 if __name__ == "__main__":
+    # 2026-10-14 に AWS（https://reserve.ishidahihuka.jp/）へ移った。ロリポップの /reserve/ は転送だけになっているので、
+    # ここで反映すると転送が消えて古い画面が戻ってしまう。どうしても必要なときだけ ALLOW_LOLIPOP_DEPLOY=1 を付ける
+    if os.environ.get("ALLOW_LOLIPOP_DEPLOY") != "1":
+        sys.exit("ロリポップへの反映は止めています（本番は AWS に移りました）。必要なら ALLOW_LOLIPOP_DEPLOY=1 を付けてください")
     files = []
     out = APP + "/out"
     for d, _, fs in os.walk(out):
