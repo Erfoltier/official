@@ -47,7 +47,8 @@ CSS;
 function monshin_header(string $base, string $title, string $clinic): string
 {
     $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-    $name = $clinic !== '' ? $clinic : 'いしだ皮フ科／美容皮膚科';
+    // 設定の院名が「いしだ皮フ科」だけでも、患者向けの見出しは予約申請フォームと同じ正式な表記にする
+    $name = $clinic === '' || str_contains($clinic, 'いしだ') ? 'いしだ皮フ科／美容皮膚科' : $clinic;
     return '<header class="clinic-header"><div class="clinic-logo"><img src="' . $h($base . 'assets/logo.webp') . '" alt=""><span><b>' . $h($name) . '</b>' . (str_contains($name, 'いしだ') ? '<small>Ishida Cosmetic Dermatology</small>' : '') . '</span></div>'
         . '<p class="eyebrow">MEDICAL QUESTIONNAIRE</p><h1 id="title">' . $h($title) . '</h1></header>';
 }
