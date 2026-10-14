@@ -105,3 +105,32 @@ describe("予約申請フォーム（monshin/intake/）", () => {
     expect((await fetch(`${h.srv.base}/monshin/intake/`)).status).toBe(200);
   });
 });
+
+describe("予約申請を DB に保存する（monshin/intake-submit-v1.php）", () => {
+  it("申請はファイルではなく DB に入り、受付箱・LINE の問診票・届いた印がそこから動く", async () => {
+    const c = await setup();
+    const day = addDays(nowInClinic().date, 3);
+    const res = await fetch(`${h.srv.base}/monshin/intake-submit-v1.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idToken: `test:${USER}`,
+        message: "【美容皮膚科・初診予約申請】\n受診区分：①初診\nお名前：申請 花子",
+        form: { visitType: "initial", privacyConsent: "agreed", name: "申請 花子", kana: "シンセイ ハナコ", birthDate: "1992-03-04", phone: "09011112222", preferredDate: day },
+      }),
+    });
+    expect(res.status).toBe(201);
+    const { requestId } = (await res.json()) as { requestId: string };
+    // ファイルは作らない
+    expect(() => readFileSync(path.join(h.srv.dir, "intakeq", "intake-records", `${requestId}.json`))).toThrow();
+    const box = await c.get("/intake");
+    expect(box.items.find((i: any) => i.requestId === requestId)).toMatchObject({ name: "申請 花子", visitType: "initial", state: "new" });
+
+    const p = await c.post("/patients", { name: "申請 花子", kana: "シンセイ ハナコ", birthDate: "1992-03-04" });
+    await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 610), requestId });
+    expect((await liff({ action: "context" })).data.items).toHaveLength(1);
+
+    mkdirSync(path.join(h.srv.dir, "intakeq"), { recursive: true });
+    expect((await webhook([text(`受診区分：①初診\n\n予約申請ID：${requestId}`)])).data.replied).toBe(1);
+  });
+});

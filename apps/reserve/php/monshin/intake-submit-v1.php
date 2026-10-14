@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/../lib/bootstrap.php';
 require __DIR__ . '/intake-common.php';
 
 const ISHIDA_INTAKE_CHANNEL_ID = '2011370154';
@@ -26,6 +27,8 @@ function intake_config(): array
 function intake_verify_id_token(string $idToken): array
 {
     if ($idToken === '') throw new RuntimeException('ID token is missing');
+    // 開発用の php -S（line_test_mode）だけ：LINE に問い合わせずに試す
+    if (LineLink::testMode() && preg_match('/^test:(U[0-9a-f]{32})$/', $idToken, $m)) return ['sub' => $m[1], 'aud' => 'test'];
     $channel = intake_common_config()['channel_id'] ?: ISHIDA_INTAKE_CHANNEL_ID;
     $payload = http_build_query(['id_token' => $idToken, 'client_id' => $channel], '', '&', PHP_QUERY_RFC3986);
     $context = stream_context_create(['http' => [
@@ -59,17 +62,9 @@ function intake_followup_token(array $config, string $requestId, string $userId)
 
 function intake_store(array $config, array $record): void
 {
-    $queueDir = rtrim((string)$config['queue_dir'], '/\\');
-    $recordDir = $queueDir . DIRECTORY_SEPARATOR . 'intake-records';
-    if (!is_dir($recordDir) && !mkdir($recordDir, 0700, true) && !is_dir($recordDir)) throw new RuntimeException('intake record directory could not be created');
-    $requestId = (string)$record['requestId'];
-    $encoded = json_encode($record, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-    $recordPath = $recordDir . DIRECTORY_SEPARATOR . $requestId . '.json';
-    if (file_put_contents($recordPath, $encoded, LOCK_EX) === false) throw new RuntimeException('intake record could not be written');
-    @chmod($recordPath, 0600);
-    $queuePath = $queueDir . DIRECTORY_SEPARATOR . 'intake_' . $requestId . '.json';
-    if (file_put_contents($queuePath, $encoded, LOCK_EX) === false) throw new RuntimeException('intake queue event could not be written');
-    @chmod($queuePath, 0600);
+    // 予約カレンダーの DB（暗号化）に保存する。ファイルには残さない
+    Store::init();
+    Intake::store($record);
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') intake_response(405, ['ok' => false, 'error' => 'method_not_allowed']);

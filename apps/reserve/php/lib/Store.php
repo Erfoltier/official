@@ -1245,10 +1245,8 @@ final class Store
             return [null, 'notfound'];
         }
         if (!array_key_exists($rid, $cache)) {
-            $dir = (string) (config()['line_intake_dir'] ?? RESERVE_ROOT . '/../line-webhook/private-queue/intake-records');
-            $file = rtrim($dir, '/') . '/' . $rid . '.json';
-            $rec = is_file($file) ? json_decode((string) @file_get_contents($file), true) : null;
-            $cache[$rid] = is_array($rec) && ($rec['requestId'] ?? '') === $rid && ($rec['type'] ?? '') === 'reservation_intake' ? $rec : null;
+            // 新しい申請は DB、移行前の申請は line-webhook のファイル
+            $cache[$rid] = Intake::record($rid);
         }
         $rec = $cache[$rid];
         $uid = is_array($rec) ? (string) ($rec['source']['userId'] ?? '') : '';

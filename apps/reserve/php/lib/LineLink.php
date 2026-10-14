@@ -160,7 +160,16 @@ final class LineLink
         if (@file_put_contents($path, json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) !== false) {
             @chmod($path, 0600);
         }
-        // 申請の記録に「LINE に届いた」印を付ける（申請した LINE と同じ人のときだけ）
+        // 確認が済んだ古い印（2日より前）は消す
+        foreach (glob("{$dir}/line_*.json") ?: [] as $f) {
+            if (@filemtime($f) < time() - 2 * 86400) {
+                @unlink($f);
+            }
+        }
+        // 申請の記録に「LINE に届いた」印を付ける（申請した LINE と同じ人のときだけ）。新しい申請は DB、移行前はファイル
+        if (Intake::markLineReceived($m[1], $uid, $eventId)) {
+            return;
+        }
         $rec = "{$dir}/intake-records/{$m[1]}.json";
         $fp = is_file($rec) ? @fopen($rec, 'c+') : false;
         if ($fp && flock($fp, LOCK_EX)) {
@@ -179,12 +188,6 @@ final class LineLink
         }
         if ($fp) {
             fclose($fp);
-        }
-        // 確認が済んだ古い印（2日より前）は消す
-        foreach (glob("{$dir}/line_*.json") ?: [] as $f) {
-            if (@filemtime($f) < time() - 2 * 86400) {
-                @unlink($f);
-            }
         }
     }
 

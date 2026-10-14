@@ -16,25 +16,87 @@ final class Intake
         return rtrim((string) (config()['line_intake_dir'] ?? RESERVE_ROOT . '/../line-webhook/private-queue/intake-records'), '/');
     }
 
+    /**
+     * 申請の記録。新しい申請は DB（暗号化）の 'intake' に入る（monshin/intake-submit-v1.php）。
+     * 移行前の申請は、line-webhook が保存したファイル（intake-records/申請ID.json）から読む
+     */
+    public static function record(string $rid): ?array
+    {
+        $rid = strtoupper(trim($rid));
+        if (!preg_match(self::ID_RE, $rid)) {
+            return null;
+        }
+        $rec = Db::i()->get('intake', $rid);
+        if (!is_array($rec)) {
+            $file = self::dir() . '/' . $rid . '.json';
+            $rec = is_file($file) ? json_decode((string) @file_get_contents($file), true) : null;
+        }
+        return is_array($rec) && ($rec['requestId'] ?? '') === $rid && ($rec['type'] ?? '') === 'reservation_intake' ? $rec : null;
+    }
+
+    /** 申請を DB に保存する（受け口から） */
+    public static function store(array $rec): void
+    {
+        $rid = (string) ($rec['requestId'] ?? '');
+        if (!preg_match(self::ID_RE, $rid) || ($rec['type'] ?? '') !== 'reservation_intake') {
+            throw new StoreError('invalid', '予約申請の形が正しくありません');
+        }
+        Db::i()->put('intake', $rid, $rec);
+    }
+
+    /** 申請の文面が、申請した本人の LINE から届いた印を付ける（DB の申請だけ。移行前のファイルは line.php が直接付ける） */
+    public static function markLineReceived(string $rid, string $userId, string $eventId): bool
+    {
+        return (bool) Db::i()->transaction(function () use ($rid, $userId, $eventId) {
+            $rec = Db::i()->get('intake', $rid);
+            if (!is_array($rec) || $userId === '' || !hash_equals((string) ($rec['source']['userId'] ?? ''), $userId)) {
+                return false;
+            }
+            if (empty($rec['lineMessageReceivedAt'])) {
+                $rec['lineMessageReceivedAt'] = gmdate('c');
+                $rec['lineMessageEventId'] = $eventId;
+                if (($rec['status'] ?? '') === 'submitted') {
+                    $rec['status'] = 'line_message_received';
+                }
+                Db::i()->put('intake', $rid, $rec);
+            }
+            return true;
+        });
+    }
+
+    /** 最近 $days 日の申請（DB と移行前のファイルを合わせて） */
+    private static function recent(int $days): array
+    {
+        $since = gmdate('YmdHis', time() - $days * 86400);
+        $out = [];
+        foreach (glob(self::dir() . '/R*.json') ?: [] as $file) {
+            $rid = basename($file, '.json');
+            if (preg_match(self::ID_RE, $rid) && substr($rid, 1, 14) >= $since) {
+                $out[$rid] = null;
+            }
+        }
+        foreach (array_keys(Db::i()->all('intake')) as $rid) {
+            $rid = (string) $rid;
+            if (preg_match(self::ID_RE, $rid) && substr($rid, 1, 14) >= $since) {
+                $out[$rid] = null;
+            }
+        }
+        foreach (array_keys($out) as $rid) {
+            $out[$rid] = self::record((string) $rid);
+        }
+        return array_filter($out);
+    }
+
     /** 最近 $days 日の申請（新しい順） */
     public static function list(int $days = 30): array
     {
         $days = max(1, min(90, $days));
-        $since = gmdate('YmdHis', time() - $days * 86400);
-        $files = glob(self::dir() . '/R*.json') ?: [];
         $handled = self::handled();
         $booked = self::bookedRequestIds($days + 60);
         $items = [];
         $today = now_in_clinic()['date'];
-        foreach ($files as $file) {
-            $rid = basename($file, '.json');
-            if (!preg_match(self::ID_RE, $rid) || substr($rid, 1, 14) < $since) {
-                continue;
-            }
-            $rec = json_decode((string) @file_get_contents($file), true);
-            if (!is_array($rec) || ($rec['requestId'] ?? '') !== $rid || ($rec['type'] ?? '') !== 'reservation_intake') {
-                continue;
-            }
+        foreach (self::recent($days) as $rid => $rec) {
+            $rid = (string) $rid;
             $f = is_array($rec['intake'] ?? null) ? $rec['intake'] : [];
             $s = fn(string $k) => js_slice(trim((string) ($f[$k] ?? '')), 500);
             // 希望日が過ぎた申請は、いまさら対応しないので出さない（line-webhook の保存ファイルは消さない）
@@ -68,7 +130,7 @@ final class Intake
         }
         self::guessBooked($items);
         usort($items, fn($a, $b) => strcmp($b['requestId'], $a['requestId']));
-        return ['items' => $items, 'days' => $days, 'available' => is_dir(self::dir())];
+        return ['items' => $items, 'days' => $days, 'available' => true];
     }
 
     /**
