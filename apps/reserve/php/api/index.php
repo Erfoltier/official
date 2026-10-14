@@ -52,8 +52,40 @@ try {
             Auth::noteLoginFailure($ip);
             throw $e;
         }
+        // 二要素認証が要るときは、まだログインさせずに確認券を返す
+        $two = Auth::afterPin($r['staff'], $r['sessionVersion']);
+        if (empty($two['done'])) {
+            Http::json($two);
+        }
         Auth::audit(['id' => $r['staff']['id'], 'name' => $r['staff']['name']], 'ログイン');
         Http::json($r['staff'], 200, ['Set-Cookie: ' . Auth::sessionCookie(Auth::createSessionToken($r['staff']['id'], $r['sessionVersion']))]);
+    }
+    if ($route === 'POST auth/login/2fa') {
+        $in = Http::readJson();
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        Auth::checkLoginRate($ip);
+        try {
+            $r = Auth::verifySecondFactor(V::str($in['ticket'] ?? '', 1000), V::str($in['code'] ?? '', 20));
+        } catch (AuthError $e) {
+            Auth::noteLoginFailure($ip);
+            throw $e;
+        }
+        Auth::audit(['id' => $r['staff']['id'], 'name' => $r['staff']['name']], 'ログイン（二要素認証）');
+        Http::json($r['staff'], 200, ['Set-Cookie: ' . Auth::sessionCookie(Auth::createSessionToken($r['staff']['id'], $r['sessionVersion']))]);
+    }
+    // 二要素認証を必須にするか（院長・管理者）
+    if ($route === 'GET security') {
+        $me(STAFF_ADMIN);
+        Http::json(['require2fa' => TwoFactor::required()]);
+    }
+    if ($route === 'POST security') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        Http::json(TwoFactor::setRequired(!empty($in['require2fa']), $actor($s)));
+    }
+    if ($method === 'POST' && $n === 3 && $p[0] === 'staff' && $p[2] === 'reset-2fa') {
+        $s = $me(STAFF_ADMIN);
+        Http::json(Auth::resetSecondFactor($actor($s), V::id($p[1])));
     }
     if ($route === 'POST auth/logout') {
         $s = Auth::currentStaff();

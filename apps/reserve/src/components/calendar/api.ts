@@ -419,8 +419,34 @@ export async function fetchLoginStaff(): Promise<Pick<StaffPublic, "id" | "name"
   return (await call<{ items: Pick<StaffPublic, "id" | "name" | "role">[] }>(`/api/v1/auth/staff`)).items;
 }
 
-export function login(staffId: string, pin: string): Promise<StaffPublic> {
+/** PIN が合ったあと、二要素認証が要るときの返事（need があればまだログインしていない） */
+export interface SecondStep {
+  need: "totp" | "enroll";
+  ticket: string;
+  /** 初めての登録のときだけ：認証アプリに入れる鍵と、読み取り用の内容 */
+  secret?: string;
+  otpauth?: string;
+}
+
+export function login(staffId: string, pin: string): Promise<StaffPublic | SecondStep> {
   return call(`/api/v1/auth/login`, { method: "POST", body: JSON.stringify({ staffId, pin }) });
+}
+
+export function loginSecondFactor(ticket: string, code: string): Promise<StaffPublic> {
+  return call(`/api/v1/auth/login/2fa`, { method: "POST", body: JSON.stringify({ ticket, code }) });
+}
+
+export function fetchSecurity(): Promise<{ require2fa: boolean }> {
+  return call(`/api/v1/security`);
+}
+
+export function saveSecurity(require2fa: boolean): Promise<{ require2fa: boolean }> {
+  return call(`/api/v1/security`, { method: "POST", body: JSON.stringify({ require2fa }) });
+}
+
+/** スマホを替えた・なくしたスタッフの二要素認証の登録を消す（次のログインで登録し直す） */
+export function resetStaffTwoFactor(staffId: string): Promise<StaffPublic> {
+  return call(`/api/v1/staff/${encodeURIComponent(staffId)}/reset-2fa`, { method: "POST" });
 }
 
 export async function logout(): Promise<void> {

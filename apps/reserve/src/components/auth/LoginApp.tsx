@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { StaffPublic } from "@/lib/domain/types";
 import { ROLE_LABEL } from "@/lib/domain/types";
-import { ApiError, fetchLoginStaff, login } from "@/components/calendar/api";
+import { ApiError, fetchLoginStaff, login, loginSecondFactor, type SecondStep } from "@/components/calendar/api";
+import { SecondFactor } from "./SecondFactor";
 import styles from "./login.module.css";
 import { withBase } from "@/lib/paths";
 
@@ -20,6 +21,7 @@ export function LoginApp() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [second, setSecond] = useState<SecondStep | null>(null);
 
   useEffect(() => {
     fetchLoginStaff().then(setStaff, () => setError("スタッフ一覧を読み込めませんでした"));
@@ -30,7 +32,14 @@ export function LoginApp() {
     setBusy(true);
     setError(null);
     try {
-      await login(picked.id, value);
+      const r = await login(picked.id, value);
+      if ("need" in r) {
+        // 二要素認証：認証アプリの6桁へ
+        setSecond(r);
+        setPin("");
+        setBusy(false);
+        return;
+      }
       window.location.replace(safeNext());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "ログインできませんでした");
@@ -51,7 +60,20 @@ export function LoginApp() {
         {/* eslint-disable-next-line @next/next/no-img-element -- 静的書き出しのため最適化なしの画像で表示 */}
         <img src={withBase("/brand/lane-reserve-logo.svg")} alt="LANE RESERVE レーンリザーブ" className={styles.brandLogo} />
       </h1>
-      {!picked ? (
+      {picked && second ? (
+        <SecondFactor
+          name={picked.name}
+          step={second}
+          onSubmit={async (code) => {
+            await loginSecondFactor(second.ticket, code);
+            window.location.replace(safeNext());
+          }}
+          onBack={() => {
+            setSecond(null);
+            setError(null);
+          }}
+        />
+      ) : !picked ? (
         <>
           <p className={styles.lead}>名前を選んでください</p>
           <div className={styles.staffGrid}>

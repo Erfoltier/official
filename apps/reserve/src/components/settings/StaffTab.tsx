@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { ROLE_LABEL, STAFF_ROLES } from "@/lib/domain/types";
-import { fetchAudit, fetchStaff, saveStaff } from "@/components/calendar/api";
+import { fetchAudit, fetchSecurity, fetchStaff, resetStaffTwoFactor, saveSecurity, saveStaff } from "@/components/calendar/api";
 import { AccessLogCard } from "./AccessLogCard";
 import styles from "./settings.module.css";
 import { patientPath, withBase } from "@/lib/paths";
@@ -19,6 +19,11 @@ export function StaffTab({ notify, fail }: Props) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<StaffRole>("nurse");
   const [pin, setPin] = useState("");
+  const [require2fa, setRequire2fa] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetchSecurity().then((r) => setRequire2fa(r.require2fa), fail);
+  }, [fail]);
 
   const load = useCallback(async () => {
     try {
@@ -51,6 +56,28 @@ export function StaffTab({ notify, fail }: Props) {
         「管理操作」を許可したスタッフは、レーン・メニュー・スキンケア・内服・料金表などの設定変更、予約の取り消し、見積書・同意書の控えの削除ができます。
         初期状態では院長・管理者と受付のみ許可されています（院長・管理者は常に可）。
       </p>
+      {require2fa !== null && (
+        <div className={styles.actions} style={{ justifyContent: "flex-start" }}>
+          <label>
+            <input
+              type="checkbox"
+              checked={require2fa}
+              onChange={async (e) => {
+                const on = e.target.checked;
+                if (on && !window.confirm("二要素認証を必須にします。まだ登録していないスタッフは、次のログインのときに、スマホの認証アプリ（Google Authenticator など）で登録します。よろしいですか？")) return;
+                try {
+                  setRequire2fa((await saveSecurity(on)).require2fa);
+                  notify(on ? "二要素認証を必須にしました" : "二要素認証の必須をやめました");
+                } catch (err) {
+                  fail(err);
+                }
+              }}
+            />{" "}
+            <b>二要素認証を必須にする</b>
+          </label>
+          <span className={styles.muted}>PIN に加えて、スマホの認証アプリの6桁の数字でログインします（医療情報システムの安全管理ガイドラインの多要素認証）。</span>
+        </div>
+      )}
       <table className={styles.table}>
         <thead>
           <tr>
@@ -59,6 +86,7 @@ export function StaffTab({ notify, fail }: Props) {
             <th>状態</th>
             <th>管理操作</th>
             <th>PIN</th>
+            <th>二要素認証</th>
           </tr>
         </thead>
         <tbody>
@@ -120,6 +148,27 @@ export function StaffTab({ notify, fail }: Props) {
                   PINを変更
                 </button>
               </td>
+              <td style={{ whiteSpace: "nowrap" }}>
+                {s.twoFactor ? "登録済" : "未登録"}
+                {s.twoFactor && (
+                  <button
+                    className={styles.btn}
+                    style={{ marginLeft: 6 }}
+                    onClick={async () => {
+                      if (!window.confirm(`${s.name} さんの二要素認証の登録を消します（スマホを替えた・なくしたとき）。次のログインで登録し直します。よろしいですか？`)) return;
+                      try {
+                        await resetStaffTwoFactor(s.id);
+                        notify("二要素認証の登録を消しました");
+                      } catch (err) {
+                        fail(err);
+                      }
+                      await load();
+                    }}
+                  >
+                    登録を消す
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
           <tr className={styles.addRow}>
@@ -165,6 +214,7 @@ export function StaffTab({ notify, fail }: Props) {
                 追加
               </button>
             </td>
+            <td />
           </tr>
         </tbody>
       </table>

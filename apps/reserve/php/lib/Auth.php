@@ -89,7 +89,7 @@ final class Auth
 
     public static function toPublic(array $s): array
     {
-        return ['id' => $s['id'], 'name' => $s['name'], 'role' => $s['role'], 'active' => $s['active'], 'canManage' => self::canManage($s)];
+        return ['id' => $s['id'], 'name' => $s['name'], 'role' => $s['role'], 'active' => $s['active'], 'canManage' => self::canManage($s), 'twoFactor' => !empty($s['totpSecret'])];
     }
 
     /** 設定の変更・削除などの管理操作：院長・管理者は常に、ほかは院長の上書き（なければ受付だけ） */
@@ -342,6 +342,69 @@ final class Auth
         $at = now_iso();
         $id = hash('sha256', $s['id'] . '|' . $target . '|' . substr($at, 0, 13));
         Db::i()->put('accessLog', $id, ['at' => $at, 'staffId' => $s['id'], 'staffName' => $s['name'], 'action' => $action, 'target' => $target]);
+    }
+
+    /**
+     * PIN が合ったあと：二要素認証が要るかを決める。
+     * 戻り値：['done' => true]（そのままログイン）／['need' => 'totp', 'ticket']／['need' => 'enroll', 'ticket', 'secret', 'otpauth']（初めての登録）
+     */
+    public static function afterPin(array $staff, int $sessionVersion): array
+    {
+        $s = Db::i()->get('staff', $staff['id']);
+        if (!empty($s['totpSecret'])) {
+            return ['need' => 'totp', 'ticket' => TwoFactor::ticket($s['id'], $sessionVersion)];
+        }
+        if (!TwoFactor::required()) {
+            return ['done' => true];
+        }
+        // 登録の途中で何度開き直しても、同じ鍵を見せる（読み取り直しを減らすため）
+        $secret = (string) ($s['totpPending'] ?? '');
+        if ($secret === '') {
+            $secret = TwoFactor::newSecret();
+            self::save([...$s, 'totpPending' => $secret]);
+        }
+        return ['need' => 'enroll', 'ticket' => TwoFactor::ticket($s['id'], $sessionVersion), 'secret' => $secret, 'otpauth' => TwoFactor::otpauthUrl($secret, (string) $s['name'])];
+    }
+
+    /** ログインの2段階目：確認券と6桁の数字。合えば ['staff', 'sessionVersion'] */
+    public static function verifySecondFactor(string $ticket, string $code, ?int $now = null): array
+    {
+        [$t, $nonce] = TwoFactor::readTicket($ticket, $now);
+        TwoFactor::checkTries($nonce);
+        $s = Db::i()->get('staff', (string) $t['s']);
+        if (!$s || !$s['active'] || $s['sessionVersion'] !== ($t['v'] ?? null)) {
+            throw new AuthError('invalid', 'もう一度PINからやり直してください');
+        }
+        $enroll = empty($s['totpSecret']);
+        $secret = $enroll ? (string) ($s['totpPending'] ?? '') : (string) $s['totpSecret'];
+        $step = $secret !== '' ? TwoFactor::verify($secret, $code, (int) ($s['totpLastStep'] ?? 0), $now !== null ? intdiv($now, 1000) : null) : null;
+        if ($step === null) {
+            TwoFactor::noteFailure($nonce);
+            throw new AuthError('invalid_pin', '確認の数字が違います。認証アプリの最新の6桁を入れてください');
+        }
+        $next = [...$s, 'totpLastStep' => $step];
+        if ($enroll) {
+            $next['totpSecret'] = $secret;
+            unset($next['totpPending']);
+            self::audit(['id' => $s['id'], 'name' => $s['name']], '二要素認証を登録');
+        }
+        self::save($next);
+        // 使い終わった確認券は使えなくする
+        Db::i()->put('loginTicket', $nonce, ['fails' => 99, 'at' => now_iso()]);
+        return ['staff' => self::toPublic($next), 'sessionVersion' => $next['sessionVersion']];
+    }
+
+    /** スマホを替えた・なくしたとき：院長・管理者が二要素認証の登録を消す（次のログインで登録し直す） */
+    public static function resetSecondFactor(array $actor, string $staffId): array
+    {
+        $s = Db::i()->get('staff', $staffId);
+        if (!$s) {
+            throw new AuthError('not_found', 'スタッフが見つかりません');
+        }
+        unset($s['totpSecret'], $s['totpPending'], $s['totpLastStep']);
+        self::save($s);
+        self::audit($actor, '二要素認証の登録を消去', $s['name']);
+        return self::toPublic($s);
     }
 
     /** ログアウト：この Cookie を期限まで使えなくする（盗まれた・端末に残った Cookie 対策） */

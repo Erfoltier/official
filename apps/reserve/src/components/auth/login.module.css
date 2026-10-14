@@ -158,3 +158,26 @@
   width: min(220px, 60vw);
   height: auto;
 }
+
+/* 二要素認証の登録 */
+.steps {
+  text-align: left;
+  margin: 0 0 12px;
+  padding-left: 1.4em;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.qr {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 8px;
+  image-rendering: pixelated;
+  background: #fff;
+}
+.secret {
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  word-break: break-all;
+  margin: 0 0 12px;
+}

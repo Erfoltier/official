@@ -509,6 +509,8 @@ export interface StaffPublic {
   active: boolean;
   /** 設定の変更・削除などの管理操作ができるか（役割の既定に、院長がスタッフごとに上書きできる） */
   canManage: boolean;
+  /** 二要素認証（認証アプリ）を登録しているか */
+  twoFactor?: boolean;
 }
 
 /** 管理操作の既定：院長・管理者と受付。院長・管理者は常にできる */
