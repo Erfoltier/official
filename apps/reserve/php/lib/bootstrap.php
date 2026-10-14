@@ -18,6 +18,7 @@ require_once __DIR__ . '/Time.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/TwoFactor.php';
+require_once __DIR__ . '/Devices.php';
 require_once __DIR__ . '/PriceParse.php';
 require_once __DIR__ . '/Store.php';
 require_once __DIR__ . '/Reminder.php';

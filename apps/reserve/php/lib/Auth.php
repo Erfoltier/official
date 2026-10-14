@@ -433,7 +433,7 @@ final class Auth
         return isset($_COOKIE[self::COOKIE]) ? (string) $_COOKIE[self::COOKIE] : null;
     }
 
-    private static function cookieAttrs(): string
+    public static function cookieAttrs(): string
     {
         $path = rtrim((string) (config()['base_path'] ?? ''), '/') . '/';
         // 本番は常に Secure（https の判定に失敗しても平文で流さない）。手元の http での試験だけ外す
@@ -463,6 +463,10 @@ final class Auth
         $s = self::currentStaff();
         if (!$s) {
             throw new AuthError('login_required', 'ログインしてください');
+        }
+        // 登録した端末だけで使う設定のとき、未承認の端末ではログイン画面に戻す
+        if (!Devices::allowed()) {
+            throw new AuthError('login_required', 'この端末は登録されていません');
         }
         if ($roles !== null && !in_array($s['role'], $roles, true)) {
             throw new AuthError('forbidden', 'この操作の権限がありません');

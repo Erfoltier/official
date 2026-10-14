@@ -436,12 +436,37 @@ export function loginSecondFactor(ticket: string, code: string): Promise<StaffPu
   return call(`/api/v1/auth/login/2fa`, { method: "POST", body: JSON.stringify({ ticket, code }) });
 }
 
-export function fetchSecurity(): Promise<{ require2fa: boolean }> {
+export interface SecuritySettings {
+  require2fa: boolean;
+  requireDevice: boolean;
+}
+
+export function fetchSecurity(): Promise<SecuritySettings> {
   return call(`/api/v1/security`);
 }
 
-export function saveSecurity(require2fa: boolean): Promise<{ require2fa: boolean }> {
-  return call(`/api/v1/security`, { method: "POST", body: JSON.stringify({ require2fa }) });
+export function saveSecurity(body: Partial<SecuritySettings>): Promise<SecuritySettings> {
+  return call(`/api/v1/security`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export interface DeviceEntry {
+  id: string;
+  label: string;
+  status: "pending" | "approved" | "blocked";
+  firstSeen?: string;
+  lastSeen?: string;
+  lastStaff?: { id: string; name: string };
+  approvedBy?: { id: string; name: string };
+  current: boolean;
+}
+
+/** 登録した端末（院長・管理者） */
+export function fetchDevices(): Promise<{ items: DeviceEntry[] }> {
+  return call(`/api/v1/devices`);
+}
+
+export function setDeviceStatus(id: string, action: "approve" | "block" | "pending" | "delete", label?: string): Promise<unknown> {
+  return call(`/api/v1/devices/${id}/${action}`, { method: "POST", body: JSON.stringify(label ? { label } : {}) });
 }
 
 /** スマホを替えた・なくしたスタッフの二要素認証の登録を消す（次のログインで登録し直す） */

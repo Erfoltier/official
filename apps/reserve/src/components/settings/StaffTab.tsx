@@ -5,6 +5,7 @@ import type { AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { ROLE_LABEL, STAFF_ROLES } from "@/lib/domain/types";
 import { fetchAudit, fetchSecurity, fetchStaff, resetStaffTwoFactor, saveSecurity, saveStaff } from "@/components/calendar/api";
 import { AccessLogCard } from "./AccessLogCard";
+import { DevicesCard } from "./DevicesCard";
 import styles from "./settings.module.css";
 import { patientPath, withBase } from "@/lib/paths";
 
@@ -66,7 +67,7 @@ export function StaffTab({ notify, fail }: Props) {
                 const on = e.target.checked;
                 if (on && !window.confirm("二要素認証を必須にします。まだ登録していないスタッフは、次のログインのときに、スマホの認証アプリ（Google Authenticator など）で登録します。よろしいですか？")) return;
                 try {
-                  setRequire2fa((await saveSecurity(on)).require2fa);
+                  setRequire2fa((await saveSecurity({ require2fa: on })).require2fa);
                   notify(on ? "二要素認証を必須にしました" : "二要素認証の必須をやめました");
                 } catch (err) {
                   fail(err);
@@ -218,6 +219,7 @@ export function StaffTab({ notify, fail }: Props) {
           </tr>
         </tbody>
       </table>
+      <DevicesCard notify={notify} fail={fail} />
     </section>
   );
 }

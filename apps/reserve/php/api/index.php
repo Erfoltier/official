@@ -43,6 +43,10 @@ try {
     }
     if ($route === 'POST auth/login') {
         $in = Schema::login(Http::readJson());
+        // 端末を見分ける Cookie（なければここで渡す。断るときにも渡すよう、先に出しておく）
+        foreach (Devices::ensureCookie() as $hdr) {
+            header($hdr, false);
+        }
         // 同じ接続元からの失敗が多すぎれば、PINを確かめる前に断る
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
         Auth::checkLoginRate($ip);
@@ -52,6 +56,8 @@ try {
             Auth::noteLoginFailure($ip);
             throw $e;
         }
+        // 登録した端末だけで使う設定なら、未承認の端末は承認待ちに入れて断る
+        Devices::checkAtLogin($r['staff']);
         // 二要素認証が要るときは、まだログインさせずに確認券を返す
         $two = Auth::afterPin($r['staff'], $r['sessionVersion']);
         if (empty($two['done'])) {
@@ -70,18 +76,40 @@ try {
             Auth::noteLoginFailure($ip);
             throw $e;
         }
+        Devices::checkAtLogin($r['staff']);
         Auth::audit(['id' => $r['staff']['id'], 'name' => $r['staff']['name']], 'ログイン（二要素認証）');
         Http::json($r['staff'], 200, ['Set-Cookie: ' . Auth::sessionCookie(Auth::createSessionToken($r['staff']['id'], $r['sessionVersion']))]);
     }
     // 二要素認証を必須にするか（院長・管理者）
     if ($route === 'GET security') {
         $me(STAFF_ADMIN);
-        Http::json(['require2fa' => TwoFactor::required()]);
+        Http::json(['require2fa' => TwoFactor::required(), 'requireDevice' => Devices::required()]);
     }
     if ($route === 'POST security') {
         $s = $me(STAFF_ADMIN);
         $in = Http::readJson();
-        Http::json(TwoFactor::setRequired(!empty($in['require2fa']), $actor($s)));
+        $out = [];
+        if (is_array($in) && array_key_exists('require2fa', $in)) {
+            $out += TwoFactor::setRequired(!empty($in['require2fa']), $actor($s));
+        }
+        if (is_array($in) && array_key_exists('requireDevice', $in)) {
+            $out += Devices::setRequired(!empty($in['requireDevice']), $actor($s));
+        }
+        Http::json(['require2fa' => TwoFactor::required(), 'requireDevice' => Devices::required()] + $out);
+    }
+    // 登録した端末（院長・管理者）
+    if ($route === 'GET devices') {
+        $me(STAFF_ADMIN);
+        Http::json(['items' => Devices::list()]);
+    }
+    if ($method === 'POST' && $n === 3 && $p[0] === 'devices' && preg_match('/^[0-9a-f]{64}$/', $p[1])) {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        $status = ['approve' => 'approved', 'block' => 'blocked', 'pending' => 'pending', 'delete' => 'delete'][$p[2]] ?? '';
+        if ($status === '') {
+            throw new InputError();
+        }
+        Http::json(Devices::setStatus($p[1], $status, $actor($s), is_array($in) && is_string($in['label'] ?? null) ? $in['label'] : null));
     }
     if ($method === 'POST' && $n === 3 && $p[0] === 'staff' && $p[2] === 'reset-2fa') {
         $s = $me(STAFF_ADMIN);
