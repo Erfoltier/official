@@ -1296,6 +1296,37 @@ final class Store
         return $out;
     }
 
+    /**
+     * 閲覧の記録（院長・管理者が見る）。期間（両端を含む）と、患者・スタッフで絞れる。新しい順に最大 $limit 件。
+     * 対象が患者なら、名前と診察券番号を付けて返す（記録そのものには患者の中身を残していない）
+     */
+    public static function accessLog(string $from, string $to, ?string $patientId = null, ?string $staffId = null, int $limit = 500): array
+    {
+        self::init();
+        if (!is_date_string($from) || !is_date_string($to) || $from > $to) {
+            throw new StoreError('invalid', '期間を正しく選んでください');
+        }
+        $patients = self::patients();
+        $items = [];
+        foreach (Db::i()->all('accessLog') as $e) {
+            $day = clinic_date_of((string) $e['at']);
+            if ($day < $from || $day > $to || ($staffId && ($e['staffId'] ?? '') !== $staffId)) {
+                continue;
+            }
+            $pid = str_starts_with((string) $e['target'], 'patient:') ? substr((string) $e['target'], 8) : null;
+            if ($patientId && $pid !== $patientId) {
+                continue;
+            }
+            $p = $pid ? ($patients[$pid] ?? null) : null;
+            $items[] = drop_null([
+                'at' => $e['at'], 'staffId' => $e['staffId'] ?? null, 'staffName' => $e['staffName'] ?? '', 'action' => $e['action'] ?? '',
+                'target' => $e['target'] ?? '', 'patientId' => $pid, 'patientName' => $p['name'] ?? null, 'chartNo' => $p['chartNo'] ?? null,
+            ]);
+        }
+        usort($items, fn($a, $b) => strcmp($b['at'], $a['at']));
+        return ['items' => array_slice($items, 0, $limit), 'total' => count($items)];
+    }
+
     /** 問診票（key で探す。消したものは除く） */
     public static function questionnaireByKey(string $key): ?array
     {

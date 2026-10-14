@@ -120,6 +120,22 @@ export function saveLineLink(body: { liffId?: string; loginChannelId?: string; c
   return call(`/api/v1/line-link`, { method: "POST", body: JSON.stringify(body) });
 }
 
+export interface AccessLogEntry {
+  at: string;
+  staffId?: string;
+  staffName: string;
+  action: string;
+  target: string;
+  patientId?: string;
+  patientName?: string;
+  chartNo?: string;
+}
+
+/** 閲覧の記録（院長・管理者）。見たことも操作の記録に残る */
+export function fetchAccessLog(from: string, to: string): Promise<{ items: AccessLogEntry[]; total: number }> {
+  return call(`/api/v1/access-log?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+}
+
 /** これまでに取り込んだ問診票の質問の見出し（回答の中身は含まない） */
 export function fetchMonshinHeadings(): Promise<{ items: { label: string; count: number; type: MonshinType }[] }> {
   return call(`/api/v1/monshin/headings`);

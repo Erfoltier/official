@@ -857,6 +857,13 @@ try {
         $id = V::id($p[1]);
         Http::json(Auth::updateStaff($actor($s), $id, Schema::updateStaff(Http::readJson())));
     }
+    // 閲覧の記録（だれが・いつ・どの患者を見たか）。院長・管理者。見たことも操作の記録に残す
+    if ($route === 'GET access-log') {
+        $s = $me(STAFF_ADMIN);
+        $r = Store::accessLog((string) ($q('from') ?? ''), (string) ($q('to') ?? ''), $q('patientId') ?: null, $q('staffId') ?: null);
+        Auth::audit($actor($s), '閲覧の記録を確認');
+        Http::json($r);
+    }
     if ($route === 'GET audit') {
         $me(STAFF_ADMIN);
         Http::json(['items' => Auth::listAudit(300)]);

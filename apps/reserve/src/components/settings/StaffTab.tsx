@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AuditEntry, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { ROLE_LABEL, STAFF_ROLES } from "@/lib/domain/types";
 import { fetchAudit, fetchStaff, saveStaff } from "@/components/calendar/api";
+import { AccessLogCard } from "./AccessLogCard";
 import styles from "./settings.module.css";
 import { patientPath, withBase } from "@/lib/paths";
 
@@ -211,6 +212,7 @@ export function AuditTab({ fail }: { fail: (err: unknown) => void }) {
           </tbody>
         </table>
       </div>
+      <AccessLogCard fail={fail} />
     </section>
   );
 }
