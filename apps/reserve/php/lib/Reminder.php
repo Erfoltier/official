@@ -492,10 +492,24 @@ final class Reminder
             '{時刻}' => $d->format('G:i'),
             // 文面に {メニュー} を書いたときだけ入る。名前はメニューごとの「{メニュー} に表示する名前」（空ならメニュー名）
             '{メニュー}' => implode('・', $v['menuNames']),
+            // 文面に {問診票} を書いたときだけ入る。初めての来院で問診票がまだの人にだけ、記入の入口を案内する（それ以外は空）
+            '{問診票}' => self::questionnaireLine($v, $channel),
         ];
         $text = strtr((string) $s['template'], $vars);
         $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
         return ['subject' => '【' . $vars['{院名}'] . '】' . $vars['{いつ}'] . 'のご予約のお知らせ', 'text' => $text];
+    }
+
+    private static function questionnaireLine(array $v, string $channel): string
+    {
+        $pid = (string) ($v['patient']['id'] ?? '');
+        if ($pid === '' || Store::questionnaireState($pid, (string) $v['date']) !== 'missing') {
+            return '';
+        }
+        // LINE は LINE の中で開く問診票（氏名などの記入が要らない）。メールは誰でも開ける問診票
+        $url = $channel === 'line' ? LineLink::liffUrl() : (string) (config()['monshin_url'] ?? '');
+        $url = $url !== '' ? $url : LineLink::liffUrl();
+        return $url !== '' ? "問診票のご記入がまだでしたら、ご来院前にこちらからお願いいたします。\n{$url}" : '';
     }
 
     // ---- 送信 ----

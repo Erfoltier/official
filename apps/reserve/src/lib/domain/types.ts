@@ -654,6 +654,8 @@ export interface Reservation {
   requestId?: string;
   /** 申請IDから申し込んだ LINE が見つかったか（ok＝リマインドをその LINE へ／mismatch＝申請の名前・生年月日が患者と合わない／notfound＝見つからない）。サーバーが付ける */
   requestLine?: "ok" | "mismatch" | "notfound";
+  /** 問診票の状況（done＝届いている／missing＝初めての来院で、まだ届いていない）。再診で問診票がなければ付かない。サーバーが付ける */
+  questionnaire?: "done" | "missing";
   /** 登録・最終更新したスタッフ */
   createdBy?: Actor;
   updatedBy?: Actor;

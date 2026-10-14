@@ -2780,3 +2780,15 @@ button.stagePill[data-clickable]:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 受付一覧：初めての来院で問診票が届いていない */
+.qMissing {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--danger, #c0392b);
+  white-space: nowrap;
+}

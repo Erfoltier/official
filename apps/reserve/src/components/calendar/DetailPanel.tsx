@@ -168,6 +168,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                       {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
                     </button>
                   )}
+                  {r.questionnaire && (
+                    <span
+                      className={styles.subGap}
+                      title={r.questionnaire === "done" ? "問診票が届いています（患者画面で確認できます）" : "初めての来院で、問診票がまだ届いていません"}
+                      style={r.questionnaire === "missing" ? { color: "var(--danger, #c0392b)" } : undefined}
+                    >
+                      {r.questionnaire === "done" ? "問診票 記入済" : "問診票 未記入"}
+                    </span>
+                  )}
                   {!editingRequestId && r.requestLine && (
                     <span
                       className={styles.subGap}

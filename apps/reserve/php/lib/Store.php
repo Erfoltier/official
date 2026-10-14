@@ -837,11 +837,15 @@ final class Store
             'clinic' => self::clinic(),
             'lanes' => array_values(array_filter(self::sortedLanes(), fn($l) => $l['active'] || isset($used[$l['id']]))),
             'menus' => self::sortedMenus(),
-            'reservations' => array_map(function ($r) use ($patients) {
+            'reservations' => array_map(function ($r) use ($patients, $date) {
                 if (isset($patients[$r['patientId']])) {
                     $st = self::reservationLine($r, $patients[$r['patientId']])[1];
                     if ($st !== null) {
                         $r['requestLine'] = $st;
+                    }
+                    $q = self::questionnaireState($r['patientId'], $date);
+                    if ($q !== null) {
+                        $r['questionnaire'] = $q;
                     }
                 }
                 return $r;
@@ -851,6 +855,29 @@ final class Store
             'dayNotes' => (object) self::dayNotesOn($date),
             'receptionNotes' => (object) self::receptionNotesOn($date, array_keys($pids)),
         ];
+    }
+
+    /**
+     * 問診票の状況（予約の表示用）：'done'＝問診票が届いている／'missing'＝初めての来院（この日より前の来院がない）なのに届いていない／null＝再診で問診票なし（出さない）
+     */
+    public static function questionnaireState(string $patientId, string $date): ?string
+    {
+        static $cache = [];
+        $k = "{$patientId}|{$date}";
+        if (array_key_exists($k, $cache)) {
+            return $cache[$k];
+        }
+        foreach (Db::i()->where('questionnaire', 'k2', $patientId) as $q) {
+            if (($q['patientId'] ?? '') === $patientId && empty($q['deleted'])) {
+                return $cache[$k] = 'done';
+            }
+        }
+        foreach (self::reservationsOf($patientId) as $r) {
+            if (clinic_date_of($r['startAt']) < $date && !in_array($r['status'] ?? 'booked', self::INACTIVE, true)) {
+                return $cache[$k] = null;
+            }
+        }
+        return $cache[$k] = 'missing';
     }
 
     // ---- Todaysメモ（日付×レーン。カレンダーの始業時間より上に出す自由記載） ----

@@ -134,6 +134,11 @@ export function ReceptionList(props: Props) {
                     </span>
                     <span className={styles.receptionMain}>
                       <span className={styles.receptionName}>{displayName(patient, maskNames)}</span>
+                      {r.questionnaire === "missing" && !inactive && (
+                        <span className={styles.qMissing} title="初めての来院で、問診票がまだ届いていません">
+                          問診票未
+                        </span>
+                      )}
                       {list.length === 1 ? (
                         <span className={styles.receptionMenu}>{ms.map((m) => m.abbr).join("+") || "—"}</span>
                       ) : (
