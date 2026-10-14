@@ -48,8 +48,8 @@ export function SecondFactor({ name, step, onSubmit, onBack }: { name: string; s
             <strong>{name}</strong> さんの二要素認証の登録
           </p>
           <ol className={styles.steps}>
-            <li>スマホに認証アプリ（Google Authenticator や Microsoft Authenticator など）を入れます。</li>
-            <li>アプリの「＋」から、下の QR コードを読み取ります。</li>
+            <li>スマホに「Google Authenticator」（App Store・Google Play で無料）を入れます。</li>
+            <li>アプリの「＋」→「QR コードをスキャン」で、下の QR コードを読み取ります。</li>
             <li>アプリに出た6桁の数字を入れて「登録」を押します。</li>
           </ol>
           {/* eslint-disable-next-line @next/next/no-img-element -- その場で作る QR コード */}
@@ -62,7 +62,7 @@ export function SecondFactor({ name, step, onSubmit, onBack }: { name: string; s
         </>
       ) : (
         <p className={styles.lead}>
-          <strong>{name}</strong> さんの認証アプリの6桁
+          <strong>{name}</strong> さんの Google Authenticator の6桁
         </p>
       )}
       <input

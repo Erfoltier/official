@@ -65,7 +65,7 @@ export function StaffTab({ notify, fail }: Props) {
               checked={require2fa}
               onChange={async (e) => {
                 const on = e.target.checked;
-                if (on && !window.confirm("二要素認証を必須にします。まだ登録していないスタッフは、次のログインのときに、スマホの認証アプリ（Google Authenticator など）で登録します。よろしいですか？")) return;
+                if (on && !window.confirm("二要素認証を必須にします。まだ登録していないスタッフは、次のログインのときに、スマホの Google Authenticator で登録します。よろしいですか？")) return;
                 try {
                   setRequire2fa((await saveSecurity({ require2fa: on })).require2fa);
                   notify(on ? "二要素認証を必須にしました" : "二要素認証の必須をやめました");
@@ -76,7 +76,7 @@ export function StaffTab({ notify, fail }: Props) {
             />{" "}
             <b>二要素認証を必須にする</b>
           </label>
-          <span className={styles.muted}>PIN に加えて、スマホの認証アプリの6桁の数字でログインします（医療情報システムの安全管理ガイドラインの多要素認証）。</span>
+          <span className={styles.muted}>PIN に加えて、スマホの Google Authenticator の6桁の数字でログインします（医療情報システムの安全管理ガイドラインの多要素認証）。</span>
         </div>
       )}
       <table className={styles.table}>
