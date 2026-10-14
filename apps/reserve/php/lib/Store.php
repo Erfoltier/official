@@ -853,6 +853,8 @@ final class Store
             'patients' => array_values(array_filter(array_map(fn($id) => $patients[$id] ?? null, array_keys($pids)))),
             'stages' => self::sortedStages(),
             'dayNotes' => (object) self::dayNotesOn($date),
+            // 予約確定の連絡文に入れる、LINE の中で開く問診票の入口（設定していなければ空）
+            'questionnaireUrl' => LineLink::liffUrl(),
             'receptionNotes' => (object) self::receptionNotesOn($date, array_keys($pids)),
         ];
     }

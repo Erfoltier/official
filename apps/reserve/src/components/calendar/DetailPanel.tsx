@@ -79,6 +79,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
+  const [copied, setCopied] = useState(false);
+  /** 予約確定の連絡文（LINE のチャットに貼る）。初めての来院で問診票がまだなら、問診票の入口を足す */
+  const confirmationText = () => {
+    const d = new Date(`${bundle.date}T00:00:00Z`);
+    const week = ["日", "月", "火", "水", "木", "金", "土"][d.getUTCDay()];
+    const menuNames = menus.map((m) => m!.publicName || m!.name).join("・");
+    const lines = [
+      `${patient?.name ?? ""} 様`,
+      "",
+      "ご予約が確定しました。",
+      `日時：${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${week}）${formatHm(start)}`,
+      ...(menuNames ? [`メニュー：${menuNames}`] : []),
+    ];
+    if (r.questionnaire === "missing" && bundle.questionnaireUrl) {
+      lines.push("", "初めてご来院の方は、ご来院前に問診票のご記入をお願いいたします。", bundle.questionnaireUrl);
+    }
+    lines.push("", "ご来院をお待ちしております。", bundle.clinic.docName || bundle.clinic.name);
+    return lines.join("\n");
+  };
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
   const [estimateOpen, setEstimateOpen] = useState(false);
@@ -290,6 +309,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         />
       )}
 
+      <div className={styles.copyRow}>
+        <button
+          type="button"
+          className={styles.idBtn}
+          title="LINE のチャットに貼る、予約確定の連絡文をコピーします（日時・メニュー、初めての方には問診票の入口）"
+          onClick={async () => {
+            const text = confirmationText();
+            try {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 2000);
+            } catch {
+              window.prompt("コピーできなかったので、下の文を選んでコピーしてください", text);
+            }
+          }}
+        >
+          {copied ? "コピーしました ✓" : "確定連絡文をコピー"}
+        </button>
+      </div>
       <dl className={styles.facts}>
         <dt>日時</dt>
         <dd>

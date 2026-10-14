@@ -2792,3 +2792,10 @@ button.stagePill[data-clickable]:disabled {
   background: var(--danger, #c0392b);
   white-space: nowrap;
 }
+
+/* 予約詳細：確定連絡文のコピー */
+.copyRow {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 6px;
+}
