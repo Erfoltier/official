@@ -133,12 +133,59 @@ final class LineLink
                 continue;
             }
             $text = (string) ($e['message']['text'] ?? '');
+            self::noteIntakeMessage($e, $text);
             $reply = self::replyFor($text);
             if ($reply !== null && self::reply((string) $e['replyToken'], $reply)) {
                 $n++;
             }
         }
         return $n;
+    }
+
+    /**
+     * 予約申請フォーム（monshin/intake/）が送った申請の文面が LINE に届いたことを残す
+     * （フォームは intake-status-v1.php でこれを確かめ、届かなければ別の方法を案内する）。
+     * 予約申請IDつきの文面だけを、config の intake.queue_dir に残す。それ以外の発言は残さない
+     */
+    private static function noteIntakeMessage(array $e, string $text): void
+    {
+        $dir = rtrim((string) (config()['intake']['queue_dir'] ?? ''), '/');
+        if ($dir === '' || !is_dir($dir) || !preg_match('/予約申請ID[：:]\s*(R[A-Za-z0-9_-]{8,127})/u', $text, $m)) {
+            return;
+        }
+        $uid = (string) ($e['source']['userId'] ?? '');
+        $eventId = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($e['webhookEventId'] ?? $e['message']['id'] ?? bin2hex(random_bytes(8))));
+        $event = ['eventId' => $eventId, 'type' => 'message', 'timestamp' => (int) ($e['timestamp'] ?? 0), 'source' => ['type' => 'user', 'userId' => $uid], 'message' => ['type' => 'text', 'text' => mb_substr($text, 0, 5000)]];
+        $path = "{$dir}/line_{$eventId}.json";
+        if (@file_put_contents($path, json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) !== false) {
+            @chmod($path, 0600);
+        }
+        // 申請の記録に「LINE に届いた」印を付ける（申請した LINE と同じ人のときだけ）
+        $rec = "{$dir}/intake-records/{$m[1]}.json";
+        $fp = is_file($rec) ? @fopen($rec, 'c+') : false;
+        if ($fp && flock($fp, LOCK_EX)) {
+            $r = json_decode((string) stream_get_contents($fp), true);
+            if (is_array($r) && $uid !== '' && hash_equals((string) ($r['source']['userId'] ?? ''), $uid) && empty($r['lineMessageReceivedAt'])) {
+                $r['lineMessageReceivedAt'] = gmdate('c');
+                $r['lineMessageEventId'] = $eventId;
+                if (($r['status'] ?? '') === 'submitted') {
+                    $r['status'] = 'line_message_received';
+                }
+                ftruncate($fp, 0);
+                rewind($fp);
+                fwrite($fp, (string) json_encode($r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+            flock($fp, LOCK_UN);
+        }
+        if ($fp) {
+            fclose($fp);
+        }
+        // 確認が済んだ古い印（2日より前）は消す
+        foreach (glob("{$dir}/line_*.json") ?: [] as $f) {
+            if (@filemtime($f) < time() - 2 * 86400) {
+                @unlink($f);
+            }
+        }
     }
 
     /** 返す文（返さないときは null）。患者の情報は入れない */

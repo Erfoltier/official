@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5ef">
+  <title>美容皮膚科 予約申請</title>
+  <link rel="stylesheet" href="./styles.css?v=20261011-2">
+</head>
+<body>
+  <main class="shell">
+    <header class="clinic-header">
+      <div class="clinic-logo" aria-label="いしだ皮フ科・美容皮膚科 Ishida Cosmetic Dermatology">
+        <img src="./assets/ishida-stone-i.png" alt="">
+        <span><b>いしだ皮フ科／美容皮膚科</b><small>Ishida Cosmetic Dermatology</small></span>
+      </div>
+      <p class="eyebrow">RESERVATION FORM</p>
+      <h1>美容皮膚科　予約申請フォーム</h1>
+      <p>水曜日・祝日特別診療日<br><span style="white-space:nowrap">10:00〜18:30</span></p>
+    </header>
+
+    <div class="notice" role="note">
+      <strong>ご予約成立はご返信頂いた時刻での先着確定順です。</strong>
+      <span>申請後、当院からの返信をもって予約確定となります。<br>美容皮膚科のみの受付です。</span>
+    </div>
+
+    <form id="intake-form" novalidate>
+      <section class="card">
+        <div class="section-heading">
+          <span class="step">1</span>
+          <div><h2>受診区分</h2><p>美容皮膚科の受診歴をお選びください</p></div>
+        </div>
+        <div class="choice-grid two" id="visit-type-group">
+          <label class="choice"><input type="radio" name="visitType" value="initial" required><span><b>初診</b><small>美容皮膚科が初めて</small></span></label>
+          <label class="choice"><input type="radio" name="visitType" value="returning" required><span><b>再診</b><small>美容皮膚科の受診歴あり</small></span></label>
+        </div>
+      </section>
+
+      <section class="card" id="date-section">
+        <div class="section-heading">
+          <span class="step">2</span>
+          <div><h2>希望日時</h2><p>選択できる日だけが診療日です　特別診療日は約2か月先まで表示されます。</p></div>
+        </div>
+        <input type="hidden" name="preferredDate" id="preferred-date" required>
+        <div class="calendar-toolbar">
+          <button type="button" class="icon-button" id="prev-month" aria-label="前の月">‹</button>
+          <strong id="calendar-title"></strong>
+          <button type="button" class="icon-button" id="next-month" aria-label="次の月">›</button>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+        <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="希望予約日"></div>
+        <p class="selected-date" id="selected-date">希望日を選択してください</p>
+        <fieldset>
+          <legend>希望時間帯</legend>
+          <div class="choice-grid four">
+            <label class="pill"><input type="radio" name="timePreference" value="午前" required><span>午前</span></label>
+            <label class="pill"><input type="radio" name="timePreference" value="午後" required><span>午後</span></label>
+            <label class="pill"><input type="radio" name="timePreference" value="夕方" required><span>夕方</span></label>
+            <label class="pill"><input type="radio" name="timePreference" value="何時でもよい" required><span>何時でもよい</span></label>
+          </div>
+          <label class="field compact"><span>時間の希望（任意）</span><input name="timeNote" maxlength="50" placeholder="例：16時以降、なるべく遅め"></label>
+        </fieldset>
+      </section>
+
+      <section class="card" id="patient-section">
+        <div class="section-heading">
+          <span class="step">3</span>
+          <div><h2>患者さま情報</h2><p>診察券と同じ内容をご入力ください</p></div>
+        </div>
+        <label class="field"><span>漢字氏名 <em>必須</em></span><input name="name" autocomplete="name" maxlength="60" required placeholder="例：石田 花子"></label>
+        <label class="field"><span>カナ氏名 <em>必須</em></span><input name="kana" maxlength="60" required inputmode="kana" placeholder="例：イシダ ハナコ"></label>
+        <fieldset class="birth-date-field">
+          <legend>生年月日（西暦） <em>必須</em></legend>
+          <input type="hidden" name="birthDate" id="birth-date" required>
+          <div class="birth-mode" role="group" aria-label="生年月日の入力方法">
+            <button type="button" class="mode-button active" data-birth-mode="manual">数字で入力</button>
+            <button type="button" class="mode-button" data-birth-mode="calendar">カレンダーで選ぶ</button>
+          </div>
+          <label class="field compact" id="birth-manual-wrap"><span>例：1950年4月3日 → 1950 / 04 / 03</span><input id="birth-date-manual" inputmode="numeric" autocomplete="bday" maxlength="10" placeholder="1950 / 04 / 03"></label>
+          <label class="field compact calendar-picker-wrap" id="birth-calendar-wrap" hidden><input id="birth-date-picker" type="date" autocomplete="bday" aria-label="生年月日をカレンダーで選択"></label>
+          <p class="field-hint" id="birth-date-result">生年月日を入力してください</p>
+        </fieldset>
+        <fieldset>
+          <legend>性別 <span class="optional">任意</span></legend>
+          <div class="choice-grid three">
+            <label class="pill"><input type="radio" name="gender" value="女性"><span>女性</span></label>
+            <label class="pill"><input type="radio" name="gender" value="男性"><span>男性</span></label>
+            <label class="pill"><input type="radio" name="gender" value="回答しない"><span>回答しない</span></label>
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="card initial-form" id="initial-details" hidden>
+        <div class="section-heading">
+          <span class="step">4</span>
+          <div><h2>初診のご希望内容</h2><p>初めて受診される方の確認事項です</p></div>
+        </div>
+        <label class="field"><span>電話番号 <em>必須</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="例：09012345678"></label>
+        <fieldset>
+          <legend>いしだ皮フ科の保険通院歴 <em>必須</em></legend>
+          <div class="choice-grid two">
+            <label class="pill"><input type="radio" name="insuranceHistory" value="有"><span>有</span></label>
+            <label class="pill"><input type="radio" name="insuranceHistory" value="無"><span>無</span></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>当日施術のご希望 <em>必須</em></legend>
+          <div class="choice-grid two">
+            <label class="pill"><input type="radio" name="sameDayTreatment" value="有"><span>有</span></label>
+            <label class="pill"><input type="radio" name="sameDayTreatment" value="無"><span>無</span></label>
+          </div>
+        </fieldset>
+        <label class="field"><span>希望治療メニューまたはお悩み <em>必須</em></span><textarea name="initialTreatment" maxlength="500" placeholder="例：シミについて相談したい"></textarea></label>
+        <label class="field"><span>具体的な部位・個数（任意）</span><input name="initialBodyArea" maxlength="200" placeholder="例：両頬、3か所"></label>
+        <label class="field"><span>その他のご相談事項（任意）</span><textarea name="initialNotes" maxlength="1000" placeholder="ご相談や補足があればご入力ください。麻酔クリームを使用する施術の方で、麻酔クリーム不要や麻酔クリームではなく麻酔の注射をご希望の方はここにご記載ください"></textarea></label>
+        <label class="field"><span>紹介者名（任意）</span><input name="referrer" maxlength="100" placeholder="紹介者がいる場合のみ"></label>
+      </section>
+
+      <section class="card returning-form" id="returning-details" hidden>
+        <div class="section-heading">
+          <span class="step">4</span>
+          <div><h2>再診のご希望内容</h2><p>今回のご希望内容をご入力ください</p></div>
+        </div>
+        <fieldset>
+          <legend>当日施術のご希望 <em>必須</em></legend>
+          <div class="choice-grid two">
+            <label class="pill"><input type="radio" name="returningSameDayTreatment" value="有"><span>有</span></label>
+            <label class="pill"><input type="radio" name="returningSameDayTreatment" value="無"><span>無</span></label>
+          </div>
+        </fieldset>
+        <label class="field"><span>希望治療メニュー <em>必須</em></span><textarea name="returningTreatment" maxlength="500" placeholder="例：美白のスタンプ注射２回目"></textarea></label>
+        <label class="field"><span>希望部位 <em>必須</em></span><input name="returningBodyArea" maxlength="200" placeholder="例：顔全体、両頬"></label>
+        <fieldset>
+          <legend>今回の治療内容 <em>必須</em></legend>
+          <div class="choice-stack">
+            <label class="row-choice"><input type="radio" name="treatmentStatus" value="この治療メニューは初めて" required><span>この治療メニューは初めて</span></label>
+            <label class="row-choice"><input type="radio" name="treatmentStatus" value="継続／コース消化" required><span>継続／コース消化</span></label>
+            <label class="row-choice"><input type="radio" name="treatmentStatus" value="モニタープログラム中" required><span>モニタープログラム中</span></label>
+          </div>
+        </fieldset>
+        <label class="field"><span>その他のご相談事項（任意）</span><textarea name="returningNotes" maxlength="1000" placeholder="ご相談や補足があればご入力ください。麻酔クリームを使用する施術の方で、麻酔クリーム不要や麻酔クリームではなく麻酔の注射をご希望の方はここにご記載ください"></textarea></label>
+      </section>
+
+      <div class="error-summary" id="error-summary" role="alert" hidden></div>
+      <button class="submit-button" type="submit" id="submit-button" disabled>入力内容を確認する</button>
+    </form>
+  </main>
+
+  <dialog id="privacy-dialog" aria-labelledby="privacy-title" aria-describedby="privacy-description">
+    <div class="dialog-body privacy-dialog-body">
+      <p class="dialog-kicker">ご入力の前にご確認ください</p>
+      <h2 id="privacy-title">個人情報の取扱いについて</h2>
+      <p id="privacy-description">送信された情報は当院のプライバシーポリシーに基づき、医療情報として適切に管理されます。</p>
+      <p class="privacy-link"><a href="https://ishidahihuka.jp/privacy-policy/" target="_blank" rel="noopener noreferrer">プライバシーポリシーを確認する</a></p>
+      <label class="consent-choice"><input form="intake-form" type="checkbox" name="privacyConsent" value="agreed" required><span>個人情報の取扱いおよびプライバシーポリシーに同意します</span></label>
+      <p class="dialog-note">同意いただけない場合は、この予約フォームをご利用いただけません。</p>
+      <button type="button" class="submit-button" id="privacy-continue-button" disabled>同意して予約フォームへ進む</button>
+    </div>
+  </dialog>
+
+  <dialog id="confirm-dialog">
+    <div class="dialog-body">
+      <h2 id="confirm-title">この内容をLINEへ送信します</h2>
+      <pre id="message-preview"></pre>
+      <p class="dialog-note" id="confirm-note">送信すると、この内容が患者様からのメッセージとしてLINEトークへ投稿されます。</p>
+      <div class="dialog-actions">
+        <button type="button" class="secondary-button" id="back-button">修正する</button>
+        <button type="button" class="submit-button" id="send-button">入力フォーム内容をLINEで送信</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="complete-dialog">
+    <div class="dialog-body centered">
+      <div class="complete-mark">✓</div>
+      <h2 id="complete-title">送信しました</h2>
+      <p id="complete-message">LINEのトーク画面をご確認ください。</p>
+      <button type="button" class="submit-button" id="close-button">閉じる</button>
+    </div>
+  </dialog>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script type="module" src="./app.js?v=20261012-1"></script>
+</body>
+</html>

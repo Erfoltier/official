@@ -203,3 +203,14 @@ LINE のメッセージ通数（無料枠）は使いません。
   - 返信には、リマインドの LINE のチャネルアクセストークンを使います。
 - **公開**：monshin/ の公開フォルダで、line.php と liff/（index.php・api.php）も開けるようにしてください。
 - **テスト**：config の `line_test_mode` は php -S（開発用）でだけ効く、テスト用の切り替えです。本番では設定しないでください。
+
+### LINE の予約申請フォーム（monshin/intake/）
+
+ロリポップの line-webhook にあった予約申請フォームを、そのまま移したものです（画面は intake/、受け口は intake-submit-v1.php・intake-status-v1.php・intake-config.php）。
+
+- **設定**：config.php の `'intake'` に書きます（queue_dir・token_secret・liff_id・special_dates。中身は intake-common.php の説明のとおり）。
+  - 公開フォルダに設定ファイルは置きません。
+  - `line_intake_dir` は `queue_dir/intake-records` を指すようにします。
+- **送れたかの確認**：申請の文面が LINE に届いたかは、Webhook（line.php）が queue_dir に印を残して確かめます。
+- **LIFF**：LINE Developers で、予約フォーム用の LIFF アプリのエンドポイント URL を `https://monshin.…/intake/` にします。
+- **動作記録**：liff-diagnostic-v1.php は、AWS では何も記録しません。

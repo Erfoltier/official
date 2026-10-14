@@ -8,6 +8,22 @@ if (preg_match('#^/monshin/assets/([a-z0-9-]+\.webp)$#', $uri, $m)) {
     return true;
 }
 if ($uri === '/monshin' || str_starts_with($uri, '/monshin/')) {
+    // 予約申請フォームの画面（静的ファイル）
+    if (preg_match('#^/monshin/intake/(?:([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)?))?$#', $uri, $m)) {
+        $f = __DIR__ . '/../monshin/intake/' . (($m[1] ?? '') !== '' ? $m[1] : 'index.html');
+        if (!is_file($f)) {
+            http_response_code(404);
+            return true;
+        }
+        $types = ['html' => 'text/html; charset=utf-8', 'js' => 'text/javascript', 'css' => 'text/css', 'json' => 'application/json', 'png' => 'image/png', 'webp' => 'image/webp'];
+        header('Content-Type: ' . ($types[pathinfo($f, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
+        readfile($f);
+        return true;
+    }
+    if (preg_match('#^/monshin/(intake-[a-z0-9-]+|liff-diagnostic-v1)\.php$#', $uri, $m)) {
+        require __DIR__ . '/../monshin/' . $m[1] . '.php';
+        return true;
+    }
     $file = match (true) {
         $uri === '/monshin/line.php' => 'line.php',
         $uri === '/monshin/liff/api.php' => 'liff/api.php',

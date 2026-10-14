@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- テストでは応答の JSON をそのまま調べる */
 import { createHmac } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { addDays, nowInClinic, toIso } from "@/lib/domain/time";
@@ -75,5 +75,33 @@ describe("LINE の問診票", () => {
     // ID トークンが確かめられなければ断る
     const bad = await fetch(`${h.srv.base}/monshin/liff/api.php`, { method: "POST", headers: { "Content-Type": "application/json", Origin: h.srv.base }, body: JSON.stringify({ idToken: "forged", action: "context" }) });
     expect(bad.status).toBe(403);
+  });
+});
+
+describe("予約申請フォーム（monshin/intake/）", () => {
+  it("申請の文面が LINE に届くと記録に印が付き、フォームの確認（intake-status）で届いたとわかる", async () => {
+    await setup();
+    const q = path.join(h.srv.dir, "intakeq");
+    mkdirSync(path.join(q, "intake-records"), { recursive: true });
+    const rec = path.join(q, "intake-records", `${RID}.json`);
+    writeFileSync(rec, JSON.stringify({ requestId: RID, type: "reservation_intake", status: "submitted", source: { type: "user", userId: USER }, intake: { visitType: "initial" } }));
+    // フォームが受け取る確認用の印（intake-submit-v1.php と同じ作り）
+    const b64 = (s: string | Buffer) => Buffer.from(s).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const body = b64(JSON.stringify({ r: RID, u: USER, iat: 1, exp: Math.floor(Date.now() / 1000) + 600 }));
+    const token = `${body}.${b64(createHmac("sha256", "s".repeat(40)).update(body).digest())}`;
+    const status = async () => (await (await fetch(`${h.srv.base}/monshin/intake-status-v1.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) })).json()) as any;
+    expect((await status()).lineMessageReceived).toBe(false);
+    // 別の人の LINE から同じ番号が送られても印は付けない
+    const other = { ...text(`受診区分：①初診\n\n予約申請ID：${RID}`), source: { type: "user", userId: OTHER } };
+    await webhook([other]);
+    expect(JSON.parse(readFileSync(rec, "utf8")).lineMessageReceivedAt).toBeUndefined();
+    expect((await webhook([text(`【美容皮膚科・初診予約申請】\n受診区分：①初診\n\n予約申請ID：${RID}`)])).data.replied).toBe(1);
+    expect(JSON.parse(readFileSync(rec, "utf8")).status).toBe("line_message_received");
+    expect((await status()).lineMessageReceived).toBe(true);
+    // 設定（LIFF ID・特別診療日）だけを返し、秘密の値は返さない
+    const conf = await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json();
+    expect(conf).toMatchObject({ ok: true, liffId: "1234567890-AbCdEfGh" });
+    expect(JSON.stringify(conf)).not.toContain("s".repeat(40));
+    expect((await fetch(`${h.srv.base}/monshin/intake/`)).status).toBe(200);
   });
 });
