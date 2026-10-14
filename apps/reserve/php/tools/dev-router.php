@@ -2,6 +2,11 @@
 // 開発用：php -S で API だけを動かすときの入口（サーバーには置かない）。画面は next dev が出し、/api/* をここへ回す
 $uri = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 // 患者の問診票（ログイン不要の送信ページ）
+if (preg_match('#^/monshin/assets/([a-z0-9-]+\.webp)$#', $uri, $m)) {
+    header('Content-Type: image/webp');
+    readfile(__DIR__ . '/../monshin/assets/' . $m[1]);
+    return true;
+}
 if ($uri === '/monshin' || str_starts_with($uri, '/monshin/')) {
     $file = match (true) {
         $uri === '/monshin/line.php' => 'line.php',

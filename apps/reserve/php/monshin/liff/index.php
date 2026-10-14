@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../../lib/bootstrap.php';
+require __DIR__ . '/../theme.php';
 
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -30,33 +31,11 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>問診票｜<?= $h($clinic) ?></title>
-<style>
-:root{--ink:#2b2a33;--sub:#6b6878;--line:#dcd8e6;--bg:#f7f5fb;--accent:#6b4fbb;--err:#c0392b}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:16px}
-main{max-width:640px;margin:0 auto;padding:20px 16px 64px}
-h1{font-size:21px;margin:0 0 2px}
-.clinic{color:var(--sub);font-size:14px;margin:0 0 14px}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 12px}
-.known dt{color:var(--sub);font-size:13px}.known dd{margin:0 0 6px;font-weight:600}
-.q{display:block;font-weight:600;margin:0 0 8px}
-.req{color:#fff;background:var(--err);font-size:11px;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px}
-input[type=text],input[type=tel],input[type=email],input[type=date],textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
-textarea{min-height:96px;resize:vertical}
-.opt{display:flex;gap:8px;align-items:center;padding:6px 0}.opt input{width:20px;height:20px;margin:0}
-.msg{color:var(--err);font-size:14px;margin:6px 0 0}
-.alert{background:#fdecea;color:var(--err);border-radius:8px;padding:12px;margin:0 0 16px}
-.muted{color:var(--sub);font-size:14px}
-button{width:100%;font:inherit;font-weight:700;color:#fff;background:var(--accent);border:0;border-radius:10px;padding:14px;margin-top:8px;cursor:pointer}
-button.sub{background:#fff;color:var(--accent);border:1px solid var(--accent)}
-button:disabled{opacity:.6}
-.pre{white-space:pre-wrap}
-</style>
+<style><?= monshin_style('../') ?></style>
 </head>
 <body>
 <main>
-<h1 id="title">問診票</h1>
-<p class="clinic"><?= $h($clinic) ?></p>
+<?= monshin_header('../', '問診票', $clinic) ?>
 <div id="app"><p class="muted">読み込み中…</p></div>
 </main>
 <?php if (!$test): ?><script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script><?php endif; ?>

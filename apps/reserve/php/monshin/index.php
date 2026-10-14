@@ -7,12 +7,13 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../lib/bootstrap.php';
+require __DIR__ . '/theme.php';
 
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: no-referrer');
-header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 header_remove('X-Powered-By');
 
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -71,33 +72,11 @@ $picked = function (string $id, string $opt) use ($post): bool {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title><?= $h($title) ?></title>
-<style>
-:root{--ink:#2b2a33;--sub:#6b6878;--line:#dcd8e6;--bg:#f7f5fb;--accent:#6b4fbb;--err:#c0392b}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.7;font-size:16px}
-main{max-width:640px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:22px;margin:0 0 4px}
-.clinic{color:var(--sub);font-size:14px;margin:0 0 16px}
-.intro{white-space:pre-wrap;margin:0 0 20px}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 12px}
-label.q,legend.q{display:block;font-weight:600;margin:0 0 8px;padding:0}
-fieldset{border:0;margin:0;padding:0;min-width:0}
-.req{color:#fff;background:var(--err);font-size:11px;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px}
-input[type=text],input[type=tel],input[type=email],input[type=date],textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
-textarea{min-height:96px;resize:vertical}
-.opt{display:flex;gap:8px;align-items:center;padding:6px 0}
-.opt input{width:20px;height:20px;margin:0}
-.msg{color:var(--err);font-size:14px;margin:6px 0 0}
-.alert{background:#fdecea;color:var(--err);border-radius:8px;padding:12px;margin:0 0 16px}
-button{width:100%;font:inherit;font-weight:700;color:#fff;background:var(--accent);border:0;border-radius:10px;padding:14px;margin-top:8px;cursor:pointer}
-.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
-.done{white-space:pre-wrap}
-</style>
+<style><?= monshin_style('') ?></style>
 </head>
 <body>
 <main>
-<h1><?= $h($form['title']) ?></h1>
-<p class="clinic"><?= $h($clinic['name'] ?? '') ?></p>
+<?= monshin_header('', $form['title'], (string) ($clinic['name'] ?? '')) ?>
 <?php if ($done): ?>
   <div class="card done"><?= $h($form['done']) ?></div>
 <?php else: ?>
