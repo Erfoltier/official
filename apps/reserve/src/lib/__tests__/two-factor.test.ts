@@ -36,7 +36,7 @@ describe("二要素認証", () => {
     const ns = await admin.post("/staff", { name: "看護（二要素）", role: "nurse", pin: "246810" });
     // 必須にする前は、PIN だけでログインできる
     expect((await pinLogin(ns.id, "246810")).r.id).toBe(ns.id);
-    expect(await admin.post("/security", { require2fa: true })).toEqual({ require2fa: true });
+    expect(await admin.post("/security", { require2fa: true })).toMatchObject({ require2fa: true, requireDevice: false });
 
     const first = await pinLogin(ns.id, "246810");
     expect(first.r.need).toBe("enroll");
