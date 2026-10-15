@@ -59,13 +59,13 @@ describe("M3 の患者一覧で未確認の問診票を照合", () => {
     ];
     const r = matchQuestionnairesM3(qs, patients, rows, col);
     expect(r.links).toEqual([
-      { questionnaireId: "q1", label: "山田花子", m3ChartNo: "1001", patientId: "p-a", via: "nameBirth" },
-      { questionnaireId: "q2", label: "鈴木 一郎", m3ChartNo: "1002", patientId: "p-b2", via: "number" },
-      { questionnaireId: "q6", label: "高橋 予約", m3ChartNo: "1006", patientId: "p-c", via: "nameOnly" },
-      { questionnaireId: "q8", label: "髙木ゆれ", m3ChartNo: "1009", patientId: "p-e", via: "loose" },
+      { questionnaireId: "q1", label: "山田花子", m3ChartNo: "1001", m3Kana: "ヤマダ ハナコ", patientId: "p-a", via: "nameBirth" },
+      { questionnaireId: "q2", label: "鈴木 一郎", m3ChartNo: "1002", m3Kana: "スズキ イチロウ", patientId: "p-b2", via: "number" },
+      { questionnaireId: "q6", label: "高橋 予約", m3ChartNo: "1006", m3Kana: "タカハシ ヨヤク", patientId: "p-c", via: "nameOnly" },
+      { questionnaireId: "q8", label: "髙木ゆれ", m3ChartNo: "1009", m3Kana: "タカギ ユウコ", patientId: "p-e", via: "loose" },
     ]);
     expect(r.creates).toEqual([
-      { questionnaireId: "q3", label: "佐藤 三郎", m3ChartNo: "1003", create: { name: "佐藤 三郎", kana: "サトウ サブロウ", birthDate: "1970-07-08" } },
+      { questionnaireId: "q3", label: "佐藤 三郎", m3ChartNo: "1003", m3Kana: "サトウ サブロウ", create: { name: "佐藤 三郎", kana: "サトウ サブロウ", birthDate: "1970-07-08" } },
     ]);
     expect(r.ambiguous).toBe(2);
     expect(r.notFound).toBe(1);
