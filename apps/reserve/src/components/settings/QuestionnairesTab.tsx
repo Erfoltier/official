@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Questionnaire } from "@/lib/domain/types";
 import { createBackup, deleteQuestionnaire, fetchUnmatchedQuestionnaires, linkQuestionnaire, refillQuestionnaires, relinkQuestionnaires } from "@/components/calendar/api";
+import { M3QuestionnaireCard } from "./M3QuestionnaireCard";
 import { MonshinCard } from "./MonshinCard";
 import styles from "./settings.module.css";
 
@@ -152,6 +153,7 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
           </tbody>
         </table>
       )}
+      {isAdmin && <M3QuestionnaireCard notify={notify} fail={fail} onDone={load} />}
       {isAdmin && <MonshinCard notify={notify} fail={fail} />}
     </section>
   );

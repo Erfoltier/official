@@ -204,3 +204,113 @@ export function matchM3(candidates: M3Candidate[], rows: string[][], col: M3Colu
   }
   return out;
 }
+
+// ---- 未確認の問診票を、M3 の患者一覧で照合する ----
+
+export interface M3Questionnaire {
+  id: string;
+  name: string;
+  kana?: string;
+  birthDate?: string;
+  phone?: string;
+}
+
+/** 照合の結果1件。patientId があればいる患者へ、create があれば M3 の行から新しく登録して結びつける */
+export interface M3QuestionnaireLink {
+  questionnaireId: string;
+  /** 問診票の氏名（確認の表示用） */
+  label: string;
+  m3ChartNo: string;
+  patientId?: string;
+  create?: { name: string; kana: string; birthDate?: string; phone?: string };
+  /** 同じ人と見られる患者が予約カレンダーに複数いた（M3 番号で1人に決めた／番号がなく最も古い患者に決めた） */
+  duplicates?: number;
+}
+
+export interface M3QuestionnaireResult {
+  /** いる患者に結びつく */
+  links: M3QuestionnaireLink[];
+  /** 予約カレンダーにいないので、M3 の行から新しく登録して結びつく */
+  creates: M3QuestionnaireLink[];
+  /** M3 で候補が2人以上（決められない） */
+  ambiguous: number;
+  /** M3 にも見つからない（来院していない・名前や生年月日の書き違いなど） */
+  notFound: number;
+}
+
+/**
+ * 問診票（氏名かフリガナ＋生年月日か電話）で M3 の行を1つに決め、その M3 番号・氏名・フリガナで予約カレンダーの患者を探す。
+ * 予約カレンダーの患者が複数（重複）なら、M3 番号を持つ患者、なければ診察券番号の若い患者に結びつける
+ */
+export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candidate[], rows: string[][], col: M3Columns): M3QuestionnaireResult {
+  const cell = (r: string[], i: number) => (i >= 0 ? (r[i] ?? "").trim() : "");
+  const clean = (v: string) => v.normalize("NFKC").replace(/[\s　]+/g, " ").trim();
+  const add = (m: Map<string, number[]>, k: string, i: number) => {
+    if (!k) return;
+    const a = m.get(k);
+    if (a) {
+      if (a[a.length - 1] !== i) a.push(i);
+    } else m.set(k, [i]);
+  };
+  const byName = new Map<string, number[]>();
+  rows.forEach((r, i) => {
+    add(byName, kanaKey(cell(r, col.name)), i);
+    add(byName, kanaKey(cell(r, col.kana)), i);
+  });
+  const rowPhones = (r: string[]) => col.phone.map((p) => digitsKey(cell(r, p))).filter((d) => d.length >= 10);
+
+  const pByChart = new Map<string, M3Candidate[]>();
+  const pByName = new Map<string, M3Candidate[]>();
+  const push = <T,>(m: Map<string, T[]>, k: string, v: T) => {
+    if (!k) return;
+    const a = m.get(k);
+    if (a) {
+      if (!a.includes(v)) a.push(v);
+    } else m.set(k, [v]);
+  };
+  for (const p of patients) {
+    push(pByChart, chartKey(p.m3ChartNo), p);
+    push(pByName, kanaKey(p.name), p);
+    push(pByName, kanaKey(p.kana), p);
+  }
+  const older = (a: M3Candidate, b: M3Candidate) => (Number(chartKey(a.chartNo) || 1e12) - Number(chartKey(b.chartNo) || 1e12)) || a.id.localeCompare(b.id);
+
+  const out: M3QuestionnaireResult = { links: [], creates: [], ambiguous: 0, notFound: 0 };
+  for (const q of qs) {
+    const keys = [...new Set([kanaKey(q.name), kanaKey(q.kana)].filter(Boolean))];
+    const tel = digitsKey(q.phone);
+    const hits = [...new Set(keys.flatMap((k) => byName.get(k) ?? []))].filter((i) => {
+      const r = rows[i];
+      return (q.birthDate && birthKey(cell(r, col.birth)) === q.birthDate) || (tel.length >= 10 && rowPhones(r).includes(tel));
+    });
+    if (hits.length === 0) {
+      out.notFound++;
+      continue;
+    }
+    if (hits.length > 1) {
+      out.ambiguous++;
+      continue;
+    }
+    const r = rows[hits[0]];
+    const m3 = cell(r, col.chart).normalize("NFKC");
+    const name = clean(cell(r, col.name)) || clean(q.name);
+    const kana = clean(cell(r, col.kana));
+    const birth = birthKey(cell(r, col.birth)) || q.birthDate;
+    const phone = col.phone.map((p) => clean(cell(r, p))).find((x) => digitsKey(x).length >= 10) || q.phone;
+    // 予約カレンダーの患者：まず M3 番号、なければ M3 の氏名・フリガナ＋生年月日か電話
+    let found = m3 ? (pByChart.get(chartKey(m3)) ?? []) : [];
+    if (found.length === 0) {
+      const nk = [...new Set([kanaKey(name), kanaKey(kana), ...keys].filter(Boolean))];
+      const rt = [...new Set([...rowPhones(r), tel].filter((d) => d.length >= 10))];
+      found = [...new Set(nk.flatMap((k) => pByName.get(k) ?? []))].filter((p) => (birth && p.birthDate === birth) || rt.includes(digitsKey(p.phone)));
+    }
+    const base = { questionnaireId: q.id, label: q.name, m3ChartNo: m3 };
+    if (found.length === 0) {
+      out.creates.push({ ...base, create: { name, kana, ...(birth && { birthDate: birth }), ...(phone && { phone }) } });
+      continue;
+    }
+    const pick = found.find((p) => m3 && chartKey(p.m3ChartNo) === chartKey(m3)) ?? [...found].sort(older)[0];
+    out.links.push({ ...base, patientId: pick.id, ...(found.length > 1 && { duplicates: found.length }) });
+  }
+  return out;
+}

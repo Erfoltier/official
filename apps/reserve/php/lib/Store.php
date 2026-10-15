@@ -4474,6 +4474,103 @@ final class Store
         return ['updated' => $updated, 'skipped' => count($items) - $updated];
     }
 
+    /** M3 の患者一覧（CSV）で未確認の問診票を照合するための材料（画面の中で照合する。院長・管理者） */
+    public static function m3QuestionnaireCandidates(): array
+    {
+        self::init();
+        $qs = [];
+        foreach (Db::i()->where('questionnaire', 'k2', '') as $q) {
+            if (empty($q['patientId']) && empty($q['deleted'])) {
+                $qs[] = array_filter(['id' => $q['id'], 'name' => $q['name'], 'kana' => $q['kana'] ?? null, 'birthDate' => $q['birthDate'] ?? null, 'phone' => $q['phone'] ?? null], fn($v) => $v !== null);
+            }
+        }
+        $ps = [];
+        foreach (self::patients() as $p) {
+            if (empty($p['deleted'])) {
+                $ps[] = array_filter([
+                    'id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'] ?? '', 'birthDate' => $p['birthDate'] ?? null, 'phone' => $p['phone'] ?? null,
+                    'chartNo' => $p['chartNo'] ?? '', 'm3ChartNo' => $p['m3ChartNo'] ?? null,
+                ], fn($v) => $v !== null);
+            }
+        }
+        return ['questionnaires' => $qs, 'patients' => $ps];
+    }
+
+    /**
+     * M3 の患者一覧で特定できた問診票を結びつける。items：{questionnaireId, m3ChartNo, patientId?（いる患者）| create?（M3 の行から新しく登録）}。
+     * いる患者に M3 番号がなければ補う。新しく登録する前に、同じ M3 番号の患者がいればそちらへ結びつける
+     */
+    public static function applyM3Questionnaires(array $items, array $by): array
+    {
+        self::init();
+        $out = ['linked' => 0, 'created' => 0, 'skipped' => 0];
+        Db::i()->transaction(function () use ($items, $by, &$out) {
+            foreach ($items as $it) {
+                $q = Db::i()->get('questionnaire', (string) $it['questionnaireId']);
+                if (!$q || !empty($q['deleted']) || !empty($q['patientId'])) {
+                    $out['skipped']++;
+                    continue;
+                }
+                $m3 = js_trim(normalize_width((string) ($it['m3ChartNo'] ?? '')));
+                $pid = null;
+                if (!empty($it['patientId'])) {
+                    $p = self::patients()[$it['patientId']] ?? null;
+                    $pid = $p && empty($p['deleted']) ? $p['id'] : null;
+                }
+                if ($pid === null && $m3 !== '') {
+                    foreach (self::patients() as $p) {
+                        if (empty($p['deleted']) && ($p['m3ChartNo'] ?? '') === $m3) {
+                            $pid = $p['id'];
+                            break;
+                        }
+                    }
+                }
+                if ($pid === null && is_array($it['create'] ?? null)) {
+                    $c = $it['create'];
+                    $fields = ['name' => (string) $c['name'], 'kana' => (string) ($c['kana'] ?? '')];
+                    foreach (['birthDate', 'phone'] as $k) {
+                        if (($c[$k] ?? '') !== '') {
+                            $fields[$k] = (string) $c[$k];
+                        }
+                    }
+                    if ($m3 !== '') {
+                        $fields['m3ChartNo'] = $m3;
+                    }
+                    try {
+                        $pid = self::createPatient($fields, $by)['id'];
+                        $out['created']++;
+                    } catch (StoreError) {
+                        $out['skipped']++;
+                        continue;
+                    }
+                }
+                if ($pid === null) {
+                    $out['skipped']++;
+                    continue;
+                }
+                // 新しく登録したときは、登録の自動照合でもう結びついていることがある
+                $q = Db::i()->get('questionnaire', $q['id']);
+                if (empty($q['patientId'])) {
+                    $next = [...$q, 'patientId' => $pid, 'linkedBy' => ['id' => 'm3-match', 'name' => 'M3照合']];
+                    Db::i()->put('questionnaire', $q['id'], $next);
+                    self::fillPatientFromQuestionnaire($pid, $next);
+                }
+                $cur = self::patients()[$pid];
+                if ($m3 !== '' && ($cur['m3ChartNo'] ?? '') === '') {
+                    try {
+                        self::patientFields(['m3ChartNo' => $m3], $pid);
+                        self::updatePatient($pid, ['m3ChartNo' => $m3, 'version' => $cur['version']], ['id' => 'm3-match', 'name' => 'M3照合']);
+                    } catch (StoreError) {
+                        // ほかの患者と重なる番号は入れない
+                    }
+                }
+                $out['linked']++;
+            }
+        });
+        Auth::audit($by, "M3の患者一覧で未確認の問診票を照合（結びつけ{$out['linked']}件・新規登録{$out['created']}名）");
+        return $out;
+    }
+
     /**
      * 未確認（患者と結びついていない）の問診票を、受け取ったときと同じ照合でもう一度探して結びつける。
      * $onlyPatientId を渡すと、その患者に合うものだけ（患者の登録・更新のあと）。戻り値は結びつけた件数

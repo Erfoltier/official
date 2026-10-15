@@ -541,6 +541,41 @@ try {
         Http::json(Store::applyM3Fill($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
     }
 
+    // ---- M3 の患者一覧（CSV）で未確認の問診票を照合（院長・管理者）。CSV は画面の中だけで読み、特定できた分だけ届く ----
+    if ($route === 'GET admin/m3-questionnaires') {
+        $s = $me(STAFF_ADMIN);
+        $r = Store::m3QuestionnaireCandidates();
+        Auth::noteAccess($s, 'M3照合のため未確認の問診票と患者を表示', 'questionnaires:' . count($r['questionnaires']));
+        Http::json($r);
+    }
+    if ($route === 'POST admin/m3-questionnaires') {
+        $s = $me(STAFF_ADMIN);
+        set_time_limit(300);
+        $in = Http::readJson(300_000);
+        if (!is_array($in) || ($in['confirm'] ?? null) !== 'APPLY' || !is_array($in['items'] ?? null) || count($in['items']) > 500) {
+            Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"APPLY","items":[…]} を送ってください'], 400);
+        }
+        $str = fn($v, int $max) => is_string($v) && mb_strlen($v) <= $max ? $v : null;
+        $items = [];
+        foreach ($in['items'] as $x) {
+            $qid = $str($x['questionnaireId'] ?? null, 64);
+            if ($qid === null) {
+                continue;
+            }
+            $c = is_array($x['create'] ?? null) && $str($x['create']['name'] ?? null, 60) ? [
+                'name' => $x['create']['name'], 'kana' => $str($x['create']['kana'] ?? '', 60) ?? '',
+                'birthDate' => $str($x['create']['birthDate'] ?? '', 10) ?? '', 'phone' => $str($x['create']['phone'] ?? '', 20) ?? '',
+            ] : null;
+            $items[] = ['questionnaireId' => $qid, 'patientId' => $str($x['patientId'] ?? null, 64), 'm3ChartNo' => $str($x['m3ChartNo'] ?? '', 20) ?? '', 'create' => $c];
+        }
+        $b = null;
+        if (($in['backup'] ?? true) !== false) {
+            $b = Db::i()->backupDocs();
+            Auth::audit($actor($s), 'M3で問診票を照合する前に保存データの控えを作成：' . $b['file']);
+        }
+        Http::json(Store::applyM3Questionnaires($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
+    }
+
     // ---- 整った控え（バックアップ）をサーバーの data/backups/ に作る（院長・管理者） ----
     if ($route === 'POST admin/backup') {
         $s = $me(STAFF_ADMIN);
