@@ -19,6 +19,8 @@ export interface M3Candidate {
   phone?: string;
   chartNo: string;
   m3ChartNo?: string;
+  /** 別の表記（旧姓・漢字など） */
+  nameAlt?: string;
 }
 
 export interface M3Fill {
@@ -274,6 +276,7 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
     push(pByChart, chartKey(p.m3ChartNo), p);
     push(pByName, kanaKey(p.name), p);
     push(pByName, kanaKey(p.kana), p);
+    push(pByName, kanaKey(p.nameAlt), p);
   }
   const older = (a: M3Candidate, b: M3Candidate) => (Number(chartKey(a.chartNo) || 1e12) - Number(chartKey(b.chartNo) || 1e12)) || a.id.localeCompare(b.id);
 

@@ -4488,7 +4488,7 @@ final class Store
         foreach (self::patients() as $p) {
             if (empty($p['deleted'])) {
                 $ps[] = array_filter([
-                    'id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'] ?? '', 'birthDate' => $p['birthDate'] ?? null, 'phone' => $p['phone'] ?? null,
+                    'id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'] ?? '', 'nameAlt' => $p['nameAlt'] ?? null, 'birthDate' => $p['birthDate'] ?? null, 'phone' => $p['phone'] ?? null,
                     'chartNo' => $p['chartNo'] ?? '', 'm3ChartNo' => $p['m3ChartNo'] ?? null,
                 ], fn($v) => $v !== null);
             }
