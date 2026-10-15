@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 import type { Questionnaire } from "@/lib/domain/types";
 import { fetchQuestionnaire, searchQuestionnaires, type QuestionnaireRow } from "@/components/calendar/api";
 import { patientPath } from "@/lib/paths";
-import styles from "./questionnaires.module.css";
+import styles from "./list.module.css";
 
 const SOURCE: Record<QuestionnaireRow["source"], string> = { line: "LINE", web: "Web", form: "Google" };
 
