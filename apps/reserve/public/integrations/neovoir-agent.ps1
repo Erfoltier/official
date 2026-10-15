@@ -29,6 +29,8 @@ param([switch]$Setup, [switch]$Preview, [switch]$Backfill, [switch]$Uninstall, [
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# 予約カレンダー（AWS）は TLS1.3 だけを受け付ける。使えるパソコン（Windows 11 など）では TLS1.3 も出す
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]12288 } catch { }
 $Dir = Join-Path $env:LOCALAPPDATA 'ReserveNeovoir'
 $ConfigFile = Join-Path $Dir 'config.json'
 $SentFile = Join-Path $Dir 'sent.txt'
