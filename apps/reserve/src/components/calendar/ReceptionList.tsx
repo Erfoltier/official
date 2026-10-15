@@ -65,6 +65,47 @@ export function ReceptionList(props: Props) {
       // 保存できなくても表示は切り替える
     }
   };
+  /** 一覧の幅（右の端をつまんで変える。この端末に覚えておく）。null は標準の幅 */
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    try {
+      const w = Number(localStorage.getItem("receptionWidth"));
+      // 端末に保存した幅を、開いたあとに読む
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (w >= 260) setWidth(w);
+    } catch {
+      // 保存できない端末では標準の幅
+    }
+  }, []);
+  const saveWidth = (w: number | null) => {
+    setWidth(w);
+    try {
+      if (w === null) localStorage.removeItem("receptionWidth");
+      else localStorage.setItem("receptionWidth", String(Math.round(w)));
+    } catch {
+      // 保存できなくても幅は変える
+    }
+  };
+  const clampWidth = (w: number) => Math.max(260, Math.min(w, Math.max(320, window.innerWidth * 0.75)));
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const aside = e.currentTarget.parentElement;
+    if (!aside) return;
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = aside.getBoundingClientRect().width;
+    let last = w0;
+    const move = (ev: PointerEvent) => {
+      last = clampWidth(w0 + ev.clientX - x0);
+      setWidth(last);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      saveWidth(last);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   /** 1行表示のときに、展開して詳しく見ている行（患者ID） */
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const toggleRow = (pid: string) =>
@@ -111,7 +152,31 @@ export function ReceptionList(props: Props) {
     <>
       {/* スマホで一覧の外を押したら閉じる */}
       <div className={styles.receptionBackdrop} onClick={props.onClose} aria-hidden />
-      <aside className={styles.reception} data-ui-zoom aria-label="受付一覧" data-enter={animate || undefined} data-compact={compact || undefined}>
+      <aside
+        className={styles.reception}
+        data-ui-zoom
+        aria-label="受付一覧"
+        data-enter={animate || undefined}
+        data-compact={compact || undefined}
+        data-resized={width !== null || undefined}
+        style={width !== null ? ({ "--rw": `${width}px` } as CSSProperties) : undefined}
+      >
+        <div
+          className={styles.receptionResize}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="受付一覧の幅"
+          tabIndex={0}
+          title="左右にドラッグして幅を変えられます（ダブルクリックで元の幅）"
+          onPointerDown={startResize}
+          onDoubleClick={() => saveWidth(null)}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const cur = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 340;
+            saveWidth(clampWidth(cur + (e.key === "ArrowRight" ? 40 : -40)));
+          }}
+        />
         <div className={styles.receptionHead}>
           <b>受付一覧</b>
           <span className={styles.receptionCount}>{groups.length}人</span>

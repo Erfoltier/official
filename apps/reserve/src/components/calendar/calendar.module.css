@@ -1656,6 +1656,37 @@ button.stagePill[data-clickable]:disabled {
   .reception[data-compact] {
     width: min(420px, 36vw);
   }
+  /* 右の端をつまんで変えた幅（広げるほど、メニューの流れと受付メモが長く見える） */
+  .reception[data-resized] {
+    width: var(--rw);
+  }
+}
+
+.reception {
+  position: relative;
+}
+
+.receptionResize {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 8px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.receptionResize:hover,
+.receptionResize:focus-visible {
+  background: linear-gradient(90deg, transparent 3px, var(--accent-line, #9aa5b1) 3px, var(--accent-line, #9aa5b1) 5px, transparent 5px);
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  .receptionResize {
+    display: none;
+  }
 }
 
 .receptionRow[data-oneline] {
@@ -1696,7 +1727,8 @@ button.stagePill[data-clickable]:disabled {
 }
 
 .receptionRow[data-oneline] .receptionMenu {
-  max-width: 4.2em;
+  flex: 0 1 auto;
+  max-width: 45%;
   margin-left: 0;
 }
 
@@ -1714,7 +1746,7 @@ button.stagePill[data-clickable]:disabled {
   justify-content: flex-start;
   margin-left: 0;
   flex: 0 1 auto;
-  max-width: 4.2em;
+  max-width: 55%;
 }
 
 .receptionRow[data-oneline] .receptionStage {
