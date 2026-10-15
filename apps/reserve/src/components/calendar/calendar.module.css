@@ -1439,6 +1439,10 @@ button.treatChip[data-active] {
   max-width: 7.5em;
 }
 
+.reception[data-compact] .receptionHead .select {
+  max-width: 6.5em;
+}
+
 .receptionEmpty {
   margin: 16px;
   color: var(--text-muted);
@@ -1645,6 +1649,145 @@ button.stagePill[data-clickable]:disabled {
 .receptionMemoBtns button {
   padding: 2px 10px;
   font-size: 12px;
+}
+
+/* ===== 1行表示（M3 の受付一覧のように1人1行。時刻・氏名・メニュー・状態・受付メモが列でそろう） ===== */
+@media (min-width: 761px) {
+  .reception[data-compact] {
+    width: min(420px, 36vw);
+  }
+}
+
+.receptionRow[data-oneline] {
+  grid-template-columns: minmax(0, 1.2fr) 4.6em minmax(0, 1fr) 1.3em;
+  grid-template-areas: "hit stage memo exp";
+  align-items: center;
+  gap: 0 6px;
+  padding: 1px 4px 1px 6px;
+  margin: 0;
+  border-radius: 0;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 1px solid var(--line);
+  border-left-width: 3px;
+  box-shadow: none;
+  min-height: 26px;
+}
+
+.receptionRow[data-oneline] .receptionTime {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 3px;
+  width: 4.6em;
+  font-size: 12.5px;
+}
+
+.receptionRow[data-oneline] .receptionTime {
+  width: 4.4em;
+}
+
+.receptionRow[data-oneline] .receptionTime small {
+  max-width: 2.2em;
+}
+
+.receptionRow[data-oneline] .receptionName {
+  flex: 1 1 auto;
+  min-width: 4.5em;
+}
+
+.receptionRow[data-oneline] .receptionMenu {
+  max-width: 4.2em;
+  margin-left: 0;
+}
+
+.receptionRow[data-oneline] .receptionHit {
+  gap: 4px;
+}
+
+.receptionRow[data-oneline] .receptionName {
+  font-size: 12.5px;
+}
+
+.receptionRow[data-oneline] .receptionSteps {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  justify-content: flex-start;
+  margin-left: 0;
+  flex: 0 1 auto;
+  max-width: 4.2em;
+}
+
+.receptionRow[data-oneline] .receptionStage {
+  flex-direction: row;
+  max-width: none;
+  overflow: hidden;
+}
+
+.receptionRow[data-oneline] .receptionStage .stagePill[data-note] {
+  display: none;
+}
+
+.receptionRow[data-oneline] button.stagePill[data-clickable] {
+  line-height: 1.6;
+  padding: 0 6px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receptionRow[data-oneline] .receptionMemo:not([data-editing]) {
+  min-height: 0;
+  padding: 1px 6px;
+  -webkit-line-clamp: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.receptionRow[data-oneline] .receptionMemo[data-editing] {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  padding: 4px 0;
+}
+
+.receptionRow[data-oneline] .qMissing {
+  font-size: 10px;
+  padding: 0 4px;
+}
+
+.receptionRows:has(.receptionRow[data-oneline]) {
+  padding: 2px 4px 12px;
+}
+
+.receptionExpand {
+  grid-area: exp;
+  align-self: start;
+  justify-self: end;
+  width: 1.4em;
+  height: 1.6em;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.receptionExpand:hover {
+  background: var(--tint);
+  color: var(--text);
+}
+
+/* 1行表示の中で展開した行：詳しい表示に、右上の閉じるボタンを足す */
+.reception[data-compact] .receptionRow:not([data-oneline]) {
+  grid-template-columns: auto minmax(0, 1fr) 1.4em;
+  grid-template-areas: "hit hit exp" "stage memo memo";
+}
+
+.reception[data-compact] .receptionRow:not([data-oneline]) .receptionMemo {
+  -webkit-line-clamp: unset;
 }
 
 /* 状態を変える窓（行の下に出す） */

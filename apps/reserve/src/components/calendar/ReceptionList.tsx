@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { DayBundle, Menu, Patient, Reservation } from "@/lib/domain/types";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { formatHm, minutesOfDay } from "@/lib/domain/time";
@@ -44,6 +44,36 @@ export function ReceptionList(props: Props) {
   const menus = useMemo(() => new Map<string, Menu>(bundle.menus.map((m) => [m.id, m])), [bundle.menus]);
   /** 状態を変える窓を開いている予約 */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** 1行表示（M3 の受付一覧のように、1人1行。受付メモが縦にそろう）。この端末に覚えておく */
+  const [compact, setCompact] = useState(true);
+  useEffect(() => {
+    try {
+      // 端末に保存した表示の好みを、開いたあとに読む（保存がなければ1行表示のまま）
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (localStorage.getItem("receptionCompact") === "0") setCompact(false);
+    } catch {
+      // 保存できない端末では毎回1行表示
+    }
+  }, []);
+  const toggleCompact = () => {
+    const next = !compact;
+    setCompact(next);
+    setExpanded(new Set());
+    try {
+      localStorage.setItem("receptionCompact", next ? "1" : "0");
+    } catch {
+      // 保存できなくても表示は切り替える
+    }
+  };
+  /** 1行表示のときに、展開して詳しく見ている行（患者ID） */
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleRow = (pid: string) =>
+    setExpanded((cur) => {
+      const n = new Set(cur);
+      if (n.has(pid)) n.delete(pid);
+      else n.add(pid);
+      return n;
+    });
 
   const rows = useMemo(
     () =>
@@ -81,7 +111,7 @@ export function ReceptionList(props: Props) {
     <>
       {/* スマホで一覧の外を押したら閉じる */}
       <div className={styles.receptionBackdrop} onClick={props.onClose} aria-hidden />
-      <aside className={styles.reception} data-ui-zoom aria-label="受付一覧" data-enter={animate || undefined}>
+      <aside className={styles.reception} data-ui-zoom aria-label="受付一覧" data-enter={animate || undefined} data-compact={compact || undefined}>
         <div className={styles.receptionHead}>
           <b>受付一覧</b>
           <span className={styles.receptionCount}>{groups.length}人</span>
@@ -98,6 +128,15 @@ export function ReceptionList(props: Props) {
               </option>
             ))}
           </select>
+          <button
+            className={styles.iconBtn}
+            onClick={toggleCompact}
+            aria-pressed={compact}
+            aria-label={compact ? "詳しい表示に切り替え" : "1行表示に切り替え"}
+            title={compact ? "詳しい表示に切り替え（1人を2段で表示）" : "1行表示に切り替え（1人1行で、多くの患者を表示）"}
+          >
+            {compact ? "▤" : "≡"}
+          </button>
           <button className={styles.iconBtn} onClick={props.onClose} aria-label="受付一覧を閉じる" title="閉じる">
             «
           </button>
@@ -118,10 +157,12 @@ export function ReceptionList(props: Props) {
             const done = sv.stage?.phase === "done";
             const past = nowMinutes !== null && end <= nowMinutes;
             const open = pickerFor === r.id;
+            const oneLine = compact && !expanded.has(r.patientId);
             return (
               <li key={r.id}>
                 <div
                   className={styles.receptionRow}
+                  data-oneline={oneLine || undefined}
                   data-selected={list.some((x) => x.id === selectedId) || undefined}
                   data-dim={inactive || done || undefined}
                   data-past={past || undefined}
@@ -182,6 +223,18 @@ export function ReceptionList(props: Props) {
                       masked={maskNames}
                       onSave={props.onReceptionNote}
                     />
+                  )}
+                  {compact && (
+                    <button
+                      type="button"
+                      className={styles.receptionExpand}
+                      onClick={() => toggleRow(r.patientId)}
+                      aria-expanded={!oneLine}
+                      aria-label={oneLine ? "この患者を展開" : "1行に戻す"}
+                      title={oneLine ? "展開して、メニューの流れと受付メモをすべて表示" : "1行に戻す"}
+                    >
+                      {oneLine ? "▸" : "▾"}
+                    </button>
                   )}
                 </div>
                 {open && (
