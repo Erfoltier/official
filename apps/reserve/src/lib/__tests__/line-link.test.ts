@@ -35,11 +35,11 @@ async function liff(body: object, user = USER) {
 }
 
 describe("LINE の問診票", () => {
-  it("Webhook：署名が正しいときだけ受け、初診の予約申請と「問診票」にだけ返信する", async () => {
+  it("Webhook：署名が正しいときだけ受け、「問診票」にだけ返信する（予約申請には返さない）", async () => {
     await setup();
     expect((await webhook([text("問診票")], "f".repeat(32))).status).toBe(401);
     expect((await webhook([])).status).toBe(200);
-    expect((await webhook([text(`【予約申請】\n予約申請ID：${RID}\n受診区分：初診\nお名前：テスト`)])).data.replied).toBe(1);
+    expect((await webhook([text(`【予約申請】\n予約申請ID：${RID}\n受診区分：初診\nお名前：テスト`)])).data.replied).toBe(0);
     expect((await webhook([text(`予約申請ID：${RID}\n受診区分：再診`)])).data.replied).toBe(0);
     expect((await webhook([text("問診票")])).data.replied).toBe(1);
     expect((await webhook([text("駐車場はありますか")])).data.replied).toBe(0);
@@ -101,7 +101,7 @@ describe("予約申請フォーム（monshin/intake/）", () => {
     const other = { ...text(`受診区分：①初診\n\n予約申請ID：${RID}`), source: { type: "user", userId: OTHER } };
     await webhook([other]);
     expect(JSON.parse(readFileSync(rec, "utf8")).lineMessageReceivedAt).toBeUndefined();
-    expect((await webhook([text(`【美容皮膚科・初診予約申請】\n受診区分：①初診\n\n予約申請ID：${RID}`)])).data.replied).toBe(1);
+    expect((await webhook([text(`【美容皮膚科・初診予約申請】\n受診区分：①初診\n\n予約申請ID：${RID}`)])).data.replied).toBe(0);
     expect(JSON.parse(readFileSync(rec, "utf8")).status).toBe("line_message_received");
     expect((await status()).lineMessageReceived).toBe(true);
     // 設定（LIFF ID・特別診療日）だけを返し、秘密の値は返さない
@@ -137,6 +137,6 @@ describe("予約申請を DB に保存する（monshin/intake-submit-v1.php）",
     expect((await liff({ action: "context" })).data.items).toHaveLength(1);
 
     mkdirSync(path.join(h.srv.dir, "intakeq"), { recursive: true });
-    expect((await webhook([text(`受診区分：①初診\n\n予約申請ID：${requestId}`)])).data.replied).toBe(1);
+    expect((await webhook([text(`受診区分：①初診\n\n予約申請ID：${requestId}`)])).data.replied).toBe(0);
   });
 });

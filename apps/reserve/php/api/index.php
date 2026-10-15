@@ -815,6 +815,21 @@ try {
             $me();
             Http::json(['items' => Store::listUnmatchedQuestionnaires()]);
         }
+        // 問診票の一覧（スタッフ全員）。見たことは閲覧の記録に残す（検索語は残さない）
+        if ($method === 'GET' && $n === 2 && $p[1] === 'list') {
+            $s = $me();
+            $from = (string) ($q('from') ?? '');
+            $to = (string) ($q('to') ?? '');
+            $r = Store::searchQuestionnaires($from, $to, js_slice((string) ($q('q') ?? ''), 50));
+            Auth::noteAccess($s, '問診票の一覧を表示', 'questionnaires:' . $from . '..' . $to);
+            Http::json($r);
+        }
+        if ($method === 'GET' && $n === 2) {
+            $s = $me();
+            $r = Store::getQuestionnaireView(V::id($p[1]));
+            Auth::noteAccess($s, '問診票を表示', !empty($r['patientId']) ? 'patient:' . $r['patientId'] : 'questionnaire:' . $r['id']);
+            Http::json($r);
+        }
         if ($method === 'POST' && $n === 3 && $p[2] === 'link') {
             $s = $me();
             Http::json(Store::linkQuestionnaire(V::id($p[1]), Schema::linkQuestionnaire(Http::readJson()), $actor($s)));

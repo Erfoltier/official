@@ -511,6 +511,9 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
             👤<span className={styles.cap}>患者</span>
           </Link>
+          <Link href="/questionnaires" className={styles.iconBtn} aria-label="問診票" title="問診票の一覧">
+            📋<span className={styles.cap}>問診票</span>
+          </Link>
           <Link href="/settings" className={styles.iconBtn} aria-label="設定" title="設定">
             ⚙<span className={styles.cap}>設定</span>
           </Link>

@@ -4288,6 +4288,72 @@ final class Store
         )));
     }
 
+    /** 問診票の受付日（送り元の回答日時。読めなければ受け取った日）。YYYY-MM-DD */
+    public static function questionnaireDay(array $q): string
+    {
+        $day = str_replace('/', '-', js_slice((string) ($q['submittedAt'] ?? ''), 10));
+        if (!preg_match('/^\d{4}-\d{1,2}-\d{1,2}$/', $day)) {
+            $day = clinic_date_of((string) ($q['receivedAt'] ?? ''));
+        }
+        [$y, $m, $d] = array_map('intval', explode('-', $day) + [0, 0, 0]);
+        return sprintf('%04d-%02d-%02d', $y, $m, $d);
+    }
+
+    /**
+     * 問診票の一覧（スタッフ全員が見る）。期間（受付日・両端を含む）と、氏名・フリガナ・電話・診察券番号で絞る。新しい順に最大 $limit 件。
+     * 一覧には回答の全文を載せない（開いたときに getQuestionnaireView で読む）
+     */
+    public static function searchQuestionnaires(string $from, string $to, string $query = '', int $limit = 500): array
+    {
+        self::init();
+        if (!is_date_string($from) || !is_date_string($to) || $from > $to) {
+            throw new StoreError('invalid', '期間を正しく選んでください');
+        }
+        $norm = fn(string $s) => mb_convert_kana(preg_replace('/[\s　]+/u', '', mb_strtolower($s)), 'KVC');
+        $q = $norm($query);
+        $digits = preg_replace('/\D/', '', $query);
+        $patients = self::patients();
+        $items = [];
+        foreach (Db::i()->all('questionnaire') as $r) {
+            if (!empty($r['deleted'])) {
+                continue;
+            }
+            $day = self::questionnaireDay($r);
+            if ($day < $from || $day > $to) {
+                continue;
+            }
+            $p = !empty($r['patientId']) ? ($patients[$r['patientId']] ?? null) : null;
+            if ($q !== '') {
+                $hit = str_contains($norm((string) ($r['name'] ?? '')), $q) || str_contains($norm((string) ($r['kana'] ?? '')), $q)
+                    || ($p && (str_contains($norm((string) $p['name']), $q) || str_contains($norm((string) ($p['kana'] ?? '')), $q)));
+                if (!$hit && strlen($digits) >= 3) {
+                    $hit = str_contains(preg_replace('/\D/', '', (string) ($r['phone'] ?? '')), $digits)
+                        || ($p && ((string) ($p['chartNo'] ?? '') === $digits || (string) ($p['m3ChartNo'] ?? '') === $digits));
+                }
+                if (!$hit) {
+                    continue;
+                }
+            }
+            $items[] = drop_null([
+                'id' => $r['id'], 'day' => $day, 'submittedAt' => $r['submittedAt'] ?? '', 'name' => $r['name'] ?? '',
+                'kana' => $r['kana'] ?? null, 'birthDate' => $r['birthDate'] ?? null, 'phone' => $r['phone'] ?? null,
+                'patientId' => $p ? $r['patientId'] : null, 'patientName' => $p['name'] ?? null, 'chartNo' => $p['chartNo'] ?? null,
+                'source' => str_starts_with((string) ($r['key'] ?? ''), 'liff-') ? 'line' : (str_starts_with((string) ($r['key'] ?? ''), 'web-') ? 'web' : 'form'),
+            ]);
+        }
+        usort($items, fn($a, $b) => strcmp($b['day'], $a['day']) ?: strcmp((string) $b['submittedAt'], (string) $a['submittedAt']));
+        return ['items' => array_slice($items, 0, $limit), 'total' => count($items)];
+    }
+
+    /** 問診票1件（回答の全文）と、結びついた患者の名前・診察券番号 */
+    public static function getQuestionnaireView(string $id): array
+    {
+        self::init();
+        $q = self::liveQuestionnaire($id);
+        $p = !empty($q['patientId']) ? (self::patients()[$q['patientId']] ?? null) : null;
+        return drop_null([...$q, 'patientName' => $p['name'] ?? null, 'chartNo' => $p['chartNo'] ?? null]);
+    }
+
     public static function listUnmatchedQuestionnaires(): array
     {
         self::init();

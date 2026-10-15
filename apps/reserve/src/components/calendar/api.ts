@@ -689,6 +689,32 @@ export async function fetchUnmatchedQuestionnaires(): Promise<Questionnaire[]> {
   return (await call<{ items: Questionnaire[] }>(`/api/v1/questionnaires/unmatched`)).items;
 }
 
+/** 問診票の一覧の1行（回答の全文は含まない） */
+export interface QuestionnaireRow {
+  id: string;
+  /** 受付日 YYYY-MM-DD */
+  day: string;
+  submittedAt: string;
+  name: string;
+  kana?: string;
+  birthDate?: string;
+  phone?: string;
+  patientId?: string;
+  patientName?: string;
+  chartNo?: string;
+  /** line＝LINE の問診票、web＝来院前の問診票ページ、form＝Google フォーム */
+  source: "line" | "web" | "form";
+}
+
+export function searchQuestionnaires(from: string, to: string, q: string, signal?: AbortSignal): Promise<{ items: QuestionnaireRow[]; total: number }> {
+  const qs = new URLSearchParams({ from, to, q });
+  return call(`/api/v1/questionnaires/list?${qs}`, { signal });
+}
+
+export function fetchQuestionnaire(id: string): Promise<Questionnaire & { patientName?: string; chartNo?: string }> {
+  return call(`/api/v1/questionnaires/${encodeURIComponent(id)}`);
+}
+
 export function linkQuestionnaire(id: string, chartNo: string): Promise<Questionnaire> {
   return call(`/api/v1/questionnaires/${encodeURIComponent(id)}/link`, { method: "POST", body: JSON.stringify({ chartNo }) });
 }
