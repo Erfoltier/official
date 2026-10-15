@@ -1433,6 +1433,7 @@ button.treatChip[data-active] {
   color: var(--text-muted);
   font-size: 12px;
   margin-right: auto;
+  white-space: nowrap;
 }
 
 .receptionHead .select {
@@ -1664,6 +1665,41 @@ button.stagePill[data-clickable]:disabled {
 
 .reception {
   position: relative;
+  /* 一覧の幅に合わせて、1行表示の中身を出し分ける（狭いときはメニュー・レーン名から隠す） */
+  container: reception / inline-size;
+}
+
+.receptionRow[data-oneline] .receptionHit {
+  overflow: hidden;
+}
+
+.receptionRow[data-oneline] .receptionMain {
+  overflow: hidden;
+}
+
+@container reception (max-width: 400px) {
+  .reception .receptionRow[data-oneline] .receptionMenu,
+  .reception .receptionRow[data-oneline] .receptionSteps {
+    display: none;
+  }
+}
+
+@container reception (max-width: 330px) {
+  .reception .receptionRow[data-oneline] {
+    grid-template-columns: minmax(0, 1.5fr) 3.8em minmax(0, 0.8fr) 1.2em;
+  }
+  .reception .receptionRow[data-oneline] .receptionTime small {
+    display: none;
+  }
+  .reception .receptionRow[data-oneline] .receptionTime {
+    width: 3.3em;
+  }
+}
+
+@container reception (max-width: 280px) {
+  .reception .receptionRow[data-oneline] .qMissing {
+    display: none;
+  }
 }
 
 .receptionResize {
@@ -1723,7 +1759,7 @@ button.stagePill[data-clickable]:disabled {
 
 .receptionRow[data-oneline] .receptionName {
   flex: 1 1 auto;
-  min-width: 4.5em;
+  min-width: 0;
 }
 
 .receptionRow[data-oneline] .receptionMenu {

@@ -44,26 +44,11 @@ export function ReceptionList(props: Props) {
   const menus = useMemo(() => new Map<string, Menu>(bundle.menus.map((m) => [m.id, m])), [bundle.menus]);
   /** 状態を変える窓を開いている予約 */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
-  /** 1行表示（M3 の受付一覧のように、1人1行。受付メモが縦にそろう）。この端末に覚えておく */
+  /** 1行表示（M3 の受付一覧のように、1人1行。受付メモが縦にそろう）。一覧を出すたびに1行表示から始める */
   const [compact, setCompact] = useState(true);
-  useEffect(() => {
-    try {
-      // 端末に保存した表示の好みを、開いたあとに読む（保存がなければ1行表示のまま）
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (localStorage.getItem("receptionCompact") === "0") setCompact(false);
-    } catch {
-      // 保存できない端末では毎回1行表示
-    }
-  }, []);
   const toggleCompact = () => {
-    const next = !compact;
-    setCompact(next);
+    setCompact(!compact);
     setExpanded(new Set());
-    try {
-      localStorage.setItem("receptionCompact", next ? "1" : "0");
-    } catch {
-      // 保存できなくても表示は切り替える
-    }
   };
   /** 一覧の幅（右の端をつまんで変える。この端末に覚えておく）。null は標準の幅 */
   const [width, setWidth] = useState<number | null>(null);
