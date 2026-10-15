@@ -81,14 +81,38 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
-/** 1 行目の項目名から、どの列が何かを当てる（見つからなければ -1） */
+/**
+ * 姓と名（フリガナの姓と名）が別の列に分かれている CSV なら、つなげた列を末尾に足す（「カナ姓」「カナ名」→「フリガナ（姓名）」など）。
+ * 足した列は guessColumns が優先して選ぶ
+ */
+export function joinSplitNameColumns(header: string[], rows: string[][]): { header: string[]; rows: string[][] } {
+  const h = header.map((x) => x.normalize("NFKC").replace(/\s/g, ""));
+  const idx = (re: RegExp, not?: RegExp) => h.findIndex((x) => re.test(x) && !(not && not.test(x)));
+  const kanaRe = /カナ|フリガナ|ふりがな|よみ|ヨミ/;
+  const pairs: [string, number, number][] = [];
+  const ks = idx(/セイ|(カナ|フリガナ|ふりがな|よみ|ヨミ).*姓|姓.*(カナ|フリガナ|ふりがな|よみ|ヨミ)/);
+  const km = idx(/メイ|(カナ|フリガナ|ふりがな|よみ|ヨミ).*名|名.*(カナ|フリガナ|ふりがな|よみ|ヨミ)/, /氏名|姓名|患者名/);
+  if (ks >= 0 && km >= 0 && ks !== km) pairs.push(["フリガナ（姓名）", ks, km]);
+  const ns = idx(/^(患者)?(漢字)?姓$|^(患者)?(漢字)?氏$|漢字姓/, kanaRe);
+  const nm = idx(/^(患者)?(漢字)?名$|漢字名/, kanaRe);
+  if (ns >= 0 && nm >= 0 && ns !== nm) pairs.push(["氏名（姓名）", ns, nm]);
+  if (!pairs.length) return { header, rows };
+  return {
+    header: [...header, ...pairs.map((p) => p[0])],
+    rows: rows.map((r) => [...r, ...pairs.map(([, a, b]) => `${(r[a] ?? "").trim()} ${(r[b] ?? "").trim()}`.trim())]),
+  };
+}
+
+/** 1 行目の項目名から、どの列が何かを当てる（見つからなければ -1）。姓名をつなげて足した列があればそれを選ぶ */
 export function guessColumns(header: string[]): M3Columns {
   const h = header.map((x) => x.normalize("NFKC").replace(/\s/g, ""));
   const find = (re: RegExp, not?: RegExp) => h.findIndex((x) => re.test(x) && !(not && not.test(x)));
   const phone = h.map((x, i) => (/電話|TEL|携帯|連絡先/i.test(x) && !/FAX/i.test(x) ? i : -1)).filter((i) => i >= 0);
+  const joinedKana = h.indexOf("フリガナ(姓名)");
+  const joinedName = h.indexOf("氏名(姓名)");
   return {
-    kana: find(/カナ|フリガナ|ふりがな|よみ|ヨミ/),
-    name: find(/氏名|患者名|名前|漢字/, /カナ|フリガナ|ふりがな|よみ|ヨミ|英|ローマ/),
+    kana: joinedKana >= 0 ? joinedKana : find(/カナ|フリガナ|ふりがな|よみ|ヨミ/),
+    name: joinedName >= 0 ? joinedName : find(/氏名|患者名|名前|漢字/, /カナ|フリガナ|ふりがな|よみ|ヨミ|英|ローマ/),
     birth: find(/生年月日|誕生日|生年/),
     phone,
     chart: find(/カルテ|患者番号|患者ID|患者コード|^ID$|^番号$/i),
@@ -238,6 +262,8 @@ export interface M3QuestionnaireLink {
   questionnaireId: string;
   /** 問診票の氏名（確認の表示用） */
   label: string;
+  /** 照合に使った M3 のフリガナ（確認の表示用） */
+  m3Kana?: string;
   m3ChartNo: string;
   patientId?: string;
   create?: { name: string; kana: string; birthDate?: string; phone?: string };
@@ -363,7 +389,7 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
         }
       }
     }
-    const base = { questionnaireId: q.id, label: q.name, m3ChartNo: m3 };
+    const base = { questionnaireId: q.id, label: q.name, m3ChartNo: m3, ...(kana && { m3Kana: kana }) };
     if (found.length === 0) {
       out.creates.push({ ...base, create: { name, kana, ...(birth && { birthDate: birth }), ...(phone && { phone }) } });
       continue;

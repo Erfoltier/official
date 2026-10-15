@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { applyM3Questionnaires, fetchM3QuestionnaireCandidates } from "@/components/calendar/api";
-import { decodeCsv, guessColumns, matchQuestionnairesM3, parseCsv, type M3Columns, type M3QuestionnaireResult } from "@/lib/domain/m3match";
+import { decodeCsv, guessColumns, joinSplitNameColumns, matchQuestionnairesM3, parseCsv, type M3Columns, type M3QuestionnaireResult } from "@/lib/domain/m3match";
 import styles from "./settings.module.css";
 
 const BATCH = 100;
@@ -25,8 +25,9 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
     if (!f) return;
     setBusy(true);
     try {
-      const [header, ...rows] = parseCsv(decodeCsv(await f.arrayBuffer()));
-      if (!header || rows.length === 0) throw new Error("CSV の内容を読み込めませんでした");
+      const [header0, ...rows0] = parseCsv(decodeCsv(await f.arrayBuffer()));
+      if (!header0 || rows0.length === 0) throw new Error("CSV の内容を読み込めませんでした");
+      const { header, rows } = joinSplitNameColumns(header0, rows0);
       setFile({ name: f.name, header, rows });
       setCol(guessColumns(header));
     } catch (e) {
@@ -55,7 +56,7 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
     if (!list.length) return;
     const msg = `${result.links.length}件をいる患者に結びつけ${withCreate && result.creates.length ? `、${result.creates.length}件は M3 の情報で患者を新しく登録して結びつけ` : ""}ます。書き換えの前にサーバーで控えを作成します。よろしいですか？`;
     if (!window.confirm(msg)) return;
-    const items = list.map(({ label: _l, duplicates: _d, via: _v, ...x }) => x);
+    const items = list.map(({ label: _l, duplicates: _d, via: _v, m3Kana: _k, ...x }) => x);
     const sum = { linked: 0, created: 0, skipped: 0 };
     setBusy(true);
     try {
@@ -133,6 +134,12 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
               })}
             </label>
           </div>
+          {file.rows[0] && (
+            <p className={styles.hint}>
+              1行目の例：氏名「{col.name >= 0 ? file.rows[0][col.name] : "—"}」・フリガナ「{col.kana >= 0 ? file.rows[0][col.kana] : "—"}」・生年月日「
+              {col.birth >= 0 ? file.rows[0][col.birth] : "—"}」・カルテ番号「{col.chart >= 0 ? file.rows[0][col.chart] : "—"}」。フリガナは姓と名の両方が入っている列を選んでください。
+            </p>
+          )}
           <div className={styles.actions}>
             <button className={styles.btn} disabled={busy || col.name < 0 || col.chart < 0} onClick={run}>
               照合（まだ書き換えません）
@@ -161,7 +168,7 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
               ))}
               {result.creates.slice(0, 100).map((l) => (
                 <li key={l.questionnaireId}>
-                  {l.label} → <b>新規登録</b> {l.create?.name}（M3 {l.m3ChartNo || "番号なし"}）
+                  {l.label} → <b>新規登録</b> {l.create?.name}（M3 {l.m3ChartNo || "番号なし"}・フリガナ「{l.m3Kana ?? "なし"}」）
                 </li>
               ))}
             </ul>

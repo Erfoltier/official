@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { looseKey, matchQuestionnairesM3, type M3Columns } from "@/lib/domain/m3match";
+import { guessColumns, joinSplitNameColumns, looseKey, matchQuestionnairesM3, type M3Columns } from "@/lib/domain/m3match";
 import { withPhp } from "./php/server";
 
 const col: M3Columns = { chart: 0, name: 1, kana: 2, birth: 3, phone: [4] };
@@ -16,6 +16,16 @@ const rows = [
 ];
 
 describe("M3 の患者一覧で未確認の問診票を照合", () => {
+  it("姓と名が別の列の CSV は、つなげた列を足して選ぶ", () => {
+    const j = joinSplitNameColumns(["患者番号", "姓", "名", "カナ姓", "カナ名", "生年月日"], [["1", "山田", "花子", "ﾔﾏﾀﾞ", "ﾊﾅｺ", "1990/01/02"]]);
+    const c = guessColumns(j.header);
+    expect(j.rows[0][c.kana]).toBe("ﾔﾏﾀﾞ ﾊﾅｺ");
+    expect(j.rows[0][c.name]).toBe("山田 花子");
+    expect(c.chart).toBe(0);
+    // 分かれていなければそのまま
+    expect(joinSplitNameColumns(["氏名", "フリガナ"], [["a", "b"]]).header).toEqual(["氏名", "フリガナ"]);
+  });
+
   it("表記ゆれを寄せる", () => {
     expect(looseKey("髙橋　ジュンコ様")).toBe(looseKey("高橋じゅんこ"));
     expect(looseKey("ｻｲﾄｳ ｷｮｳｺ")).toBe(looseKey("さいとうきょうこ"));

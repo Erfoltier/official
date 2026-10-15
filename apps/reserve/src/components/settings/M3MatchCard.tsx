@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { applyM3Fill, fetchM3FillCandidates } from "@/components/calendar/api";
-import { decodeCsv, guessColumns, matchM3, parseCsv, type M3Columns, type M3MatchResult } from "@/lib/domain/m3match";
+import { decodeCsv, guessColumns, joinSplitNameColumns, matchM3, parseCsv, type M3Columns, type M3MatchResult } from "@/lib/domain/m3match";
 import styles from "./settings.module.css";
 
 const BATCH = 200;
@@ -32,9 +32,9 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
     if (!f) return;
     setBusy(true);
     try {
-      const all = parseCsv(decodeCsv(await f.arrayBuffer()));
-      const [header, ...rows] = all;
-      if (!header || rows.length === 0) throw new Error("CSV の内容を読み込めませんでした");
+      const [header0, ...rows0] = parseCsv(decodeCsv(await f.arrayBuffer()));
+      if (!header0 || rows0.length === 0) throw new Error("CSV の内容を読み込めませんでした");
+      const { header, rows } = joinSplitNameColumns(header0, rows0);
       setFile({ name: f.name, header, rows });
       setCol(guessColumns(header));
     } catch (e) {
