@@ -81,8 +81,10 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
           </span>
         </div>
       )}
+      {isAdmin && <M3QuestionnaireCard notify={notify} fail={fail} onDone={load} />}
       {items === null && <p className={styles.muted}>読み込み中…</p>}
       {items?.length === 0 && <p className={styles.muted}>紐付けが必要な回答はありません</p>}
+      {items && items.length > 0 && <h3 style={{ margin: "16px 0 6px" }}>未確認の問診票（{items.length.toLocaleString()}件）</h3>}
       {items && items.length > 0 && (
         <table className={styles.table}>
           <thead>
@@ -153,7 +155,6 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
           </tbody>
         </table>
       )}
-      {isAdmin && <M3QuestionnaireCard notify={notify} fail={fail} onDone={load} />}
       {isAdmin && <MonshinCard notify={notify} fail={fail} />}
     </section>
   );
