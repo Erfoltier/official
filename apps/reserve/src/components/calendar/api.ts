@@ -150,6 +150,10 @@ export function refillQuestionnaires(): Promise<{ questionnaires: number; patien
   return call(`/api/v1/questionnaires/refill`, { method: "POST", body: "{}" });
 }
 
+export function relinkQuestionnaires(): Promise<{ checked: number; linked: number; patients: number }> {
+  return call(`/api/v1/questionnaires/relink`, { method: "POST", body: "{}" });
+}
+
 export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle> {
   return fetchDayRaw(date, signal).then((d) => {
     applyTheme(d.clinic.theme);

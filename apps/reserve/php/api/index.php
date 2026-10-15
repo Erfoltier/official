@@ -436,6 +436,11 @@ try {
         $s = $me(STAFF_ADMIN);
         Http::json(Store::refillFromQuestionnaires($actor($s)));
     }
+    // 未確認の問診票を、今の患者の情報でまとめて照合し直す（院長・管理者。先に画面で控えを取る）
+    if ($route === 'POST questionnaires/relink') {
+        $s = $me(STAFF_ADMIN);
+        Http::json(Store::relinkUnmatchedQuestionnaires(null, $actor($s)));
+    }
 
     // ---- M3 の患者一覧との照合（院長・管理者）。CSV はブラウザの中だけで読み、照合できた分だけ届く ----
     // ---- リマインドの設定（院長・管理者） ----

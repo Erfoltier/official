@@ -38,3 +38,28 @@ describe("問診票の一覧", () => {
     expect(log).toContain("問診票を表示");
   });
 });
+
+describe("未確認の問診票の結びつけ", () => {
+  it("先に届いた問診票は、患者を登録したとき・まとめて照合したときに結びつく", async () => {
+    const c = await h.srv.as("staff-admin");
+    const send = (responses: unknown[]) =>
+      h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses }, { Authorization: `Bearer ${h.srv.integrationToken}` });
+    await send([
+      { key: "r1", submittedAt: "2026/10/15 16:35:00", name: "初診 一子", kana: "ショシン イチコ", birthDate: "1995-05-05", answers: [{ q: "既往歴", a: "なし" }] },
+      { key: "r2", submittedAt: "2026/10/15 17:40:00", name: "初診 二郎", phone: "090-5555-6666", answers: [{ q: "既往歴", a: "なし" }] },
+    ]);
+    expect((await c.get("/questionnaires/unmatched")).items).toHaveLength(2);
+    // 登録したら自動で結びつく（電話番号も問診票から入る）
+    const p = await c.post("/patients", { name: "初診 一子", kana: "ショシン イチコ", birthDate: "1995-05-05" });
+    expect((await c.get(`/patients/${p.id}/questionnaires`)).items).toHaveLength(1);
+    expect((await c.get("/questionnaires/unmatched")).items).toHaveLength(1);
+    // 別の名前で登録した人は、名前を直したときに結びつく
+    const q = await c.post("/patients", { name: "初診 次郎", phone: "090-5555-6666" });
+    expect((await c.get(`/patients/${q.id}/questionnaires`)).items).toHaveLength(0);
+    const fixed = (await c.patch(`/patients/${q.id}`, { name: "初診 二郎", version: q.version })).patient;
+    expect((await c.get(`/patients/${q.id}/questionnaires`)).items).toHaveLength(1);
+    expect(fixed.version).toBeGreaterThanOrEqual(q.version + 1);
+    // まとめて照合（もう未確認はない）
+    expect(await c.post("/questionnaires/relink", {})).toMatchObject({ checked: 0, linked: 0 });
+  });
+});

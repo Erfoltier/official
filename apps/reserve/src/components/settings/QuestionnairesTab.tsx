@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Questionnaire } from "@/lib/domain/types";
-import { createBackup, deleteQuestionnaire, fetchUnmatchedQuestionnaires, linkQuestionnaire, refillQuestionnaires } from "@/components/calendar/api";
+import { createBackup, deleteQuestionnaire, fetchUnmatchedQuestionnaires, linkQuestionnaire, refillQuestionnaires, relinkQuestionnaires } from "@/components/calendar/api";
 import { MonshinCard } from "./MonshinCard";
 import styles from "./settings.module.css";
 
@@ -42,18 +42,38 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
     load();
   }, [load]);
 
+  /** 控えを取ってから、未確認の問診票を今の患者の情報で照合し直す（登録より前に届いた初診の方の分など） */
+  const relink = async () => {
+    if (!window.confirm("未確認の問診票を、今の患者の情報（氏名・フリガナ・生年月日・電話）で照合し直して結びつけます。先にデータの控えを作成します。よろしいですか？")) return;
+    setRefilling(true);
+    try {
+      const b = await createBackup();
+      if (b.integrity !== "ok") throw new Error("控えの検査で問題が見つかったため、照合を中止しました");
+      const r = await relinkQuestionnaires();
+      notify(`照合しました（未確認${r.checked}件のうち${r.linked}件を患者${r.patients}名に結びつけました）`);
+      await load();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setRefilling(false);
+    }
+  };
+
   return (
     <section>
       <p className={styles.lead}>
         患者が入力する問診票（下の「患者が入力する問診票」）と Google フォームの問診票の回答は自動で取り込まれ、<b>氏名（またはフリガナ）と、生年月日か電話番号</b>が一致する患者に紐付きます。
         紐付いた回答は、患者画面とカルテの「既往歴・内服歴」で確認できます。
-        該当する患者がいない、または2人以上いる回答は下に表示されます。診察券番号を入力して紐付けてください。
+        該当する患者がいない、または2人以上いる回答は下に表示されます。あとから患者を登録・修正したときは、合う回答が自動で結びつきます。診察券番号を入力して紐付けてください。
         送信用の Apps Script の設定手順は、questionnaire.gs の先頭を参照してください。
       </p>
       {isAdmin && (
         <div className={styles.actions}>
           <button className={styles.btn} disabled={refilling} onClick={refill}>
             {refilling ? "反映中…" : "問診票を患者の基本情報へ反映"}
+          </button>
+          <button className={styles.btn} disabled={refilling} onClick={relink}>
+            未確認の問診票をまとめて照合
           </button>
           <span className={styles.muted}>
             電話・住所・性別・生年月日・既往歴・内服歴・アレルギー（注意事項）・その他を、患者の空欄に反映します。入力済みの欄は変更しません。

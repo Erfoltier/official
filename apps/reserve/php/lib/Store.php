@@ -2508,6 +2508,10 @@ final class Store
         if ($by) {
             Auth::audit($by, '患者を登録', $p['id']);
         }
+        // 先に届いていた問診票（初診の方は登録より前に書く）を、この患者に結びつける
+        if (self::relinkUnmatchedQuestionnaires($p['id'], $by)['linked'] > 0) {
+            return self::patient($p['id']);
+        }
         return $p;
     }
 
@@ -2535,6 +2539,10 @@ final class Store
         $next = drop_null([...$cur, ...$fields, 'version' => $cur['version'] + 1, 'updatedAt' => $now]);
         self::putPatient($next);
         self::recordChange($id, array_map(fn($k) => self::FIELD_LABEL[$k] ?? $k, $changed), $now, $by);
+        // 氏名・フリガナ・生年月日・電話が変わったら、未確認の問診票がこの患者に合うようになったかを見る
+        if (array_intersect($changed, ['name', 'kana', 'nameAlt', 'birthDate', 'phone']) && self::relinkUnmatchedQuestionnaires($id, $by)['linked'] > 0) {
+            return self::patient($id);
+        }
         return $next;
     }
 
@@ -4464,6 +4472,37 @@ final class Store
         });
         Auth::audit($by, "M3の患者一覧と照合して漢字の氏名を追加（{$updated}名）");
         return ['updated' => $updated, 'skipped' => count($items) - $updated];
+    }
+
+    /**
+     * 未確認（患者と結びついていない）の問診票を、受け取ったときと同じ照合でもう一度探して結びつける。
+     * $onlyPatientId を渡すと、その患者に合うものだけ（患者の登録・更新のあと）。戻り値は結びつけた件数
+     */
+    public static function relinkUnmatchedQuestionnaires(?string $onlyPatientId = null, ?array $by = null): array
+    {
+        self::init();
+        return Db::i()->transaction(function () use ($onlyPatientId, $by) {
+            self::$nameIndex = null;
+            $list = array_values(array_filter(Db::i()->where('questionnaire', 'k2', ''), fn($q) => empty($q['patientId']) && empty($q['deleted'])));
+            usort($list, fn($a, $b) => strcmp((string) $a['submittedAt'], (string) $b['submittedAt']));
+            $linked = 0;
+            $patients = [];
+            foreach ($list as $q) {
+                $pid = self::matchQuestionnaire((string) $q['name'], (string) ($q['kana'] ?? ''), $q['birthDate'] ?? null, (string) ($q['phone'] ?? ''));
+                if ($pid === null || ($onlyPatientId !== null && $pid !== $onlyPatientId)) {
+                    continue;
+                }
+                $next = [...$q, 'patientId' => $pid, 'autoLinkedAt' => now_iso()];
+                Db::i()->put('questionnaire', $q['id'], $next);
+                self::fillPatientFromQuestionnaire($pid, $next);
+                $linked++;
+                $patients[$pid] = true;
+            }
+            if ($by && $linked) {
+                Auth::audit($by, '未確認の問診票を照合し直して結びつけ', $onlyPatientId ?? "{$linked}件");
+            }
+            return ['checked' => count($list), 'linked' => $linked, 'patients' => count($patients)];
+        });
     }
 
     public static function refillFromQuestionnaires(array $by): array
