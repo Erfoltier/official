@@ -225,6 +225,8 @@ export interface M3QuestionnaireLink {
   create?: { name: string; kana: string; birthDate?: string; phone?: string };
   /** 同じ人と見られる患者が予約カレンダーに複数いた（M3 番号で1人に決めた／番号がなく最も古い患者に決めた） */
   duplicates?: number;
+  /** いる患者の見つけ方：number＝M3 番号／nameBirth＝氏名＋生年月日・電話／nameOnly＝氏名だけ（M3 に同姓同名がいないとき） */
+  via?: "number" | "nameBirth" | "nameOnly";
 }
 
 export interface M3QuestionnaireResult {
@@ -297,12 +299,30 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
     const kana = clean(cell(r, col.kana));
     const birth = birthKey(cell(r, col.birth)) || q.birthDate;
     const phone = col.phone.map((p) => clean(cell(r, p))).find((x) => digitsKey(x).length >= 10) || q.phone;
-    // 予約カレンダーの患者：まず M3 番号、なければ M3 の氏名・フリガナ＋生年月日か電話
+    // 予約カレンダーの患者：まず M3 番号、なければ M3 の氏名・フリガナで探す
     let found = m3 ? (pByChart.get(chartKey(m3)) ?? []) : [];
+    let via: M3QuestionnaireLink["via"] = "number";
     if (found.length === 0) {
       const nk = [...new Set([kanaKey(name), kanaKey(kana), ...keys].filter(Boolean))];
       const rt = [...new Set([...rowPhones(r), tel].filter((d) => d.length >= 10))];
-      found = [...new Set(nk.flatMap((k) => pByName.get(k) ?? []))].filter((p) => (birth && p.birthDate === birth) || rt.includes(digitsKey(p.phone)));
+      // 生年月日がはっきり違う患者は別人として外す
+      const sameName = [...new Set(nk.flatMap((k) => pByName.get(k) ?? []))].filter((p) => !(birth && p.birthDate && p.birthDate !== birth));
+      const strong = sameName.filter((p) => (birth && p.birthDate === birth) || rt.includes(digitsKey(p.phone)) || (m3 && chartKey(p.chartNo) === chartKey(m3)));
+      if (strong.length) {
+        found = strong;
+        via = "nameBirth";
+      } else if (sameName.length) {
+        // 予約カレンダーの患者に生年月日・電話がない（Airリザーブから来た患者など）ときは、氏名だけで決める。
+        // ただし M3 に同じ氏名・フリガナの人がほかにいない（同姓同名がいない）ときだけ
+        const m3Same = new Set(nk.flatMap((k) => byName.get(k) ?? []));
+        if (m3Same.size === 1) {
+          found = sameName;
+          via = "nameOnly";
+        } else {
+          out.ambiguous++;
+          continue;
+        }
+      }
     }
     const base = { questionnaireId: q.id, label: q.name, m3ChartNo: m3 };
     if (found.length === 0) {
@@ -310,7 +330,7 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
       continue;
     }
     const pick = found.find((p) => m3 && chartKey(p.m3ChartNo) === chartKey(m3)) ?? [...found].sort(older)[0];
-    out.links.push({ ...base, patientId: pick.id, ...(found.length > 1 && { duplicates: found.length }) });
+    out.links.push({ ...base, patientId: pick.id, via, ...(found.length > 1 && { duplicates: found.length }) });
   }
   return out;
 }

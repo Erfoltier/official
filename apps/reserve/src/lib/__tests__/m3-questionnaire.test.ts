@@ -9,6 +9,9 @@ const rows = [
   ["1003", "佐藤 三郎", "サトウ サブロウ", "1970/07/08", ""],
   ["1004", "田中 同名", "タナカ ドウメイ", "2000/01/01", ""],
   ["1005", "田中 同名", "タナカ ドウメイ", "2000/01/01", ""],
+  ["1006", "高橋 予約", "タカハシ ヨヤク", "1985/03/03", ""],
+  ["1007", "伊藤 同姓", "イトウ ドウセイ", "1960/01/01", ""],
+  ["1008", "伊藤 同姓", "イトウ ドウセイ", "1961/02/02", ""],
 ];
 
 describe("M3 の患者一覧で未確認の問診票を照合", () => {
@@ -19,6 +22,10 @@ describe("M3 の患者一覧で未確認の問診票を照合", () => {
       // 重複：M3 番号を持つ方を選ぶ
       { id: "p-b1", name: "スズキ イチロウ", kana: "", chartNo: "10" },
       { id: "p-b2", name: "鈴木 一郎", kana: "スズキ イチロウ", chartNo: "20", m3ChartNo: "1002" },
+      // Airリザーブから来た患者（カタカナだけ・生年月日も電話もない）。M3 に同姓同名がいなければ氏名だけで決める
+      { id: "p-c", name: "タカハシ ヨヤク", kana: "", chartNo: "" },
+      // M3 に同姓同名が2人いるので、氏名だけでは決めない
+      { id: "p-d", name: "イトウ ドウセイ", kana: "", chartNo: "" },
     ];
     const qs = [
       { id: "q1", name: "山田花子", birthDate: "1990-01-02" },
@@ -26,16 +33,19 @@ describe("M3 の患者一覧で未確認の問診票を照合", () => {
       { id: "q3", name: "佐藤 三郎", birthDate: "1970-07-08" },
       { id: "q4", name: "田中 同名", birthDate: "2000-01-01" },
       { id: "q5", name: "来院 なし", birthDate: "1999-09-09" },
+      { id: "q6", name: "高橋 予約", birthDate: "1985-03-03" },
+      { id: "q7", name: "伊藤 同姓", birthDate: "1960-01-01" },
     ];
     const r = matchQuestionnairesM3(qs, patients, rows, col);
     expect(r.links).toEqual([
-      { questionnaireId: "q1", label: "山田花子", m3ChartNo: "1001", patientId: "p-a" },
-      { questionnaireId: "q2", label: "鈴木 一郎", m3ChartNo: "1002", patientId: "p-b2" },
+      { questionnaireId: "q1", label: "山田花子", m3ChartNo: "1001", patientId: "p-a", via: "nameBirth" },
+      { questionnaireId: "q2", label: "鈴木 一郎", m3ChartNo: "1002", patientId: "p-b2", via: "number" },
+      { questionnaireId: "q6", label: "高橋 予約", m3ChartNo: "1006", patientId: "p-c", via: "nameOnly" },
     ]);
     expect(r.creates).toEqual([
       { questionnaireId: "q3", label: "佐藤 三郎", m3ChartNo: "1003", create: { name: "佐藤 三郎", kana: "サトウ サブロウ", birthDate: "1970-07-08" } },
     ]);
-    expect(r.ambiguous).toBe(1);
+    expect(r.ambiguous).toBe(2);
     expect(r.notFound).toBe(1);
   });
 });
