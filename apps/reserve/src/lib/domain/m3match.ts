@@ -105,6 +105,22 @@ export function kanaKey(v?: string): string {
     .replace(/[\s　・･.．,，]/g, "");
 }
 
+const VARIANT: Record<string, string> = {
+  髙: "高", 﨑: "崎", 嵜: "崎", 邊: "辺", 邉: "辺", 齋: "斎", 齊: "斉", 澤: "沢", 濱: "浜", 嶋: "島", 嶌: "島", 廣: "広", 國: "国", 櫻: "桜",
+  眞: "真", 惠: "恵", 德: "徳", 瀨: "瀬", 冨: "富", 籠: "篭", 槇: "槙", 曻: "昇",
+};
+const SMALL: Record<string, string> = { ァ: "ア", ィ: "イ", ゥ: "ウ", ェ: "エ", ォ: "オ", ッ: "ツ", ャ: "ヤ", ュ: "ユ", ョ: "ヨ", ヮ: "ワ", ヵ: "カ", ヶ: "ケ" };
+
+/**
+ * 表記ゆれを寄せた氏名の比べ方：空白・記号・敬称を除き、ひらがなをカタカナに、小さい字を大きく、濁点・長音を落とし、旧字を新字に。
+ * 「ユウコ／ユーコ」「サイトウ／サイトオ」までは寄せない（別人のこともあるため）
+ */
+export function looseKey(v?: string): string {
+  let s = kanaKey(v).replace(/(様|さま|サマ|殿|さん)$/u, "").replace(/[()（）［］\[\]「」"'’`~〜\-－ー‐]/g, "");
+  s = [...s].map((c) => VARIANT[c] ?? SMALL[c] ?? c).join("");
+  return s.normalize("NFD").replace(/[\u3099\u309A]/g, "").normalize("NFC").replace(/ヲ/g, "オ");
+}
+
 export function digitsKey(v?: string): string {
   return (v ?? "").normalize("NFKC").replace(/\D/g, "");
 }
@@ -227,8 +243,8 @@ export interface M3QuestionnaireLink {
   create?: { name: string; kana: string; birthDate?: string; phone?: string };
   /** 同じ人と見られる患者が予約カレンダーに複数いた（M3 番号で1人に決めた／番号がなく最も古い患者に決めた） */
   duplicates?: number;
-  /** いる患者の見つけ方：number＝M3 番号／nameBirth＝氏名＋生年月日・電話／nameOnly＝氏名だけ（M3 に同姓同名がいないとき） */
-  via?: "number" | "nameBirth" | "nameOnly";
+  /** いる患者の見つけ方：number＝M3 番号／nameBirth＝氏名＋生年月日・電話／nameOnly＝氏名だけ（M3 に同姓同名がいないとき）／loose＝表記ゆれを寄せた氏名 */
+  via?: "number" | "nameBirth" | "nameOnly" | "loose";
 }
 
 export interface M3QuestionnaireResult {
@@ -261,10 +277,16 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
     add(byName, kanaKey(cell(r, col.name)), i);
     add(byName, kanaKey(cell(r, col.kana)), i);
   });
+  const byLoose = new Map<string, number[]>();
+  rows.forEach((r, i) => {
+    add(byLoose, looseKey(cell(r, col.name)), i);
+    add(byLoose, looseKey(cell(r, col.kana)), i);
+  });
   const rowPhones = (r: string[]) => col.phone.map((p) => digitsKey(cell(r, p))).filter((d) => d.length >= 10);
 
   const pByChart = new Map<string, M3Candidate[]>();
   const pByName = new Map<string, M3Candidate[]>();
+  const pByLoose = new Map<string, M3Candidate[]>();
   const push = <T,>(m: Map<string, T[]>, k: string, v: T) => {
     if (!k) return;
     const a = m.get(k);
@@ -277,6 +299,7 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
     push(pByName, kanaKey(p.name), p);
     push(pByName, kanaKey(p.kana), p);
     push(pByName, kanaKey(p.nameAlt), p);
+    for (const k of [looseKey(p.name), looseKey(p.kana), looseKey(p.nameAlt)]) push(pByLoose, k, p);
   }
   const older = (a: M3Candidate, b: M3Candidate) => (Number(chartKey(a.chartNo) || 1e12) - Number(chartKey(b.chartNo) || 1e12)) || a.id.localeCompare(b.id);
 
@@ -324,6 +347,19 @@ export function matchQuestionnairesM3(qs: M3Questionnaire[], patients: M3Candida
         } else {
           out.ambiguous++;
           continue;
+        }
+      } else {
+        // 表記ゆれ（空白・小さい字・濁点・長音・旧字など）を寄せて、もう一度探す。M3 に同じく寄せた人がほかにいないときだけ
+        const lk = [...new Set([looseKey(name), looseKey(kana), looseKey(q.name), looseKey(q.kana)].filter(Boolean))];
+        const loose = [...new Set(lk.flatMap((k) => pByLoose.get(k) ?? []))].filter((p) => !(birth && p.birthDate && p.birthDate !== birth));
+        if (loose.length) {
+          if (new Set(lk.flatMap((k) => byLoose.get(k) ?? [])).size === 1) {
+            found = loose;
+            via = "loose";
+          } else {
+            out.ambiguous++;
+            continue;
+          }
         }
       }
     }

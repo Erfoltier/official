@@ -90,6 +90,7 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
   );
   const dup = result?.links.filter((l) => l.duplicates).length ?? 0;
   const nameOnly = result?.links.filter((l) => l.via === "nameOnly").length ?? 0;
+  const loose = result?.links.filter((l) => l.via === "loose").length ?? 0;
 
   return (
     <div className={styles.importBox}>
@@ -147,7 +148,7 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
       {result && (
         <>
           <div className={styles.priceStatus}>
-            未確認の問診票 {result.total.toLocaleString()}件 → いる患者に結びつく <b>{result.links.length.toLocaleString()}件</b>（うち氏名だけで一致 {nameOnly}件・重複患者から選んだ {dup}件）／新しく登録して結びつく{" "}
+            未確認の問診票 {result.total.toLocaleString()}件 → いる患者に結びつく <b>{result.links.length.toLocaleString()}件</b>（うち氏名だけで一致 {nameOnly}件・表記ゆれで一致 {loose}件・重複患者から選んだ {dup}件）／新しく登録して結びつく{" "}
             <b>{result.creates.length.toLocaleString()}件</b>／M3 で候補が2人以上 {result.ambiguous.toLocaleString()}件／M3 にも見つからない {result.notFound.toLocaleString()}件
           </div>
           <details className={styles.priceUrls}>
@@ -155,7 +156,7 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
             <ul className={styles.m3Preview}>
               {result.links.slice(0, 100).map((l) => (
                 <li key={l.questionnaireId}>
-                  {l.label} → いる患者（M3 {l.m3ChartNo || "番号なし"}）{l.via === "nameOnly" ? "・氏名だけで一致" : ""}{l.duplicates ? `・重複${l.duplicates}名から選択` : ""}
+                  {l.label} → いる患者（M3 {l.m3ChartNo || "番号なし"}）{l.via === "nameOnly" ? "・氏名だけで一致" : l.via === "loose" ? "・表記ゆれで一致" : ""}{l.duplicates ? `・重複${l.duplicates}名から選択` : ""}
                 </li>
               ))}
               {result.creates.slice(0, 100).map((l) => (
