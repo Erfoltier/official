@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Airリザーブの予約の取り込み。毎朝（既定 7:00 以降の最初の cron）に翌日の予約を取り込み、
- * 前日18時のリマインドに間に合わせる。あわせて日中は15分ごと（設定で変更可）に、今日から2週間先までをまとめて取り込む。
+ * 前日18時のリマインドに間に合わせる。あわせて日中は15分ごと（設定で変更可）に、今日から120日先までの診療日（水曜・祝日・特別診療日など、設定で変更可）をまとめて取り込む。
  * PC の電源が切れていても、サーバーの cron だけで動く。
  *
  * - ログイン ID・パスワードは暗号化して保存し、画面には二度と出さない
@@ -27,7 +27,12 @@ final class AirSync
             'groupId' => 'I00009C273',
             // こまめな取り込み：この分ごとに、今日から rangeDays 日先までを取り込む（0 で止める）。7:00〜21:00 のあいだだけ
             'interval' => 15,
-            'rangeDays' => 14,
+            'rangeDays' => 120,
+            // こまめな取り込みで取り込む日（診療日）。曜日（0=日〜6=土）・祝日・ホームページの「特別診療日」。
+            // 曜日が空で祝日も URL もないときは毎日。いしだ皮フ科の美容皮膚科は水曜・祝日・特別診療日
+            'clinicWeekdays' => [3],
+            'clinicHolidays' => true,
+            'specialDaysUrl' => 'https://ishidahihuka.jp/',
         ];
     }
 
@@ -53,6 +58,7 @@ final class AirSync
             'loginId' => ($sec['id'] ?? '') !== '' ? mb_substr($sec['id'], 0, 2) . '…' : '',
             'lastRun' => is_array($last) ? $last : null,
             'frequentLast' => is_array($f = Db::i()->meta('airSyncFrequent')) ? $f : null,
+            'specialDays' => is_array($sp = Db::i()->meta('airSpecialDays')) ? $sp : null,
             'review' => Store::reviewPatients(),
         ];
     }
@@ -76,10 +82,29 @@ final class AirSync
             $s['interval'] = $in['interval'];
         }
         if (array_key_exists('rangeDays', $in)) {
-            if (!is_int($in['rangeDays']) || $in['rangeDays'] < 1 || $in['rangeDays'] > 60) {
-                throw new StoreError('invalid', 'こまめな取り込みの期間は1〜60日で選んでください');
+            if (!is_int($in['rangeDays']) || $in['rangeDays'] < 1 || $in['rangeDays'] > 120) {
+                throw new StoreError('invalid', 'こまめな取り込みの期間は1〜120日で選んでください');
             }
             $s['rangeDays'] = $in['rangeDays'];
+        }
+        if (array_key_exists('clinicWeekdays', $in)) {
+            $w = $in['clinicWeekdays'];
+            if (!is_array($w) || array_filter($w, fn($d) => !is_int($d) || $d < 0 || $d > 6)) {
+                throw new StoreError('invalid', '診療日の曜日の形式が正しくありません');
+            }
+            $w = array_values(array_unique($w));
+            sort($w);
+            $s['clinicWeekdays'] = $w;
+        }
+        if (array_key_exists('clinicHolidays', $in)) {
+            $s['clinicHolidays'] = (bool) $in['clinicHolidays'];
+        }
+        if (array_key_exists('specialDaysUrl', $in)) {
+            $u = trim((string) $in['specialDaysUrl']);
+            if ($u !== '' && (!preg_match('#^https://[^\s/]+(/\S*)?$#', $u) || strlen($u) > 300)) {
+                throw new StoreError('invalid', '特別診療日のページは https:// で始まるアドレスを入れてください');
+            }
+            $s['specialDaysUrl'] = $u;
         }
         if (array_key_exists('groupId', $in)) {
             if (!is_string($in['groupId']) || !preg_match('/^[A-Za-z0-9]{1,20}$/', $in['groupId'])) {
@@ -164,7 +189,8 @@ final class AirSync
             return null;
         }
         $from = $now['date'];
-        $to = (new DateTimeImmutable($from, jst()))->modify('+' . max(1, min(60, (int) ($s['rangeDays'] ?? 14))) . ' day')->format('Y-m-d');
+        $to = (new DateTimeImmutable($from, jst()))->modify('+' . max(1, min(120, (int) ($s['rangeDays'] ?? 14))) . ' day')->format('Y-m-d');
+        $isClinicDay = self::clinicDayFilter($s);
         // 先に「試した」を残す（Air が遅くて重なって動いても、二重に読みに行かない）
         Db::i()->setMeta('airSyncFrequent', [...$prev, 'at' => now_iso()]);
         try {
@@ -174,7 +200,13 @@ final class AirSync
             }
             $sum = ['created' => 0, 'updated' => 0, 'cancelled' => 0, 'unchanged' => 0, 'newPatients' => 0];
             $count = 0;
+            $days = 0;
             for ($d = $from; $d <= $to; $d = (new DateTimeImmutable($d, jst()))->modify('+1 day')->format('Y-m-d')) {
+                // 診療日でない日は取り込まない（カレンダーのその日の予約にもさわらない）
+                if ($isClinicDay !== null && !$isClinicDay($d)) {
+                    continue;
+                }
+                $days++;
                 $rows = $byDate[$d] ?? [];
                 $count += count($rows);
                 // 1件もない日は Store::airApply が何も取り消さない（読み込みの失敗と見分けがつかないため）
@@ -184,12 +216,116 @@ final class AirSync
                     }
                 }
             }
-            $out = ['at' => now_iso(), 'ok' => true, 'date' => "{$from}〜{$to}", 'count' => $count, ...$sum];
+            $out = ['at' => now_iso(), 'ok' => true, 'date' => "{$from}〜{$to}", 'days' => $days, 'count' => $count, ...$sum];
         } catch (Throwable $e) {
             $out = ['at' => now_iso(), 'ok' => false, 'date' => "{$from}〜{$to}", 'error' => $e instanceof StoreError ? $e->getMessage() : '取り込めませんでした（' . get_class($e) . '）'];
         }
         Db::i()->setMeta('airSyncFrequent', $out);
         return $out;
+    }
+
+    /** 診療日だけに絞る判定。曜日も祝日も特別診療日もないときは null（毎日） */
+    public static function clinicDayFilter(array $s): ?Closure
+    {
+        $weekdays = array_map('intval', (array) ($s['clinicWeekdays'] ?? []));
+        $holidays = !empty($s['clinicHolidays']);
+        $url = (string) ($s['specialDaysUrl'] ?? '');
+        if (!$weekdays && !$holidays && $url === '') {
+            return null;
+        }
+        $special = $url !== '' ? array_flip(self::specialDays($url)) : [];
+        return fn(string $d): bool => isset($special[$d])
+            || in_array((int) (new DateTimeImmutable($d, jst()))->format('w'), $weekdays, true)
+            || ($holidays && Holidays::is($d));
+    }
+
+    /**
+     * ホームページの「特別診療日」（例「11月3日（火）・23日（月）」）を読む。6時間ごとに読み直し、
+     * 読めなかったときは前回の日付を使う
+     * @return string[] YYYY-MM-DD
+     */
+    public static function specialDays(string $url): array
+    {
+        $prev = Db::i()->meta('airSpecialDays');
+        $prev = is_array($prev) && ($prev['url'] ?? '') === $url ? $prev : null;
+        if ($prev && time() - strtotime((string) ($prev['checkedAt'] ?? $prev['at'] ?? '')) < 6 * 3600) {
+            return (array) ($prev['dates'] ?? []);
+        }
+        try {
+            [$code, $html] = self::$transport !== null ? (self::$transport)('GET', $url, [], null) : self::fetchPage($url);
+            if ($code !== 200) {
+                throw new StoreError('invalid', "特別診療日のページを読めませんでした（{$code}）");
+            }
+            $dates = self::parseSpecialDays((string) $html, (new DateTimeImmutable('now', jst()))->format('Y-m-d'));
+            Db::i()->setMeta('airSpecialDays', ['url' => $url, 'at' => now_iso(), 'checkedAt' => now_iso(), 'dates' => $dates]);
+            return $dates;
+        } catch (Throwable $e) {
+            $msg = $e instanceof StoreError ? $e->getMessage() : '特別診療日のページを読めませんでした';
+            Db::i()->setMeta('airSpecialDays', [...($prev ?? ['url' => $url, 'dates' => []]), 'checkedAt' => now_iso(), 'error' => $msg]);
+            return (array) ($prev['dates'] ?? []);
+        }
+    }
+
+    /** 「特別診療日」の見出しのあとの「M月D日」を拾う。年は今日に近いほう（過ぎた月は来年） */
+    public static function parseSpecialDays(string $html, string $today): array
+    {
+        $html = preg_replace('#<(script|style)\b[\s\S]*?</\1>#i', '', $html) ?? '';
+        $pos = mb_strpos($html, '特別診療日');
+        while ($pos !== false) {
+            // 見出し・お知らせのうち、後ろに日付が並ぶところ
+            $chunk = mb_substr($html, $pos, 3000);
+            $end = mb_stripos($chunk, '</section>');
+            $chunk = $end !== false ? mb_substr($chunk, 0, $end) : $chunk;
+            $text = html_entity_decode(strip_tags($chunk), ENT_QUOTES, 'UTF-8');
+            $text = mb_convert_kana($text, 'n');
+            if (preg_match_all('/(?:(\d{1,2})月)?\s*(\d{1,2})日/u', $text, $m, PREG_SET_ORDER)) {
+                $ty = (int) substr($today, 0, 4);
+                $tm = (int) substr($today, 5, 2);
+                $month = 0;
+                $out = [];
+                foreach ($m as $x) {
+                    if ($x[1] !== '') {
+                        $month = (int) $x[1];
+                    }
+                    $day = (int) $x[2];
+                    if ($month < 1 || $month > 12 || $day < 1 || $day > 31) {
+                        continue;
+                    }
+                    $y = $month < $tm - 1 ? $ty + 1 : $ty;
+                    if (checkdate($month, $day, $y)) {
+                        $out[] = sprintf('%04d-%02d-%02d', $y, $month, $day);
+                    }
+                }
+                if ($out) {
+                    $out = array_values(array_unique($out));
+                    sort($out);
+                    return $out;
+                }
+            }
+            $pos = mb_strpos($html, '特別診療日', $pos + 5);
+        }
+        return [];
+    }
+
+    private static function fetchPage(string $url): array
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+            CURLOPT_USERAGENT => 'reserve-air-sync',
+        ]);
+        $html = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        if (!is_string($html) || strlen($html) > 3 * 1024 * 1024) {
+            throw new StoreError('invalid', '特別診療日のページを読めませんでした');
+        }
+        return [$code, $html];
     }
 
     private static function preReminderRun(array $now): ?array
@@ -280,6 +416,18 @@ final class AirSync
         if ($csrf === '') {
             throw new StoreError('invalid', 'Airリザーブにログインできませんでした（ID・パスワードを確認してください）');
         }
+        // 長い期間は31日ずつ読む（1回の読み込みを Air の画面の月表示と同じくらいに抑える）
+        $rows = [];
+        for ($a = $from; $a <= $to; $a = $next) {
+            $b = min($to, (new DateTimeImmutable($a, jst()))->modify('+30 day')->format('Y-m-d'));
+            $next = (new DateTimeImmutable($b, jst()))->modify('+1 day')->format('Y-m-d');
+            $rows += self::searchCalendar($a, $b, $csrf);
+        }
+        return array_values($rows);
+    }
+
+    private static function searchCalendar(string $from, string $to, string $csrf): array
+    {
         $body = json_encode(['bookingFromDt' => str_replace('-', '', $from) . '000000', 'bookingToDt' => str_replace('-', '', $to) . '240000', 'resrcSchdlGrpId' => self::settings()['groupId']]);
         [$code, $raw] = self::req('POST', self::BASE . '/stateful/booking/staff/search/calendar', [
             'Content-Type: application/json; charset=UTF-8',
@@ -313,7 +461,7 @@ final class AirSync
                 }
             }
         }
-        return array_values($rows);
+        return $rows;
     }
 
     /**

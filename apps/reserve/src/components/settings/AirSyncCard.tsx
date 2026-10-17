@@ -73,6 +73,7 @@ function resultText(r: AirSyncResult): string {
 export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unknown) => void }) {
   const [s, setS] = useState<AirSyncSettings | null>(null);
   const [time, setTime] = useState("07:00");
+  const [specialUrl, setSpecialUrl] = useState("");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [date, setDate] = useState("");
@@ -86,6 +87,7 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
   const load = (r: AirSyncSettings) => {
     setS(r);
     setTime(r.time);
+    setSpecialUrl(r.specialDaysUrl ?? "");
   };
   useEffect(() => {
     fetchAirSync().then(load, (e) => setError(e instanceof Error ? e.message : "読み込めませんでした"));
@@ -222,7 +224,7 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
             onChange={(e) => void save({ rangeDays: Number(e.target.value) }, "こまめな取り込みの期間を保存しました")}
             aria-label="こまめな取り込みの期間"
           >
-            {[3, 7, 14, 30, 60].map((d) => (
+            {[3, 7, 14, 30, 60, 90, 120].map((d) => (
               <option key={d} value={d}>
                 {d}日先まで
               </option>
@@ -233,6 +235,42 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
           7:00〜21:00 のあいだ、Air で入れた予約・変更・取り消しをカレンダーに取り込みます（毎朝の翌日分の取り込みとは別）。予約申請ID（R＋数字）を Air の予約メモに書いておくと、その方は LINE の問診票をすぐ書けます。
           <br />
           {s.frequentLast ? `最終：${stamp(s.frequentLast.at)}　${resultText(s.frequentLast)}` : "最終：未実行"}
+        </small>
+      </div>
+
+      <div className={styles.prefRow}>
+        <b>取り込む日（診療日）</b>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {["日", "月", "火", "水", "木", "金", "土"].map((w, i) => (
+            <label key={w} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={s.clinicWeekdays.includes(i)}
+                disabled={busy}
+                onChange={(e) =>
+                  void save({ clinicWeekdays: e.target.checked ? [...s.clinicWeekdays, i] : s.clinicWeekdays.filter((d) => d !== i) }, "取り込む曜日を保存しました")
+                }
+              />
+              {w}
+            </label>
+          ))}
+          <label style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+            <input type="checkbox" checked={s.clinicHolidays} disabled={busy} onChange={(e) => void save({ clinicHolidays: e.target.checked }, "祝日の取り込みを保存しました")} />
+            祝日
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+          <input className={styles.input} style={{ flex: "1 1 240px" }} value={specialUrl} onChange={(e) => setSpecialUrl(e.target.value)} placeholder="https://（特別診療日が載っているページ）" aria-label="特別診療日のページ" />
+          <button type="button" className={styles.btn} disabled={busy || specialUrl === s.specialDaysUrl} onClick={() => void save({ specialDaysUrl: specialUrl }, "特別診療日のページを保存しました")}>
+            保存
+          </button>
+        </div>
+        <small>
+          こまめな取り込みは、ここで選んだ曜日・祝日と、ページの「特別診療日」に書かれた日だけを取り込みます（ほかの日の予約にはさわりません）。すべて外すと毎日取り込みます。ページは6時間ごとに読み直します。
+          <br />
+          {s.specialDays
+            ? `特別診療日：${s.specialDays.dates.length ? s.specialDays.dates.map((d) => d.slice(5).replace("-", "/")).join("・") : "見つかりません"}${s.specialDays.error ? `（${s.specialDays.error}・前回の日付を使っています）` : ""}`
+            : "特別診療日：次の取り込みで読みます"}
         </small>
       </div>
 

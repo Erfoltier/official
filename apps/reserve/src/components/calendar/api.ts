@@ -275,6 +275,11 @@ export interface AirSyncSettings {
   /** こまめな取り込み：この分ごとに（0 は止める）、今日から rangeDays 日先までを取り込む */
   interval: number;
   rangeDays: number;
+  /** こまめな取り込みで取り込む日：曜日（0=日〜6=土）・祝日・ホームページの特別診療日。すべて空なら毎日 */
+  clinicWeekdays: number[];
+  clinicHolidays: boolean;
+  specialDaysUrl: string;
+  specialDays: { url: string; at?: string; checkedAt?: string; dates: string[]; error?: string } | null;
   frequentLast: AirSyncResult | null;
   review: { id: string; name: string; kana: string }[];
 }
@@ -283,7 +288,7 @@ export function fetchAirSync(): Promise<AirSyncSettings> {
   return call("/api/v1/admin/air-sync");
 }
 
-export function saveAirSync(body: { enabled?: boolean; time?: string; groupId?: string; loginId?: string; password?: string; interval?: number; rangeDays?: number }): Promise<AirSyncSettings> {
+export function saveAirSync(body: { enabled?: boolean; time?: string; groupId?: string; loginId?: string; password?: string; interval?: number; rangeDays?: number; clinicWeekdays?: number[]; clinicHolidays?: boolean; specialDaysUrl?: string }): Promise<AirSyncSettings> {
   return call("/api/v1/admin/air-sync", { method: "PUT", body: JSON.stringify(body) });
 }
 
