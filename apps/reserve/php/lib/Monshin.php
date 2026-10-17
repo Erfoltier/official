@@ -35,7 +35,7 @@ final class Monshin
         $q = fn(string $label, string $type, bool $required = false, array $options = []) => ['label' => $label, 'type' => $type, 'required' => $required, 'options' => $options];
         return [
             'title' => '問診票',
-            'intro' => 'ご来院前にご記入ください。ご記入いただいた内容は診療のためだけに使います。',
+            'intro' => 'ご来院前にご記入ください。ご記入いただいた内容は診療のためだけに使用いたします。',
             'done' => '送信しました。ご記入ありがとうございました。ご来院をお待ちしております。',
             'questions' => self::withIds([
                 $q('お名前', 'text', true),
@@ -63,7 +63,12 @@ final class Monshin
     public static function form(): array
     {
         Store::init();
-        return Db::i()->meta('monshinForm') ?? self::defaults();
+        $form = Db::i()->meta('monshinForm') ?? self::defaults();
+        // 以前の既定の文面のまま保存されている場合は、今の言い回しにそろえる
+        if (isset($form['intro']) && is_string($form['intro'])) {
+            $form['intro'] = str_replace('診療のためだけに使います。', '診療のためだけに使用いたします。', $form['intro']);
+        }
+        return $form;
     }
 
     /** 質問の並びを保存する（院長・管理者） */

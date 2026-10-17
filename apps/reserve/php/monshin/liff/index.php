@@ -109,7 +109,7 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
       return el('div', { class: 'card' }, el('span', { class: 'q' }, q.label, req), input, errors[q.id] ? el('p', { class: 'msg', text: errors[q.id] }) : null);
     });
     const knownCard = it.known.length ? el('div', { class: 'card' },
-      el('p', { class: 'muted', text: 'ご予約時の情報を使います（ご記入は不要です）。違うときは、来院時に受付でお知らせください。' }),
+      el('p', { class: 'muted', text: 'ご予約時の情報を使用いたします（ご記入は不要です）。違うときは、来院時に受付でお知らせください。' }),
       el('dl', { class: 'known' }, ...it.known.flatMap((k) => [el('dt', { text: k.label }), el('dd', { text: k.value })])),
     ) : null;
     const submit = el('button', { type: 'submit', text: '送信する' });
