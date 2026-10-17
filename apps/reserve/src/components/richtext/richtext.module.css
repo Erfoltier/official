@@ -1,0 +1,168 @@
+.view {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.editor {
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.editor[data-disabled] {
+  background: var(--bg-subtle);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-subtle);
+}
+
+.toolbar button {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* タッチ端末では「指を離したあとも押されたまま」に見えないよう、重ねたときの見た目はマウスのときだけ */
+@media (hover: hover) {
+  .toolbar button:hover {
+    background: var(--surface);
+    border-color: var(--line-strong);
+  }
+}
+
+/* カーソル位置の文字にその装飾が付いているときだけ、押された見た目 */
+.toolbar button[data-on] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--line-strong);
+}
+
+.colorBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.colorBar {
+  width: 14px;
+  height: 3px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #dc2626, #ca8a04, #16a34a, #2563eb, #7c3aed, #db2777);
+}
+
+.count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.count[data-over] {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--sw);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  cursor: pointer;
+  padding: 0;
+}
+
+@media (hover: hover) {
+  .swatch:hover {
+    transform: scale(1.12);
+  }
+}
+
+.swatch[data-default] {
+  background: linear-gradient(135deg, var(--sw) 0 50%, var(--surface) 50% 100%);
+}
+
+.swatch[data-custom] {
+  border-radius: 6px;
+}
+
+.addColor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.addColor input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.area {
+  padding: 6px 10px;
+  outline: none;
+  line-height: 1.6;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.area p,
+.area div {
+  margin: 0;
+}
+
+.area[data-empty]::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  pointer-events: none;
+  position: absolute;
+}

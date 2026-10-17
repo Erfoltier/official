@@ -1,0 +1,439 @@
+/* ===== 同意書の本文（画面・印刷共通） ===== */
+.doc {
+  color: #111;
+  /* 文書に大きさ・行間が書いてないときだけ使う（Googleドキュメントは段落ごとの値を使う） */
+  font-size: 10.5pt;
+  line-height: 1.5;
+}
+
+.head {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 5mm;
+  font-size: 9.5pt;
+}
+
+.head th,
+.head td {
+  border: 1px solid var(--accent-line);
+  padding: 1.5mm 2.5mm;
+  text-align: left;
+}
+
+.head th {
+  width: 22mm;
+  background: var(--bg-muted);
+  color: var(--accent-deep);
+  font-weight: 700;
+  white-space: nowrap;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.head small {
+  margin-left: 2mm;
+  color: #555;
+}
+
+.para {
+  margin: 0;
+  min-height: 1em;
+  overflow-wrap: anywhere;
+  /* 元の文書の空白（字下げ・寄せに使われている）を詰めない */
+  white-space: pre-wrap;
+}
+
+.l {
+  font-size: 13pt;
+  font-weight: 700;
+  margin: 1mm 0 2mm;
+}
+
+.xl {
+  font-size: 16pt;
+  font-weight: 700;
+  margin: 1mm 0 3mm;
+}
+
+.li {
+  padding-left: 1.2em;
+  text-indent: -0.9em;
+}
+
+.li::before {
+  content: "・";
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.table td {
+  border: 1px solid #000;
+  padding: 5pt;
+  vertical-align: top;
+}
+
+/* 署名の行：元の行のまま。署名の画像は幅も高さも取らずに重ねる（改行の位置を変えない） */
+.signLine {
+  position: relative;
+}
+
+.signInline {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: baseline;
+}
+
+.signInline img {
+  position: absolute;
+  left: 2mm;
+  bottom: -3mm;
+  max-height: 13mm;
+  max-width: 55mm;
+}
+
+.sign {
+  display: flex;
+  align-items: flex-end;
+  gap: 6mm;
+  margin: 6mm 0 3mm;
+  break-inside: avoid;
+}
+
+.signDate {
+  font-size: 11pt;
+  white-space: nowrap;
+}
+
+.signLabel {
+  white-space: nowrap;
+  font-size: 10pt;
+}
+
+.signBox {
+  flex: 1;
+  min-width: 60mm;
+  height: 16mm;
+  border-bottom: 1.5px solid #111;
+  display: flex;
+  align-items: flex-end;
+}
+
+.signBox img {
+  max-height: 16mm;
+  max-width: 100%;
+}
+
+.clinicFoot {
+  margin: 4mm 0 0;
+  text-align: right;
+  font-weight: 700;
+}
+
+/* ===== 発行ダイアログ ===== */
+.dialog {
+  width: min(860px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  border: none;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 50px rgb(var(--shadow-rgb) / 0.28);
+  color: var(--text);
+}
+
+.dialog::backdrop {
+  background: rgb(15 23 42 / 0.4);
+}
+
+.dHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.dHead h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.dHead h2 small {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.btn,
+.primaryBtn,
+.iconBtn {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.iconBtn {
+  width: 38px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.primaryBtn {
+  background: var(--grad);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: var(--shadow-accent);
+}
+
+.primaryBtn:disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.search {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font: inherit;
+  margin-bottom: 8px;
+}
+
+.groupTitle {
+  margin: 10px 0 6px;
+  font-size: 13px;
+  color: var(--accent-strong);
+}
+
+.tplList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+}
+
+.tpl {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tpl:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tpl[data-match] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.treat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.treat input {
+  flex: 1;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.preview {
+  max-height: 52dvh;
+  overflow: auto;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: inset 0 1px 4px rgb(0 0 0 / 0.04);
+}
+
+.preview[data-signing] {
+  max-height: 26dvh;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.done p {
+  font-size: 15px;
+  margin: 12px 0;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* 署名欄 */
+.padWrap {
+  margin-top: 10px;
+  padding: 10px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  background: var(--tint);
+}
+
+.padHint {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.pad {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border: 1px dashed var(--accent-line);
+  border-radius: 8px;
+  background: var(--surface);
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.padActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ===== 印刷ページ ===== */
+.message {
+  padding: 24px;
+}
+
+.printWrap {
+  min-height: 100vh;
+  background: var(--bg-muted);
+  padding-bottom: 32px;
+}
+
+.printBar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-strong);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sheet {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 16px auto 0;
+  padding: 14mm;
+  background: var(--surface);
+  box-shadow: 0 4px 24px rgb(var(--shadow-rgb) / 0.15);
+}
+
+.meta {
+  margin-top: 6mm;
+  font-size: 7.5pt;
+  color: #888;
+}
+
+@media screen and (max-width: 820px) {
+  .sheet {
+    zoom: 0.46;
+  }
+}
+
+@media print {
+  .printWrap {
+    background: none;
+    padding: 0;
+  }
+  .printBar {
+    display: none;
+  }
+  .sheet {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0 !important;
+    box-shadow: none;
+    zoom: 1;
+  }
+  /* 発行の記録は画面だけ（印刷すると最後のページがずれるため） */
+  .meta {
+    display: none;
+  }
+}
+
+.version {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #15803d;
+}
+
+.version[data-stale] {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.tpl:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
