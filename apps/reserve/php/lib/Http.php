@@ -42,7 +42,7 @@ final class Http
             self::json(['error' => $err->codeName, 'message' => $err->getMessage()], $status);
         }
         if ($err instanceof StoreError) {
-            $status = match ($err->codeName) { 'not_found' => 404, 'version_conflict' => 409, default => 400 };
+            $status = match ($err->codeName) { 'not_found' => 404, 'version_conflict', 'conflict' => 409, default => 400 };
             self::json(['error' => $err->codeName, 'message' => $err->getMessage()], $status);
         }
         if ($err instanceof InputError) {
@@ -168,6 +168,19 @@ final class Http
         if ($link === null || $link['source'] !== 'neovoir') {
             self::json(['error' => 'unauthorized'], 401);
         }
+        return $link;
+    }
+
+    /** 自動予約プログラムの鍵（設定 → 外部機器の連携 で発行した「自動予約」の鍵だけ。ほかの連携の鍵では入れない） */
+    public static function bookingLink(): array
+    {
+        $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        $given = (string) ($_SERVER['HTTP_X_BOOKING_TOKEN'] ?? (str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : ''));
+        $link = Store::deviceLinkByToken($given);
+        if ($link === null || $link['source'] !== 'booking') {
+            self::json(['error' => 'unauthorized', 'message' => '鍵が正しくないか、止められています'], 401);
+        }
+        Store::touchDeviceLink($link['id']);
         return $link;
     }
 
@@ -342,6 +355,29 @@ final class Schema
         ]);
     }
 
+    public static function bookingPatient(mixed $v): array
+    {
+        return V::shape($v, ['name' => fn($x) => V::str($x, 120), 'kana' => fn($x) => V::str($x, 120), 'birthDate?' => fn($x) => $x === '' ? '' : V::date($x), 'phone?' => fn($x) => V::str($x, 30), 'email?' => fn($x) => V::str($x, 200)]);
+    }
+
+    public static function bookingCancel(mixed $v): int
+    {
+        return V::shape($v, ['version' => fn($x) => V::int($x, 1)])['version'];
+    }
+
+    /** 自動予約からの変更：日時・レーン・メニュー・メモだけ（状態や申請IDは変えない） */
+    public static function bookingUpdate(mixed $v): array
+    {
+        return V::shape($v, [
+            'version' => fn($x) => V::int($x, 1),
+            'laneId?' => [V::class, 'id'],
+            'startAt?' => [V::class, 'iso'],
+            'endAt?' => [V::class, 'iso'],
+            'menuIds?' => fn($x) => V::ids($x, 1, 5),
+            'memo?' => fn($x) => V::str($x, 3000),
+        ]);
+    }
+
     public static function integrationRequestId(mixed $v): string
     {
         return V::shape($v, ['requestId' => [V::class, 'requestId']])['requestId'];
@@ -421,7 +457,7 @@ final class Schema
 
     public static function deviceLink(mixed $v): array
     {
-        return V::shape($v, ['source' => fn($x) => V::enum($x, ['neovoir', 'google']), 'name?' => fn($x) => V::str($x, 60)]);
+        return V::shape($v, ['source' => fn($x) => V::enum($x, ['neovoir', 'google', 'booking']), 'name?' => fn($x) => V::str($x, 60)]);
     }
 
     public static function deviceOptions(mixed $v): array

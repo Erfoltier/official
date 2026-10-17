@@ -1812,7 +1812,7 @@ final class Store
 
     // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
 
-    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール', 'google' => 'Google連携（問診票・同意書・料金表）'];
+    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール', 'google' => 'Google連携（問診票・同意書・料金表）', 'booking' => '自動予約（予約の入力・変更・取り消し）'];
 
     /** 連携の一覧と受け取りの状況（鍵そのものは返さない） */
     public static function deviceLinks(): array
@@ -1848,7 +1848,7 @@ final class Store
             throw new StoreError('invalid', '連携できない機器です');
         }
         $name = self::checkText('名前', $input['name'] ?? '', 40, false) ?: self::DEVICE_SOURCES[$source];
-        $token = ($source === 'neovoir' ? 'nv_' : 'gi_') . bin2hex(random_bytes(20));
+        $token = ['neovoir' => 'nv_', 'google' => 'gi_', 'booking' => 'bk_'][$source] . bin2hex(random_bytes(20));
         $id = new_id('dl');
         $link = ['id' => $id, 'source' => $source, 'name' => $name, 'createdAt' => now_iso(), 'createdBy' => $by, 'received' => 0];
         Db::i()->put('deviceLink', $id, [...$link, 'tokenHash' => hash('sha256', $token)]);
@@ -1909,6 +1909,16 @@ final class Store
             $db->put('deviceLink', $l['id'], [...$cur, 'lastUsedAt' => now_iso()]);
         }
         return true;
+    }
+
+    /** 最後に使った日時を残す（1分に1回まで） */
+    public static function touchDeviceLink(string $id): void
+    {
+        $db = Db::i();
+        $cur = $db->get('deviceLink', $id);
+        if (is_array($cur) && (!isset($cur['lastUsedAt']) || strcmp($cur['lastUsedAt'], gmdate('Y-m-d\TH:i', time() - 60)) < 0)) {
+            $db->put('deviceLink', $id, [...$cur, 'lastUsedAt' => now_iso()]);
+        }
     }
 
     public static function deviceLinkByToken(string $token): ?array
@@ -5293,6 +5303,184 @@ final class Store
             }
         }
         return ['at' => $at, 'keepBefore' => drop_null($before), 'keepAfter' => $keep, 'lineUserId' => $line, 'moved' => $moved, 'notes' => $notes];
+    }
+
+    // ---- 自動予約プログラム（ChatGPT など）の連携。鍵は 設定 → 外部機器の連携 で「自動予約」を発行 ----
+    // 患者情報は予約に必要な最小限（氏名・フリガナ・生年月日・電話の下4桁）だけを返す
+
+    /** 予約を入れるのに使うレーン・メニュー・診療時間 */
+    public static function bookingOptions(): array
+    {
+        self::init();
+        $c = self::clinic();
+        return [
+            'clinic' => ['name' => $c['name'] ?? '', 'slotMin' => $c['slotMin'] ?? 15, 'dayStartMin' => $c['dayStartMin'] ?? null, 'dayEndMin' => $c['dayEndMin'] ?? null],
+            'lanes' => array_values(array_map(fn($l) => ['id' => $l['id'], 'name' => $l['name'], 'shortName' => $l['shortName'] ?? ''], array_filter(self::sortedLanes(), fn($l) => $l['active'] && empty($l['deleted'])))),
+            'menus' => array_values(array_map(fn($m) => array_filter(['id' => $m['id'], 'name' => $m['name'], 'duration' => $m['duration'] ?? null], fn($v) => $v !== null), array_filter(self::sortedMenus(), fn($m) => !empty($m['active']) && empty($m['deleted'])))),
+        ];
+    }
+
+    private static function bookingPatientView(?array $p): ?array
+    {
+        if (!$p) {
+            return null;
+        }
+        $digits = digits_only((string) ($p['phone'] ?? ''));
+        return array_filter([
+            'id' => $p['id'],
+            'name' => $p['name'],
+            'kana' => $p['kana'] ?? '',
+            'birthDate' => $p['birthDate'] ?? '',
+            'phoneLast4' => $digits !== '' ? substr($digits, -4) : '',
+            'chartNo' => $p['chartNo'] ?? '',
+        ], fn($v) => $v !== '');
+    }
+
+    private static function bookingView(array $r): array
+    {
+        $memo = strip_tags((string) ($r['memo'] ?? ''));
+        return array_filter([
+            'id' => $r['id'],
+            'version' => $r['version'],
+            'status' => $r['status'],
+            'startAt' => $r['startAt'],
+            'endAt' => $r['endAt'],
+            'laneId' => $r['laneId'],
+            'menuIds' => $r['menuIds'],
+            'patient' => self::bookingPatientView(self::patients()[$r['patientId']] ?? null),
+            'requestId' => $r['requestId'] ?? null,
+            'memo' => $memo !== '' ? $memo : null,
+            // Air で入れた予約（Air から取り込むので、ここからは変えられない）
+            'fromAir' => preg_match('/' . self::AIR_MARK . '\s*[:：]/u', $memo) === 1 ? true : null,
+        ], fn($v) => $v !== null);
+    }
+
+    /** その日の予約（取り消し済みも status で分かる） */
+    public static function bookingDay(string $date): array
+    {
+        self::init();
+        return ['date' => $date, 'reservations' => array_map(fn($r) => self::bookingView($r), self::byStart(self::reservationsOn($date)))];
+    }
+
+    public static function bookingGet(string $id): array
+    {
+        self::init();
+        return self::bookingView(self::reservation($id));
+    }
+
+    /** 患者を探す（氏名・フリガナ・電話・診察券番号・予約申請ID）。最大10人 */
+    public static function bookingFindPatients(string $query): array
+    {
+        self::init();
+        if (js_trim($query) === '') {
+            throw new StoreError('invalid', '探す言葉（q）を入れてください');
+        }
+        return array_map(fn($p) => self::bookingPatientView($p), array_slice(self::searchPatients($query, 10), 0, 10));
+    }
+
+    /**
+     * 患者を探して、いなければ新しく登録する。フリガナ＋生年月日、または氏名＋電話がちょうど1人と合えばその人。
+     * 新しく登録した人には「要確認」の印を付け、スタッフが重複でないか確かめられるようにする
+     */
+    public static function bookingEnsurePatient(array $in, array $by): array
+    {
+        self::init();
+        $name = self::checkText('氏名', $in['name'] ?? '', 120, true);
+        $kana = js_trim((string) ($in['kana'] ?? ''));
+        $birth = js_trim((string) ($in['birthDate'] ?? ''));
+        $phone = digits_only((string) ($in['phone'] ?? ''));
+        if ($kana === '' || ($birth === '' && $phone === '')) {
+            throw new StoreError('invalid', 'フリガナと、生年月日か電話番号のどちらかを入れてください（同じ人を見分けるため）');
+        }
+        $norm = fn($x) => fold_name_variants(search_key((string) $x));
+        $hits = [];
+        foreach (self::patients() as $p) {
+            if (!empty($p['deleted'])) {
+                continue;
+            }
+            $byKana = $birth !== '' && ($p['birthDate'] ?? '') === $birth && $norm($p['kana'] ?? '') === $norm($kana);
+            $byPhone = $phone !== '' && digits_only((string) ($p['phone'] ?? '')) === $phone && ($norm($p['name']) === $norm($name) || $norm($p['kana'] ?? '') === $norm($kana));
+            if ($byKana || $byPhone) {
+                $hits[$p['id']] = $p;
+            }
+        }
+        if (count($hits) === 1) {
+            return ['created' => false, 'patient' => self::bookingPatientView(array_values($hits)[0])];
+        }
+        if (count($hits) > 1) {
+            throw new StoreError('conflict', '同じ方が複数登録されています。スタッフに確認してもらってください');
+        }
+        $p = self::createPatient(array_filter(['name' => $name, 'kana' => $kana, 'birthDate' => $birth, 'phone' => js_trim((string) ($in['phone'] ?? '')), 'email' => js_trim((string) ($in['email'] ?? ''))], fn($v) => $v !== ''), $by);
+        $p = self::patient($p['id']);
+        self::putPatient([...$p, 'needsReview' => 'booking']);
+        return ['created' => true, 'patient' => self::bookingPatientView($p)];
+    }
+
+    /** 同じレーンで時間が重なる予約（取り消し・来院なしは除く） */
+    private static function bookingOverlap(string $laneId, string $startAt, string $endAt, ?string $exceptId = null): ?array
+    {
+        $s = parse_ms($startAt);
+        $e = parse_ms($endAt);
+        foreach (self::reservationsOn(clinic_date_of($startAt)) as $r) {
+            if ($r['id'] === $exceptId || $r['laneId'] !== $laneId || self::inactive($r)) {
+                continue;
+            }
+            if (parse_ms($r['startAt']) < $e && parse_ms($r['endAt']) > $s) {
+                return $r;
+            }
+        }
+        return null;
+    }
+
+    public static function bookingCreate(array $in, array $by): array
+    {
+        self::init();
+        if (parse_ms($in['startAt']) < time() * 1000) {
+            throw new StoreError('invalid', '過ぎた時刻には予約できません');
+        }
+        if (self::bookingOverlap($in['laneId'], $in['startAt'], $in['endAt'])) {
+            throw new StoreError('conflict', 'そのレーンのその時間には、すでに予約があります');
+        }
+        return self::bookingView(self::createReservation($in, $by));
+    }
+
+    private static function bookingEditable(array $cur): void
+    {
+        if (preg_match('/' . self::AIR_MARK . '\s*[:：]/u', strip_tags((string) ($cur['memo'] ?? '')))) {
+            throw new StoreError('invalid', 'Airリザーブで入れた予約です。Airリザーブで変更・取り消ししてください（15分ほどでここに反映されます）');
+        }
+        if (self::inactive($cur)) {
+            throw new StoreError('invalid', '取り消し済みの予約は変更できません');
+        }
+        if (parse_ms($cur['endAt']) < time() * 1000) {
+            throw new StoreError('invalid', '終わった予約は変更できません');
+        }
+    }
+
+    /** 日時・レーン・メニュー・メモを変える（version は直前に読んだ値） */
+    public static function bookingUpdate(string $id, array $in, array $by): array
+    {
+        self::init();
+        $cur = self::reservation($id);
+        self::bookingEditable($cur);
+        $start = isset($in['startAt']) ? normalize_iso($in['startAt']) : $cur['startAt'];
+        $end = isset($in['endAt']) ? normalize_iso($in['endAt']) : $cur['endAt'];
+        if ($start !== $cur['startAt'] && parse_ms($start) < time() * 1000) {
+            throw new StoreError('invalid', '過ぎた時刻には変更できません');
+        }
+        if (self::bookingOverlap($in['laneId'] ?? $cur['laneId'], $start, $end, $id)) {
+            throw new StoreError('conflict', 'そのレーンのその時間には、すでに予約があります');
+        }
+        return self::bookingView(self::updateReservation($id, $in, $by));
+    }
+
+    /** 取り消す（記録は残る。カレンダーでは取り消しとして見える） */
+    public static function bookingCancel(string $id, int $version, array $by): array
+    {
+        self::init();
+        $cur = self::reservation($id);
+        self::bookingEditable($cur);
+        return self::bookingView(self::updateReservation($id, ['version' => $version, 'status' => 'cancelled'], $by));
     }
 }
 

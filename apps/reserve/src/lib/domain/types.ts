@@ -374,8 +374,8 @@ export interface PatientFile {
 }
 
 /** 写真を送ってくる機器（院のパソコンに置いた取り込み係から） */
-export type DeviceSource = "neovoir" | "google";
-export const DEVICE_SOURCE_LABEL: Record<DeviceSource, string> = { neovoir: "ネオボワール", google: "Google連携" };
+export type DeviceSource = "neovoir" | "google" | "booking";
+export const DEVICE_SOURCE_LABEL: Record<DeviceSource, string> = { neovoir: "ネオボワール", google: "Google連携", booking: "自動予約" };
 
 /** 機器の連携（鍵そのものは保存せず、作ったときに1回だけ見せる） */
 /** ネオボワールの4つの光源（NL 通常光・PL 偏光・SL・UV 紫外線） */

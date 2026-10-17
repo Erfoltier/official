@@ -192,6 +192,46 @@ try {
         Http::json(['patientId' => $pt['id'], 'm3ChartNo' => $pt['m3ChartNo'] ?? null, 'version' => $pt['version']]);
     }
 
+    // 自動予約プログラム（ChatGPT など）。鍵は 設定 → 外部機器の連携 →「自動予約」で発行。手順は public/integrations/booking-api.html
+    if ($p[0] === 'integration' && ($p[1] ?? '') === 'booking') {
+        $link = Http::bookingLink();
+        $by = ['id' => 'booking:' . $link['id'], 'name' => '自動予約（' . $link['name'] . '）'];
+        $sub = $p[2] ?? '';
+        if ($method === 'GET' && $n === 3 && $sub === 'ping') {
+            Http::json(['ok' => true, 'name' => $link['name']]);
+        }
+        if ($method === 'GET' && $n === 3 && $sub === 'options') {
+            Http::json(Store::bookingOptions());
+        }
+        if ($method === 'GET' && $n === 3 && $sub === 'day') {
+            Http::json(Store::bookingDay(V::date($q('date'))));
+        }
+        if ($method === 'GET' && $n === 3 && $sub === 'patients') {
+            Http::json(['items' => Store::bookingFindPatients(mb_substr($q('q') ?? '', 0, 50))]);
+        }
+        if ($method === 'POST' && $n === 3 && $sub === 'patients') {
+            Http::json(Store::bookingEnsurePatient(Schema::bookingPatient(Http::readJson()), $by));
+        }
+        if ($sub === 'reservations') {
+            if ($method === 'POST' && $n === 3) {
+                Http::json(Store::bookingCreate(Schema::createReservation(Http::readJson(65_536)), $by), 201);
+            }
+            if ($n >= 4) {
+                $id = V::id($p[3]);
+                if ($method === 'GET' && $n === 4) {
+                    Http::json(Store::bookingGet($id));
+                }
+                if ($method === 'PATCH' && $n === 4) {
+                    Http::json(Store::bookingUpdate($id, Schema::bookingUpdate(Http::readJson(65_536)), $by));
+                }
+                if (($method === 'POST' && $n === 5 && $p[4] === 'cancel') || ($method === 'DELETE' && $n === 4)) {
+                    Http::json(Store::bookingCancel($id, Schema::bookingCancel(Http::readJson()), $by));
+                }
+            }
+        }
+        Http::json(['error' => 'not_found', 'message' => '見つかりません'], 404);
+    }
+
     // ---- カレンダー・設定 ----
     if ($route === 'GET day') {
         $me();

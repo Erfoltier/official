@@ -361,7 +361,7 @@ export const stageSchema = z
   .strict();
 
 /** 機器の連携の鍵を発行する */
-export const deviceLinkSchema = z.object({ source: z.enum(["neovoir", "google"]), name: z.string().max(60).optional() }).strict();
+export const deviceLinkSchema = z.object({ source: z.enum(["neovoir", "google", "booking"]), name: z.string().max(60).optional() }).strict();
 
 /** 機器の取り込み方（光源・縮小） */
 export const deviceOptionsSchema = z

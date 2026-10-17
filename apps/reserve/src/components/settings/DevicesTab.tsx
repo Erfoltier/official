@@ -30,6 +30,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   const [inbox, setInbox] = useState<PhotoInboxItem[] | null>(null);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [newGoogleKey, setNewGoogleKey] = useState<string | null>(null);
+  const [newBookingKey, setNewBookingKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -61,6 +62,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
 
   const active = status?.links.filter((l) => !l.revoked && l.source === "neovoir") ?? [];
   const googleKeys = status?.links.filter((l) => !l.revoked && l.source === "google") ?? [];
+  const bookingKeys = status?.links.filter((l) => !l.revoked && l.source === "booking") ?? [];
   const serverUrl = typeof window === "undefined" ? "" : `${window.location.origin}${withBase("")}`.replace(/\/$/, "");
 
   return (
@@ -195,6 +197,26 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           }}
           newKey={newGoogleKey}
           onCloseKey={() => setNewGoogleKey(null)}
+          notify={notify}
+        />
+      )}
+
+      {isAdmin && status && (
+        <BookingKeysCard
+          keys={bookingKeys}
+          serverUrl={serverUrl}
+          busy={busy}
+          onCreate={(name) =>
+            run(async () => {
+              const r = await createDeviceLink(name, "booking");
+              setNewBookingKey(r.token);
+            })
+          }
+          onRevoke={(l) => {
+            if (window.confirm(`「${l.name}」の接続キーを無効にします。このキーを使っている自動予約プログラムは、予約を入れられなくなります。よろしいですか？`)) run(() => revokeDeviceLink(l.id), "接続キーを無効にしました");
+          }}
+          newKey={newBookingKey}
+          onCloseKey={() => setNewBookingKey(null)}
           notify={notify}
         />
       )}
@@ -411,6 +433,73 @@ function GoogleKeysCard(props: {
         </ul>
         <p className={styles.hint}>接続キーが漏れた可能性がある場合は「このキーを無効化」を押し、新しい接続キーを発行して各スクリプトに設定し直してください。</p>
       </details>
+    </div>
+  );
+}
+
+/** 自動予約プログラム（ChatGPT など）の接続キー。予約の入力・変更・取り消しだけができる */
+function BookingKeysCard(props: {
+  keys: DeviceLink[];
+  serverUrl: string;
+  busy: boolean;
+  newKey: string | null;
+  onCreate: (name: string) => void;
+  onRevoke: (l: DeviceLink) => void;
+  onCloseKey: () => void;
+  notify: (t: string) => void;
+}) {
+  const { keys, serverUrl, busy, newKey, onCreate, onRevoke, onCloseKey, notify } = props;
+  const [name, setName] = useState("ChatGPT 自動予約");
+  const api = `${serverUrl}/api/v1/integration/booking`;
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>自動予約プログラムの接続キー（ChatGPT など）</h3>
+      <p className={styles.hint}>
+        外部の自動予約プログラムが、予約の入力・変更・取り消しをするときに使う接続キーです。このキーでできるのは予約と、予約に必要な患者の検索・登録だけです（カルテ・メモ・写真・設定は見られません）。
+        プログラムが入れた予約は、カレンダーの変更履歴に「自動予約（キーの名前）」と残ります。
+      </p>
+      <p className={styles.hint}>
+        使い方は{" "}
+        <a href={withBase("/integrations/booking-api.html")} target="_blank" rel="noreferrer">
+          自動予約プログラムの接続マニュアル
+        </a>{" "}
+        を見てください。入口のアドレス：<code>{api}</code>
+      </p>
+      {keys.map((l) => (
+        <div key={l.id} className={styles.prefRow}>
+          <b>{l.name}</b>
+          <small>
+            作成日 {stamp(l.createdAt)}（{l.createdBy.name}）・最終利用 {stamp(l.lastUsedAt)}
+          </small>
+          <div>
+            <button className={styles.btn} disabled={busy} onClick={() => onRevoke(l)}>
+              このキーを無効化
+            </button>
+          </div>
+        </div>
+      ))}
+      {newKey ? (
+        <div className={styles.importBox}>
+          <b>接続キー（この画面を閉じると再表示できません）</b>
+          <code className={styles.tokenBox}>{newKey}</code>
+          <div className={styles.actions}>
+            <button className={styles.btn} onClick={() => navigator.clipboard?.writeText(newKey).then(() => notify("接続キーをコピーしました"), () => {})}>
+              コピー
+            </button>
+            <button className={styles.btn} onClick={onCloseKey}>
+              閉じる
+            </button>
+          </div>
+          <p className={styles.hint}>自動予約プログラムの設定（ChatGPT の GPT なら「アクション」の認証 → API キー）に貼り付けてください。チャットの本文やメールには貼り付けないでください。</p>
+        </div>
+      ) : (
+        <div className={styles.actions} style={{ alignItems: "center" }}>
+          <input className={styles.input} style={{ width: "auto", flex: "1 1 200px" }} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="接続キーの名前" />
+          <button className={styles.primary} disabled={busy || !name.trim()} onClick={() => onCreate(name.trim())}>
+            接続キーを発行
+          </button>
+        </div>
+      )}
     </div>
   );
 }
