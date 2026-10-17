@@ -17,6 +17,21 @@ try {
     }
     $path = array_map('rawurldecode', explode('/', trim(substr($uri, $pos + 8), '/')));
     $method = Http::method();
+    // 自動予約プログラム（ChatGPT など）が、スタッフの画面と同じ API を使う入口：
+    // /api/v1/integration/booking/api/（ふだんのパス）。「自動予約」の接続キーで、院長と同じ権限で動く。
+    // ログイン・スタッフ・二要素認証・端末・接続キー・控えの復元・保存先の操作だけは使えない
+    $bot = false;
+    if (($path[0] ?? '') === 'integration' && ($path[1] ?? '') === 'booking' && ($path[2] ?? '') === 'api') {
+        $link = Http::bookingLink();
+        $path = array_slice($path, 3);
+        $head = $path[0] ?? '';
+        $two = $head . '/' . ($path[1] ?? '');
+        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage'], true)) {
+            Http::json(['error' => 'forbidden', 'message' => 'この操作は自動予約からは使えません'], 403);
+        }
+        Auth::actAsBot($link);
+        $bot = true;
+    }
     $q = fn(string $k) => isset($_GET[$k]) && is_string($_GET[$k]) ? $_GET[$k] : null;
     $me = fn(?array $roles = null) => Auth::requireStaff($roles);
     $manager = fn() => Auth::requireManager();
@@ -27,7 +42,7 @@ try {
     $n = count($p);
 
     // ---- 変更の操作は、このサイトの画面から送られたものだけ受け付ける（CSRF の多重防御。外部連携は別のトークン認証） ----
-    if (!in_array($method, ['GET', 'HEAD'], true) && ($p[0] ?? '') !== 'integration' && Http::crossSiteWrite()) {
+    if (!$bot && !in_array($method, ['GET', 'HEAD'], true) && ($p[0] ?? '') !== 'integration' && Http::crossSiteWrite()) {
         Http::json(['error' => 'forbidden', 'message' => 'この操作は受け付けられません'], 403);
     }
 

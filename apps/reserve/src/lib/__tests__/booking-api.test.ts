@@ -111,3 +111,27 @@ describe("自動予約プログラムの連携", () => {
     expect(past.status).toBe(400);
   });
 });
+
+describe("自動予約プログラムから、スタッフの画面と同じ API を使う", () => {
+  it("患者・カルテ・設定を見て変えられる。スタッフ・鍵・ログインの操作はできない", async () => {
+    const c = await h.srv.as("staff-admin");
+    const call = await bot(c);
+    const api = (method: string, p: string, body?: unknown) => call(method, `/api${p}`, body);
+    const pt = await c.post("/patients", { name: "カルテ 花子", kana: "カルテ ハナコ" });
+    const got = await api("GET", `/patients/${pt.id}`);
+    expect(got.status).toBe(200);
+    expect(JSON.stringify(got.data)).toContain("カルテ 花子");
+    const edited = await api("PATCH", `/patients/${pt.id}`, { version: pt.version, memo: "自動予約から" });
+    expect(edited.status).toBe(200);
+    expect((await c.get(`/patients/${pt.id}`)).patient?.memo ?? edited.data.memo).toBe("自動予約から");
+    expect((await api("GET", "/settings")).status).toBe(200);
+    // 閲覧の記録は「自動予約（キーの名前）」で残る
+    const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+    expect(JSON.stringify(await c.get(`/access-log?from=${today}&to=${today}`))).toContain("自動予約（ChatGPT 自動予約）");
+    for (const [m, p] of [["GET", "/staff"], ["POST", "/device-links"], ["GET", "/auth/me"], ["GET", "/security"], ["POST", "/settings/restore"], ["GET", ""]]) {
+      expect((await api(m, p, m === "POST" ? {} : undefined)).status, `${m} ${p}`).toBe(403);
+    }
+    // 鍵がなければ入れない
+    expect((await h.srv.client().raw("GET", "/api/v1/integration/booking/api/settings")).status).toBe(401);
+  });
+});

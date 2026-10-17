@@ -451,8 +451,19 @@ final class Auth
         return self::COOKIE . '=; ' . self::cookieAttrs() . '; Max-Age=0';
     }
 
+    /** 自動予約プログラムの接続キーで入ったとき、院長と同じ権限の「スタッフ」として扱う */
+    private static ?array $bot = null;
+
+    public static function actAsBot(array $link): void
+    {
+        self::$bot = ['id' => 'booking:' . $link['id'], 'name' => '自動予約（' . $link['name'] . '）', 'role' => 'admin', 'active' => true, 'canManage' => true, 'twoFactor' => false, 'bot' => true];
+    }
+
     public static function currentStaff(): ?array
     {
+        if (self::$bot !== null) {
+            return self::$bot;
+        }
         $token = $_COOKIE[self::COOKIE] ?? null;
         return self::readSessionToken(is_string($token) ? $token : null);
     }
@@ -465,7 +476,7 @@ final class Auth
             throw new AuthError('login_required', 'ログインしてください');
         }
         // 登録した端末だけで使う設定のとき、未承認の端末ではログイン画面に戻す
-        if (!Devices::allowed()) {
+        if (self::$bot === null && !Devices::allowed()) {
             throw new AuthError('login_required', 'この端末は登録されていません');
         }
         if ($roles !== null && !in_array($s['role'], $roles, true)) {
