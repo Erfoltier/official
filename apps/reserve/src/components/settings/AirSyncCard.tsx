@@ -195,6 +195,47 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
         <small>この時刻を過ぎた最初の確認（10分ごと）で取り込みます。リマインドの送信時刻より前に設定してください。</small>
       </div>
 
+      <div className={styles.prefRow}>
+        <b>こまめな取り込み</b>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <select
+            className={styles.input}
+            style={{ width: "auto" }}
+            value={s.interval}
+            disabled={busy}
+            onChange={(e) => void save({ interval: Number(e.target.value) }, "こまめな取り込みの間隔を保存しました")}
+            aria-label="こまめな取り込みの間隔"
+          >
+            <option value={0}>しない</option>
+            {[10, 15, 30, 60, 120].map((m) => (
+              <option key={m} value={m}>
+                {m}分ごと
+              </option>
+            ))}
+          </select>
+          <span>今日から</span>
+          <select
+            className={styles.input}
+            style={{ width: "auto" }}
+            value={s.rangeDays}
+            disabled={busy || s.interval === 0}
+            onChange={(e) => void save({ rangeDays: Number(e.target.value) }, "こまめな取り込みの期間を保存しました")}
+            aria-label="こまめな取り込みの期間"
+          >
+            {[3, 7, 14, 30, 60].map((d) => (
+              <option key={d} value={d}>
+                {d}日先まで
+              </option>
+            ))}
+          </select>
+        </div>
+        <small>
+          7:00〜21:00 のあいだ、Air で入れた予約・変更・取り消しをカレンダーに取り込みます（毎朝の翌日分の取り込みとは別）。予約申請ID（R＋数字）を Air の予約メモに書いておくと、その方は LINE の問診票をすぐ書けます。
+          <br />
+          {s.frequentLast ? `最終：${stamp(s.frequentLast.at)}　${resultText(s.frequentLast)}` : "最終：未実行"}
+        </small>
+      </div>
+
       <h4 className={styles.subTitle}>手動取り込み</h4>
       <div className={styles.actions} style={{ justifyContent: "flex-start", marginTop: 0 }}>
         <input className={styles.input} type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} aria-label="取り込む日" style={{ width: "auto" }} />

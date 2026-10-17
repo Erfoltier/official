@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 /**
  * Airリザーブの予約の取り込み。毎朝（既定 7:00 以降の最初の cron）に翌日の予約を取り込み、
- * 前日18時のリマインドに間に合わせる。PC の電源が切れていても、サーバーの cron だけで動く。
+ * 前日18時のリマインドに間に合わせる。あわせて日中は30分ごと（設定で変更可）に、今日から2週間先までをまとめて取り込む。
+ * PC の電源が切れていても、サーバーの cron だけで動く。
  *
  * - ログイン ID・パスワードは暗号化して保存し、画面には二度と出さない
  * - Air の画面が使っている通信（予約カレンダーの JSON）を、ブラウザなしで読む。Air の作りが変わると止まるので、
@@ -24,6 +25,9 @@ final class AirSync
             'time' => '07:00',
             // Air の予約カレンダー（リソースのまとまり）の番号。いしだ皮フ科「美容皮膚科」
             'groupId' => 'I00009C273',
+            // こまめな取り込み：この分ごとに、今日から rangeDays 日先までを取り込む（0 で止める）。7:00〜21:00 のあいだだけ
+            'interval' => 30,
+            'rangeDays' => 14,
         ];
     }
 
@@ -48,6 +52,7 @@ final class AirSync
             'loginConfigured' => ($sec['id'] ?? '') !== '' && ($sec['password'] ?? '') !== '',
             'loginId' => ($sec['id'] ?? '') !== '' ? mb_substr($sec['id'], 0, 2) . '…' : '',
             'lastRun' => is_array($last) ? $last : null,
+            'frequentLast' => is_array($f = Db::i()->meta('airSyncFrequent')) ? $f : null,
             'review' => Store::reviewPatients(),
         ];
     }
@@ -63,6 +68,18 @@ final class AirSync
                 throw new StoreError('invalid', '取り込み時刻は 5:00〜16:59 の間で設定してください（リマインドの送信時刻より前）');
             }
             $s['time'] = $in['time'];
+        }
+        if (array_key_exists('interval', $in)) {
+            if (!in_array($in['interval'], [0, 10, 15, 30, 60, 120], true)) {
+                throw new StoreError('invalid', 'こまめな取り込みの間隔は、しない・10・15・30・60・120分から選んでください');
+            }
+            $s['interval'] = $in['interval'];
+        }
+        if (array_key_exists('rangeDays', $in)) {
+            if (!is_int($in['rangeDays']) || $in['rangeDays'] < 1 || $in['rangeDays'] > 60) {
+                throw new StoreError('invalid', 'こまめな取り込みの期間は1〜60日で選んでください');
+            }
+            $s['rangeDays'] = $in['rangeDays'];
         }
         if (array_key_exists('groupId', $in)) {
             if (!is_string($in['groupId']) || !preg_match('/^[A-Za-z0-9]{1,20}$/', $in['groupId'])) {
@@ -104,6 +121,16 @@ final class AirSync
         if ($pre !== null) {
             return $pre;
         }
+        $daily = self::dailyRun($now, $s);
+        if ($daily !== null) {
+            return $daily;
+        }
+        return self::frequentRun($now, $s);
+    }
+
+    /** 毎朝1回、翌日の分を取り込む（決めた時刻を過ぎていて、今日まだなら） */
+    private static function dailyRun(array $now, array $s): ?array
+    {
         $last = Db::i()->meta('airSyncLast');
         if (is_array($last) && ($last['auto'] ?? '') === $now['date']) {
             return null;
@@ -118,6 +145,51 @@ final class AirSync
             return null;
         }
         return self::run($tomorrow, true);
+    }
+
+    /**
+     * こまめな取り込み：interval 分ごとに、今日から rangeDays 日先までの Air の予約をまとめて読み、日ごとに取り込む。
+     * Air で入れた予約がすぐカレンダーに入り、LINE の問診票（予約申請ID つきの予約）も早く書けるようにする。
+     * Air への負担を抑えるため、ログインと読み込みは1回だけ・7:00〜21:00 のあいだだけ。失敗しても次の回まで待つ
+     */
+    private static function frequentRun(array $now, array $s): ?array
+    {
+        $iv = (int) ($s['interval'] ?? 0);
+        if ($iv <= 0 || $now['minutes'] < 7 * 60 || $now['minutes'] >= 21 * 60) {
+            return null;
+        }
+        $prev = Db::i()->meta('airSyncFrequent');
+        $prev = is_array($prev) ? $prev : [];
+        if (isset($prev['at']) && time() - strtotime((string) $prev['at']) < $iv * 60 - 60) {
+            return null;
+        }
+        $from = $now['date'];
+        $to = (new DateTimeImmutable($from, jst()))->modify('+' . max(1, min(60, (int) ($s['rangeDays'] ?? 14))) . ' day')->format('Y-m-d');
+        // 先に「試した」を残す（Air が遅くて重なって動いても、二重に読みに行かない）
+        Db::i()->setMeta('airSyncFrequent', [...$prev, 'at' => now_iso()]);
+        try {
+            $byDate = [];
+            foreach (self::fetchRange($from, $to) as $row) {
+                $byDate[clinic_date_of($row['from'])][] = $row;
+            }
+            $sum = ['created' => 0, 'updated' => 0, 'cancelled' => 0, 'unchanged' => 0, 'newPatients' => 0];
+            $count = 0;
+            for ($d = $from; $d <= $to; $d = (new DateTimeImmutable($d, jst()))->modify('+1 day')->format('Y-m-d')) {
+                $rows = $byDate[$d] ?? [];
+                $count += count($rows);
+                // 1件もない日は Store::airApply が何も取り消さない（読み込みの失敗と見分けがつかないため）
+                foreach (Store::airApply($d, $rows) as $k => $v) {
+                    if (isset($sum[$k])) {
+                        $sum[$k] += $v;
+                    }
+                }
+            }
+            $out = ['at' => now_iso(), 'ok' => true, 'date' => "{$from}〜{$to}", 'count' => $count, ...$sum];
+        } catch (Throwable $e) {
+            $out = ['at' => now_iso(), 'ok' => false, 'date' => "{$from}〜{$to}", 'error' => $e instanceof StoreError ? $e->getMessage() : '取り込めませんでした（' . get_class($e) . '）'];
+        }
+        Db::i()->setMeta('airSyncFrequent', $out);
+        return $out;
     }
 
     private static function preReminderRun(array $now): ?array
