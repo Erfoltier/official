@@ -212,6 +212,9 @@ try {
         if ($method === 'POST' && $n === 3 && $sub === 'patients') {
             Http::json(Store::bookingEnsurePatient(Schema::bookingPatient(Http::readJson()), $by));
         }
+        if ($method === 'POST' && $n === 3 && $sub === 'menus') {
+            Http::json(Store::bookingCreateMenu(Schema::menu(Http::readJson()), $by), 201);
+        }
         if ($sub === 'reservations') {
             if ($method === 'POST' && $n === 3) {
                 Http::json(Store::bookingCreate(Schema::createReservation(Http::readJson(65_536)), $by), 201);

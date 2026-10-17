@@ -365,7 +365,7 @@ final class Schema
         return V::shape($v, ['version' => fn($x) => V::int($x, 1)])['version'];
     }
 
-    /** 自動予約からの変更：日時・レーン・メニュー・メモだけ（状態や申請IDは変えない） */
+    /** 自動予約からの変更：日時・レーン・メニュー・メモ・予約申請ID・予約／キャンセルの状態 */
     public static function bookingUpdate(mixed $v): array
     {
         return V::shape($v, [
@@ -375,6 +375,9 @@ final class Schema
             'endAt?' => [V::class, 'iso'],
             'menuIds?' => fn($x) => V::ids($x, 1, 5),
             'memo?' => fn($x) => V::str($x, 3000),
+            'requestId?' => fn($x) => $x === '' ? '' : V::requestId($x),
+            // 予約に戻す・キャンセル・無断キャンセル（来院後の状態はスタッフが画面で付ける）
+            'status?' => fn($x) => V::enum($x, ['booked', 'cancelled', 'no_show']),
         ]);
     }
 

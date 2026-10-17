@@ -5444,13 +5444,16 @@ final class Store
         return self::bookingView(self::createReservation($in, $by));
     }
 
-    private static function bookingEditable(array $cur): void
+    private static function bookingEditable(array $cur, bool $restoring = false): void
     {
         if (preg_match('/' . self::AIR_MARK . '\s*[:：]/u', strip_tags((string) ($cur['memo'] ?? '')))) {
             throw new StoreError('invalid', 'Airリザーブで入れた予約です。Airリザーブで変更・取り消ししてください（15分ほどでここに反映されます）');
         }
-        if (self::inactive($cur)) {
-            throw new StoreError('invalid', '取り消し済みの予約は変更できません');
+        if (self::inactive($cur) && !$restoring) {
+            throw new StoreError('invalid', '取り消し済みの予約は変更できません（status を booked にすると予約に戻せます）');
+        }
+        if (!self::inactive($cur) && !in_array($cur['status'], ['booked'], true)) {
+            throw new StoreError('invalid', '来院済みの予約は変更できません（受付で変更してください）');
         }
         if (parse_ms($cur['endAt']) < time() * 1000) {
             throw new StoreError('invalid', '終わった予約は変更できません');
@@ -5462,16 +5465,30 @@ final class Store
     {
         self::init();
         $cur = self::reservation($id);
-        self::bookingEditable($cur);
+        self::bookingEditable($cur, ($in['status'] ?? null) === 'booked');
         $start = isset($in['startAt']) ? normalize_iso($in['startAt']) : $cur['startAt'];
         $end = isset($in['endAt']) ? normalize_iso($in['endAt']) : $cur['endAt'];
         if ($start !== $cur['startAt'] && parse_ms($start) < time() * 1000) {
             throw new StoreError('invalid', '過ぎた時刻には変更できません');
         }
-        if (self::bookingOverlap($in['laneId'] ?? $cur['laneId'], $start, $end, $id)) {
+        $active = isset($in['status']) ? !in_array($in['status'], self::INACTIVE, true) : !self::inactive($cur);
+        if ($active && self::bookingOverlap($in['laneId'] ?? $cur['laneId'], $start, $end, $id)) {
             throw new StoreError('conflict', 'そのレーンのその時間には、すでに予約があります');
         }
         return self::bookingView(self::updateReservation($id, $in, $by));
+    }
+
+    /** メニューを新しく作る（予約に付けたいメニューがないとき）。設定 → メニュー に並び、スタッフが直せる */
+    public static function bookingCreateMenu(array $in, array $by): array
+    {
+        self::init();
+        // 標準の時間を省いたときは、所要時間（範囲なら短いほう）にそろえる
+        $d = $in['duration'] ?? null;
+        if (!isset($in['defaultMinutes']) && is_array($d)) {
+            $in['defaultMinutes'] = ($d['kind'] ?? '') === 'fixed' ? $d['minutes'] : ($d['min'] ?? 15);
+        }
+        $m = self::createMenu($in, $by);
+        return array_filter(['id' => $m['id'], 'name' => $m['name'], 'duration' => $m['duration'] ?? null], fn($v) => $v !== null);
     }
 
     /** 取り消す（記録は残る。カレンダーでは取り消しとして見える） */

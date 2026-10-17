@@ -78,6 +78,21 @@ describe("自動予約プログラムの連携", () => {
     expect(cancelled.data.status).toBe("cancelled");
     expect((await call("PATCH", `/reservations/${made.data.id}`, { version: 3, memo: "x" })).status).toBe(400);
 
+    // 予約に戻す（status: booked）・メモと予約申請IDを直す
+    const back = await call("PATCH", `/reservations/${made.data.id}`, { version: 3, status: "booked", memo: "戻した", requestId: "R2026101710000012AB34CD" });
+    expect(back.status).toBe(200);
+    expect(back.data).toMatchObject({ status: "booked", memo: "戻した", requestId: "R2026101710000012AB34CD" });
+    // DELETE でも取り消せる
+    expect((await call("DELETE", `/reservations/${made.data.id}`, { version: 4 })).data.status).toBe("cancelled");
+
+    // 付けたいメニューがなければ作れる。作ったメニューを予約に足す
+    const menu2 = await call("POST", "/menus", { name: "自動予約テスト施術", duration: { kind: "fixed", minutes: 30 } });
+    expect(menu2.status).toBe(201);
+    expect((await call("GET", "/options")).data.menus.map((m: { id: string }) => m.id)).toContain(menu2.data.id);
+    const two = await call("POST", "/reservations", { patientId: p1.data.patient.id, laneId: lane, menuIds: [menu, menu2.data.id], startAt: tomorrow("15:00").at, endAt: tomorrow("15:30").at });
+    expect(two.status).toBe(201);
+    expect(two.data.menuIds).toEqual([menu, menu2.data.id]);
+
     // 変更履歴には自動予約がしたことが残る
     const audit = await c.get("/audit");
     expect(JSON.stringify(audit)).toContain("自動予約（ChatGPT 自動予約）");
