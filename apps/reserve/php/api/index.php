@@ -556,6 +556,15 @@ try {
         $me(STAFF_ADMIN);
         Http::json(AirSync::publicSettings());
     }
+    // Air の利用を終える（院長の合図「Air 終了」）。確かめの言葉を入れたときだけ
+    if ($route === 'POST admin/air-sync/retire') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        if (!is_array($in) || ($in['confirm'] ?? '') !== 'Air終了') {
+            Http::json(['error' => 'invalid', 'message' => '確かめのため「Air終了」と入力してください'], 400);
+        }
+        Http::json(AirSync::retire($actor($s), ($in['force'] ?? false) === true));
+    }
     if ($route === 'PUT admin/air-sync') {
         $s = $me(STAFF_ADMIN);
         $in = Http::readJson(4_000);

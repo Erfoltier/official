@@ -5417,8 +5417,8 @@ final class Store
             'patient' => self::bookingPatientView(self::patients()[$r['patientId']] ?? null),
             'requestId' => $r['requestId'] ?? null,
             'memo' => $memo !== '' ? $memo : null,
-            // Air で入れた予約（Air から取り込むので、ここからは変えられない）
-            'fromAir' => preg_match('/' . self::AIR_MARK . '\s*[:：]/u', $memo) === 1 ? true : null,
+            // Air で入れた予約（Air から取り込むので、ここからは変えられない。Air の利用を終えたあとは付けない）
+            'fromAir' => AirSync::retired() === null && preg_match('/' . self::AIR_MARK . '\s*[:：]/u', $memo) === 1 ? true : null,
         ], fn($v) => $v !== null);
     }
 
@@ -5513,7 +5513,8 @@ final class Store
 
     private static function bookingEditable(array $cur, bool $restoring = false): void
     {
-        if (preg_match('/' . self::AIR_MARK . '\s*[:：]/u', strip_tags((string) ($cur['memo'] ?? '')))) {
+        // Air の利用を終えたあとは、Air から取り込んだ予約もふつうの予約と同じに扱う
+        if (AirSync::retired() === null && preg_match('/' . self::AIR_MARK . '\s*[:：]/u', strip_tags((string) ($cur['memo'] ?? '')))) {
             throw new StoreError('invalid', 'Airリザーブで入れた予約です。Airリザーブで変更・取り消ししてください（15分ほどでここに反映されます）');
         }
         if (self::inactive($cur) && !$restoring) {

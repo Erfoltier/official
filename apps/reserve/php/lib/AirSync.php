@@ -58,6 +58,7 @@ final class AirSync
             'loginId' => ($sec['id'] ?? '') !== '' ? mb_substr($sec['id'], 0, 2) . '…' : '',
             'lastRun' => is_array($last) ? $last : null,
             'frequentLast' => is_array($f = Db::i()->meta('airSyncFrequent')) ? $f : null,
+            'retired' => self::retired(),
             'specialDays' => is_array($sp = Db::i()->meta('airSpecialDays')) ? $sp : null,
             'review' => Store::reviewPatients(),
         ];
@@ -65,6 +66,9 @@ final class AirSync
 
     public static function updateSettings(array $in, array $by): array
     {
+        if (self::retired() !== null) {
+            throw new StoreError('invalid', 'Airリザーブの利用は終了しています');
+        }
         $s = self::settings();
         if (array_key_exists('enabled', $in)) {
             $s['enabled'] = (bool) $in['enabled'];
@@ -137,7 +141,7 @@ final class AirSync
     public static function tick(): ?array
     {
         $s = self::settings();
-        if (!$s['enabled']) {
+        if (!$s['enabled'] || self::retired() !== null) {
             return null;
         }
         $now = now_in_clinic();
@@ -188,11 +192,18 @@ final class AirSync
         if (isset($prev['at']) && time() - strtotime((string) $prev['at']) < $iv * 60 - 60) {
             return null;
         }
-        $from = $now['date'];
-        $to = (new DateTimeImmutable($from, jst()))->modify('+' . max(1, min(120, (int) ($s['rangeDays'] ?? 14))) . ' day')->format('Y-m-d');
-        $isClinicDay = self::clinicDayFilter($s);
         // 先に「試した」を残す（Air が遅くて重なって動いても、二重に読みに行かない）
         Db::i()->setMeta('airSyncFrequent', [...$prev, 'at' => now_iso()]);
+        $out = self::importRange($now['date'], $s);
+        Db::i()->setMeta('airSyncFrequent', $out);
+        return $out;
+    }
+
+    /** 今日から rangeDays 日先までの診療日を、Air からまとめて取り込む（こまめな取り込みと、Air 終了の前の最後の取り込み） */
+    private static function importRange(string $from, array $s): array
+    {
+        $to = (new DateTimeImmutable($from, jst()))->modify('+' . max(1, min(120, (int) ($s['rangeDays'] ?? 14))) . ' day')->format('Y-m-d');
+        $isClinicDay = self::clinicDayFilter($s);
         try {
             $byDate = [];
             foreach (self::fetchRange($from, $to) as $row) {
@@ -224,8 +235,43 @@ final class AirSync
         } catch (Throwable $e) {
             $out = ['at' => now_iso(), 'ok' => false, 'date' => "{$from}〜{$to}", 'error' => $e instanceof StoreError ? $e->getMessage() : '取り込めませんでした（' . get_class($e) . '）'];
         }
-        Db::i()->setMeta('airSyncFrequent', $out);
         return $out;
+    }
+
+    // ---- Air の利用をやめる（院長の合図「Air 終了」。スタッフが予約をすべてレーンリザーブで受けるようになったら） ----
+
+    /** 終了していればその記録（日時・誰が・最後の取り込みの結果）、まだなら null */
+    public static function retired(): ?array
+    {
+        $r = Db::i()->meta('airRetired');
+        return is_array($r) ? $r : null;
+    }
+
+    /**
+     * Air の利用を終える：①最後に今日から先の予約を取り込んでから、毎朝・こまめな取り込みを止め、ログイン情報を消す。
+     * ②以後、Air から取り込んだ予約（予約メモの「Air予約番号」）も、ふつうの予約と同じに変更・取り消しできる（自動予約からも）。
+     * 最後の取り込みに失敗したときは、$force が false なら何も変えずに止める
+     */
+    public static function retire(array $by, bool $force = false): array
+    {
+        if (($r = self::retired()) !== null) {
+            return ['already' => true, ...$r];
+        }
+        $s = self::settings();
+        $final = null;
+        $sec = self::secrets();
+        if (($sec['id'] ?? '') !== '' && ($sec['password'] ?? '') !== '') {
+            $final = self::importRange(now_in_clinic()['date'], [...$s, 'rangeDays' => 120]);
+            if (!$final['ok'] && !$force) {
+                throw new StoreError('invalid', 'Air から最後の取り込みができませんでした（' . ($final['error'] ?? '') . '）。Air の画面で予約が残っていないか確かめてから、もう一度試してください');
+            }
+        }
+        Db::i()->setMeta('airSyncSettings', [...$s, 'enabled' => false, 'interval' => 0]);
+        Db::i()->setMeta('airSyncSecrets', []);
+        $rec = array_filter(['at' => now_iso(), 'by' => $by, 'final' => $final], fn($v) => $v !== null);
+        Db::i()->setMeta('airRetired', $rec);
+        Auth::audit($by, 'Airリザーブの利用を終了（取り込みを停止・ログイン情報を消去）');
+        return $rec;
     }
 
     /** 診療日だけに絞る判定。曜日も祝日も特別診療日もないときは null（毎日） */

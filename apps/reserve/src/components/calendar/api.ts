@@ -281,6 +281,8 @@ export interface AirSyncSettings {
   specialDaysUrl: string;
   specialDays: { url: string; at?: string; checkedAt?: string; dates: string[]; error?: string } | null;
   frequentLast: AirSyncResult | null;
+  /** Air の利用を終えた記録（終えていなければ null）。終えたあとは取り込みを止め、Air から取り込んだ予約もふつうに変えられる */
+  retired: { at: string; by?: { id: string; name: string }; final?: AirSyncResult } | null;
   review: { id: string; name: string; kana: string }[];
 }
 
@@ -290,6 +292,11 @@ export function fetchAirSync(): Promise<AirSyncSettings> {
 
 export function saveAirSync(body: { enabled?: boolean; time?: string; groupId?: string; loginId?: string; password?: string; interval?: number; rangeDays?: number; clinicWeekdays?: number[]; clinicHolidays?: boolean; specialDaysUrl?: string }): Promise<AirSyncSettings> {
   return call("/api/v1/admin/air-sync", { method: "PUT", body: JSON.stringify(body) });
+}
+
+/** Air の利用を終える（院長の合図「Air 終了」） */
+export function retireAir(force = false): Promise<{ at: string; final?: AirSyncResult; already?: boolean }> {
+  return call("/api/v1/admin/air-sync/retire", { method: "POST", body: JSON.stringify({ confirm: "Air終了", force }) });
 }
 
 export function runAirSync(date?: string): Promise<AirSyncResult> {

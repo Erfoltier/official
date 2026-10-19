@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { compareAir, fetchAirSync, markPatientReviewed, type AirCompareItem, runAirSync, saveAirSync, type AirSyncResult, type AirSyncSettings } from "@/components/calendar/api";
+import { compareAir, fetchAirSync, markPatientReviewed, retireAir, type AirCompareItem, runAirSync, saveAirSync, type AirSyncResult, type AirSyncSettings } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 function stamp(iso: string): string {
@@ -130,6 +130,51 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
       setBusy(false);
     }
   };
+
+  if (s.retired) {
+    return (
+      <div className={styles.clinicCard}>
+        <h3 className={styles.cardTitle}>Airリザーブ（利用終了）</h3>
+        <p className={styles.hint}>
+          {when(s.retired.at)}
+          {s.retired.by ? `に${s.retired.by.name}が` : "に"}Airリザーブの利用を終了しました。取り込みは止まっていて、Air のログイン情報は消してあります。Air から取り込んだ予約も、ふつうの予約と同じに変更・取り消しできます。
+          {s.retired.final && `（最後の取り込み：${resultText(s.retired.final)}）`}
+        </p>
+      {s.review.length > 0 && (
+          <>
+            <h4 className={styles.subTitle}>要確認の患者（{s.review.length}人）</h4>
+            <p className={styles.hint}>Air からの取り込み時に、既存の患者と結びつけられず新規登録した患者です。同じ人がいれば患者画面で統合し、別の人なら「確認済み」を押してください。</p>
+            <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 240, overflow: "auto" }}>
+              {s.review.map((p) => (
+                <li key={p.id} style={{ margin: "4px 0" }}>
+                  <Link href={`/patients/view/?id=${encodeURIComponent(p.id)}`}>
+                    {p.name}
+                    {p.kana && p.kana !== p.name && `（${p.kana}）`}
+                  </Link>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    style={{ marginLeft: 8, padding: "2px 8px" }}
+                    disabled={busy}
+                    onClick={async () => {
+                      try {
+                        await markPatientReviewed(p.id);
+                        setS({ ...s, review: s.review.filter((x) => x.id !== p.id) });
+                      } catch (e) {
+                        props.fail(e);
+                      }
+                    }}
+                  >
+                    確認済み
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={styles.clinicCard}>
@@ -321,6 +366,40 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
           )}
         </div>
       )}
+
+      <h4 className={styles.subTitle}>Airリザーブの利用を終了する</h4>
+      <p className={styles.hint}>
+        スタッフが予約をすべてレーンリザーブで受けるようになったら押します。最後に今日から120日先までの予約を取り込んでから、毎朝・こまめな取り込みを止め、保存した Air のログイン情報を消します。以後は Air から取り込んだ予約も、ふつうの予約と同じに変更・取り消しでき（自動予約からも）、予約メモの「Air予約番号」は記録として残ります。元には戻せません（院長・管理者）。
+      </p>
+      <div className={styles.actions} style={{ justifyContent: "flex-start", marginTop: 0 }}>
+        <button
+          type="button"
+          className={styles.btn}
+          disabled={busy}
+          onClick={async () => {
+            if (window.prompt("Airリザーブの利用を終了します。確かめのため「Air終了」と入力してください") !== "Air終了") return;
+            setBusy(true);
+            try {
+              let r;
+              try {
+                r = await retireAir();
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "";
+                if (!window.confirm(`${msg}\n\n最後の取り込みをせずに終了しますか？`)) throw e;
+                r = await retireAir(true);
+              }
+              props.notify(r.final ? `Airリザーブの利用を終了しました（最後の取り込み：${resultText(r.final)}）` : "Airリザーブの利用を終了しました");
+              load(await fetchAirSync());
+            } catch (e) {
+              props.fail(e);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Airリザーブの利用を終了…
+        </button>
+      </div>
 
       {s.review.length > 0 && (
         <>
