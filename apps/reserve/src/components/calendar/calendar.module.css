@@ -1565,10 +1565,11 @@ button.treatChip[data-active] {
   align-items: flex-start;
   gap: 3px;
   min-width: 0;
-  max-width: 9.5em;
+  max-width: 10.5em;
 }
 
 button.stagePill[data-clickable] {
+  max-width: 10em;
   border: 0;
   font-family: inherit;
   cursor: pointer;
@@ -1686,7 +1687,7 @@ button.stagePill[data-clickable]:disabled {
 
 @container reception (max-width: 330px) {
   .reception .receptionRow[data-oneline] {
-    grid-template-columns: minmax(0, 1.5fr) 3.8em minmax(0, 0.8fr) 1.2em;
+    grid-template-columns: minmax(0, 1.5fr) minmax(3.8em, auto) minmax(0, 0.8fr) 1.2em;
   }
   .reception .receptionRow[data-oneline] .receptionTime small {
     display: none;
@@ -1726,7 +1727,8 @@ button.stagePill[data-clickable]:disabled {
 }
 
 .receptionRow[data-oneline] {
-  grid-template-columns: minmax(0, 1.2fr) 4.6em minmax(0, 1fr) 1.3em;
+  /* 状態の列は中身に合わせる（「10:05 来院済」のように時刻が付いても状態名まで見える） */
+  grid-template-columns: minmax(0, 1.2fr) minmax(4.6em, auto) minmax(0, 1fr) 1.3em;
   grid-template-areas: "hit stage memo exp";
   align-items: center;
   gap: 0 6px;
@@ -1798,7 +1800,7 @@ button.stagePill[data-clickable]:disabled {
 .receptionRow[data-oneline] button.stagePill[data-clickable] {
   line-height: 1.6;
   padding: 0 6px;
-  max-width: 100%;
+  max-width: 9em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

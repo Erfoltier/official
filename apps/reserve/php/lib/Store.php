@@ -4194,7 +4194,7 @@ final class Store
     }
 
     /** 氏名（またはフリガナ）が合い、さらに生年月日か電話番号（10桁以上）が合う患者がちょうど1人のときだけ結びつける */
-    private static function matchQuestionnaire(string $name, string $kana, ?string $birthDate, string $phone): ?string
+    private static function matchQuestionnaire(string $name, string $kana, ?string $birthDate, string $phone, ?string $submittedAt = null): ?string
     {
         $keys = array_values(array_filter([search_key($name), search_key($kana)], fn($k) => $k !== ''));
         if (!$keys) {
@@ -4232,7 +4232,33 @@ final class Store
                 $hits[] = $p['id'];
             }
         }
-        return count($hits) === 1 ? $hits[0] : null;
+        if (count($hits) === 1) {
+            return $hits[0];
+        }
+        // 院長の決定（案A）：電話・生年月日で決まらなくても、氏名（かフリガナ）の合う患者が1人だけで、
+        // 電話・生年月日が食い違わず（空欄は可）、問診票の日付の前後14日にその患者の予約があれば結びつける
+        if ($hits || count($ids) !== 1 || $submittedAt === null) {
+            return null;
+        }
+        $p = self::patients()[array_key_first($ids)] ?? null;
+        if (!$p || !empty($p['deleted'])) {
+            return null;
+        }
+        $pt = digits_only((string) ($p['phone'] ?? ''));
+        if (($pt !== '' && strlen($tel) >= 10 && $pt !== $tel) || (!empty($p['birthDate']) && $birthDate !== null && $p['birthDate'] !== $birthDate)) {
+            return null;
+        }
+        $qt = strtotime(str_replace('/', '-', substr($submittedAt, 0, 10)) . ' 00:00:00');
+        if ($qt === false) {
+            return null;
+        }
+        foreach (self::reservationsOf($p['id']) as $r) {
+            $rt = strtotime(clinic_date_of($r['startAt']) . ' 00:00:00');
+            if ($rt !== false && abs($rt - $qt) <= 14 * 86400) {
+                return $p['id'];
+            }
+        }
+        return null;
     }
 
     /** 患者の生年月日・電話（数字だけ）の候補：患者の欄と、予約に付いた予約申請の内容 */
@@ -4295,7 +4321,7 @@ final class Store
                 $name = $name !== '' ? $name : '（氏名なし）';
                 $kana = self::extLine($r['kana'] ?? '', 60);
                 $phone = self::extLine($r['phone'] ?? '', 30);
-                $patientId = isset($forced[$key]) && isset(self::patients()[$forced[$key]]) ? $forced[$key] : self::matchQuestionnaire($name, $kana, $birthDate, $phone);
+                $patientId = isset($forced[$key]) && isset(self::patients()[$forced[$key]]) ? $forced[$key] : self::matchQuestionnaire($name, $kana, $birthDate, $phone, (string) ($r['submittedAt'] ?? ''));
                 $answers = [];
                 foreach ($r['answers'] as $a) {
                     $qq = self::extLine($a['q'], 200);
@@ -4636,7 +4662,7 @@ final class Store
             $linked = 0;
             $patients = [];
             foreach ($list as $q) {
-                $pid = self::matchQuestionnaire((string) $q['name'], (string) ($q['kana'] ?? ''), $q['birthDate'] ?? null, (string) ($q['phone'] ?? ''));
+                $pid = self::matchQuestionnaire((string) $q['name'], (string) ($q['kana'] ?? ''), $q['birthDate'] ?? null, (string) ($q['phone'] ?? ''), (string) ($q['submittedAt'] ?? ''));
                 if ($pid === null || ($onlyPatientId !== null && $pid !== $onlyPatientId)) {
                     continue;
                 }

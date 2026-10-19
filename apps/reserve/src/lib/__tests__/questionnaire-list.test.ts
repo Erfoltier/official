@@ -90,3 +90,34 @@ describe("初診でカルテ番号・電話がまだない患者にも、問診�
     expect((await c.get("/questionnaires/list?from=2026-10-01&to=2026-10-31&q=")).items.find((x: { name: string }) => x.name === "初診 次郎").patientId).toBeFalsy();
   });
 });
+
+describe("氏名が1人に決まり、問診票の前後14日に予約があれば結びつける（院長の決定・案A）", () => {
+  it("近くに予約があれば結びつき、予約が遠い・電話が食い違うときは結びつけない", async () => {
+    const { addDays, toIso } = await import("@/lib/domain/time");
+    const c = await h.srv.as("staff-admin");
+    const today = nowInClinic().date;
+    const near = await c.post("/patients", { name: "近藤 予約子", kana: "コンドウ ヨヤクコ" });
+    await c.post("/reservations", { patientId: near.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(addDays(today, 5), 600), endAt: toIso(addDays(today, 5), 630) });
+    const far = await c.post("/patients", { name: "遠藤 予約子", kana: "エンドウ ヨヤクコ" });
+    await c.post("/reservations", { patientId: far.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(addDays(today, 40), 600), endAt: toIso(addDays(today, 40), 630) });
+    const other = await c.post("/patients", { name: "電話 違子", kana: "デンワ チガコ", phone: "090-1111-0000" });
+    await c.post("/reservations", { patientId: other.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(addDays(today, 2), 600), endAt: toIso(addDays(today, 2), 630) });
+    const at = today.replace(/-/g, "/") + " 10:00:00";
+    const res = await h.srv.client().raw(
+      "POST",
+      "/api/v1/integration/questionnaires",
+      {
+        responses: [
+          { key: "a1", submittedAt: at, name: "近藤 予約子", birthDate: "1990-01-01", phone: "090-2222-3333", answers: [] },
+          { key: "a2", submittedAt: at, name: "遠藤 予約子", birthDate: "1990-01-01", phone: "090-2222-4444", answers: [] },
+          { key: "a3", submittedAt: at, name: "電話 違子", birthDate: "1990-01-01", phone: "090-9999-9999", answers: [] },
+        ],
+      },
+      { Authorization: `Bearer ${h.srv.integrationToken}` },
+    );
+    expect(res.status).toBe(200);
+    expect((await c.get(`/patients/${near.id}/questionnaires`)).items).toHaveLength(1);
+    expect((await c.get(`/patients/${far.id}/questionnaires`)).items).toHaveLength(0);
+    expect((await c.get(`/patients/${other.id}/questionnaires`)).items).toHaveLength(0);
+  });
+});

@@ -156,7 +156,7 @@ final class Reminder
         $menus = array_column($day['menus'], null, 'id');
         $visits = [];
         foreach ($day['reservations'] as $r) {
-            if (in_array($r['status'], Store::INACTIVE, true) || ($r['confirmation'] ?? 'confirmed') === 'pending') {
+            if (!empty($r['safePilotRevision']) || in_array($r['status'], Store::INACTIVE, true) || ($r['confirmation'] ?? 'confirmed') === 'pending') {
                 continue;
             }
             $p = $patients[$r['patientId']] ?? null;

@@ -212,6 +212,34 @@ try {
         $link = Http::bookingLink();
         $by = ['id' => 'booking:' . $link['id'], 'name' => '自動予約（' . $link['name'] . '）'];
         $sub = $p[2] ?? '';
+        // Fixed-test safety API: existing booking-link authentication above remains mandatory.
+        if (str_starts_with($sub, 'safe-')) {
+            require_once __DIR__ . '/../lib/LaneBookingSafety.php';
+            if ($method === 'GET' && $n === 3 && $sub === 'safe-constraints') {
+                Http::json(LaneBookingSafety::constraints());
+            }
+            if ($method === 'GET' && $n === 3 && $sub === 'safe-test-patient') {
+                Http::json(LaneBookingSafety::testPatient());
+            }
+            if ($method === 'GET' && $n === 3 && $sub === 'safe-availability') {
+                foreach (['start', 'end'] as $minuteKey) {
+                    if (!preg_match('/^[0-9]{1,4}$/D', $q($minuteKey) ?? '')) {
+                        throw new StoreError('invalid', '予約安全確認: minute_invalid');
+                    }
+                }
+                Http::json(LaneBookingSafety::availability([
+                    'date' => $q('date'), 'laneId' => $q('laneId'), 'menuId' => $q('menuId'),
+                    'start' => (int) $q('start'), 'end' => (int) $q('end'), 'nonce' => $q('nonce'),
+                ]));
+            }
+            if ($method === 'POST' && $n === 3 && $sub === 'safe-reservations') {
+                Http::json(LaneBookingSafety::create(Http::readJson(16_384), $by), 201);
+            }
+            if ($method === 'GET' && $n === 4 && $sub === 'safe-reservations') {
+                Http::json(LaneBookingSafety::read(V::id($p[3]), $by));
+            }
+            Http::json(['error' => 'not_found', 'message' => '安全用APIの対象外です'], 404);
+        }
         if ($method === 'GET' && $n === 3 && $sub === 'ping') {
             Http::json(['ok' => true, 'name' => $link['name']]);
         }
