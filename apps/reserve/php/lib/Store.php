@@ -4225,11 +4225,52 @@ final class Store
             if (!$p || !empty($p['deleted'])) {
                 continue;
             }
-            if (($birthDate !== null && ($p['birthDate'] ?? null) === $birthDate) || (strlen($tel) >= 10 && digits_only($p['phone'] ?? '') === $tel)) {
+            // 初診の方は M3 のカルテ番号も患者の電話・生年月日もまだないことがある（Air から取り込んだばかりなど）。
+            // そのときは、その方の予約に付いた予約申請（LINE）の電話・生年月日でも照合する
+            [$births, $tels] = self::patientContacts($p);
+            if (($birthDate !== null && in_array($birthDate, $births, true)) || (strlen($tel) >= 10 && in_array($tel, $tels, true))) {
                 $hits[] = $p['id'];
             }
         }
         return count($hits) === 1 ? $hits[0] : null;
+    }
+
+    /** 患者の生年月日・電話（数字だけ）の候補：患者の欄と、予約に付いた予約申請の内容 */
+    private static function patientContacts(array $p): array
+    {
+        $births = array_values(array_filter([(string) ($p['birthDate'] ?? '')]));
+        $tels = array_values(array_filter([digits_only((string) ($p['phone'] ?? ''))]));
+        $rids = [];
+        foreach (self::reservationsOf($p['id']) as $r) {
+            // 予約申請IDは申請IDの欄か、予約メモ（Air の予約メモから取り込んだもの）にある
+            $text = ($r['requestId'] ?? '') . ' ' . strip_tags((string) ($r['memo'] ?? ''));
+            if (preg_match_all('/R\d{14}[0-9A-F]{8}/i', $text, $m)) {
+                foreach ($m[0] as $x) {
+                    $rids[strtoupper($x)] = true;
+                }
+            }
+        }
+        foreach (array_slice(array_keys($rids), 0, 10) as $rid) {
+            $rec = Intake::record($rid);
+            $f = is_array($rec) && is_array($rec['intake'] ?? null) ? $rec['intake'] : [];
+            // 申請の氏名・カナがこの患者と合うときだけ使う（申請IDの入れ間違いで別の人の電話を使わないため）
+            $key = fn($x) => search_key(fold_name_variants((string) $x));
+            $same = fn($a, $b) => $a !== '' && $a === $b;
+            if (!$same($key($f['name'] ?? ''), $key($p['name'])) && !$same($key($f['kana'] ?? ''), $key($p['kana'] ?? '')) && !$same($key($f['kana'] ?? ''), $key($p['name']))) {
+                continue;
+            }
+            if (($b = (string) ($f['birthDate'] ?? '')) !== '') {
+                $births[] = $b;
+            }
+            if (($t = digits_only((string) ($f['phone'] ?? ''))) !== '') {
+                $tels[] = $t;
+            }
+        }
+        // 患者に生年月日があるのに申請と違うときは、申請の生年月日は使わない
+        if (!empty($p['birthDate'])) {
+            $births = [$p['birthDate']];
+        }
+        return [array_values(array_unique($births)), array_values(array_unique($tels))];
     }
 
     /** @param array<string, string> $forced 回答の key => 患者ID（LINE で本人確認済みの回答は、名前で探さずにその患者へ結びつける） */

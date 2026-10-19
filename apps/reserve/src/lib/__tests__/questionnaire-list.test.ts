@@ -63,3 +63,30 @@ describe("未確認の問診票の結びつけ", () => {
     expect(await c.post("/questionnaires/relink", {})).toMatchObject({ checked: 0, linked: 0 });
   });
 });
+
+describe("初診でカルテ番号・電話がまだない患者にも、問診票を結びつける", () => {
+  it("患者に電話・生年月日がなくても、予約に付いた予約申請の電話と氏名が合えば結びつく", async () => {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { addDays, toIso } = await import("@/lib/domain/time");
+    const c = await h.srv.as("staff-admin");
+    // Air から入ったばかりの初診の方（フリガナだけ・電話なし・カルテ番号なし）
+    const p = await c.post("/patients", { name: "ショシン ハナコ", kana: "ショシン ハナコ" });
+    const RID = "R20261019100000AB12CD34";
+    const day = addDays(nowInClinic().date, 3);
+    await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 630), memo: `予約申請ID：${RID}` });
+    const dir = path.join(h.srv.dir, "intake");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, `${RID}.json`), JSON.stringify({ requestId: RID, type: "reservation_intake", source: { userId: "U" + "a".repeat(32) }, intake: { name: "初診 花子", kana: "ショシン ハナコ", phone: "090-5555-6666" } }));
+    // 問診票は漢字の氏名と電話だけ（生年月日なし）
+    const send = (key: string, name: string, phone: string) =>
+      h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [{ key, submittedAt: "2026/10/18 10:00:00", name, kana: "ショシン ハナコ", phone, answers: [{ q: "既往歴", a: "なし" }] }] }, { Authorization: `Bearer ${h.srv.integrationToken}` });
+    expect((await send("s1", "初診 花子", "09055556666")).status).toBe(200);
+    const qs = (await c.get(`/patients/${p.id}/questionnaires`)).items;
+    expect(qs).toHaveLength(1);
+    // 電話が違えば結びつけない
+    await c.post("/patients", { name: "ショシン ジロウ", kana: "ショシン ジロウ" });
+    expect((await send("s2", "初診 次郎", "09000000000")).status).toBe(200);
+    expect((await c.get("/questionnaires/list?from=2026-10-01&to=2026-10-31&q=")).items.find((x: { name: string }) => x.name === "初診 次郎").patientId).toBeFalsy();
+  });
+});

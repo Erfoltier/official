@@ -217,6 +217,10 @@ final class AirSync
                 }
             }
             $out = ['at' => now_iso(), 'ok' => true, 'date' => "{$from}〜{$to}", 'days' => $days, 'count' => $count, ...$sum];
+            // 新しい患者・予約（予約申請IDつき）が入ったら、未確認の問診票を照合し直す
+            if ($sum['created'] + $sum['updated'] + $sum['newPatients'] > 0) {
+                $out['questionnairesLinked'] = Store::relinkUnmatchedQuestionnaires(null, ['id' => 'air', 'name' => 'Airリザーブ取り込み'])['linked'];
+            }
         } catch (Throwable $e) {
             $out = ['at' => now_iso(), 'ok' => false, 'date' => "{$from}〜{$to}", 'error' => $e instanceof StoreError ? $e->getMessage() : '取り込めませんでした（' . get_class($e) . '）'];
         }
@@ -374,6 +378,9 @@ final class AirSync
             $rows = self::fetchDay($date);
             $res = Store::airApply($date, $rows);
             $out = ['at' => now_iso(), 'date' => $date, 'ok' => true, 'count' => count($rows), ...$res];
+            if (($res['created'] ?? 0) + ($res['updated'] ?? 0) + ($res['newPatients'] ?? 0) > 0) {
+                $out['questionnairesLinked'] = Store::relinkUnmatchedQuestionnaires(null, ['id' => 'air', 'name' => 'Airリザーブ取り込み'])['linked'];
+            }
             if ($auto) {
                 $out['auto'] = now_in_clinic()['date'];
             } elseif (isset($last['auto'])) {
