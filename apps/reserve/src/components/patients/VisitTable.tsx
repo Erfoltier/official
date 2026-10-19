@@ -115,7 +115,7 @@ interface Props {
 }
 
 /**
- * 施術歴：今回の予約／過去の履歴／今後の予約。
+ * 施術歴：本日の予約／過去の履歴／今後の予約。
  * 表は 日付・施術内容・メモ・スキンケア・内服・ファイル の5列。メニューは色分けし、何回目かを付ける
  */
 export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, canManage, onReservationChanged }: Props) {
@@ -201,7 +201,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
   return (
     <div className={styles.treatHistory}>
       <section className={styles.histBlock} data-kind="now">
-        <h3 className={styles.histTitle}>今回の予約</h3>
+        <h3 className={styles.histTitle}>本日の予約</h3>
         {todayRow ? (
           <HistoryTable rows={[todayRow]} {...rowProps} />
         ) : next ? (
