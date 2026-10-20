@@ -52,8 +52,18 @@ describe("自動予約プログラムの連携", () => {
     // 2回目は同じ人
     const p2 = await call("POST", "/patients", { name: "予約 花子", kana: "ヨヤクハナコ", birthDate: "1990-04-01" });
     expect(p2.data).toMatchObject({ created: false, patient: { id: p1.data.patient.id } });
-    // 新しく登録した人はスタッフの「要確認」に出る
-    expect((await c.get("/admin/air-sync")).review.map((x: { id: string }) => x.id)).toContain(p1.data.patient.id);
+    // 似た名前の患者がいない初診の方は「要確認」に出さない
+    expect((await c.get("/admin/air-sync")).review.map((x: { id: string }) => x.id)).not.toContain(p1.data.patient.id);
+    // 同じフリガナの別の人（生年月日がない）がいれば、二重登録かもしれないので「要確認」に出す
+    const twin = await c.post("/patients", { name: "予約 太郎", kana: "ヨヤク タロウ" });
+    const p3 = await call("POST", "/patients", { name: "予約 たろう", kana: "ヨヤク タロウ", phone: "080-1234-9999" });
+    expect(p3.data.created).toBe(true);
+    const review = (await c.get("/admin/air-sync")).review;
+    const row = review.find((x: { id: string }) => x.id === p3.data.patient.id);
+    expect(row.similar.map((x: { id: string }) => x.id)).toContain(twin.id);
+    // 似た患者を消したら（統合したら）一覧から外れ、まとめて見直すと印も外れる
+    await c.post(`/patients/${twin.id}/delete`, { version: twin.version, reason: "テスト" });
+    expect((await c.get("/admin/air-sync")).review.map((x: { id: string }) => x.id)).not.toContain(p3.data.patient.id);
 
     const t = tomorrow("10:00");
     const made = await call("POST", "/reservations", { patientId: p1.data.patient.id, laneId: lane, menuIds: [menu], startAt: t.at, endAt: tomorrow("10:30").at, memo: "ChatGPTから" });

@@ -283,7 +283,8 @@ export interface AirSyncSettings {
   frequentLast: AirSyncResult | null;
   /** Air の利用を終えた記録（終えていなければ null）。終えたあとは取り込みを止め、Air から取り込んだ予約もふつうに変えられる */
   retired: { at: string; by?: { id: string; name: string }; final?: AirSyncResult } | null;
-  review: { id: string; name: string; kana: string }[];
+  /** 要確認の患者（名前・フリガナの似た患者がほかにいる人だけ）。similar はその候補 */
+  review: { id: string; name: string; kana: string; similar?: { id: string; name: string; kana?: string; chartNo?: string }[] }[];
 }
 
 export function fetchAirSync(): Promise<AirSyncSettings> {

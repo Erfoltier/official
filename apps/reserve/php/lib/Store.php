@@ -753,6 +753,7 @@ final class Store
         Db::i()->put('patient', $p['id'], $p);
         $all = &self::patients();
         $all[$p['id']] = $p;
+        self::$similarIndex = null;
     }
 
     private static function putLane(array $l): void
@@ -2280,8 +2281,12 @@ final class Store
                 } catch (Throwable) {
                     $pt = self::createPatient(['name' => $base['name']], $by);
                 }
-                $pt['needsReview'] = 'air';
-                self::putPatient($pt);
+                // 初診の方（美容の初診など）はカルテ番号も過去の情報もないのがふつうなので、印は付けない。
+                // 名前かフリガナが同じ・似た患者がほかにいるとき（同じ人の二重登録かもしれない）だけ「要確認」にする
+                if (self::similarPatients($pt)) {
+                    $pt['needsReview'] = 'air';
+                    self::putPatient($pt);
+                }
                 $pid = $pt['id'];
                 $res['newPatients']++;
             } else {
@@ -2398,10 +2403,72 @@ final class Store
         $out = [];
         foreach (self::patients() as $p) {
             if (!empty($p['needsReview']) && empty($p['deleted'])) {
-                $out[] = ['id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'] ?? ''];
+                $similar = self::similarPatients($p);
+                // 似た名前の患者がいなくなった（統合した・ただの初診だった）人は出さない
+                if ($similar) {
+                    $out[] = ['id' => $p['id'], 'name' => $p['name'], 'kana' => $p['kana'] ?? '', 'similar' => array_slice($similar, 0, 3)];
+                }
             }
         }
         return $out;
+    }
+
+    /** @var array<string, array<string, true>>|null 名前・フリガナの索引（1回の処理の中で使い回す） */
+    private static ?array $similarIndex = null;
+
+    /**
+     * 名前かフリガナ（別名も）が同じ・旧字体などをそろえて同じになる、ほかの患者（同じ人の二重登録の候補）。
+     * 生年月日が両方あって違う人は別人として外す
+     */
+    private static function similarPatients(array $p): array
+    {
+        $key = fn($x) => ($x = (string) $x) === '' ? '' : fold_name_variants(search_key($x));
+        if (self::$similarIndex === null) {
+            self::$similarIndex = [];
+            foreach (self::patients() as $q) {
+                if (!empty($q['deleted'])) {
+                    continue;
+                }
+                foreach ([$q['name'], $q['kana'] ?? '', $q['nameAlt'] ?? ''] as $x) {
+                    if (($k = $key($x)) !== '') {
+                        self::$similarIndex[$k][$q['id']] = true;
+                    }
+                }
+            }
+        }
+        $ids = [];
+        foreach ([$p['name'], $p['kana'] ?? '', $p['nameAlt'] ?? ''] as $x) {
+            if (($k = $key($x)) !== '') {
+                $ids += self::$similarIndex[$k] ?? [];
+            }
+        }
+        unset($ids[$p['id']]);
+        $out = [];
+        foreach (array_keys($ids) as $id) {
+            $q = self::patients()[$id] ?? null;
+            if (!$q || !empty($q['deleted']) || (!empty($p['birthDate']) && !empty($q['birthDate']) && $p['birthDate'] !== $q['birthDate'])) {
+                continue;
+            }
+            $out[] = array_filter(['id' => $q['id'], 'name' => $q['name'], 'kana' => $q['kana'] ?? '', 'chartNo' => $q['chartNo'] ?? ''], fn($v) => $v !== '');
+        }
+        return $out;
+    }
+
+    /** 「要確認」のうち、似た名前の患者がいない人（ただの初診）の印をまとめて外す。$dryRun なら数えるだけ */
+    public static function recheckReviewPatients(?array $by = null, bool $dryRun = false): array
+    {
+        self::init();
+        self::$similarIndex = null;
+        $flagged = array_filter(self::patients(), fn($p) => !empty($p['needsReview']) && empty($p['deleted']));
+        $clear = array_filter($flagged, fn($p) => !self::similarPatients($p));
+        if (!$dryRun) {
+            Db::i()->transaction(function () use ($clear, $by) {
+                foreach ($clear as $p) {
+                    self::clearPatientReview($p['id'], $by);
+                }
+            });
+        }
+        return ['flagged' => count($flagged), 'cleared' => count($clear), 'remaining' => count($flagged) - count($clear)];
     }
 
     /** 「要確認」の印を外す（スタッフが確かめた・統合した） */
@@ -5479,7 +5546,9 @@ final class Store
         }
         $p = self::createPatient(array_filter(['name' => $name, 'kana' => $kana, 'birthDate' => $birth, 'phone' => js_trim((string) ($in['phone'] ?? '')), 'email' => js_trim((string) ($in['email'] ?? ''))], fn($v) => $v !== ''), $by);
         $p = self::patient($p['id']);
-        self::putPatient([...$p, 'needsReview' => 'booking']);
+        if (self::similarPatients($p)) {
+            self::putPatient([...$p, 'needsReview' => 'booking']);
+        }
         return ['created' => true, 'patient' => self::bookingPatientView($p)];
     }
 

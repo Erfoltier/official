@@ -143,7 +143,7 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
       {s.review.length > 0 && (
           <>
             <h4 className={styles.subTitle}>要確認の患者（{s.review.length}人）</h4>
-            <p className={styles.hint}>Air からの取り込み時に、既存の患者と結びつけられず新規登録した患者です。同じ人がいれば患者画面で統合し、別の人なら「確認済み」を押してください。</p>
+            <p className={styles.hint}>新しく登録した患者のうち、名前かフリガナの<b>似た患者がほかにいる人</b>だけを出します（同じ人の二重登録かもしれないため）。同じ人なら患者画面で統合し、別の人なら「確認済み」を押してください。似た患者がいない初診の方は、ここには出ません。</p>
             <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 240, overflow: "auto" }}>
               {s.review.map((p) => (
                 <li key={p.id} style={{ margin: "4px 0" }}>
@@ -151,6 +151,20 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
                     {p.name}
                     {p.kana && p.kana !== p.name && `（${p.kana}）`}
                   </Link>
+                  {p.similar && p.similar.length > 0 && (
+                    <small style={{ marginLeft: 6 }}>
+                      似た患者：
+                      {p.similar.map((q, i) => (
+                        <span key={q.id}>
+                          {i > 0 && "・"}
+                          <Link href={`/patients/view/?id=${encodeURIComponent(q.id)}`}>
+                            {q.name}
+                            {q.chartNo && `（${q.chartNo}）`}
+                          </Link>
+                        </span>
+                      ))}
+                    </small>
+                  )}
                   <button
                     type="button"
                     className={styles.btn}
@@ -404,7 +418,7 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
       {s.review.length > 0 && (
         <>
           <h4 className={styles.subTitle}>要確認の患者（{s.review.length}人）</h4>
-          <p className={styles.hint}>Air からの取り込み時に、既存の患者と結びつけられず新規登録した患者です。同じ人がいれば患者画面で統合し、別の人なら「確認済み」を押してください。</p>
+          <p className={styles.hint}>新しく登録した患者のうち、名前かフリガナの<b>似た患者がほかにいる人</b>だけを出します（同じ人の二重登録かもしれないため）。同じ人なら患者画面で統合し、別の人なら「確認済み」を押してください。似た患者がいない初診の方は、ここには出ません。</p>
           <ul style={{ margin: 0, paddingLeft: 18, maxHeight: 240, overflow: "auto" }}>
             {s.review.map((p) => (
               <li key={p.id} style={{ margin: "4px 0" }}>
@@ -412,6 +426,20 @@ export function AirSyncCard(props: { notify: (m: string) => void; fail: (e: unkn
                   {p.name}
                   {p.kana && p.kana !== p.name && `（${p.kana}）`}
                 </Link>
+                {p.similar && p.similar.length > 0 && (
+                  <small style={{ marginLeft: 6 }}>
+                    似た患者：
+                    {p.similar.map((q, i) => (
+                      <span key={q.id}>
+                        {i > 0 && "・"}
+                        <Link href={`/patients/view/?id=${encodeURIComponent(q.id)}`}>
+                          {q.name}
+                          {q.chartNo && `（${q.chartNo}）`}
+                        </Link>
+                      </span>
+                    ))}
+                  </small>
+                )}
                 <button
                   type="button"
                   className={styles.btn}
