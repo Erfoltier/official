@@ -2648,6 +2648,46 @@ final class Store
         return $next;
     }
 
+    /**
+     * 予約申請IDから一度 LINE が特定できた患者は、患者そのものに LINE を紐付ける（院長の決定）。
+     * 継続治療の方は次回の予約を受付で取り、申請IDのない予約になるため、紐付けておかないとリマインドが届かない。
+     * 申請の氏名・生年月日が患者と合うときだけ（requestLine と同じ確かめ）。別の LINE が紐付いている患者には触れない
+     */
+    public static function autoLinkLines(?array $by = null): array
+    {
+        self::init();
+        $by ??= ['id' => 'system', 'name' => '予約申請からLINEを紐付け'];
+        $linked = 0;
+        $checked = 0;
+        $done = [];
+        foreach (Db::i()->all('reservation') as $r) {
+            $pid = (string) ($r['patientId'] ?? '');
+            if ($pid === '' || isset($done[$pid])) {
+                continue;
+            }
+            $text = ($r['requestId'] ?? '') . ' ' . strip_tags((string) ($r['memo'] ?? ''));
+            if (!preg_match('/R\d{14}[0-9A-F]{8}/i', $text)) {
+                continue;
+            }
+            $p = self::patients()[$pid] ?? null;
+            if (!$p || !empty($p['deleted']) || !empty($p['lineUserId'])) {
+                $done[$pid] = true;
+                continue;
+            }
+            $checked++;
+            [$uid] = self::reservationLine($r, $p);
+            if ($uid === null) {
+                continue;
+            }
+            $now = now_iso();
+            self::putPatient([...$p, 'lineUserId' => $uid, 'version' => $p['version'] + 1, 'updatedAt' => $now]);
+            self::recordChange($pid, ['LINE紐付け（予約申請から自動）'], $now, $by);
+            $done[$pid] = true;
+            $linked++;
+        }
+        return ['checked' => $checked, 'linked' => $linked];
+    }
+
     /** LINEの紐付けを解除する（誤った紐付けの訂正・本人の希望） */
     public static function unlinkPatientLine(string $id, int $version, ?array $by = null): array
     {

@@ -140,3 +140,29 @@ describe("予約申請を DB に保存する（monshin/intake-submit-v1.php）",
     expect((await webhook([text(`受診区分：①初診\n\n予約申請ID：${requestId}`)])).data.replied).toBe(0);
   });
 });
+
+describe("予約申請から LINE を一度特定したら、患者に紐付ける", () => {
+  it("受付で取った申請IDのない次回予約にも、患者の LINE で届くようになる", async () => {
+    const c = await h.srv.as("staff-admin");
+    const p = await c.post("/patients", { name: "継続 花子", kana: "ケイゾク ハナコ", birthDate: "1985-05-05" });
+    const RID2 = "R20261001100000AB12CD99";
+    const past = addDays(nowInClinic().date, -14);
+    await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(past, 600), endAt: toIso(past, 630), memo: `初回 予約申請ID：${RID2}` });
+    const dir = path.join(h.srv.dir, "intake");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, `${RID2}.json`), JSON.stringify({ requestId: RID2, type: "reservation_intake", source: { userId: "U" + "c".repeat(32) }, intake: { name: "継続 花子", birthDate: "1985-05-05" } }));
+    // 別の LINE が既に紐付いた患者、申請と生年月日が違う患者には触れない
+    const other = await c.post("/patients", { name: "継続 次郎", kana: "ケイゾク ジロウ", birthDate: "1980-01-01" });
+    const RID3 = "R20261001100000AB12CD98";
+    await c.post("/reservations", { patientId: other.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(past, 700), endAt: toIso(past, 730), requestId: RID3 });
+    writeFileSync(path.join(dir, `${RID3}.json`), JSON.stringify({ requestId: RID3, type: "reservation_intake", source: { userId: "U" + "d".repeat(32) }, intake: { name: "継続 次郎", birthDate: "1999-09-09" } }));
+
+    const r = await c.post("/admin/reminders/link-lines", {});
+    expect(r.linked).toBe(1);
+    expect((await c.get(`/patients/${p.id}`)).patient?.lineUserId ?? (await c.get(`/patients/${p.id}`)).lineUserId).toBe("U" + "c".repeat(32));
+    const o = await c.get(`/patients/${other.id}`);
+    expect(o.patient?.lineUserId ?? o.lineUserId).toBeUndefined();
+    // もう一度しても増えない
+    expect((await c.post("/admin/reminders/link-lines", {})).linked).toBe(0);
+  });
+});

@@ -33,6 +33,10 @@ final class Reminder
             'fromEmail' => '',
             'fromName' => '',
             'replyTo' => '',
+            // メールの送信サーバー（SMTP）。例：ロリポップのメール smtp.lolipop.jp・465（SSL）、ユーザー名は送信元のメールアドレス
+            'smtpHost' => '',
+            'smtpPort' => 465,
+            'smtpUser' => '',
             'lineReserve' => 20,
             'template' => self::DEFAULT_TEMPLATE,
         ];
@@ -52,6 +56,13 @@ final class Reminder
         return is_array($s) ? (string) ($s['lineToken'] ?? '') : '';
     }
 
+    /** メールの送信サーバー（SMTP）のパスワード。画面には出さない */
+    private static function smtpPassword(): string
+    {
+        $s = Db::i()->meta('reminderSecrets');
+        return is_array($s) ? (string) ($s['smtpPassword'] ?? '') : '';
+    }
+
     /** 画面に出す設定（鍵そのものは出さない） */
     public static function publicSettings(): array
     {
@@ -60,6 +71,7 @@ final class Reminder
         return [
             ...$s,
             'lineConfigured' => self::lineToken() !== '',
+            'smtpPasswordSet' => self::smtpPassword() !== '',
             'defaultTemplate' => self::DEFAULT_TEMPLATE,
             'lastRun' => is_array($last) ? $last : null,
             'cronSeenAt' => is_string($seen = Db::i()->meta('reminderCronSeen')) ? $seen : null,
@@ -116,6 +128,22 @@ final class Reminder
                 $next[$k] = $v;
             }
         }
+        if (array_key_exists('smtpHost', $in)) {
+            $h = trim((string) $in['smtpHost']);
+            if ($h !== '' && !preg_match('/^[A-Za-z0-9.-]{3,253}$/', $h)) {
+                throw new StoreError('invalid', '送信サーバー（SMTP）の名前の形式が正しくありません');
+            }
+            $next['smtpHost'] = $h;
+        }
+        if (array_key_exists('smtpPort', $in)) {
+            if (!in_array((int) $in['smtpPort'], [465, 587], true)) {
+                throw new StoreError('invalid', '送信サーバーのポートは 465（SSL）か 587（STARTTLS）を選んでください');
+            }
+            $next['smtpPort'] = (int) $in['smtpPort'];
+        }
+        if (array_key_exists('smtpUser', $in)) {
+            $next['smtpUser'] = mb_substr(trim((string) $in['smtpUser']), 0, 200);
+        }
         if (array_key_exists('fromName', $in)) {
             $next['fromName'] = mb_substr(preg_replace('/[\r\n<>"]/u', '', (string) $in['fromName']) ?? '', 0, 40);
         }
@@ -139,8 +167,18 @@ final class Reminder
             if ($tok !== '' && !preg_match('/^[A-Za-z0-9+\/=._-]{20,1000}$/', $tok)) {
                 throw new StoreError('invalid', 'LINE チャネルアクセストークンの形式が正しくありません');
             }
-            Db::i()->setMeta('reminderSecrets', ['lineToken' => $tok]);
+            $sec = Db::i()->meta('reminderSecrets');
+            Db::i()->setMeta('reminderSecrets', [...(is_array($sec) ? $sec : []), 'lineToken' => $tok]);
             Auth::audit($by, $tok === '' ? 'リマインドの LINE チャネルアクセストークンを削除' : 'リマインドの LINE チャネルアクセストークンを保存');
+        }
+        if (array_key_exists('smtpPassword', $in)) {
+            $pw = (string) $in['smtpPassword'];
+            if (strlen($pw) > 200) {
+                throw new StoreError('invalid', '送信サーバーのパスワードが長すぎます');
+            }
+            $sec = Db::i()->meta('reminderSecrets');
+            Db::i()->setMeta('reminderSecrets', [...(is_array($sec) ? $sec : []), 'smtpPassword' => $pw]);
+            Auth::audit($by, $pw === '' ? 'リマインドのメール送信サーバーのパスワードを削除' : 'リマインドのメール送信サーバーのパスワードを保存');
         }
         Auth::audit($by, 'リマインドの設定を変更');
         return self::publicSettings();
@@ -228,6 +266,7 @@ final class Reminder
         @set_time_limit(120);
         $now = now_in_clinic();
         $result = ['ran' => true, 'rounds' => []];
+
         $quota = ['remaining' => null, 'checked' => false];
         foreach ($s['rounds'] as $r) {
             $at = ((int) substr($r['time'], 0, 2)) * 60 + (int) substr($r['time'], 3, 2);
@@ -242,6 +281,14 @@ final class Reminder
             // 院長の指示で 2026-10-12 の来院までは自動では送らない（この日を過ぎれば何もしない）
             if ($target <= self::HOLD_UNTIL) {
                 continue;
+            }
+            // 予約申請から LINE が分かった患者を紐付けてから送る（次回予約を受付で取った方にも届くように）。送る回のときだけ
+            if (!isset($result['lineLinked'])) {
+                try {
+                    $result['lineLinked'] = Store::autoLinkLines()['linked'];
+                } catch (Throwable) {
+                    $result['lineLinked'] = 0;
+                }
             }
             $result['rounds'][$label] = self::runRound('d' . $days, $target, $quota, $days === 0 ? $now['minutes'] + 30 : null);
         }
@@ -386,6 +433,11 @@ final class Reminder
             'line_403' => 'LINE でこの送信方法が許可されていません（チャネルの設定を確認してください）',
             'line_limit' => 'LINE の送信上限に達しました（今月の無料通数を使い切った可能性があります）',
             'request_mismatch' => '予約申請の氏名・生年月日がこの患者と一致しないため、LINE では送信しませんでした（予約申請IDを確認してください）',
+            'mail_failed' => 'メールを送れませんでした（送信サーバー（SMTP）が未設定です）',
+            'smtp_connect' => '送信サーバーにつながりませんでした（サーバー名・ポートを確認してください）',
+            'smtp_auth' => '送信サーバーのユーザー名かパスワードが違います',
+            'smtp_tls', 'smtp_greeting', 'smtp_ehlo' => '送信サーバーとのやりとりに失敗しました（ポートと暗号化の種類を確認してください）',
+            'smtp_rcpt', 'smtp_rejected', 'smtp_data' => '送信サーバーがこのメールを受け付けませんでした（送信元アドレスがそのサーバーのものか確認してください）',
             default => '送信できませんでした' . ($reason !== '' ? "（{$reason}）" : ''),
         };
     }
@@ -582,8 +634,107 @@ final class Reminder
             [$code] = (self::$transport)('MAIL', $to, $headers, $subject . "\n\n" . $text);
             return $code === 200 ? [true, null] : [false, 'mail_failed'];
         }
+        if ($s['smtpHost'] !== '') {
+            return self::smtpSend($s, $from, $to, $headers, $subject, $text);
+        }
         mb_language('uni');
         $ok = @mb_send_mail($to, $subject, $text, implode("\r\n", $headers), '-f' . $from);
         return $ok ? [true, null] : [false, 'mail_failed'];
+    }
+
+    /** SMTP で1通送る（465 は最初から TLS、587 は STARTTLS。証明書は必ず確かめる）。患者情報はログに残さない */
+    private static function smtpSend(array $s, string $from, string $to, array $headers, string $subject, string $text): array
+    {
+        $host = (string) $s['smtpHost'];
+        $port = (int) $s['smtpPort'];
+        $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host]]);
+        $fp = @stream_socket_client(($port === 465 ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx);
+        if (!$fp) {
+            return [false, 'smtp_connect'];
+        }
+        stream_set_timeout($fp, 20);
+        $read = function () use ($fp): array {
+            $all = '';
+            while (($line = fgets($fp, 1024)) !== false) {
+                $all .= $line;
+                if (strlen($line) < 4 || $line[3] !== '-') {
+                    break;
+                }
+            }
+            return [(int) substr($all, 0, 3), $all];
+        };
+        $cmd = function (string $c, array $ok) use ($fp, $read): bool {
+            fwrite($fp, $c . "\r\n");
+            return in_array($read()[0], $ok, true);
+        };
+        try {
+            if ($read()[0] !== 220) {
+                return [false, 'smtp_greeting'];
+            }
+            $ehlo = 'EHLO ' . (preg_replace('/[^A-Za-z0-9.-]/', '', (string) ($_SERVER['SERVER_NAME'] ?? '')) ?: 'localhost');
+            if (!$cmd($ehlo, [250])) {
+                return [false, 'smtp_ehlo'];
+            }
+            if ($port === 587) {
+                if (!$cmd('STARTTLS', [220]) || !stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT)) {
+                    return [false, 'smtp_tls'];
+                }
+                if (!$cmd($ehlo, [250])) {
+                    return [false, 'smtp_ehlo'];
+                }
+            }
+            $user = (string) ($s['smtpUser'] !== '' ? $s['smtpUser'] : $from);
+            $pass = self::smtpPassword();
+            if ($pass !== '') {
+                if (!$cmd('AUTH LOGIN', [334]) || !$cmd(base64_encode($user), [334]) || !$cmd(base64_encode($pass), [235])) {
+                    return [false, 'smtp_auth'];
+                }
+            }
+            if (!$cmd('MAIL FROM:<' . $from . '>', [250]) || !$cmd('RCPT TO:<' . $to . '>', [250, 251])) {
+                return [false, 'smtp_rcpt'];
+            }
+            if (!$cmd('DATA', [354])) {
+                return [false, 'smtp_data'];
+            }
+            $domain = substr(strrchr($from, '@') ?: '@localhost', 1);
+            $msg = implode("\r\n", [
+                ...$headers,
+                'To: <' . $to . '>',
+                'Subject: ' . mb_encode_mimeheader($subject, 'UTF-8'),
+                'Date: ' . date(DATE_RFC2822),
+                'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . $domain . '>',
+                'MIME-Version: 1.0',
+                'Content-Type: text/plain; charset=UTF-8',
+                'Content-Transfer-Encoding: base64',
+                '',
+                rtrim(chunk_split(base64_encode(str_replace("\n", "\r\n", $text)), 76, "\r\n")),
+            ]);
+            fwrite($fp, $msg . "\r\n.\r\n");
+            if ($read()[0] !== 250) {
+                return [false, 'smtp_rejected'];
+            }
+            $cmd('QUIT', [221]);
+            return [true, null];
+        } finally {
+            fclose($fp);
+        }
+    }
+
+    /** メールの送信を試す（設定画面の「テスト送信」）。送信先は院のアドレスだけ */
+    public static function testMail(string $to, array $by): array
+    {
+        $s = self::settings();
+        if ($s['fromEmail'] === '') {
+            throw new StoreError('invalid', '送信元メールアドレスを先に保存してください');
+        }
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            throw new StoreError('invalid', '送信先のメールアドレスの形式が正しくありません');
+        }
+        [$ok, $err] = self::sendMail($to, 'リマインドのテスト送信', "LANE RESERVE からのテスト送信です。\nこのメールが届いていれば、リマインドをメールで送れます。");
+        Auth::audit($by, 'リマインドのメールをテスト送信（' . ($ok ? '成功' : '失敗 ' . $err) . '）');
+        if (!$ok) {
+            throw new StoreError('invalid', 'テスト送信に失敗しました（' . self::reasonText((string) $err) . '）');
+        }
+        return ['ok' => true];
     }
 }

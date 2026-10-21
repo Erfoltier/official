@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchReminderSettings, previewReminders, runRemindersNow, saveReminderSettings, type ReminderPreview, type ReminderSettings } from "@/components/calendar/api";
+import { fetchReminderSettings, previewReminders, runRemindersNow, saveReminderSettings, testReminderMail, type ReminderPreview, type ReminderSettings } from "@/components/calendar/api";
 import { patientPath } from "@/lib/paths";
 import type { Menu } from "@/lib/domain/types";
 import { ReminderMenusDialog } from "./ReminderMenusCard";
@@ -23,6 +23,8 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
   const [s, setS] = useState<ReminderSettings | null>(null);
   const [draft, setDraft] = useState<ReminderSettings | null>(null);
   const [token, setToken] = useState("");
+  const [smtpPw, setSmtpPw] = useState("");
+  const [testTo, setTestTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [menusOpen, setMenusOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
   if (!s || !draft) return null;
 
   const set = <K extends keyof ReminderSettings>(k: K, v: ReminderSettings[K]) => setDraft({ ...draft, [k]: v });
-  const save = async (extra?: { lineToken?: string; enabled?: boolean }) => {
+  const save = async (extra?: { lineToken?: string; enabled?: boolean; smtpPassword?: string }) => {
     setBusy(true);
     try {
       const r = await saveReminderSettings({
@@ -59,13 +61,18 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         fromEmail: draft.fromEmail,
         fromName: draft.fromName,
         replyTo: draft.replyTo,
+        smtpHost: draft.smtpHost,
+        smtpPort: draft.smtpPort,
+        smtpUser: draft.smtpUser,
         lineReserve: draft.lineReserve,
         template: draft.template,
         ...(extra?.lineToken !== undefined && { lineToken: extra.lineToken }),
+        ...(extra?.smtpPassword !== undefined && { smtpPassword: extra.smtpPassword }),
       });
       setS(r);
       setDraft(r);
       setToken("");
+      setSmtpPw("");
       props.notify("リマインドの設定を保存しました");
     } catch (e) {
       props.fail(e);
@@ -204,8 +211,62 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         </label>
       </div>
       <p className={styles.hint}>
-        LINE の今月の残り通数が予備通数以下になると、LINE の代わりにメールで送ります。メールアドレス未回答の患者には送りません。LINE の無料プランは月200通です。送信元メールアドレスが未設定の場合、メールは送信できません。
+        LINE と結びついていない患者と、LINE の今月の残り通数が予備通数以下になったときは、メールで送ります。メールアドレス未回答の患者には送りません。LINE の無料プランは月200通です。送信元メールアドレスと送信サーバー（下）が未設定の場合、メールは送信できません。
       </p>
+
+      <h4 className={styles.subTitle}>メールの送信サーバー（SMTP）</h4>
+      <p className={styles.hint}>
+        送信元メールアドレスのメールサービスの「送信サーバー」を入れます。ロリポップのメールなら、サーバー <code>smtp.lolipop.jp</code>・ポート 465・ユーザー名は送信元メールアドレス・パスワードはそのメールアドレスのパスワードです。
+      </p>
+      <div className={styles.m3Cols}>
+        <label>
+          <span>送信サーバー</span>
+          <input className={styles.input} value={draft.smtpHost} placeholder="smtp.lolipop.jp" onChange={(e) => set("smtpHost", e.target.value.trim())} />
+        </label>
+        <label>
+          <span>ポート</span>
+          <select className={styles.input} value={draft.smtpPort} onChange={(e) => set("smtpPort", Number(e.target.value))}>
+            <option value={465}>465（SSL）</option>
+            <option value={587}>587（STARTTLS）</option>
+          </select>
+        </label>
+        <label>
+          <span>ユーザー名（空欄なら送信元メールアドレス）</span>
+          <input className={styles.input} value={draft.smtpUser} autoComplete="off" onChange={(e) => set("smtpUser", e.target.value)} />
+        </label>
+      </div>
+      <div className={styles.prefRow} style={{ marginTop: 6 }}>
+        <b>送信サーバーのパスワード</b>
+        <span>{s.smtpPasswordSet ? "設定済み" : "未設定"}</span>
+        <small>保存後は画面に表示されません。サーバー名・ポート・ユーザー名は上の「保存」で保存されます。</small>
+      </div>
+      <div className={styles.actions}>
+        <input className={styles.input} type="password" autoComplete="new-password" value={smtpPw} onChange={(e) => setSmtpPw(e.target.value)} placeholder="メールのパスワード" style={{ flex: 1, minWidth: 200 }} />
+        <button type="button" className={styles.btn} disabled={busy || smtpPw === ""} onClick={() => void save({ smtpPassword: smtpPw })}>
+          パスワードを保存
+        </button>
+      </div>
+      <div className={styles.actions}>
+        <input className={styles.input} type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="テストの送信先（院のメールアドレス）" style={{ flex: 1, minWidth: 200 }} />
+        <button
+          type="button"
+          className={styles.btn}
+          disabled={busy || !testTo}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await testReminderMail(testTo);
+              props.notify("テストメールを送りました。届いたか確認してください");
+            } catch (e) {
+              props.fail(e);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          テスト送信
+        </button>
+      </div>
 
       <div className={styles.prefRow} style={{ marginTop: 10 }}>
         <b>LINE チャネルアクセストークン</b>

@@ -542,6 +542,16 @@ try {
         }
         Http::json(Reminder::updateSettings($in, $actor($s)));
     }
+    // 予約申請から LINE が分かった患者に、LINE をまとめて紐付ける（各回の送信前にも自動で行う）
+    if ($route === 'POST admin/reminders/link-lines') {
+        $s = $me(STAFF_ADMIN);
+        Http::json(Store::autoLinkLines($actor($s)));
+    }
+    if ($route === 'POST admin/reminders/test-mail') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        Http::json(Reminder::testMail(is_array($in) ? (string) ($in['to'] ?? '') : '', $actor($s)));
+    }
     if ($route === 'GET admin/reminders/preview') {
         $me(STAFF_ADMIN);
         Http::json(Reminder::preview(V::date($q('date'))));

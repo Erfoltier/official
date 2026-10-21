@@ -365,6 +365,11 @@ export interface ReminderSettings {
   fromEmail: string;
   fromName: string;
   replyTo: string;
+  /** メールの送信サーバー（SMTP）。空ならメールは送れない */
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPasswordSet: boolean;
   lineReserve: number;
   template: string;
   defaultTemplate: string;
@@ -379,7 +384,15 @@ export function fetchReminderSettings(): Promise<ReminderSettings> {
   return call("/api/v1/admin/reminders");
 }
 
-export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defaultTemplate" | "lineConfigured" | "lineRemaining" | "lastRun" | "cronSeenAt">> & { lineToken?: string }): Promise<ReminderSettings> {
+export function testReminderMail(to: string): Promise<{ ok: boolean }> {
+  return call("/api/v1/admin/reminders/test-mail", { method: "POST", body: JSON.stringify({ to }) });
+}
+
+export function linkLinesFromRequests(): Promise<{ checked: number; linked: number }> {
+  return call("/api/v1/admin/reminders/link-lines", { method: "POST", body: "{}" });
+}
+
+export function saveReminderSettings(body: Partial<Omit<ReminderSettings, "defaultTemplate" | "lineConfigured" | "lineRemaining" | "lastRun" | "cronSeenAt" | "smtpPasswordSet">> & { lineToken?: string; smtpPassword?: string }): Promise<ReminderSettings> {
   return call("/api/v1/admin/reminders", { method: "PUT", body: JSON.stringify(body) });
 }
 
