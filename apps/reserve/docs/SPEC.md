@@ -58,7 +58,11 @@
   2. 予約の申請ID（欄、またはメモ中の `R` ＋14桁＋16進8桁）から申請の LINE
   3. 患者の `lineUserId`（いったん申請から特定できた人は、ここに入れて「連携済」にする）
   4. どれもなければメール（患者にメールがあれば）、それもなければ `no_contact`
-- 毎回の最初の回の前に `Store::autoLinkLines()` を流し、申請IDから患者の LINE を自動で連携（履歴「LINE紐付け（予約申請から自動）」）。手動は `tools/link-lines.php` と設定の「申請から連携」
+- **申請IDからの LINE 連携は即時・自動**（履歴「LINE紐付け（予約申請から自動）」）。仕組みは `Store::linkLineFromReservation` の1つだけで、呼び口は3つ
+  - 予約の保存（`putReservation`）：入力・変更・Air の取り込み・自動予約・外部連携のすべてがここを通る
+  - 申請が後から届いたとき（`Intake::store` → `Store::linkLineForRequest`）
+  - 取りこぼしの拾い直し：リマインドの最初の回の前に `Store::autoLinkLines()`（一括は `tools/link-lines.php`）
+- 「LINE未連携 → 連携する」（手動）は、申請IDがない・申請の LINE と別の LINE を使っているなどのイレギュラーのときだけ使う
 - LINE は今月の残り通数が「残しておく通数」を下回るならメールに回す
 - **メール**：SMTP で送る（AWS SES は使わない＝院長の方針）。ロリポップのメールなら `smtp.lolipop.jp`・465（SSL）、ユーザー名は送信元アドレス。証明書の確認は必ず行う。設定画面の「テスト送信」で確かめる
 - 自動予約の試験予約（`safePilotRevision` 付き）には送らない

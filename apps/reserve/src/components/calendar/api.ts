@@ -388,7 +388,7 @@ export function testReminderMail(to: string): Promise<{ ok: boolean }> {
   return call("/api/v1/admin/reminders/test-mail", { method: "POST", body: JSON.stringify({ to }) });
 }
 
-export function linkLinesFromRequests(): Promise<{ checked: number; linked: number }> {
+export function linkLinesFromRequests(): Promise<{ linked: number }> {
   return call("/api/v1/admin/reminders/link-lines", { method: "POST", body: "{}" });
 }
 

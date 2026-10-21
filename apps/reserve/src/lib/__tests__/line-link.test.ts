@@ -167,6 +167,35 @@ describe("予約申請から LINE を一度特定したら、患者に紐付け�
   });
 });
 
+describe("予約申請IDが入ったら、その場で LINE を連携する", () => {
+  it("申請が先にあれば予約の保存で、予約が先なら申請が届いた時点で連携する", async () => {
+    const c = await h.srv.as("staff-admin");
+    const day = addDays(nowInClinic().date, 3);
+    const lineOf = async (id: string) => {
+      const d = await c.get(`/patients/${id}`);
+      return d.patient?.lineUserId ?? d.lineUserId;
+    };
+    // 申請が先：予約申請IDを予約に入れた瞬間に連携
+    const RA = "R20261015100000AB12CD01";
+    const dir = path.join(h.srv.dir, "intake");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, `${RA}.json`), JSON.stringify({ requestId: RA, type: "reservation_intake", source: { userId: "U" + "e".repeat(32) }, intake: { name: "即時 花子", birthDate: "1990-02-02" } }));
+    const a = await c.post("/patients", { name: "即時 花子", kana: "ソクジ ハナコ", birthDate: "1990-02-02" });
+    const ra = await c.post("/reservations", { patientId: a.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    expect(await lineOf(a.id)).toBeUndefined();
+    await c.patch(`/reservations/${ra.id}`, { version: ra.version, requestId: RA });
+    expect(await lineOf(a.id)).toBe("U" + "e".repeat(32));
+
+    // 予約が先：申請が届いた時点で連携
+    const RB = "R20261015110000AB12CD02";
+    const b = await c.post("/patients", { name: "後着 太郎", kana: "コウチャク タロウ", birthDate: "1988-08-08" });
+    await c.post("/reservations", { patientId: b.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 700), endAt: toIso(day, 730), memo: `申請 ${RB}` });
+    expect(await lineOf(b.id)).toBeUndefined();
+    await h.srv.php(`Intake::store(['requestId' => '${RB}', 'type' => 'reservation_intake', 'source' => ['userId' => 'U${"f".repeat(32)}'], 'intake' => ['name' => '後着 太郎', 'birthDate' => '1988-08-08']]); return true;`);
+    expect(await lineOf(b.id)).toBe("U" + "f".repeat(32));
+  });
+});
+
 describe("未連携の患者に、手動で LINE を連携する", () => {
   it("公式アカウントとやりとりした LINE・予約申請をした LINE が候補に出て、選ぶと連携できる（発言の中身は残さない）", async () => {
     const c = await setup();

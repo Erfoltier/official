@@ -64,6 +64,8 @@ final class Intake
             throw new StoreError('invalid', '予約申請の形が正しくありません');
         }
         Db::i()->put('intake', $rid, $rec);
+        // 先に予約へ申請IDが入っていれば、その患者に LINE をすぐ連携する
+        Store::linkLineForRequest($rid);
     }
 
     /** 申請の文面が、申請した本人の LINE から届いた印を付ける（DB の申請だけ。移行前のファイルは line.php が直接付ける） */

@@ -773,6 +773,53 @@ final class Store
     private static function putReservation(array $r): void
     {
         Db::i()->put('reservation', $r['id'], $r);
+        self::linkLineFromReservation($r);
+    }
+
+    /**
+     * 予約に予約申請ID（欄・メモ）があり、患者の LINE がまだなら、申請の LINE をその場で患者に連携する。
+     * 予約の保存（入力・変更・Air の取り込み・自動予約・外部連携）はすべて putReservation を通るので、ここ1か所で足りる。
+     * 申請の方が後から届いたときは linkLineForRequest、取りこぼしの拾い直しは autoLinkLines（どちらもこれを使う）
+     */
+    private static function linkLineFromReservation(array $r, ?array $by = null): bool
+    {
+        $pid = (string) ($r['patientId'] ?? '');
+        $text = ($r['requestId'] ?? '') . ' ' . strip_tags((string) ($r['memo'] ?? ''));
+        if ($pid === '' || !preg_match('/R\d{14}[0-9A-F]{8}/i', $text)) {
+            return false;
+        }
+        try {
+            $p = self::patients()[$pid] ?? null;
+            if (!$p || !empty($p['deleted']) || !empty($p['lineUserId'])) {
+                return false;
+            }
+            [$uid] = self::reservationLine($r, $p);
+            if ($uid === null) {
+                return false;
+            }
+            $now = now_iso();
+            self::putPatient([...$p, 'lineUserId' => $uid, 'version' => $p['version'] + 1, 'updatedAt' => $now]);
+            self::recordChange($pid, ['LINE紐付け（予約申請から自動）'], $now, $by ?? ['id' => 'system', 'name' => '予約申請からLINEを紐付け']);
+            return true;
+        } catch (Throwable $e) {
+            // 連携できなくても予約の保存は止めない（次のリマインド前の autoLinkLines で拾い直す）
+            return false;
+        }
+    }
+
+    /** 予約申請が後から届いたとき：その申請IDが入っている予約の患者に LINE を連携する */
+    public static function linkLineForRequest(string $requestId): int
+    {
+        self::init();
+        $rid = strtoupper($requestId);
+        $n = 0;
+        foreach (Db::i()->all('reservation') as $r) {
+            $text = strtoupper(($r['requestId'] ?? '') . ' ' . strip_tags((string) ($r['memo'] ?? '')));
+            if (str_contains($text, $rid) && self::linkLineFromReservation($r)) {
+                $n++;
+            }
+        }
+        return $n;
     }
 
     private static function byOrder(array $items): array
@@ -2612,36 +2659,13 @@ final class Store
     public static function autoLinkLines(?array $by = null): array
     {
         self::init();
-        $by ??= ['id' => 'system', 'name' => '予約申請からLINEを紐付け'];
         $linked = 0;
-        $checked = 0;
-        $done = [];
         foreach (Db::i()->all('reservation') as $r) {
-            $pid = (string) ($r['patientId'] ?? '');
-            if ($pid === '' || isset($done[$pid])) {
-                continue;
+            if (self::linkLineFromReservation($r, $by)) {
+                $linked++;
             }
-            $text = ($r['requestId'] ?? '') . ' ' . strip_tags((string) ($r['memo'] ?? ''));
-            if (!preg_match('/R\d{14}[0-9A-F]{8}/i', $text)) {
-                continue;
-            }
-            $p = self::patients()[$pid] ?? null;
-            if (!$p || !empty($p['deleted']) || !empty($p['lineUserId'])) {
-                $done[$pid] = true;
-                continue;
-            }
-            $checked++;
-            [$uid] = self::reservationLine($r, $p);
-            if ($uid === null) {
-                continue;
-            }
-            $now = now_iso();
-            self::putPatient([...$p, 'lineUserId' => $uid, 'version' => $p['version'] + 1, 'updatedAt' => $now]);
-            self::recordChange($pid, ['LINE紐付け（予約申請から自動）'], $now, $by);
-            $done[$pid] = true;
-            $linked++;
         }
-        return ['checked' => $checked, 'linked' => $linked];
+        return ['linked' => $linked];
     }
 
     /**
