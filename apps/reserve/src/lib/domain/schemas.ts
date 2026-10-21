@@ -38,6 +38,8 @@ export const updateReservationSchema = z
     stageText: z.string().max(40).optional(),
     /** 状態を変えた時刻（その日の0時からの分）。省略すると今の時刻 */
     stageMin: z.number().int().min(0).max(1439).optional(),
+    /** キャンセル・無断キャンセルの理由（スタッフのコメント） */
+    cancelReason: z.string().max(400).optional(),
   })
   .strict();
 

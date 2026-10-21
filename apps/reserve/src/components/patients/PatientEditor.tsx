@@ -452,6 +452,28 @@ export function PatientEditor({ patientId, onSaved, onClose, openLineLink }: Pro
       )}
       {deleting && <DeleteDialog patient={p} onClose={() => setDeleting(false)} onDeleted={afterManage} />}
 
+      <details className={styles.section}>
+        <summary className={styles.sectionTitle}>キャンセル履歴（{detail.cancellations?.length ?? 0}件）</summary>
+        {!detail.cancellations?.length ? (
+          <p className={styles.muted}>キャンセルした予約はありません</p>
+        ) : (
+          <ul className={styles.history}>
+            {detail.cancellations.map((c) => (
+              <li key={c.id}>
+                <span>{formatDateTime(c.startAt)}</span>
+                <strong className={styles.who}>{c.status === "no_show" ? "無断キャンセル" : "キャンセル"}</strong>
+                {c.menuNames.filter(Boolean).join("・")}
+                <br />
+                <span className={styles.muted}>
+                  理由：{c.cancelReason || "（記入なし）"}
+                  {c.cancelledAt && `　${formatDateTime(c.cancelledAt)}${c.cancelledBy ? ` ${c.cancelledBy}` : ""}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>変更履歴</h2>
         {detail.history.length === 0 ? (

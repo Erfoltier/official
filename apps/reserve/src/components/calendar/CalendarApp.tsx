@@ -230,8 +230,9 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     save(r, { version: r.version, laneId: to.laneId, startAt, endAt }, { ...r, laneId: to.laneId, startAt, endAt });
   };
 
-  const onStatus = (r: Reservation, status: ReservationStatus) => {
-    save(r, { version: r.version, status }, { ...r, status });
+  const onStatus = (r: Reservation, status: ReservationStatus, cancelReason?: string) => {
+    const reason = cancelReason?.replace(/\s+/g, " ").trim();
+    save(r, { version: r.version, status, ...(reason && { cancelReason: reason }) }, { ...r, status, ...(reason && { cancelReason: reason }) });
   };
 
   /**
@@ -573,7 +574,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             reservation={selected}
             maskNames={maskNames}
             onClose={() => setSelectedId(null)}
-            onStatus={(s) => onStatus(selected, s)}
+            onStatus={(s, reason) => onStatus(selected, s, reason)}
             onStage={(id, min) => onStage(selected, id, min)}
             onStageTime={(min) => onStageTime(selected, min)}
             onFreeNote={(text) => onFreeNote(selected, text)}

@@ -48,7 +48,8 @@ interface Props {
   reservation: Reservation;
   maskNames: boolean;
   onClose: () => void;
-  onStatus: (s: ReservationStatus) => void;
+  /** reason：キャンセルの理由（スタッフのコメント。患者画面の「キャンセル履歴」に出る） */
+  onStatus: (s: ReservationStatus, reason?: string) => void;
   /** 院で決めた状態を選ぶ */
   onStage: (stageId: string, min?: number) => void;
   /** 状態はそのままで、変えた時刻だけ直す */
@@ -78,6 +79,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   /** 予約キャンセルは誤タッチで消えないよう確認を挟む。無断キャンセルはその中のチェックで分ける */
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [noShow, setNoShow] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
@@ -271,6 +273,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               data-danger
               onClick={() => {
                 setNoShow(false);
+                setCancelReason("");
                 setConfirmCancel(true);
               }}
             >
@@ -534,7 +537,10 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         )}
         {(r.status === "cancelled" || r.status === "no_show") && (
           <div className={styles.restoreBar} role="status">
-            <span>この予約は{r.status === "cancelled" ? "キャンセル" : "無断キャンセル"}です。</span>
+            <span>
+              この予約は{r.status === "cancelled" ? "キャンセル" : "無断キャンセル"}です。
+              {r.cancelReason && <>（理由：{r.cancelReason}）</>}
+            </span>
             <button
               type="button"
               className={styles.btn}
@@ -566,7 +572,19 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               </p>
               <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 18px", minHeight: 44, cursor: "pointer" }}>
                 <input type="checkbox" checked={noShow} onChange={(e) => setNoShow(e.target.checked)} style={{ width: 20, height: 20 }} />
-                無断キャンセル（連絡なしで来院されなかった）
+                無断キャンセル
+              </label>
+              <label style={{ display: "block", margin: "0 0 18px" }}>
+                <span style={{ display: "block", fontSize: "0.9em", marginBottom: 4 }}>キャンセルの理由（任意）</span>
+                <textarea
+                  className={styles.input}
+                  value={cancelReason}
+                  maxLength={200}
+                  rows={2}
+                  placeholder="例：体調不良のため、日を改めて連絡するとのこと"
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  style={{ width: "100%", resize: "vertical" }}
+                />
               </label>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button type="button" className={styles.btn} style={{ minWidth: 96, minHeight: 44 }} autoFocus onClick={() => setConfirmCancel(false)}>
@@ -580,7 +598,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                   style={{ minWidth: 96, minHeight: 44 }}
                   onClick={() => {
                     setConfirmCancel(false);
-                    onStatus(noShow ? "no_show" : "cancelled");
+                    onStatus(noShow ? "no_show" : "cancelled", cancelReason);
                   }}
                 >
                   確定

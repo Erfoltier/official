@@ -1223,6 +1223,26 @@ final class Store
             // 後から入力するとき用（例：「10:05 来院済」を10:20に記録）
             $next['stageAt'] = to_iso(clinic_date_of($next['startAt']), $input['stageMin']);
         }
+        // キャンセル・無断キャンセルにしたとき：いつ・だれが・なぜ（患者画面の「キャンセル履歴」に出す）。予約に戻したら消す
+        $wasInactive = in_array($cur['status'], self::INACTIVE, true);
+        $isInactive = in_array($next['status'], self::INACTIVE, true);
+        if ($isInactive && !$wasInactive) {
+            $next['cancelledAt'] = now_iso();
+            if ($by) {
+                $next['cancelledBy'] = $by;
+            }
+        }
+        if ($isInactive && isset($input['cancelReason'])) {
+            $reason = self::checkText('キャンセルの理由', $input['cancelReason'], 200, false);
+            if ($reason !== '') {
+                $next['cancelReason'] = $reason;
+            } else {
+                unset($next['cancelReason']);
+            }
+        }
+        if (!$isInactive) {
+            unset($next['cancelReason'], $next['cancelledAt'], $next['cancelledBy']);
+        }
         self::putReservation($next);
         if ($by) {
             $what = array_filter([
@@ -1234,6 +1254,7 @@ final class Store
                 isset($input['menuIds']) ? 'メニュー' : null,
                 isset($input['memo']) ? 'メモ' : null,
                 isset($input['requestId']) ? '予約申請ID' : null,
+                isset($input['cancelReason']) ? 'キャンセルの理由' : null,
             ]);
             Auth::audit($by, '予約を変更（' . implode('・', $what) . '）', $id);
         }
@@ -2785,6 +2806,14 @@ final class Store
         if (!empty($r['requestId'])) {
             $out['requestId'] = $r['requestId'];
         }
+        foreach (['cancelReason', 'cancelledAt'] as $k) {
+            if (!empty($r[$k])) {
+                $out[$k] = $r[$k];
+            }
+        }
+        if (!empty($r['cancelledBy']['name'])) {
+            $out['cancelledBy'] = $r['cancelledBy']['name'];
+        }
         return $out;
     }
 
@@ -2843,6 +2872,11 @@ final class Store
             'patient' => $patient,
             'visits' => $visits,
             'upcoming' => $upcoming,
+            // キャンセル・無断キャンセルした予約（新しい順）
+            'cancellations' => array_values(array_map(
+                fn($r) => self::reservationSummary($r),
+                array_reverse(array_filter($mine, fn($r) => in_array($r['status'], self::INACTIVE, true))),
+            )),
             'skincareSuggestions' => $suggest,
             'products' => array_values(array_filter(self::sortedProducts(), fn($p) => $p['active'])),
             'menuInfo' => (object) array_map(fn($m) => ['name' => $m['name'], 'color' => $m['color']], self::menus()),

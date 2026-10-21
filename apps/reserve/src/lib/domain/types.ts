@@ -571,6 +571,10 @@ export interface VisitRow {
     menuIds: string[];
     /** 状態の表示名（院で決めた状態。自由入力ならその文字） */
     stageLabel?: string;
+    cancelReason?: string;
+    cancelledAt?: string;
+    /** キャンセルにした人の名前 */
+    cancelledBy?: string;
   }[];
   note: string;
   skincare: string[];
@@ -589,6 +593,8 @@ export interface PatientDetail {
   visits: VisitRow[];
   /** 明日以降の予約（近い順） */
   upcoming: VisitRow["reservations"];
+  /** キャンセル・無断キャンセルした予約（新しい順） */
+  cancellations?: VisitRow["reservations"];
   /** スキンケア入力の候補（この患者が使ったことのあるもの → 院でよく使うもの） */
   skincareSuggestions: string[];
   /** スキンケア・内服のプリセット（有効なもの、並び順） */
@@ -652,6 +658,10 @@ export interface Reservation {
   /** 自由入力の文字（「15時までに出たい」など）。状態とは別に、同時に出せる */
   stageText?: string;
   memo?: string;
+  /** キャンセル・無断キャンセルの理由（スタッフのコメント）・した日時・した人。予約に戻すと消える */
+  cancelReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: Actor;
   /** LINE予約フォームの予約申請ID（例：R2026100506574020A34A8B） */
   requestId?: string;
   /** 申請IDから申し込んだ LINE が見つかったか（ok＝リマインドをその LINE へ／mismatch＝申請の名前・生年月日が患者と合わない／notfound＝見つからない）。サーバーが付ける */

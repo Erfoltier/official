@@ -352,6 +352,7 @@ final class Schema
             'stageId?' => [V::class, 'id'],
             'stageText?' => fn($x) => V::str($x, 40),
             'stageMin?' => fn($x) => V::int($x, 0, 1439),
+            'cancelReason?' => fn($x) => V::str($x, 400),
         ]);
     }
 

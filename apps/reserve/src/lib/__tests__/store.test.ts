@@ -37,6 +37,18 @@ describe("store", () => {
     await expect(c.patch(`/reservations/${r.id}`, { version: r.version, startAt: at(23 * 60), endAt: toIso(addDays(day, 1), 60) })).rejects.toThrow(/日をまたぐ/);
   });
 
+  it("キャンセルの理由を残し、患者画面のキャンセル履歴に出す。予約に戻すと消える", async () => {
+    const { c, r } = await pick();
+    const done = await c.patch(`/reservations/${r.id}`, { version: r.version, status: "no_show", cancelReason: "連絡がつかない" });
+    expect(done).toMatchObject({ status: "no_show", cancelReason: "連絡がつかない" });
+    expect(done.cancelledAt).toBeTruthy();
+    const d = await c.get(`/patients/${r.patientId}`);
+    expect(d.cancellations.find((x: { id: string }) => x.id === r.id)).toMatchObject({ status: "no_show", cancelReason: "連絡がつかない" });
+    const back = await c.patch(`/reservations/${r.id}`, { version: done.version, status: "booked" });
+    expect(back.cancelReason).toBeUndefined();
+    expect((await c.get(`/patients/${r.patientId}`)).cancellations.map((x: { id: string }) => x.id)).not.toContain(r.id);
+  });
+
   it("時刻を変えた予約はリマインドを未送信に戻す", async () => {
     const { c, r } = await pick();
     // 送信済みにする（送信はサーバー内のリマインド機能だけが行う）
