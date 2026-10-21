@@ -166,3 +166,34 @@ describe("予約申請から LINE を一度特定したら、患者に紐付け�
     expect((await c.post("/admin/reminders/link-lines", {})).linked).toBe(0);
   });
 });
+
+describe("未連携の患者に、手動で LINE を連携する", () => {
+  it("公式アカウントとやりとりした LINE・予約申請をした LINE が候補に出て、選ぶと連携できる（発言の中身は残さない）", async () => {
+    const c = await setup();
+    // 友だち追加とメッセージ（発言の中身は残さない）
+    expect((await webhook([{ type: "follow", replyToken: "rt-f", source: { type: "user", userId: OTHER } }])).status).toBe(200);
+    expect((await webhook([{ ...text("来週予約したいです"), source: { type: "user", userId: OTHER } }])).status).toBe(200);
+    // 予約申請をした LINE（申請の氏名つき）
+    const RID4 = "R20261002100000AB12CD97";
+    const dir = path.join(h.srv.dir, "intake");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, `${RID4}.json`), JSON.stringify({ requestId: RID4, type: "reservation_intake", receivedAt: "2026-10-02T01:00:00Z", source: { userId: USER }, intake: { name: "手動 連子" } }));
+
+    const p = await c.post("/patients", { name: "手動 連子", kana: "シュドウ レンコ" });
+    const all = (await c.get(`/patients/${p.id}/line-candidates?q=`)).items;
+    const uids = all.map((x: { userId: string }) => x.userId);
+    expect(uids).toContain(OTHER);
+    expect(uids).toContain(USER);
+    expect(all.find((x: { userId: string }) => x.userId === USER).names).toEqual(["手動 連子"]);
+    expect(JSON.stringify(all)).not.toContain("来週予約したいです");
+    // 申請の氏名で絞れる
+    expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("手動")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([USER]);
+
+    await c.post(`/patients/${p.id}/link-line`, { userId: USER, version: p.version });
+    const after = await c.get(`/patients/${p.id}`);
+    expect(after.patient?.lineUserId ?? after.lineUserId).toBe(USER);
+    // 候補には連携済みの患者が出る
+    const again = (await c.get(`/patients/${p.id}/line-candidates?q=`)).items.find((x: { userId: string }) => x.userId === USER);
+    expect(again.patients.map((x: { id: string }) => x.id)).toContain(p.id);
+  });
+});

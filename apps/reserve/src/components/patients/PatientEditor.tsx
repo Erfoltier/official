@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PatientDetail } from "@/lib/domain/types";
 import { nowInClinic } from "@/lib/domain/time";
 import { ageOf, ageSexText } from "@/lib/domain/age";
-import { ApiError, fetchMe, fetchPatient, saveVisit, unlinkLine, updatePatient, type PatientUpdate } from "@/components/calendar/api";
+import { ApiError, fetchLineCandidates, fetchMe, fetchPatient, linkLine, saveVisit, unlinkLine, updatePatient, type LineCandidate, type PatientUpdate } from "@/components/calendar/api";
 import type { Patient, StaffPublic } from "@/lib/domain/types";
 import { DeleteDialog, DeletedBanner, DuplicateBanner, MergeDialog } from "./PatientManage";
 import { TreatmentHistory, type VisitSave } from "./VisitTable";
@@ -371,9 +371,16 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
             </button>
           </div>
         ) : (
-          <p className={styles.muted}>
-            未連携です。患者本人が受付で QR コードを読み取って紐付けます（準備中）。
-          </p>
+          <LineLinkPicker
+            patientId={patientId}
+            version={detail.patient.version}
+            onLinked={async () => {
+              await load();
+              setNotice("LINEと連携しました");
+              onSaved?.();
+            }}
+            onError={(m) => setError(m)}
+          />
         )}
       </fieldset>
 
@@ -475,5 +482,92 @@ function Field(props: { label: string; hint?: string; changed?: boolean; childre
       {props.children}
       {props.hint && <span className={styles.hint}>{props.hint}</span>}
     </label>
+  );
+}
+
+/** 未連携の患者に、公式アカウントとやりとりした LINE（表示名）・予約申請をした LINE（申請の氏名）から選んで連携する */
+function LineLinkPicker(props: { patientId: string; version: number; onLinked: () => Promise<void>; onError: (m: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState<LineCandidate[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      fetchLineCandidates(props.patientId, q.trim()).then(
+        (r) => setItems(r.items),
+        (e: unknown) => props.onError(e instanceof Error ? e.message : "読み込めませんでした"),
+      );
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 開いたときと検索語が変わったときだけ読む
+  }, [open, q, props.patientId]);
+
+  if (!open) {
+    return (
+      <div className={styles.lineRow}>
+        <span className={styles.muted}>未連携</span>
+        <button type="button" className={styles.btn} onClick={() => setOpen(true)}>
+          LINEと連携…
+        </button>
+      </div>
+    );
+  }
+  const stamp = (iso: string) => (iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
+  return (
+    <div>
+      <p className={styles.muted}>
+        公式アカウントにメッセージを送った・友だち追加した LINE（表示名）と、予約申請をした LINE（申請の氏名）が新しい順に並びます。LINE 公式アカウントのチャットの名前と見比べて、この患者の LINE を選んでください。
+      </p>
+      <div className={styles.lineRow}>
+        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="表示名・申請の氏名で探す" aria-label="LINEの表示名で探す" style={{ flex: 1 }} />
+        <button type="button" className={styles.btn} onClick={() => setOpen(false)}>
+          閉じる
+        </button>
+      </div>
+      {!items ? (
+        <p className={styles.muted}>読み込み中…</p>
+      ) : items.length === 0 ? (
+        <p className={styles.muted}>見つかりません。患者に公式アカウントへ何か一言送ってもらうと、ここに出ます。</p>
+      ) : (
+        <ul style={{ listStyle: "none", padding: 0, margin: "6px 0", maxHeight: 280, overflow: "auto" }}>
+          {items.map((c) => (
+            <li key={c.userId} className={styles.lineRow} style={{ borderBottom: "1px solid var(--line)", padding: "4px 0" }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b>{c.displayName || "（表示名なし）"}</b>
+                {c.names.length > 0 && <span className={styles.muted}>　申請：{c.names.join("・")}</span>}
+                <br />
+                <small className={styles.muted}>
+                  {stamp(c.lastAt)}
+                  {c.patients.length > 0 && `　連携済み：${c.patients.map((x) => x.name).join("・")}`}
+                </small>
+              </span>
+              <button
+                type="button"
+                className={styles.btn}
+                disabled={busy}
+                onClick={async () => {
+                  const who = c.displayName || c.names[0] || "この LINE";
+                  const warn = c.patients.length ? `（${c.patients.map((x) => x.name).join("・")} にも連携済みです。家族で同じ LINE を使う場合だけ続けてください）` : "";
+                  if (!window.confirm(`「${who}」をこの患者の LINE として連携します${warn}。よろしいですか？`)) return;
+                  setBusy(true);
+                  try {
+                    await linkLine(props.patientId, c.userId, props.version);
+                    await props.onLinked();
+                  } catch (e) {
+                    props.onError(e instanceof Error ? e.message : "連携できませんでした");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                連携
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

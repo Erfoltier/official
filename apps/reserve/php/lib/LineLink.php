@@ -129,6 +129,13 @@ final class LineLink
     {
         $n = 0;
         foreach ((array) ($payload['events'] ?? []) as $e) {
+            if (is_array($e)) {
+                try {
+                    self::noteContact($e);
+                } catch (Throwable) {
+                    // 記録に失敗しても返信は続ける
+                }
+            }
             if (!is_array($e) || ($e['type'] ?? '') !== 'message' || ($e['message']['type'] ?? '') !== 'text' || empty($e['replyToken'])) {
                 continue;
             }
@@ -140,6 +147,48 @@ final class LineLink
             }
         }
         return $n;
+    }
+
+    /**
+     * 公式アカウントにメッセージを送った・友だち追加した LINE を覚える（患者画面で手動で連携するときの候補）。
+     * 残すのは LINE の利用者ID・表示名（LINE のプロフィール）・最後のやりとりの日時と種類だけ。発言の中身は残さない
+     */
+    private static function noteContact(array $e): void
+    {
+        $uid = (string) ($e['source']['userId'] ?? '');
+        if (($e['source']['type'] ?? '') !== 'user' || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            return;
+        }
+        $type = (string) ($e['type'] ?? '');
+        if (!in_array($type, ['message', 'follow', 'postback'], true)) {
+            return;
+        }
+        $db = Db::i();
+        $cur = $db->get('lineContact', $uid);
+        $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso()];
+        $cur['lastAt'] = now_iso();
+        $cur['lastType'] = $type;
+        // 表示名は1週間に1回だけ LINE に問い合わせる（変わることがあるため）
+        if (empty($cur['profileAt']) || time() - strtotime((string) $cur['profileAt']) > 7 * 86400) {
+            $name = self::profileName($uid);
+            if ($name !== null) {
+                $cur['displayName'] = $name;
+            }
+            $cur['profileAt'] = now_iso();
+        }
+        $db->put('lineContact', $uid, $cur);
+    }
+
+    /** LINE のプロフィールの表示名（取れなければ null） */
+    private static function profileName(string $uid): ?string
+    {
+        $tok = Reminder::lineToken();
+        if ($tok === '' || (self::testMode() && self::$transport === null)) {
+            return null;
+        }
+        [$code, $raw] = self::http('GET', self::API . '/v2/bot/profile/' . $uid, ['Authorization: Bearer ' . $tok], null);
+        $j = $code === 200 ? json_decode($raw, true) : null;
+        return is_array($j) && is_string($j['displayName'] ?? null) ? mb_substr($j['displayName'], 0, 60) : null;
     }
 
     /**

@@ -2688,6 +2688,72 @@ final class Store
         return ['checked' => $checked, 'linked' => $linked];
     }
 
+    /**
+     * 患者に手動で連携する LINE の候補：公式アカウントにメッセージを送った・友だち追加した LINE（表示名）と、
+     * 予約申請をした LINE（申請の氏名）。新しいやりとり順。$query で表示名・申請の氏名を絞る
+     */
+    public static function lineCandidates(string $query = '', int $limit = 50): array
+    {
+        self::init();
+        $byUid = [];
+        foreach (Db::i()->all('lineContact') as $c) {
+            if (is_array($c) && !empty($c['userId'])) {
+                $byUid[$c['userId']] = ['userId' => $c['userId'], 'displayName' => $c['displayName'] ?? '', 'lastAt' => $c['lastAt'] ?? '', 'names' => []];
+            }
+        }
+        foreach (Intake::all() as $rec) {
+            $uid = (string) ($rec['source']['userId'] ?? '');
+            if (!preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+                continue;
+            }
+            $at = (string) ($rec['receivedAt'] ?? $rec['createdAt'] ?? $rec['submittedAt'] ?? '');
+            $byUid[$uid] ??= ['userId' => $uid, 'displayName' => '', 'lastAt' => '', 'names' => []];
+            $n = trim((string) ($rec['intake']['name'] ?? ''));
+            if ($n !== '' && !in_array($n, $byUid[$uid]['names'], true)) {
+                $byUid[$uid]['names'][] = $n;
+            }
+            if (strcmp($at, $byUid[$uid]['lastAt']) > 0) {
+                $byUid[$uid]['lastAt'] = $at;
+            }
+        }
+        $linked = [];
+        foreach (self::patients() as $p) {
+            if (!empty($p['lineUserId']) && empty($p['deleted'])) {
+                $linked[$p['lineUserId']][] = ['id' => $p['id'], 'name' => $p['name']];
+            }
+        }
+        $q = search_key($query);
+        $out = [];
+        foreach ($byUid as $uid => $c) {
+            if ($q !== '' && !str_contains(search_key($c['displayName'] . ' ' . implode(' ', $c['names'])), $q)) {
+                continue;
+            }
+            $out[] = [...$c, 'patients' => $linked[$uid] ?? []];
+        }
+        usort($out, fn($a, $b) => strcmp((string) $b['lastAt'], (string) $a['lastAt']));
+        return array_slice($out, 0, $limit);
+    }
+
+    /** 患者に LINE を手動で連携する（スタッフが表示名・申請の氏名で確かめて選ぶ）。家族で同じ LINE を使うこともあるので、ほかの患者に紐付いていても連携できる */
+    public static function linkPatientLine(string $id, string $uid, int $version, ?array $by = null): array
+    {
+        $cur = self::patient($id);
+        if ($cur['version'] !== $version) {
+            throw new StoreError('version_conflict', '他の端末で先に更新されました。画面を開き直してください');
+        }
+        if (!preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            throw new StoreError('invalid', 'LINE の指定が正しくありません');
+        }
+        if (!empty($cur['lineUserId']) && $cur['lineUserId'] !== $uid) {
+            throw new StoreError('invalid', 'この患者には別の LINE が紐付いています。先に紐付けを解除してください');
+        }
+        $now = now_iso();
+        $next = [...$cur, 'lineUserId' => $uid, 'version' => $cur['version'] + 1, 'updatedAt' => $now];
+        self::putPatient($next);
+        self::recordChange($id, ['LINE紐付け（スタッフが選択）'], $now, $by);
+        return $next;
+    }
+
     /** LINEの紐付けを解除する（誤った紐付けの訂正・本人の希望） */
     public static function unlinkPatientLine(string $id, int $version, ?array $by = null): array
     {

@@ -34,6 +34,28 @@ final class Intake
         return is_array($rec) && ($rec['requestId'] ?? '') === $rid && ($rec['type'] ?? '') === 'reservation_intake' ? $rec : null;
     }
 
+    /** すべての申請（DB と、移行前のファイル）。LINE の連携候補を出すのに使う */
+    public static function all(): array
+    {
+        $out = [];
+        foreach (Db::i()->all('intake') as $rec) {
+            if (is_array($rec) && ($rec['type'] ?? '') === 'reservation_intake') {
+                $out[(string) ($rec['requestId'] ?? '')] = $rec;
+            }
+        }
+        foreach (glob(self::dir() . '/R*.json') ?: [] as $file) {
+            $rid = basename($file, '.json');
+            if (isset($out[$rid]) || !preg_match(self::ID_RE, $rid)) {
+                continue;
+            }
+            $rec = json_decode((string) @file_get_contents($file), true);
+            if (is_array($rec) && ($rec['type'] ?? '') === 'reservation_intake') {
+                $out[$rid] = $rec;
+            }
+        }
+        return array_values($out);
+    }
+
     /** 申請を DB に保存する（受け口から） */
     public static function store(array $rec): void
     {

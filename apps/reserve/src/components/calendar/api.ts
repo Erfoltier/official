@@ -429,6 +429,25 @@ export function updatePatient(id: string, body: PatientUpdate & { version: numbe
   return call(`/api/v1/patients/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) });
 }
 
+export interface LineCandidate {
+  userId: string;
+  /** LINE のプロフィールの表示名（公式アカウントとやりとりした人） */
+  displayName: string;
+  /** 予約申請に書かれた氏名 */
+  names: string[];
+  lastAt: string;
+  /** すでにこの LINE が紐付いている患者 */
+  patients: { id: string; name: string }[];
+}
+
+export function fetchLineCandidates(patientId: string, q: string): Promise<{ items: LineCandidate[] }> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/line-candidates?q=${encodeURIComponent(q)}`);
+}
+
+export function linkLine(patientId: string, userId: string, version: number): Promise<unknown> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/link-line`, { method: "POST", body: JSON.stringify({ userId, version }) });
+}
+
 export function unlinkLine(id: string, version: number): Promise<PatientDetail> {
   return call(`/api/v1/patients/${encodeURIComponent(id)}/unlink-line`, {
     method: "POST",
