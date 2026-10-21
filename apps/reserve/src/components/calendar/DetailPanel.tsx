@@ -60,7 +60,8 @@ interface Props {
   /** 日時・レーンの変更（別の日への移動も可） */
   /** 「予約を変更」で日時・レーン・メニューを変えた、または取り消した */
   onChanged: (next: Reservation, kind: "changed" | "cancelled") => void;
-  onEditPatient: () => void;
+  /** 患者画面を開く。line: true なら「LINEと連携」の候補をすぐ出す */
+  onEditPatient: (opts?: { line?: boolean }) => void;
   /** 注意事項を書き足す・直す（患者の基本情報の注意事項と同じ欄） */
   onCaution?: (text: string) => Promise<boolean>;
   /** ファイルを削除できる（院長・管理者と受付） */
@@ -74,8 +75,9 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const [memo, setMemo] = useState(r.memo ?? "");
   const [reminding, setReminding] = useState(false);
   const [lineLinked, setLineLinked] = useState(false);
-  /** キャンセル・無断キャンセルは誤タッチで消えないよう、いいえ／はい を挟む */
-  const [confirmStatus, setConfirmStatus] = useState<"cancelled" | "no_show" | null>(null);
+  /** 予約キャンセルは誤タッチで消えないよう確認を挟む。無断キャンセルはその中のチェックで分ける */
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [noShow, setNoShow] = useState(false);
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
@@ -254,12 +256,25 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
 
       <div className={styles.panelLinks}>
         <span className={styles.panelLinkBtns}>
-          <button type="button" className={styles.estimateBtn} onClick={onEditPatient}>
+          <button type="button" className={styles.estimateBtn} onClick={() => onEditPatient()}>
             👤 患者情報の表示・編集
           </button>
           {!INACTIVE_STATUSES.has(r.status) && (
             <button type="button" className={styles.estimateBtn} onClick={() => setEditOpen(true)}>
               🗓 予約を変更
+            </button>
+          )}
+          {!INACTIVE_STATUSES.has(r.status) && (
+            <button
+              type="button"
+              className={styles.estimateBtn}
+              data-danger
+              onClick={() => {
+                setNoShow(false);
+                setConfirmCancel(true);
+              }}
+            >
+              ✕ 予約キャンセル
             </button>
           )}
         </span>
@@ -534,41 +549,27 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             </button>
           </div>
         )}
-        <div className={styles.statusRow}>
-          <button
-            className={styles.statusBtn}
-            data-danger
-            data-active={r.status === "cancelled" || undefined}
-            onClick={() => (r.status === "cancelled" ? onStatus("cancelled") : setConfirmStatus("cancelled"))}
-          >
-            キャンセル
-          </button>
-          <button
-            className={styles.statusBtn}
-            data-danger
-            data-active={r.status === "no_show" || undefined}
-            onClick={() => (r.status === "no_show" ? onStatus("no_show") : setConfirmStatus("no_show"))}
-          >
-            無断キャンセル
-          </button>
-        </div>
-        {confirmStatus && (
+        {confirmCancel && (
           <div
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirm-status-title"
             style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.35)", display: "grid", placeItems: "center", padding: 16 }}
-            onClick={() => setConfirmStatus(null)}
+            onClick={() => setConfirmCancel(false)}
           >
             <div
               style={{ background: "var(--surface, #fff)", color: "var(--text, #222)", borderRadius: 12, padding: "20px 22px", maxWidth: 360, width: "100%", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}
               onClick={(e) => e.stopPropagation()}
             >
               <p id="confirm-status-title" style={{ margin: "0 0 18px", fontSize: "1.05em", lineHeight: 1.6 }}>
-                {displayName(patient, maskNames)}さんの予約を<b>{confirmStatus === "cancelled" ? "キャンセル" : "無断キャンセル"}</b>にします。よろしいですか？
+                {displayName(patient, maskNames)}さんの予約を<b>{noShow ? "無断キャンセル" : "キャンセル"}</b>にします。よろしいですか？
               </p>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 18px", minHeight: 44, cursor: "pointer" }}>
+                <input type="checkbox" checked={noShow} onChange={(e) => setNoShow(e.target.checked)} style={{ width: 20, height: 20 }} />
+                無断キャンセル（連絡なしで来院されなかった）
+              </label>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button type="button" className={styles.btn} style={{ minWidth: 96, minHeight: 44 }} autoFocus onClick={() => setConfirmStatus(null)}>
+                <button type="button" className={styles.btn} style={{ minWidth: 96, minHeight: 44 }} autoFocus onClick={() => setConfirmCancel(false)}>
                   いいえ
                 </button>
                 <button
@@ -578,12 +579,11 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                   data-active
                   style={{ minWidth: 96, minHeight: 44 }}
                   onClick={() => {
-                    const st = confirmStatus;
-                    setConfirmStatus(null);
-                    onStatus(st);
+                    setConfirmCancel(false);
+                    onStatus(noShow ? "no_show" : "cancelled");
                   }}
                 >
-                  はい
+                  確定
                 </button>
               </div>
             </div>
@@ -594,13 +594,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       <div className={styles.panelSection}>
         <div className={styles.sectionLabel}>連絡</div>
         <div className={styles.contactRow}>
-          <button
-            className={styles.btn}
-            disabled
-            title={patient?.lineUserId ? "LINE での連絡は準備中です" : "この患者は LINE 未連携です"}
-          >
-            {patient?.lineUserId ? "LINEで連絡（準備中）" : "LINE未連携"}
-          </button>
+          {patient?.lineUserId || maskNames ? (
+            <button className={styles.btn} disabled title={patient?.lineUserId ? "LINE での連絡は準備中です" : "この患者は LINE 未連携です"}>
+              {patient?.lineUserId ? "LINEで連絡（準備中）" : "LINE未連携"}
+            </button>
+          ) : (
+            <button type="button" className={styles.btn} onClick={() => onEditPatient({ line: true })} title="押すと患者画面で LINE と連携できます">
+              LINE未連携 → 連携する
+            </button>
+          )}
           {patient?.phone && !maskNames && (
             <a className={styles.btn} href={`tel:${patient.phone.replace(/[^\d+]/g, "")}`}>
               電話 {patient.phone}

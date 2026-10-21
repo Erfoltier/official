@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PatientDetail } from "@/lib/domain/types";
 import { nowInClinic } from "@/lib/domain/time";
 import { ageOf, ageSexText } from "@/lib/domain/age";
@@ -22,6 +22,8 @@ interface Props {
   /** 保存後に呼ぶ（カレンダーの再読み込みなど） */
   onSaved?: () => void;
   onClose?: () => void;
+  /** 開いたらすぐ「LINEと連携」の候補を出す */
+  openLineLink?: boolean;
 }
 
 type Form = Required<{ [K in keyof PatientUpdate]-?: K extends "caution" | "reminderOptOut" ? boolean : string }>;
@@ -56,7 +58,7 @@ function formatDateTime(iso: string): string {
   return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export function PatientEditor({ patientId, onSaved, onClose }: Props) {
+export function PatientEditor({ patientId, onSaved, onClose, openLineLink }: Props) {
   const [detail, setDetail] = useState<PatientDetail | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -374,6 +376,7 @@ export function PatientEditor({ patientId, onSaved, onClose }: Props) {
           <LineLinkPicker
             patientId={patientId}
             version={detail.patient.version}
+            initialOpen={openLineLink}
             onLinked={async () => {
               await load();
               setNotice("LINEと連携しました");
@@ -486,10 +489,14 @@ function Field(props: { label: string; hint?: string; changed?: boolean; childre
 }
 
 /** 未連携の患者に、公式アカウントとやりとりした LINE（表示名）・予約申請をした LINE（申請の氏名）から選んで連携する */
-function LineLinkPicker(props: { patientId: string; version: number; onLinked: () => Promise<void>; onError: (m: string) => void }) {
-  const [open, setOpen] = useState(false);
+function LineLinkPicker(props: { patientId: string; version: number; initialOpen?: boolean; onLinked: () => Promise<void>; onError: (m: string) => void }) {
+  const [open, setOpen] = useState(!!props.initialOpen);
   const [q, setQ] = useState("");
   const [items, setItems] = useState<LineCandidate[] | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (props.initialOpen) boxRef.current?.scrollIntoView({ block: "center" });
+  }, [props.initialOpen]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -516,7 +523,7 @@ function LineLinkPicker(props: { patientId: string; version: number; onLinked: (
   }
   const stamp = (iso: string) => (iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
   return (
-    <div>
+    <div ref={boxRef}>
       <p className={styles.muted}>
         公式アカウントにメッセージを送った・友だち追加した LINE（表示名）と、予約申請をした LINE（申請の氏名）が新しい順に並びます。LINE 公式アカウントのチャットの名前と見比べて、この患者の LINE を選んでください。
       </p>

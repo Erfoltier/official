@@ -39,6 +39,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   /** 受付箱の「予約を作る」：その日を読み込んでから予約登録を開く */
   const [pendingBook, setPendingBook] = useState<{ date: string; text: string } | null>(null);
   const [editPatientId, setEditPatientId] = useState<string | null>(null);
+  /** 患者画面を開いたら、すぐ LINE の連携を出す（予約詳細の「LINE未連携」から） */
+  const [editPatientLine, setEditPatientLine] = useState(false);
   const [me, setMe] = useState<StaffPublic | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const closePicker = useCallback(() => setPickerOpen(false), []);
@@ -579,7 +581,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             onRequestId={(v) => onRequestId(selected, v)}
             onChanged={onChanged}
             canManage={!!me?.canManage}
-            onEditPatient={() => setEditPatientId(selected.patientId)}
+            onEditPatient={(opts) => {
+              setEditPatientLine(!!opts?.line);
+              setEditPatientId(selected.patientId);
+            }}
             onCaution={(text) => {
               const p = bundle.patients.find((x) => x.id === selected.patientId);
               return p ? onPatientCaution(p, text) : Promise.resolve(false);
@@ -610,6 +615,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
       {editPatientId && (
         <PatientDialog
           patientId={editPatientId}
+          openLineLink={editPatientLine}
           onClose={() => setEditPatientId(null)}
           onSaved={() => load(date)}
         />

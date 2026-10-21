@@ -3012,3 +3012,9 @@ button.stagePill[data-clickable]:disabled {
   justify-content: flex-end;
   margin: 0 0 6px;
 }
+
+/* 予約キャンセル（右列上部）。ほかの操作と並べつつ、赤で区別する */
+.panelLinks .estimateBtn[data-danger] {
+  color: var(--danger, #c0392b);
+  border-color: color-mix(in srgb, var(--danger, #c0392b) 45%, transparent);
+}
