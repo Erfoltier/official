@@ -50,6 +50,9 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
   if (!s || !draft) return null;
 
   const set = <K extends keyof ReminderSettings>(k: K, v: ReminderSettings[K]) => setDraft({ ...draft, [k]: v });
+  // 保存していない変更があるか（送信時刻・送信方法・メール・送信サーバー・文面）
+  const EDITABLE = ["rounds", "useLine", "useEmail", "fromEmail", "fromName", "replyTo", "smtpHost", "smtpPort", "smtpUser", "lineReserve", "template"] as const;
+  const dirty = EDITABLE.some((k) => JSON.stringify(draft[k]) !== JSON.stringify(s[k]));
   const save = async (extra?: { lineToken?: string; enabled?: boolean; smtpPassword?: string }) => {
     setBusy(true);
     try {
@@ -80,6 +83,14 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
       setBusy(false);
     }
   };
+
+  const sectionSave = (
+    <div className={styles.sectionSave}>
+      <button type="button" className={dirty ? styles.primary : styles.btn} disabled={busy || !dirty} onClick={() => void save()}>
+        {dirty ? "変更を保存" : "保存済み"}
+      </button>
+    </div>
+  );
 
   const runNow = async () => {
     setBusy(true);
@@ -177,6 +188,8 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
       </div>
 
 
+      {sectionSave}
+
       <h4 className={styles.subTitle}>送信方法</h4>
       <div className={styles.m3Cols}>
         <label>
@@ -214,6 +227,8 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         LINE と結びついていない患者と、LINE の今月の残り通数が予備通数以下になったときは、メールで送ります。メールアドレス未回答の患者には送りません。LINE の無料プランは月200通です。送信元メールアドレスと送信サーバー（下）が未設定の場合、メールは送信できません。
       </p>
 
+      {sectionSave}
+
       <h4 className={styles.subTitle}>メールの送信サーバー（SMTP）</h4>
       <p className={styles.hint}>
         送信元メールアドレスのメールサービスの「送信サーバー」を入れます。ロリポップのメールなら、サーバー <code>smtp.lolipop.jp</code>・ポート 465・ユーザー名は送信元メールアドレス・パスワードはそのメールアドレスのパスワードです。
@@ -235,10 +250,11 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
           <input className={styles.input} value={draft.smtpUser} autoComplete="off" onChange={(e) => set("smtpUser", e.target.value)} />
         </label>
       </div>
+      {sectionSave}
       <div className={styles.prefRow} style={{ marginTop: 6 }}>
         <b>送信サーバーのパスワード</b>
         <span>{s.smtpPasswordSet ? "設定済み" : "未設定"}</span>
-        <small>保存後は画面に表示されません。サーバー名・ポート・ユーザー名は上の「保存」で保存されます。</small>
+        <small>保存後は画面に表示されません。サーバー名・ポート・ユーザー名は、すぐ下の「変更を保存」で保存されます。</small>
       </div>
       <div className={styles.actions}>
         <input className={styles.input} type="password" autoComplete="new-password" value={smtpPw} onChange={(e) => setSmtpPw(e.target.value)} placeholder="メールのパスワード" style={{ flex: 1, minWidth: 200 }} />
@@ -300,10 +316,22 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         <button type="button" className={styles.btn} onClick={() => set("template", s.defaultTemplate)} disabled={busy}>
           標準の文面に戻す
         </button>
-        <button type="button" className={styles.primary} onClick={() => void save()} disabled={busy}>
-          保存
+        <button type="button" className={dirty ? styles.primary : styles.btn} onClick={() => void save()} disabled={busy || !dirty}>
+          {dirty ? "変更を保存" : "保存済み"}
         </button>
       </div>
+
+      {dirty && (
+        <div className={styles.unsavedBar} role="status">
+          <span>保存していない変更があります</span>
+          <button type="button" className={styles.btn} disabled={busy} onClick={() => setDraft(s)}>
+            元に戻す
+          </button>
+          <button type="button" className={styles.primary} disabled={busy} onClick={() => void save()}>
+            変更を保存
+          </button>
+        </div>
+      )}
 
       <h4 className={styles.subTitle}>手動送信</h4>
       <div className={styles.actions} style={{ justifyContent: "flex-start", marginTop: 0 }}>

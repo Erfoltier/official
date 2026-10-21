@@ -175,7 +175,42 @@
   border-radius: var(--radius);
   padding: 0 8px;
   background: var(--field-bg);
-  font-size: 14px;
+  font-size: 14px;  /* 入力した文字ははっきり黒く（見出しの灰色を引き継がない）。例の文字（placeholder）だけ薄く */
+  color: var(--text);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+
+/* 未保存の変更があるときに出す、カードの下に貼り付く保存の帯 */
+.unsavedBar {
+  position: sticky;
+  bottom: 8px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent, #7c3aed) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent, #7c3aed) 10%, var(--surface, #fff));
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.12);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.unsavedBar span {
+  flex: 1 1 auto;
+}
+
+.sectionSave {
+  display: flex;
+  justify-content: flex-end;
+  margin: 6px 0 4px;
 }
 
 .btn,
