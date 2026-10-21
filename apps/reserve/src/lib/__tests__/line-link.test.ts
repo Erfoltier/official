@@ -193,6 +193,16 @@ describe("予約申請IDが入ったら、その場で LINE を連携する", ()
     expect(await lineOf(b.id)).toBeUndefined();
     await h.srv.php(`Intake::store(['requestId' => '${RB}', 'type' => 'reservation_intake', 'source' => ['userId' => 'U${"f".repeat(32)}'], 'intake' => ['name' => '後着 太郎', 'birthDate' => '1988-08-08']]); return true;`);
     expect(await lineOf(b.id)).toBe("U" + "f".repeat(32));
+
+    // 姓名の間の空白（半角・全角・なし）の違いでは外さない。患者の検索も同じ
+    const RC = "R20261015120000AB12CD03";
+    writeFileSync(path.join(dir, `${RC}.json`), JSON.stringify({ requestId: RC, type: "reservation_intake", source: { userId: "U" + "9".repeat(32) }, intake: { name: "空白　三郎", kana: "クウハク サブロウ" } }));
+    const cc = await c.post("/patients", { name: "空白三郎", kana: "クウハクサブロウ" });
+    await c.post("/reservations", { patientId: cc.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 800), endAt: toIso(day, 830), requestId: RC });
+    expect(await lineOf(cc.id)).toBe("U" + "9".repeat(32));
+    for (const q of ["空白 三郎", "空白　三郎", "空白三郎", "くうはく さぶろう"]) {
+      expect((await c.get(`/patients?q=${encodeURIComponent(q)}`)).items.map((x: { id: string }) => x.id), q).toContain(cc.id);
+    }
   });
 });
 

@@ -130,11 +130,16 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
     if (r.desiredDate && r.desiredDate !== date) {
       notes.push(`希望日は ${formatDateJa(r.desiredDate)}${r.desiredTime ? ` ${r.desiredTime}` : ""} です（この予約は ${formatDateJa(date)} に入ります）`);
     }
-    // 同じ電話番号の患者を探す。氏名かフリガナも一致すればその患者を選ぶ
-    const found = r.phone ? await searchPatients(r.phone).catch(() => [] as Patient[]) : [];
-    const same = found.filter(
-      (p) => (r.kana && searchKey(p.kana) === searchKey(r.kana)) || (r.name && searchKey(p.name) === searchKey(r.name)),
-    );
+    // 同じ電話番号の患者を探す。氏名かフリガナも一致すればその患者を選ぶ。
+    // 再診の申請は電話番号がないので、氏名・フリガナでも探す（姓名の間の空白の有無は問わない）。生年月日が両方にあって違えば別の人
+    const sameName = (p: Patient) => (!!r.kana && searchKey(p.kana) === searchKey(r.kana)) || (!!r.name && searchKey(p.name) === searchKey(r.name));
+    const birthOk = (p: Patient) => !r.birthDate || !p.birthDate || p.birthDate === r.birthDate;
+    const byPhone = r.phone ? await searchPatients(r.phone).catch(() => [] as Patient[]) : [];
+    const byName = byPhone.length
+      ? []
+      : (await Promise.all([r.name, r.kana].filter((x): x is string => !!x).map((x) => searchPatients(searchKey(x)).catch(() => [] as Patient[])))).flat();
+    const found = [...new Map([...byPhone, ...byName].filter((p) => byPhone.length || (sameName(p) && birthOk(p))).map((p) => [p.id, p])).values()];
+    const same = found.filter((p) => sameName(p) && birthOk(p));
     if (same.length === 1) {
       setPatient(same[0]);
       setNewPatient(null);
@@ -142,8 +147,8 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
     } else if (found.length > 0) {
       setPatient(null);
       setNewPatient(null);
-      setQuery(r.phone ?? "");
-      notes.push("同じ電話番号の患者がいます。同じ方なら選び、違う方なら「＋新規患者登録」を押してください");
+      setQuery(r.phone ?? r.name ?? "");
+      notes.push(byPhone.length ? "同じ電話番号の患者がいます。同じ方なら選び、違う方なら「＋新規患者登録」を押してください" : "同じ氏名の患者が複数います。同じ方を選び、違う方なら「＋新規患者登録」を押してください");
     } else {
       setPatient(null);
       setNewPatient({ name: "", kana: "", nameAlt: "", phone: "", m3ChartNo: "", birthDate: "", ...fromRequest(r) });

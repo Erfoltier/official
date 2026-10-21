@@ -244,7 +244,7 @@ export function PatientEditor({ patientId, onSaved, onClose, openLineLink }: Pro
       {!readOnly && <DuplicateBanner detail={detail} canManage={canManage} onMerge={(o) => setMergeWith(o)} />}
 
       {!readOnly && (
-      <details className={styles.section} open={dirty || undefined}>
+      <details className={styles.section} open={dirty || openLineLink || undefined}>
         <summary className={styles.sectionTitle}>基本情報の表示・編集</summary>
       <form
         onSubmit={(e) => {
@@ -363,7 +363,7 @@ export function PatientEditor({ patientId, onSaved, onClose, openLineLink }: Pro
         </Field>
       </fieldset>
 
-      <fieldset className={styles.subSection}>
+      <fieldset className={styles.subSection} data-focus={openLineLink && !p.lineUserId ? true : undefined}>
         <legend>LINE</legend>
         {p.lineUserId ? (
           <div className={styles.lineRow}>
@@ -495,7 +495,10 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
   const [items, setItems] = useState<LineCandidate[] | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (props.initialOpen) boxRef.current?.scrollIntoView({ block: "center" });
+    if (!props.initialOpen) return;
+    // ダイアログが開き、折りたたみが開いてから動かす
+    const t = setTimeout(() => boxRef.current?.closest("fieldset")?.scrollIntoView({ block: "start", behavior: "smooth" }), 80);
+    return () => clearTimeout(t);
   }, [props.initialOpen]);
   const [busy, setBusy] = useState(false);
 

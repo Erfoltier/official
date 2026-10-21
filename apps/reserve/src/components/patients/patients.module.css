@@ -1454,3 +1454,11 @@ details:not([open]) > summary.histTitle {
   gap: 8px 12px;
   margin-top: 10px;
 }
+
+/* 予約詳細の「LINE未連携 → 連携する」から開いたとき、LINE の欄を目立たせる */
+.subSection[data-focus] {
+  outline: 2px solid var(--accent, #7c5cff);
+  outline-offset: 4px;
+  border-radius: 8px;
+  scroll-margin-top: 16px;
+}
