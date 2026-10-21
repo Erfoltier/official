@@ -391,11 +391,6 @@ final class Schema
         return V::shape($v, ['m3ChartNo' => fn($x) => V::str($x, 30)])['m3ChartNo'];
     }
 
-    public static function reminderResult(mixed $v): array
-    {
-        return V::shape($v, ['status' => fn($x) => V::enum($x, ['sent', 'skipped', 'failed'])]);
-    }
-
     private static function patientFields(): array
     {
         $s = fn(int $max) => fn($x) => V::str($x, $max);

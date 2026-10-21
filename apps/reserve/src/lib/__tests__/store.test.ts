@@ -39,31 +39,12 @@ describe("store", () => {
 
   it("時刻を変えた予約はリマインドを未送信に戻す", async () => {
     const { c, r } = await pick();
-    const res = await h.srv.client().raw("POST", `/api/v1/integration/reminders/${r.id}`, { status: "sent" }, { Authorization: `Bearer ${h.srv.integrationToken}` });
-    expect(res.data).toMatchObject({ reservationId: r.id, reminder: { status: "sent" } });
+    // 送信済みにする（送信はサーバー内のリマインド機能だけが行う）
+    await h.srv.php(`$r = Db::i()->get("reservation", ${JSON.stringify(r.id)}); $r['reminder'] = ['status' => 'sent']; Db::i()->put('reservation', $r['id'], $r); return true;`);
     const sent = (await c.get(`/day?date=${day}`)).reservations.find((x: { id: string }) => x.id === r.id);
     const memoOnly = await c.patch(`/reservations/${r.id}`, { version: sent.version, memo: "x" });
     expect(memoOnly.reminder.status).toBe("sent");
     const moved = await c.patch(`/reservations/${r.id}`, { version: memoOnly.version, startAt: at(18 * 60 + 30), endAt: at(18 * 60 + 40) });
     expect(moved.reminder.status).toBe("pending");
-  });
-});
-
-describe("reminder feed", () => {
-  it("キャンセルを除き、送信に必要な項目だけを返す", async () => {
-    const res = await h.srv.client().raw("GET", `/api/v1/integration/reminders?date=${day}`, undefined, { Authorization: `Bearer ${h.srv.integrationToken}` });
-    const feed = res.data as { schemaVersion: number; items: { patient: object; startAt: string; reservationId: string }[] };
-    expect(feed.schemaVersion).toBe(1);
-    expect(feed.items.length).toBeGreaterThan(0);
-    const item = feed.items[0];
-    expect(Object.keys(item).sort()).toEqual(
-      ["endAt", "laneName", "menuNames", "patient", "reminderStatus", "requestId", "reservationId", "startAt", "version"].sort(),
-    );
-    expect(Object.keys(item.patient).sort()).toEqual(["email", "id", "lineUserId", "m3ChartNo", "name", "phone"]);
-    expect(item.startAt).toMatch(new RegExp(`^${day}T\\d{2}:\\d{2}:00\\+09:00$`));
-    // キャンセルした予約は出ない
-    const c = await h.srv.as("staff-rc1");
-    const cancelled = (await c.get(`/day?date=${day}`)).reservations.filter((r: { status: string }) => r.status === "cancelled").map((r: { id: string }) => r.id);
-    expect(feed.items.some((i) => cancelled.includes(i.reservationId))).toBe(false);
   });
 });

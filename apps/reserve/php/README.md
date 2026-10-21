@@ -53,22 +53,9 @@
 
 `reserve/data/` フォルダと `reserve/config.php` は **上書きしない** でください。それ以外のファイルを入れ替えます。
 
-## 外部連携（前日リマインド用の予約一覧）
+## 外部連携
 
-送信プログラム（Codex で作成中のもの）からは、次のように取得します。
-
-```
-GET https://（ドメイン）/reserve/api/v1/integration/reminders?date=2026-10-07
-X-Integration-Token: （config.php の integration_token の値）
-Authorization: Basic （アクセス制限の ID:パスワード）
-```
-
-送信結果は次のように書き戻します。
-
-```
-POST https://（ドメイン）/reserve/api/v1/integration/reminders/（予約ID）
-{"status": "sent"}       ← "sent" / "skipped" / "failed"
-```
+リマインドはサーバー内で送ります（外部の送信プログラム用の口はありません）。仕様は [../docs/SPEC.md](../docs/SPEC.md)。
 
 ### 自動入力（予約申請ID・M3カルテ番号）
 

@@ -103,54 +103,9 @@ API（裏側の処理）は PHP 版（`php/`）だけです。`npm run dev` は 
 - 置き方・Basic認証・バックアップの手順：[php/README.md](php/README.md)
 - **テスト用です。実在の患者情報は入れないでください**（共用サーバーは医療情報のガイドラインを前提にしていません）
 
-## 外部連携API（前日リマインド等）
+## 仕様と外部連携
 
-LINEなどの送信は後から外部プログラムで行う前提で、前日に予約を拾える口だけ用意しています。
-
-### 指定日の予約一覧
-
-```
-GET /api/v1/integration/reminders?date=2026-10-07
-Authorization: Bearer <config.php の integration_token>
-```
-
-```json
-{
-  "schemaVersion": 1,
-  "date": "2026-10-07",
-  "clinicName": "デモ皮フ科",
-  "generatedAt": "2026-10-06T09:00:00.000Z",
-  "items": [
-    {
-      "reservationId": "r-2026-10-07-39",
-      "version": 1,
-      "startAt": "2026-10-07T09:30:00+09:00",
-      "endAt": "2026-10-07T10:30:00+09:00",
-      "laneName": "1番レーン(レーザー脱毛など)",
-      "menuNames": ["レーザー脱毛"],
-      "patient": { "id": "p-0028", "name": "田中 芽依", "lineUserId": "U…", "phone": "…", "email": null },
-      "reminderStatus": "pending"
-    }
-  ]
-}
-```
-
-- キャンセル・無断キャンセルは含まれません
-- 1予約＝1件です。同じ患者が1日に複数予約している場合は、送信側で患者IDごとにまとめてください
-- `lineUserId` は患者本人がQRコードで紐付けを済ませた場合だけ入ります（`null` なら送らない）
-- 日時は常に日本時間のISO 8601形式です
-
-### 送信結果の書き戻し
-
-```
-POST /api/v1/integration/reminders/{reservationId}
-Authorization: Bearer <config.php の integration_token>
-Content-Type: application/json
-
-{"status": "sent"}      // sent | skipped | failed
-```
-
-予約の時刻が変更されると、リマインドの状態は自動で `pending`（未送信）に戻ります。
+今の仕様・連携の口・反映の手順は [docs/SPEC.md](docs/SPEC.md) にまとめています。リマインドの送信はサーバー内の仕組み（`php/lib/Reminder.php`）だけが行います。
 
 ## 構成
 

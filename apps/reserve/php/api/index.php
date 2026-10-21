@@ -143,23 +143,6 @@ try {
     }
 
     // ---- 外部連携（スタッフのログインではなく連携トークンで確認） ----
-    if ($route === 'POST integration/reminders/run') {
-        Http::checkIntegrationAuth();
-        Http::json(Reminder::tick(true));
-    }
-    if ($p[0] === 'integration' && ($p[1] ?? '') === 'reminders') {
-        Http::checkIntegrationAuth();
-        if ($method === 'GET' && $n === 2) {
-            Http::json(Store::reminderFeed(V::date($q('date'))));
-        }
-        if ($method === 'POST' && $n === 3) {
-            $id = V::id($p[2]);
-            $status = Schema::reminderResult(Http::readJson())['status'];
-            $r = Store::setReminderStatus($id, $status);
-            Http::json(['reservationId' => $r['id'], 'reminder' => $r['reminder']]);
-        }
-    }
-
     if ($p[0] === 'integration' && $method === 'POST' && $n === 4 && $p[1] === 'reservations' && $p[3] === 'request-id') {
         Http::checkIntegrationAuth();
         $r = Store::setReservationRequestId(V::id($p[2]), Schema::integrationRequestId(Http::readJson()));

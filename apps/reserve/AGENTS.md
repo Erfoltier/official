@@ -1,3 +1,7 @@
+# 仕様（必ず先に読む）
+
+このアプリの今の仕様・約束事・反映の手順は [docs/SPEC.md](docs/SPEC.md)。直す・足すときは先に読み、仕様を変えたら同じコミットで SPEC.md も直す。同じ仕事をする仕組みを二重に作らない。
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

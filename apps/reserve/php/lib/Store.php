@@ -1385,50 +1385,6 @@ final class Store
         return self::updatePatient($id, ['version' => $cur['version'], 'm3ChartNo' => $m3ChartNo], self::INTEGRATION_ACTOR);
     }
 
-    /** 外部の送信プログラムがリマインドの結果を書き戻す */
-    public static function setReminderStatus(string $id, string $status): array
-    {
-        $cur = self::reservation($id);
-        $now = now_iso();
-        $next = [...$cur, 'reminder' => ['status' => $status, 'updatedAt' => $now], 'version' => $cur['version'] + 1, 'updatedAt' => $now];
-        self::putReservation($next);
-        return $next;
-    }
-
-    public static function reminderFeed(string $date): array
-    {
-        $day = self::getDayBundle($date);
-        $lanes = array_column($day['lanes'], null, 'id');
-        $menus = array_column($day['menus'], null, 'id');
-        $patients = array_column($day['patients'], null, 'id');
-        $items = [];
-        foreach ($day['reservations'] as $r) {
-            if (self::inactive($r)) {
-                continue;
-            }
-            $p = $patients[$r['patientId']];
-            $items[] = [
-                'reservationId' => $r['id'],
-                'version' => $r['version'],
-                'startAt' => $r['startAt'],
-                'endAt' => $r['endAt'],
-                'laneName' => $lanes[$r['laneId']]['name'] ?? '',
-                'menuNames' => array_map(fn($id) => $menus[$id]['name'] ?? '', $r['menuIds']),
-                'requestId' => $r['requestId'] ?? null,
-                'patient' => [
-                    'id' => $p['id'],
-                    'name' => $p['name'],
-                    'm3ChartNo' => $p['m3ChartNo'] ?? null,
-                    'lineUserId' => $p['lineUserId'] ?? null,
-                    'phone' => $p['phone'] ?? null,
-                    'email' => $p['email'] ?? null,
-                ],
-                'reminderStatus' => $r['reminder']['status'],
-            ];
-        }
-        return ['schemaVersion' => 1, 'date' => $date, 'clinicName' => $day['clinic']['name'], 'generatedAt' => now_iso(), 'items' => $items];
-    }
-
     // ---- 入力の検査 ----
 
     private static function checkText(string $label, string $value, int $max, bool $required): string

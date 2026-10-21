@@ -47,10 +47,6 @@ export const integrationRequestIdSchema = z.object({ requestId }).strict();
 /** 外部連携：M3カルテ番号の書き込み（空文字で削除） */
 export const integrationM3Schema = z.object({ m3ChartNo: z.string().max(30) }).strict();
 
-export const reminderResultSchema = z
-  .object({ status: z.enum(["sent", "skipped", "failed"]) })
-  .strict();
-
 export const reservationIdParam = id;
 
 const shortText = (max: number) => z.string().max(max);

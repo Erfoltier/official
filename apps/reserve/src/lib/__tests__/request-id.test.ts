@@ -7,7 +7,7 @@ const integration = (method: string, p: string, body?: unknown) =>
   h.srv.client().raw(method, `/api/v1/integration${p}`, body, { Authorization: `Bearer ${h.srv.integrationToken}` });
 
 describe("予約申請ID", () => {
-  it("予約に付けられ、患者画面・検索・外部連携の一覧に出る。空で削除できる", async () => {
+  it("予約に付けられ、患者画面・検索・その日の予約に出る。空で削除できる", async () => {
     const c = await h.srv.as("staff-admin");
     const p = await c.post("/patients", { name: "試験 太郎", kana: "シケン タロウ" });
     const day = addDays(nowInClinic().date, 3);
@@ -24,8 +24,7 @@ describe("予約申請ID", () => {
     // 小文字・全角で探しても見つかる
     expect((await c.get("/patients?q=r2026100506574020a34a8b")).items.map((x: { id: string }) => x.id)).toEqual([p.id]);
     expect((await c.get(`/patients?q=${encodeURIComponent("Ｒ２０２６１００５０６５７４０２０Ａ３４Ａ８Ｂ")}`)).items.map((x: { id: string }) => x.id)).toEqual([p.id]);
-    const feed = (await integration("GET", `/reminders?date=${day}`)).data as { items: { reservationId: string; requestId?: string }[] };
-    expect(feed.items.find((i) => i.reservationId === r.id)?.requestId).toBe("R2026100506574020A34A8B");
+    expect((await c.get(`/day?date=${day}`)).reservations.find((x: { id: string }) => x.id === r.id)?.requestId).toBe("R2026100506574020A34A8B");
 
     const cleared = await c.patch(`/reservations/${r.id}`, { version: r.version, requestId: "" });
     expect(cleared.requestId).toBeUndefined();
