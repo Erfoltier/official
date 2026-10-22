@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自動予約プログラムの接続マニュアル</title>
+<style>
+:root {
+  --bg: #f6f6f3; --paper: #ffffff; --ink: #0d1b2e; --muted: #5d6874; --line: #dfe2dd;
+  --accent: #92845b; --accent-ink: #6f6340; --flag-bg: #fbeedd; --flag-fg: #8a4b12; --code-bg: #eef0ec;
+  --body: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161b; --paper: #192028; --ink: #e6e9ec; --muted: #9aa5b0; --line: #2b3440;
+  --accent: #b9a77a; --accent-ink: #cfc09a; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161b; --paper: #192028; --ink: #e6e9ec; --muted: #9aa5b0; --line: #2b3440;
+  --accent: #b9a77a; --accent-ink: #cfc09a; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.85; }
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px 80px; }
+h1 { font-size: clamp(24px, 4vw, 32px); margin: 0 0 4px; line-height: 1.4; }
+.lead { color: var(--muted); margin: 0 0 24px; }
+h2 { font-size: 21px; margin: 44px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 17px; margin: 28px 0 6px; color: var(--accent-ink); }
+section.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 4px 20px 16px; margin: 16px 0; }
+code, pre { font-family: var(--mono); font-size: 13.5px; background: var(--code-bg); border-radius: 5px; }
+code { padding: 1px 5px; overflow-wrap: anywhere; }
+pre { padding: 12px 14px; overflow-x: auto; line-height: 1.6; white-space: pre; }
+pre code { padding: 0; background: none; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); white-space: nowrap; }
+.flag { background: var(--flag-bg); color: var(--flag-fg); border-radius: 8px; padding: 10px 14px; margin: 14px 0; }
+ol.steps > li { margin-bottom: 8px; }
+nav.toc { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 20px; font-size: 15px; }
+nav.toc ol { margin: 4px 0; padding-left: 1.4em; }
+a { color: var(--accent-ink); }
+details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<h1>自動予約プログラムの接続マニュアル</h1>
+<p class="lead">ChatGPT などの自動予約プログラムが、LANE RESERVE（レーンリザーブ）に予約を<strong>入力・変更・取り消し</strong>し、カルテ・写真・問診票・同意書・見積・設定も扱うための設定と使い方です。院長・管理者と、プログラムを設定する人に向けています。</p>
+
+<nav class="toc">
+<b>もくじ</b>
+<ol>
+<li><a href="#can">できること・できないこと</a></li>
+<li><a href="#key">準備：接続キーを発行する（院長・管理者）</a></li>
+<li><a href="#gpt">ChatGPT（GPT のアクション）に設定する</a></li>
+<li><a href="#create">予約を入力する</a></li>
+<li><a href="#edit">予約を変更する</a></li>
+<li><a href="#cancel">予約を取り消す（消去）</a></li>
+<li><a href="#errors">うまくいかないとき（エラーの意味）</a></li>
+<li><a href="#notes">運用の注意</a></li>
+<li><a href="#ref">一覧表と、プログラムに貼るスキーマ（技術者向け）</a></li>
+<li><a href="#staffapi">スタッフの画面と同じ操作（カルテ・写真・問診票・同意書・見積・設定）</a></li>
+</ol>
+</nav>
+
+<h2 id="can">1. できること・できないこと</h2>
+<section class="card">
+<h3>できること</h3>
+<ul>
+<li>レーン・メニュー・診療時間を調べる</li>
+<li>日付ごとの予約を見て、空いている時間を探す</li>
+<li>患者を探す。見つからなければ新しく登録する</li>
+<li>予約を入れる・日時やレーンを移す・メニューを足す／外す・予約メモや予約申請IDを直す</li>
+<li>予約を取り消す（削除）・無断キャンセルにする・取り消した予約を予約に戻す</li>
+<li>予約に付けたいメニューがないとき、メニューを新しく作る</li>
+</ul>
+<h3>スタッフの画面と同じ操作（<a href="#staffapi">10章</a>）</h3>
+<ul>
+<li>カルテ（施術の記録）・日付ごとのメモ・患者の基本情報を見る・直す</li>
+<li>写真・ファイル、問診票、同意書、見積を見る・作る・直す</li>
+<li>レーン・メニュー・状態・スキンケア・料金表・院の情報・リマインドなどの設定を見る・変える</li>
+</ul>
+<h3>できないこと（安全のため）</h3>
+<ul>
+<li>スタッフの登録・PIN・二要素認証・端末の登録、接続キーの発行</li>
+<li>控えからの復元、データの保存先の操作、バックアップの実行</li>
+<li>過去の時刻への予約（予約の入口から）、同じレーンで時間が重なる予約（二重予約）</li>
+<li><strong>Airリザーブで入れた予約</strong>の変更・取り消し（Air から15分ごとに取り込んでいるため、Air で変えてください。院が「Airリザーブの利用を終了」したあとは、ふつうの予約と同じに変えられます）</li>
+</ul>
+<p>プログラムがしたこと・見たものは、予約や患者の変更履歴、設定の「操作ログ」「閲覧の記録」に<strong>「自動予約（キーの名前）」</strong>として残ります。</p>
+</section>
+
+<h2 id="key">2. 準備：接続キーを発行する（院長・管理者）</h2>
+<section class="card">
+<ol class="steps">
+<li>LANE RESERVE を開き、<strong>設定 → 外部機器の連携</strong> を開きます。</li>
+<li>「<strong>自動予約プログラムの接続キー（ChatGPT など）</strong>」の欄で、キーの名前（例：<code>ChatGPT 自動予約</code>）を確かめて「<strong>接続キーを発行</strong>」を押します。</li>
+<li><code>bk_</code> で始まる接続キーが<strong>1回だけ</strong>表示されます。「コピー」を押して、すぐにプログラムの設定（次の章）に貼り付けてください。画面を閉じると二度と表示されません。</li>
+<li>同じ欄に出ている<strong>入口のアドレス</strong>（<code>https://reserve.ishidahihuka.jp/api/v1/integration/booking</code>）も控えます。</li>
+</ol>
+<div class="flag">接続キーは、院長と同じようにカルテ・患者情報・設定を見て変えられる大切な鍵です。チャットの本文・メール・紙に書かないでください。漏れたかもしれないときは、同じ欄の「<strong>このキーを無効化</strong>」を押してから、新しいキーを発行し直してください。無効にしたキーはすぐ使えなくなります。</div>
+<p>プログラムごとに別のキーを発行すると、どのプログラムが入れた予約か履歴で見分けられ、1つだけ止めることもできます。</p>
+</section>
+
+<h2 id="gpt">3. ChatGPT（GPT のアクション）に設定する</h2>
+<section class="card">
+<p>ChatGPT の「GPT を作成」で自動予約用の GPT を作る場合の手順です。ほかのプログラムでも、考え方は同じです（入口のアドレスに、接続キーを付けて送る）。</p>
+<ol class="steps">
+<li>ChatGPT で <strong>GPT を作成 → 構成 → 新しいアクションを作成する</strong> を開きます。</li>
+<li>「認証」で <strong>API キー</strong> を選び、「API キー」に接続キーを貼り付け、「認証タイプ」は <strong>カスタム</strong>、「カスタムヘッダー名」に <code>X-Booking-Token</code> と入れて保存します。</li>
+<li>「スキーマ」に、この下の<a href="#ref">「プログラムに貼るスキーマ」</a>を全部コピーして貼り付けます。<code>getOptions</code>・<code>getDay</code> などの操作が並べば読み込めています。</li>
+<li>「テスト」で <code>ping</code> を実行し、<code>"ok": true</code> が返ることを確かめます。</li>
+<li>GPT の「指示」に、たとえば次のように書いておくと、予約の取り違えを防げます。
+<pre><code>・予約を入れる前に、必ず getOptions でメニューとレーンを確かめ、getDay でその日の空きを確かめる。
+・患者は ensurePatient で、氏名・フリガナと、生年月日か電話番号を必ず送って探す（なければ登録される）。
+・予約を入れる・変える・取り消す前に、日時・メニュー・お名前を相手に読み上げて確認をもらう。
+・変更と取り消しには、直前に読んだ予約の version を付ける。
+・エラーが返ったら、message の内容をそのまま相手に伝え、勝手に別の時間に入れない。</code></pre></li>
+</ol>
+<div class="flag">LANE RESERVE は入口に Basic 認証（ブラウザで開くときの ID・パスワード）を掛けています。自動予約の入口（<code>/api/v1/integration/booking/</code>）だけは、接続キーで確かめるため Basic 認証なしで入れるようにしてあります。プログラムからつながらないときは、サーバー担当に確認してください。</div>
+</section>
+
+<h2 id="create">4. 予約を入力する</h2>
+<section class="card">
+<p>プログラムは、次の順で操作します。スタッフが画面で予約を入れるときと同じ流れです。</p>
+<ol class="steps">
+<li><b>メニューとレーンを調べる</b>（<code>getOptions</code>）。メニューの番号（<code>id</code>）と、所要時間（<code>duration</code>：<code>fixed</code> なら <code>minutes</code> 分、<code>range</code> なら <code>min</code>〜<code>max</code> 分）、レーンの番号が分かります。</li>
+<li><b>その日の予約を見て空きを探す</b>（<code>getDay</code>、例：<code>date=2026-10-21</code>）。取り消し済み（<code>status</code> が <code>cancelled</code>・<code>no_show</code>）の予約は空きとして扱えます。診療日は水曜・祝日・特別診療日です。</li>
+<li><b>患者を探す・登録する</b>（<code>ensurePatient</code>）。氏名・フリガナと、生年月日か電話番号を送ります。
+  <ul>
+  <li>フリガナ＋生年月日、または氏名（かフリガナ）＋電話番号が合う人が1人いれば、その人が返ります（<code>created: false</code>）。</li>
+  <li>いなければ新しく登録され（<code>created: true</code>）、スタッフ画面の「<strong>要確認の患者</strong>」に出ます。スタッフは重複がないか確かめて印を外してください。</li>
+  <li>同じ方が複数登録されているときはエラーになります。スタッフが患者をまとめて（統合して）からやり直してください。</li>
+  </ul></li>
+<li><b>予約を入れる</b>（<code>createReservation</code>）。送る内容：
+<table>
+<tr><th>項目</th><th>意味</th><th>例</th></tr>
+<tr><td><code>patientId</code></td><td>手順3で返った患者の番号</td><td><code>p-new-…</code></td></tr>
+<tr><td><code>laneId</code></td><td>レーンの番号</td><td><code>l1</code></td></tr>
+<tr><td><code>menuIds</code></td><td>メニューの番号（1〜5個）</td><td><code>["m3"]</code></td></tr>
+<tr><td><code>startAt</code> / <code>endAt</code></td><td>開始・終了の日時（日本時間の <code>+09:00</code> を付ける）</td><td><code>2026-10-21T10:00:00+09:00</code></td></tr>
+<tr><td><code>memo</code>（任意）</td><td>予約メモ（受付で見えます）</td><td><code>LINEでご相談、初めて</code></td></tr>
+<tr><td><code>requestId</code>（任意）</td><td>予約申請ID（R＋数字で始まる番号）。付けると、その方は LINE の問診票をすぐ書けます</td><td><code>R2026101710000012AB34CD</code></td></tr>
+</table>
+成功すると、予約の番号（<code>id</code>）と <code>version: 1</code> が返り、カレンダーにすぐ出ます。前日18時のリマインドも、スタッフが入れた予約と同じように送られます。</li>
+</ol>
+</section>
+
+<h2 id="edit">5. 予約を変更する</h2>
+<section class="card">
+<ol class="steps">
+<li>変える予約を読みます（<code>getReservation</code>、または <code>getDay</code> の一覧から）。返ってきた <code>version</code>（数字）を控えます。</li>
+<li><code>updateReservation</code> に、<code>version</code> と、<strong>変える項目だけ</strong>を送ります。変えられるのは次のとおりです。
+<table>
+<tr><th>項目</th><th>変えること</th></tr>
+<tr><td><code>startAt</code>・<code>endAt</code></td><td>日時（予約の移動。長さを変えるときは両方送る）</td></tr>
+<tr><td><code>laneId</code></td><td>レーン</td></tr>
+<tr><td><code>menuIds</code></td><td>メニュー（<strong>全部を送り直します</strong>。足すときは今の <code>menuIds</code> に足した並びを、外すときは除いた並びを送る。1〜5個）</td></tr>
+<tr><td><code>memo</code></td><td>予約メモ（送った文に置き換わります。空 <code>""</code> で消す）</td></tr>
+<tr><td><code>requestId</code></td><td>予約申請ID（空 <code>""</code> で外す）</td></tr>
+<tr><td><code>status</code></td><td><code>booked</code>（予約に戻す）・<code>cancelled</code>（キャンセル）・<code>no_show</code>（無断キャンセル）</td></tr>
+</table>
+例：時刻を11時に移す
+<pre><code>{ "version": 1, "startAt": "2026-10-21T11:00:00+09:00", "endAt": "2026-10-21T11:30:00+09:00" }</code></pre></li>
+<li>成功すると、<code>version</code> が1つ増えた予約が返ります。時刻を変えると、送ったリマインドは送り直しの対象になります。</li>
+</ol>
+<p>スタッフが画面で同じ予約を先に直していると、「他の端末で先に更新されました」（409）になります。もう一度読み直して、新しい <code>version</code> で送り直してください。</p>
+</section>
+
+<h2 id="cancel">6. 予約を取り消す（消去）</h2>
+<section class="card">
+<ol class="steps">
+<li>予約を読んで <code>version</code> を控えます。</li>
+<li><code>cancelReservation</code> に <code>{ "version": 1 }</code> を送ります。</li>
+<li>予約は「キャンセル」になり、カレンダーの「キャンセルを表示」で見えます。記録は完全には消えません（あとから誰がいつ取り消したか分かるように。スタッフが画面で取り消したときと同じです）。<code>DELETE /reservations/{id}</code> でも同じように取り消されます。</li>
+<li>間違えて取り消したときは、<code>updateReservation</code> で <code>{ "version": （今の数字）, "status": "booked" }</code> を送ると予約に戻ります（その時間がふさがっていれば戻せません）。</li>
+</ol>
+</section>
+
+<h3>メニューを新しく作る</h3>
+<p>予約に付けたいメニューが <code>getOptions</code> にないときは、<code>createMenu</code> に名前と所要時間を送ると作れます。作ったメニューは設定 → メニュー に並び、スタッフが色・料金・略称などを直せます。
+<pre><code>{ "name": "ハイドラフェイシャル（体験）", "duration": { "kind": "fixed", "minutes": 30 }, "defaultMinutes": 30 }</code></pre>
+所要時間は5分単位です。同じ名前のメニューを何度も作らないよう、先に <code>getOptions</code> で探してください。</p>
+
+<h2 id="errors">7. うまくいかないとき（エラーの意味）</h2>
+<section class="card">
+<p>エラーのときは、<code>message</code> に日本語の理由が入ります。プログラムにはそのまま相手に伝えさせてください。</p>
+<table>
+<tr><th>番号</th><th>意味</th><th>どうする</th></tr>
+<tr><td>401</td><td>接続キーがない・違う・無効にされた</td><td>設定 → 外部機器の連携 でキーを確かめ、必要なら発行し直す</td></tr>
+<tr><td>400</td><td>入力が足りない・形が違う、過去の時刻、Air の予約、取り消し済み など</td><td><code>message</code> を読んで直す。「入力内容が正しくありません」は、項目名や日時の形（<code>+09:00</code> 付き）を確かめる</td></tr>
+<tr><td>404</td><td>予約が見つからない</td><td>予約の番号を確かめる</td></tr>
+<tr><td>409</td><td>その時間はふさがっている／先にほかで更新された／同じ患者が複数いる</td><td>空きを探し直す・読み直して新しい <code>version</code> で送る・スタッフに患者の統合を頼む</td></tr>
+</table>
+</section>
+
+<h2 id="notes">8. 運用の注意</h2>
+<section class="card">
+<ul>
+<li><strong>Airリザーブとの二重予約に注意してください。</strong>プログラムが LANE RESERVE に入れた予約は Air には入りません。Air のネット予約を受け付けている時間帯には、Air 側でも枠を押さえるか、プログラムで入れる枠を決めておいてください。</li>
+<li>Air で入れた予約は、15分ごとに LANE RESERVE に取り込まれます（今日から120日先の診療日）。Air の予約はプログラムからは変えられません。</li>
+<li>院が設定で「<strong>Airリザーブの利用を終了</strong>」すると、取り込みは止まり、Air から取り込んだ予約もプログラムから変更・取り消しできるようになります（<code>fromAir</code> も付かなくなります）。Air との二重予約の心配もなくなります。</li>
+<li>新しく登録された患者は「要確認」に出ます。毎日、受付で確かめて印を外してください（設定 → リマインド → Airリザーブの取り込みの「要確認の患者」）。</li>
+<li>プログラムがおかしな予約を入れ続けるときは、まず「このキーを無効化」で止めてください。入った予約は変更履歴で探せます。</li>
+<li>接続キーは、使わなくなったら無効化してください。最終利用の日時が設定画面に出ます。</li>
+</ul>
+</section>
+
+<h2 id="ref">9. 一覧表と、プログラムに貼るスキーマ（技術者向け）</h2>
+<section class="card">
+<p>入口：<code>https://reserve.ishidahihuka.jp/api/v1/integration/booking</code>。すべての要求にヘッダー <code>X-Booking-Token: （接続キー）</code>（または <code>Authorization: Bearer （接続キー）</code>）を付けます。本文は JSON（<code>Content-Type: application/json</code>）。日時は ISO 8601（<code>+09:00</code> 付き）、日付は <code>YYYY-MM-DD</code>。</p>
+<table>
+<tr><th>操作</th><th>方法とパス</th><th>内容</th></tr>
+<tr><td>ping</td><td><code>GET /ping</code></td><td>接続の確認</td></tr>
+<tr><td>getOptions</td><td><code>GET /options</code></td><td>院の情報・レーン・メニュー</td></tr>
+<tr><td>getDay</td><td><code>GET /day?date=YYYY-MM-DD</code></td><td>その日の予約（取り消し済みを含む）</td></tr>
+<tr><td>findPatients</td><td><code>GET /patients?q=…</code></td><td>氏名・フリガナ・電話・診察券番号・予約申請IDで探す（最大10人）</td></tr>
+<tr><td>ensurePatient</td><td><code>POST /patients</code></td><td>探して、いなければ登録 <code>{name, kana, birthDate?, phone?, email?}</code></td></tr>
+<tr><td>createReservation</td><td><code>POST /reservations</code></td><td>予約を入れる</td></tr>
+<tr><td>getReservation</td><td><code>GET /reservations/{id}</code></td><td>予約を1件読む</td></tr>
+<tr><td>updateReservation</td><td><code>PATCH /reservations/{id}</code></td><td>日時・レーン・メニュー・メモ・予約申請ID・状態（予約／キャンセル／無断キャンセル）を変える（<code>version</code> 必須）</td></tr>
+<tr><td>createMenu</td><td><code>POST /menus</code></td><td>メニューを作る <code>{name, duration, defaultMinutes?, priceYen?, abbr?}</code></td></tr>
+<tr><td>cancelReservation</td><td><code>POST /reservations/{id}/cancel</code></td><td>取り消す（<code>version</code> 必須。<code>DELETE /reservations/{id}</code> でも同じ）</td></tr>
+</table>
+<h3>例（curl）</h3>
+<pre><code>KEY='bk_…'   # 接続キー（画面からコピーしたもの）
+API='https://reserve.ishidahihuka.jp/api/v1/integration/booking'
+curl -s "$API/options" -H "X-Booking-Token: $KEY"
+curl -s "$API/day?date=2026-10-21" -H "X-Booking-Token: $KEY"
+curl -s -X POST "$API/reservations" -H "X-Booking-Token: $KEY" -H 'Content-Type: application/json' \
+  -d '{"patientId":"p-new-…","laneId":"l1","menuIds":["m3"],"startAt":"2026-10-21T10:00:00+09:00","endAt":"2026-10-21T10:30:00+09:00"}'</code></pre>
+
+<details>
+<summary>プログラムに貼るスキーマ（OpenAPI 3.1）</summary>
+<pre id="schema"><code>{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LANE RESERVE 自動予約",
+    "version": "1.0.0",
+    "description": "いしだ皮フ科／美容皮膚科の予約の入力・変更・取り消し。日時は +09:00 付きの ISO 8601。"
+  },
+  "servers": [
+    {
+      "url": "https://reserve.ishidahihuka.jp/api/v1/integration/booking"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bookingKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Booking-Token"
+      }
+    },
+    "schemas": {
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kana": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "phoneLast4": {
+            "type": "string"
+          },
+          "chartNo": {
+            "type": "string"
+          }
+        }
+      },
+      "Reservation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "description": "booked=予約 / cancelled=キャンセル / no_show=無断キャンセル / arrived・in_treatment・checkout・done=来院後"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "endAt": {
+            "type": "string"
+          },
+          "laneId": {
+            "type": "string"
+          },
+          "menuIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "patient": {
+            "$ref": "#/components/schemas/Patient"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          },
+          "fromAir": {
+            "type": "boolean",
+            "description": "Airリザーブの予約（変更不可。院が Air の利用を終了したあとは付かない）"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bookingKey": []
+    }
+  ],
+  "paths": {
+    "/ping": {
+      "get": {
+        "operationId": "ping",
+        "summary": "接続の確認",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/options": {
+      "get": {
+        "operationId": "getOptions",
+        "summary": "院の情報・レーン・メニュー（所要時間つき）",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    },
+    "/day": {
+      "get": {
+        "operationId": "getDay",
+        "summary": "その日の予約の一覧（空きを探すのに使う）",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "date": {
+                      "type": "string"
+                    },
+                    "reservations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reservation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/patients": {
+      "get": {
+        "operationId": "findPatients",
+        "summary": "患者を探す（氏名・フリガナ・電話・診察券番号・予約申請ID）",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Patient"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "ensurePatient",
+        "summary": "患者を探して、いなければ登録する（フリガナと、生年月日か電話番号が必要）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "kana"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "氏名（漢字）"
+                  },
+                  "kana": {
+                    "type": "string",
+                    "description": "フリガナ（カタカナ）"
+                  },
+                  "birthDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "created": {
+                      "type": "boolean"
+                    },
+                    "patient": {
+                      "$ref": "#/components/schemas/Patient"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "同じ方が複数いる"
+          }
+        }
+      }
+    },
+    "/reservations": {
+      "post": {
+        "operationId": "createReservation",
+        "summary": "予約を入れる",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "patientId",
+                  "laneId",
+                  "menuIds",
+                  "startAt",
+                  "endAt"
+                ],
+                "properties": {
+                  "patientId": {
+                    "type": "string"
+                  },
+                  "laneId": {
+                    "type": "string"
+                  },
+                  "menuIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "maxItems": 5
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "description": "例 2026-10-21T10:00:00+09:00"
+                  },
+                  "endAt": {
+                    "type": "string"
+                  },
+                  "memo": {
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "description": "予約申請ID（R で始まる番号）"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "登録した予約",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "その時間はふさがっている"
+          }
+        }
+      }
+    },
+    "/reservations/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getReservation",
+        "summary": "予約を1件読む",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateReservation",
+        "summary": "日時・レーン・メニュー・メモ・予約申請ID・状態を変える（直前に読んだ version が必要。menuIds は全部を送り直す）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "startAt": {
+                    "type": "string"
+                  },
+                  "endAt": {
+                    "type": "string"
+                  },
+                  "laneId": {
+                    "type": "string"
+                  },
+                  "menuIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "memo": {
+                    "type": "string",
+                    "description": "予約メモ（置き換え。空文字で消す）"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "description": "予約申請ID。空文字で外す"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "booked",
+                      "cancelled",
+                      "no_show"
+                    ],
+                    "description": "booked=予約に戻す / cancelled=キャンセル / no_show=無断キャンセル"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "変えた予約",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ふさがっている・先に更新された"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteReservation",
+        "summary": "予約を取り消す（cancelReservation と同じ。直前に読んだ version が必要）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "取り消した予約",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reservations/{id}/cancel": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "cancelReservation",
+        "summary": "予約を取り消す（直前に読んだ version が必要）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "取り消した予約",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/menus": {
+      "post": {
+        "operationId": "createMenu",
+        "summary": "メニューを新しく作る（getOptions にないときだけ）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "duration"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "abbr": {
+                    "type": "string",
+                    "description": "予約表の略称（12字まで）"
+                  },
+                  "duration": {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "minutes"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "fixed"
+                        ]
+                      },
+                      "minutes": {
+                        "type": "integer",
+                        "description": "5分単位"
+                      }
+                    }
+                  },
+                  "defaultMinutes": {
+                    "type": "integer"
+                  },
+                  "priceYen": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "作ったメニュー"
+          }
+        }
+      }
+    },
+    "/api/day": {
+      "get": {
+        "operationId": "staffDay",
+        "summary": "その日の予定（予約・患者・レーン・メニュー）",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getPatient",
+        "summary": "患者の全部（基本情報・施術歴・日付ごとのメモ・今後の予約）",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updatePatient",
+        "summary": "患者の基本情報を直す（version 必須）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/visits/{date}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "date",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "saveVisitNote",
+        "summary": "その日のメモ（施術歴）を保存",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/charts": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listCharts",
+        "summary": "カルテの一覧",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createChart",
+        "summary": "カルテを書く",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/charts/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "operationId": "updateChart",
+        "summary": "カルテを直す（version 必須）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/files": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listFiles",
+        "summary": "写真・ファイルの一覧",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/questionnaires": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listPatientQuestionnaires",
+        "summary": "その患者の問診票",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questionnaires/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getQuestionnaire",
+        "summary": "問診票の回答の全文",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/consents": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listConsents",
+        "summary": "その患者の同意書",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/estimates": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listEstimates",
+        "summary": "その患者の見積",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createEstimate",
+        "summary": "見積を作る",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estimates/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getEstimate",
+        "summary": "見積を読む",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateEstimate",
+        "summary": "見積を直す（version 必須）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "summary": "設定（院の情報・レーン・メニュー・状態など）",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clinic": {
+      "patch": {
+        "operationId": "updateClinic",
+        "summary": "院の情報・診療時間を変える",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/menus/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "operationId": "updateMenu",
+        "summary": "メニューを直す",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "GET で読んだ形に合わせる。直すときは version を付ける"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "operationId": "getAudit",
+        "summary": "変更履歴",
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</details>
+</section>
+
+<h2 id="staffapi">10. スタッフの画面と同じ操作（カルテ・写真・問診票・同意書・見積・設定）</h2>
+<section class="card">
+<p>入口：<code>https://reserve.ishidahihuka.jp/api/v1/integration/booking/api</code> のあとに、スタッフの画面が使っているパスを続けます。接続キー（<code>X-Booking-Token</code>）は予約の入口と同じです。<strong>院長と同じ権限</strong>で動き、変更履歴・操作ログには「自動予約（キーの名前）」と残ります。</p>
+<ul>
+<li>変える前に、必ず GET で今の内容を読み、返ってきた <code>version</code> を付けて送ります（ほかの人が先に直していると 409 になります。読み直してやり直してください）。</li>
+<li>送る形は、GET で読んだ形に合わせます。知らない項目を送ると「入力内容が正しくありません」（400）になります。</li>
+<li>この入口では、予約の入口のような二重予約・Air の予約の確認はしません。予約の操作は、なるべく予約の入口（4〜6章）を使ってください。</li>
+</ul>
+<table>
+<tr><th>扱うもの</th><th>方法とパス（入口のあとに続ける）</th><th>内容</th></tr>
+<tr><td>その日の予定</td><td><code>GET /day?date=YYYY-MM-DD</code></td><td>予約・患者・レーン・メニュー（画面のカレンダーと同じ）</td></tr>
+<tr><td>受付メモ・Todaysメモ</td><td><code>PUT /reception-notes/{日付}/{患者}</code>、<code>/day-notes/…</code></td><td>日付ごとのメモ</td></tr>
+<tr><td>患者を探す・登録</td><td><code>GET /patients?q=…</code>、<code>POST /patients</code></td><td></td></tr>
+<tr><td>患者の全部</td><td><code>GET /patients/{id}</code></td><td>基本情報・施術歴・日付ごとのメモ・今後の予約</td></tr>
+<tr><td>基本情報を直す</td><td><code>PATCH /patients/{id}</code></td><td><code>version</code> と直す項目（電話・住所・既往歴・内服・アレルギー・メモ など）</td></tr>
+<tr><td>日付ごとのメモ（施術歴）</td><td><code>PUT /patients/{id}/visits/{日付}</code></td><td>その日の記録</td></tr>
+<tr><td>カルテ（施術の記録）</td><td><code>GET</code>・<code>POST /patients/{id}/charts</code>、<code>PATCH /charts/{id}</code>、<code>POST /charts/{id}/delete</code></td><td>部位・条件・所見など</td></tr>
+<tr><td>写真・ファイル</td><td><code>GET /patients/{id}/files</code>、<code>GET /files/{id}</code>、<code>POST /patients/{id}/files</code></td><td>一覧・中身・追加</td></tr>
+<tr><td>問診票</td><td><code>GET /patients/{id}/questionnaires</code>、<code>GET /questionnaires/list?from=&amp;to=&amp;q=</code>、<code>GET /questionnaires/{id}</code></td><td>回答の全文</td></tr>
+<tr><td>同意書</td><td><code>GET</code>・<code>POST /patients/{id}/consents</code>、<code>/consents/{id}</code>、<code>GET /consent-templates</code></td><td>署名済みの同意書・ひな形</td></tr>
+<tr><td>見積</td><td><code>GET</code>・<code>POST /patients/{id}/estimates</code>、<code>GET</code>・<code>PATCH /estimates/{id}</code></td><td></td></tr>
+<tr><td>設定</td><td><code>GET /settings</code>、<code>PATCH /clinic</code>、<code>/lanes</code>・<code>/menus</code>・<code>/stages</code>・<code>/products</code>・<code>/prices</code>、<code>GET</code>・<code>PUT /admin/reminders</code>、<code>GET</code>・<code>PUT /admin/air-sync</code>、<code>GET</code>・<code>POST /monshin/form</code></td><td>院の情報・レーン・メニュー・状態・スキンケア・料金表・リマインド・Air 取り込み・問診票の質問</td></tr>
+<tr><td>記録</td><td><code>GET /audit</code>、<code>GET /access-log?from=&amp;to=</code></td><td>変更履歴・閲覧の記録</td></tr>
+</table>
+<p>使えないもの（403「この操作は自動予約からは使えません」）：<code>/auth</code>・<code>/staff</code>・<code>/security</code>・<code>/devices</code>・<code>/device-links</code>・<code>/settings/restore</code>・<code>/admin/backup</code>・<code>/admin/storage</code>。</p>
+</section>
+</main>
+</body>
+</html>
