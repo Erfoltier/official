@@ -27,10 +27,17 @@
 
 ### 反映（デプロイ）の手順
 
+**だれが反映しても（Claude Code・Codex・人）、必ずサーバーの `release` を使う。予約データの控えを取れなければ反映されない。**
+
 1. テストを通し、`claude/admiring-wozniak-kikcrr` にコミット・プッシュ
 2. 一式（静的書き出し＋PHP）を固めて S3 `ishida-deploy-965825500741` に `app-<コミット>.tgz` で置く
-3. SSM（AWS-RunShellScript）でサーバーに：DB をバックアップ → 展開 → `php -l` → リンク切り替え → `/api/v1/health` と連携の ping を確かめる（Basic認証のため 401 が正常）
-4. 道具を流すとき：`sudo -u apache RESERVE_CONFIG=/srv/reserve/private/config.php php /srv/reserve/app/tools/<名前>.php`
+3. サーバーで `sudo /srv/reserve/bin/release <コミット> <claude か codex>`（SSM の AWS-RunShellScript から）
+   - 中身：控え（`backup before-<コミット>`）→ 展開 → `php -l` → 切り替え → 応答の確認（Basic認証のため 401 が正常）。記録は `/srv/reserve/releases/RELEASES.log`
+   - 戻すとき：`sudo /srv/reserve/bin/release <前のコミット>`
+4. **本番データの一括操作・サーバー上のファイルの直接修正の前も、必ず `sudo /srv/reserve/bin/backup <理由>`**（例：`backup before-relink`）
+   - 控えは `/srv/reserve/private/data/backups/reserve-<日時>-<理由>.db`。SQLite のバックアップ機能で写し、壊れていないか確かめる。新しい40件を残す（毎日3時の自動の控えとは別）
+5. 道具を流すとき：`sudo -u apache RESERVE_CONFIG=/srv/reserve/private/config.php php /srv/reserve/app/tools/<名前>.php`
+6. 2つのスクリプトの元はリポジトリの `ops/backup.sh`・`ops/release.sh`。直したら `/srv/reserve/bin/` に置き直す
 
 サーバーの初期設定以外の作業（反映・本番データの操作を含む）は、この開発の会話で行う。
 
