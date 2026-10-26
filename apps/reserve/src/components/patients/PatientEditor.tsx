@@ -550,10 +550,10 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
   return (
     <div ref={boxRef}>
       <p className={styles.muted}>
-        公式アカウントの友だち（LINE の表示名）と、予約申請をした LINE（申請の氏名）が、やりとりの新しい順に並びます。表示名・申請の氏名・患者が送ったメッセージの言葉で探せます。院で付けたチャットの名前で探すときは、LINE 公式アカウントの管理画面（チャット）でその名前を探して開き、ブラウザのアドレス欄の URL をコピーして、下の欄に貼ってください。
+        公式アカウントの友だち（LINE の表示名）と、予約申請をした LINE（申請の氏名）が、やりとりの新しい順に並びます。表示名・申請の氏名・患者が送ったメッセージの言葉で探せます。院で付けたチャットの名前（LINE 公式アカウントの管理画面で変えた名前）は LINE から受け取れないため、探す言葉には使えません。
       </p>
       <div className={styles.lineRow}>
-        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="表示名・申請の氏名・メッセージの言葉、またはチャットの URL" aria-label="LINEの表示名で探す" style={{ flex: 1 }} />
+        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="表示名・申請の氏名・メッセージの言葉で探す" aria-label="LINEの表示名で探す" style={{ flex: 1 }} />
         <button type="button" className={styles.btn} onClick={() => setOpen(false)}>
           閉じる
         </button>
@@ -570,7 +570,6 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
                 <b>{c.displayName || "（表示名なし）"}</b>
                 {c.names.length > 0 && <span className={styles.muted}>　申請：{c.names.join("・")}</span>}
                 {c.matchedText && <span className={styles.muted}>　「{c.matchedText}」</span>}
-                {c.byUrl && <span className={styles.muted}>　（貼ったチャットの URL の人）</span>}
                 <br />
                 <small className={styles.muted}>
                   {stamp(c.lastAt)}

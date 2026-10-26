@@ -438,8 +438,6 @@ export interface LineCandidate {
   lastAt: string;
   /** 患者が送った文で見つかったとき、その文（の初め） */
   matchedText?: string;
-  /** 管理画面のチャットの URL（LINE の ID）で見つけた */
-  byUrl?: boolean;
   /** すでにこの LINE が紐付いている患者 */
   patients: { id: string; name: string }[];
 }

@@ -258,10 +258,5 @@ describe("未連携の患者に、手動で LINE を連携する", () => {
     expect(second).toMatchObject({ followers: 2, named: 0 });
     const p = await c.post("/patients", { name: "友達 雪子", kana: "トモダチ ユキコ" });
     expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("ゆきん")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([F1]);
-    // 管理画面のチャットの URL を貼ると、その人だけが出る（院で付けた名前は API で受け取れないため）
-    const url = `https://chat.line.biz/U${"9".repeat(32)}/chat/${F2}`;
-    const byUrl = (await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent(url)}`)).items;
-    expect(byUrl.map((x: { userId: string }) => x.userId)).toEqual([F2]);
-    expect(byUrl[0]).toMatchObject({ byUrl: true, displayName: "Taro Y" });
   });
 });
