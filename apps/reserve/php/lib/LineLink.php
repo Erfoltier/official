@@ -200,6 +200,7 @@ final class LineLink
         $db = Db::i();
         $started = microtime(true);
         $res = ['followers' => 0, 'added' => 0, 'named' => 0, 'failed' => 0, 'done' => true];
+        $todo = [];
         $start = null;
         do {
             [$code, $raw] = self::http('GET', self::API . '/v2/bot/followers/ids?limit=1000' . ($start !== null ? '&start=' . rawurlencode($start) : ''), ['Authorization: Bearer ' . $tok], null);
@@ -208,34 +209,80 @@ final class LineLink
                 throw new StoreError('invalid', "友だちの一覧を読めませんでした（{$code}）");
             }
             foreach ((array) ($j['userIds'] ?? []) as $uid) {
-                if (!is_string($uid) || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
-                    continue;
+                if (is_string($uid) && preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+                    $res['followers']++;
+                    $todo[] = $uid;
                 }
-                $res['followers']++;
-                $cur = $db->get('lineContact', $uid);
-                if (is_array($cur) && !empty($cur['displayName'])) {
-                    continue;
-                }
-                if ($maxSeconds !== null && microtime(true) - $started > $maxSeconds) {
-                    $res['done'] = false;
-                    continue;
-                }
-                $name = self::profileName($uid);
-                $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
-                $res['added'] += isset($cur['profileAt']) ? 0 : 1;
-                $cur['profileAt'] = now_iso();
-                if ($name !== null) {
-                    $cur['displayName'] = $name;
-                    $res['named']++;
-                } else {
-                    $res['failed']++;
-                }
-                $db->put('lineContact', $uid, $cur);
-                usleep(20000);
             }
             $start = is_string($j['next'] ?? null) ? $j['next'] : null;
         } while ($start !== null);
+        // 表示名がまだない人だけ、20人ずつまとめて問い合わせる
+        $todo = array_values(array_filter($todo, function ($uid) use ($db) {
+            $cur = $db->get('lineContact', $uid);
+            return !is_array($cur) || empty($cur['displayName']);
+        }));
+        foreach (array_chunk($todo, 20) as $chunk) {
+            if ($maxSeconds !== null && microtime(true) - $started > $maxSeconds) {
+                $res['done'] = false;
+                break;
+            }
+            $names = self::profileNames($chunk, $tok);
+            $db->transaction(function () use ($db, $chunk, $names, &$res) {
+                foreach ($chunk as $uid) {
+                    $cur = $db->get('lineContact', $uid);
+                    $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
+                    $res['added'] += isset($cur['profileAt']) ? 0 : 1;
+                    $cur['profileAt'] = now_iso();
+                    if (isset($names[$uid])) {
+                        $cur['displayName'] = $names[$uid];
+                        $res['named']++;
+                    } else {
+                        $res['failed']++;
+                    }
+                    $db->put('lineContact', $uid, $cur);
+                }
+            });
+        }
         return $res;
+    }
+
+    /** 何人かの表示名をまとめて問い合わせる（同時に送る。試験では $transport で1人ずつ） */
+    private static function profileNames(array $uids, string $tok): array
+    {
+        $out = [];
+        if (self::$transport !== null || !function_exists('curl_multi_init')) {
+            foreach ($uids as $uid) {
+                $n = self::profileName($uid);
+                if ($n !== null) {
+                    $out[$uid] = $n;
+                }
+            }
+            return $out;
+        }
+        $mh = curl_multi_init();
+        $hs = [];
+        foreach ($uids as $uid) {
+            $ch = curl_init(self::API . '/v2/bot/profile/' . $uid);
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $tok], CURLOPT_TIMEOUT => 15]);
+            curl_multi_add_handle($mh, $ch);
+            $hs[$uid] = $ch;
+        }
+        do {
+            $st = curl_multi_exec($mh, $running);
+            if ($running) {
+                curl_multi_select($mh, 1.0);
+            }
+        } while ($running && $st === CURLM_OK);
+        foreach ($hs as $uid => $ch) {
+            $j = curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200 ? json_decode((string) curl_multi_getcontent($ch), true) : null;
+            if (is_array($j) && is_string($j['displayName'] ?? null)) {
+                $out[$uid] = mb_substr($j['displayName'], 0, 60);
+            }
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+        return $out;
     }
 
     /** LINE のプロフィールの表示名（取れなければ null） */
