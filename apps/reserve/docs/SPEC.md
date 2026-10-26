@@ -1,6 +1,7 @@
 # LANE RESERVE 仕様と約束事（いしだ皮フ科／美容皮膚科）
 
 直すとき・足すときは、まずこの文書を読む。仕様を変えたら、同じコミットでこの文書も直す。
+経緯と院長の決定は [HISTORY.md](HISTORY.md)、今の状態と残りの作業は [STATUS.md](STATUS.md)。
 販売向けの設計の構想は [saas-plan.md](saas-plan.md)（こちらは「今どう動いているか」の記録）。
 
 ## 0. 構造の約束（煩雑にしないために）
@@ -24,7 +25,12 @@
 | プログラム | `/srv/reserve/releases/<コミット>/app`、`/srv/reserve/app` がその時の版へのリンク |
 | 設定 | `/srv/reserve/private/config.php`（暗号鍵・連携トークンなど。リポジトリに入れない） |
 | データ | `/srv/reserve/private/data/reserve.db`、バックアップは同じ場所の `backups/` |
-| 定期実行 | systemd `reserve-reminders.timer` → `php/cron/reminders.php`（apache ユーザー）。Air の取り込み → リマインドの順 |
+| 定期実行 | systemd `reserve-reminders.timer`（10分ごと）→ `php/cron/reminders.php`（apache ユーザー）。リマインド（Air の取り込みは 10/22 に終了） |
+| 入口 | Apache（`/etc/httpd/conf.d/20-ishida-https.conf`）。Basic認証 `/etc/httpd/ishida.htpasswd`。証明書は certbot（自動更新） |
+| 控え | 反映・データ操作ごと：`/srv/reserve/private/data/backups/`（新しい40件）。毎日：AWS Backup `ishida-daily`（3時ごろ、サーバー丸ごとのスナップショット） |
+| S3 | `ishida-deploy-…`（反映する一式）・`ishida-audit-logs-…`・`ishida-ops-logs-…`・`ishida-web-backup-…` |
+| 操作の入口 | AWS SSM（AWS-RunShellScript）。SSH は閉じている。IAM：Claude Code は claude-ops、ChatGPT／Codex は chatgpt-ops |
+| 旧ロリポップ | 予約システム・データは削除済み（10/16）。残るのは ishidahihuka.jp/reserve/ → reserve.ishidahihuka.jp の転送、ホームページ（WordPress）、メール（SMTP 送信に使う）、ネオボワール配布用スクリプト |
 
 ### 反映（デプロイ）の手順
 
