@@ -93,4 +93,5 @@
 
 ### 10/26
 - 古いロリポップ用の一式（dist/lolipop、ops/lolipop、build-lolipop.sh）と、使われていない TypeScript 側の複製を削除
+- 自動で読み込むのは要点だけの `CLAUDE.md`（リポジトリ直下）にし、STATUS・HISTORY・SPEC は必要なときだけ開く形にした（毎回の読み込みでトークンを使いすぎるため。院長の指示）
 - **訂正の記録**：私（Claude）が「開発用の Node.js 版が別にある」と誤って伝えた。実際は 10/10 に PHP に一本化済みだった。この取りこぼしを防ぐため、この HISTORY.md と STATUS.md を作った
