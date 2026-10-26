@@ -436,6 +436,8 @@ export interface LineCandidate {
   /** 予約申請に書かれた氏名 */
   names: string[];
   lastAt: string;
+  /** 患者が送った文で見つかったとき、その文（の初め） */
+  matchedText?: string;
   /** すでにこの LINE が紐付いている患者 */
   patients: { id: string; name: string }[];
 }

@@ -168,6 +168,13 @@ final class LineLink
         $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso()];
         $cur['lastAt'] = now_iso();
         $cur['lastType'] = $type;
+        // 患者が送った文（文字のメッセージだけ）。手動で LINE を探すときの検索用に、新しい30件・各200字まで残す（DB は暗号化）
+        if ($type === 'message' && ($e['message']['type'] ?? '') === 'text') {
+            $t = trim(mb_substr((string) ($e['message']['text'] ?? ''), 0, 200));
+            if ($t !== '') {
+                $cur['texts'] = array_slice([...((array) ($cur['texts'] ?? [])), ['at' => now_iso(), 'text' => $t]], -30);
+            }
+        }
         // 表示名は1週間に1回だけ LINE に問い合わせる（変わることがあるため）
         if (empty($cur['profileAt']) || time() - strtotime((string) $cur['profileAt']) > 7 * 86400) {
             $name = self::profileName($uid);
@@ -177,6 +184,58 @@ final class LineLink
             $cur['profileAt'] = now_iso();
         }
         $db->put('lineContact', $uid, $cur);
+    }
+
+    /**
+     * 公式アカウントの友だち全員を「やりとりした LINE」に入れる（表示名で手動の連携を探せるように）。
+     * 友だちの一覧（認証済みアカウントで使える API）を読み、まだ表示名がない人だけプロフィールを問い合わせる。通数は使わない。
+     * 何度流しても同じ結果。php/tools/line-followers.php から使う
+     */
+    public static function importFollowers(?float $maxSeconds = null): array
+    {
+        $tok = Reminder::lineToken();
+        if ($tok === '') {
+            throw new StoreError('invalid', 'LINE のアクセストークンが設定されていません');
+        }
+        $db = Db::i();
+        $started = microtime(true);
+        $res = ['followers' => 0, 'added' => 0, 'named' => 0, 'failed' => 0, 'done' => true];
+        $start = null;
+        do {
+            [$code, $raw] = self::http('GET', self::API . '/v2/bot/followers/ids?limit=1000' . ($start !== null ? '&start=' . rawurlencode($start) : ''), ['Authorization: Bearer ' . $tok], null);
+            $j = $code === 200 ? json_decode($raw, true) : null;
+            if (!is_array($j)) {
+                throw new StoreError('invalid', "友だちの一覧を読めませんでした（{$code}）");
+            }
+            foreach ((array) ($j['userIds'] ?? []) as $uid) {
+                if (!is_string($uid) || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+                    continue;
+                }
+                $res['followers']++;
+                $cur = $db->get('lineContact', $uid);
+                if (is_array($cur) && !empty($cur['displayName'])) {
+                    continue;
+                }
+                if ($maxSeconds !== null && microtime(true) - $started > $maxSeconds) {
+                    $res['done'] = false;
+                    continue;
+                }
+                $name = self::profileName($uid);
+                $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
+                $res['added'] += isset($cur['profileAt']) ? 0 : 1;
+                $cur['profileAt'] = now_iso();
+                if ($name !== null) {
+                    $cur['displayName'] = $name;
+                    $res['named']++;
+                } else {
+                    $res['failed']++;
+                }
+                $db->put('lineContact', $uid, $cur);
+                usleep(20000);
+            }
+            $start = is_string($j['next'] ?? null) ? $j['next'] : null;
+        } while ($start !== null);
+        return $res;
     }
 
     /** LINE のプロフィールの表示名（取れなければ null） */

@@ -207,9 +207,9 @@ describe("予約申請IDが入ったら、その場で LINE を連携する", ()
 });
 
 describe("未連携の患者に、手動で LINE を連携する", () => {
-  it("公式アカウントとやりとりした LINE・予約申請をした LINE が候補に出て、選ぶと連携できる（発言の中身は残さない）", async () => {
+  it("公式アカウントとやりとりした LINE・予約申請をした LINE が候補に出て、選ぶと連携できる。送った文の言葉でも探せる", async () => {
     const c = await setup();
-    // 友だち追加とメッセージ（発言の中身は残さない）
+    // 友だち追加とメッセージ
     expect((await webhook([{ type: "follow", replyToken: "rt-f", source: { type: "user", userId: OTHER } }])).status).toBe(200);
     expect((await webhook([{ ...text("来週予約したいです"), source: { type: "user", userId: OTHER } }])).status).toBe(200);
     // 予約申請をした LINE（申請の氏名つき）
@@ -224,7 +224,11 @@ describe("未連携の患者に、手動で LINE を連携する", () => {
     expect(uids).toContain(OTHER);
     expect(uids).toContain(USER);
     expect(all.find((x: { userId: string }) => x.userId === USER).names).toEqual(["手動 連子"]);
+    // 送った文は一覧には出さないが、言葉で探すと見つかり、合った文だけが出る
     expect(JSON.stringify(all)).not.toContain("来週予約したいです");
+    const byText = (await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("来週予約")}`)).items;
+    expect(byText.map((x: { userId: string }) => x.userId)).toEqual([OTHER]);
+    expect(byText[0].matchedText).toBe("来週予約したいです");
     // 申請の氏名で絞れる
     expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("手動")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([USER]);
 
@@ -234,5 +238,25 @@ describe("未連携の患者に、手動で LINE を連携する", () => {
     // 候補には連携済みの患者が出る
     const again = (await c.get(`/patients/${p.id}/line-candidates?q=`)).items.find((x: { userId: string }) => x.userId === USER);
     expect(again.patients.map((x: { id: string }) => x.id)).toContain(p.id);
+  });
+
+  it("公式アカウントの友だち全員を、表示名で探せる候補に入れる（何度流しても同じ）", async () => {
+    const c = await setup();
+    const F1 = "U" + "1".repeat(32);
+    const F2 = "U" + "2".repeat(32);
+    const code = `LineLink::$transport = function ($m, $url) {
+      if (str_contains($url, '/followers/ids') && !str_contains($url, 'start=')) return [200, json_encode(['userIds' => ['${F1}'], 'next' => 'p2'])];
+      if (str_contains($url, '/followers/ids')) return [200, json_encode(['userIds' => ['${F2}']])];
+      if (str_contains($url, '/profile/${F1}')) return [200, json_encode(['displayName' => 'ゆきんこ'])];
+      if (str_contains($url, '/profile/${F2}')) return [200, json_encode(['displayName' => 'Taro Y'])];
+      return [404, ''];
+    };
+    $s = Db::i()->meta('reminderSecrets'); Db::i()->setMeta('reminderSecrets', [...(is_array($s) ? $s : []), 'lineToken' => 'x']);
+    return [LineLink::importFollowers(), LineLink::importFollowers()];`;
+    const [first, second] = await h.srv.php<Array<{ followers: number; named: number }>>(code);
+    expect(first).toMatchObject({ followers: 2, named: 2 });
+    expect(second).toMatchObject({ followers: 2, named: 0 });
+    const p = await c.post("/patients", { name: "友達 雪子", kana: "トモダチ ユキコ" });
+    expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("ゆきん")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([F1]);
   });
 });

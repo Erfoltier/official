@@ -2690,8 +2690,8 @@ final class Store
     }
 
     /**
-     * 患者に手動で連携する LINE の候補：公式アカウントにメッセージを送った・友だち追加した LINE（表示名）と、
-     * 予約申請をした LINE（申請の氏名）。新しいやりとり順。$query で表示名・申請の氏名を絞る
+     * 患者に手動で連携する LINE の候補：公式アカウントの友だち（表示名。tools/line-followers.php で全員を入れる）と、
+     * 予約申請をした LINE（申請の氏名）。新しいやりとり順。$query で表示名・申請の氏名・患者が送った文を絞る
      */
     public static function lineCandidates(string $query = '', int $limit = 50): array
     {
@@ -2699,7 +2699,7 @@ final class Store
         $byUid = [];
         foreach (Db::i()->all('lineContact') as $c) {
             if (is_array($c) && !empty($c['userId'])) {
-                $byUid[$c['userId']] = ['userId' => $c['userId'], 'displayName' => $c['displayName'] ?? '', 'lastAt' => $c['lastAt'] ?? '', 'names' => []];
+                $byUid[$c['userId']] = ['userId' => $c['userId'], 'displayName' => $c['displayName'] ?? '', 'lastAt' => $c['lastAt'] ?? '', 'names' => [], 'texts' => array_column((array) ($c['texts'] ?? []), 'text')];
             }
         }
         foreach (Intake::all() as $rec) {
@@ -2708,7 +2708,7 @@ final class Store
                 continue;
             }
             $at = (string) ($rec['receivedAt'] ?? $rec['createdAt'] ?? $rec['submittedAt'] ?? '');
-            $byUid[$uid] ??= ['userId' => $uid, 'displayName' => '', 'lastAt' => '', 'names' => []];
+            $byUid[$uid] ??= ['userId' => $uid, 'displayName' => '', 'lastAt' => '', 'names' => [], 'texts' => []];
             $n = trim((string) ($rec['intake']['name'] ?? ''));
             if ($n !== '' && !in_array($n, $byUid[$uid]['names'], true)) {
                 $byUid[$uid]['names'][] = $n;
@@ -2726,8 +2726,17 @@ final class Store
         $q = search_key($query);
         $out = [];
         foreach ($byUid as $uid => $c) {
-            if ($q !== '' && !str_contains(search_key($c['displayName'] . ' ' . implode(' ', $c['names'])), $q)) {
-                continue;
+            $texts = $c['texts'];
+            unset($c['texts']);
+            if ($q !== '') {
+                if (!str_contains(search_key($c['displayName'] . ' ' . implode(' ', $c['names'])), $q)) {
+                    // 表示名・申請の氏名で見つからなければ、患者が送った文から探し、合った文だけを見せる
+                    $hit = array_values(array_filter($texts, fn($t) => str_contains(search_key((string) $t), $q)));
+                    if (!$hit) {
+                        continue;
+                    }
+                    $c['matchedText'] = mb_substr((string) end($hit), 0, 80);
+                }
             }
             $out[] = [...$c, 'patients' => $linked[$uid] ?? []];
         }

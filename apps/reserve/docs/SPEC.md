@@ -57,7 +57,7 @@
 | `reservation` | 予約。`requestId`（LINE の予約申請ID）、`reminder`（`pending`/`sent`/`skipped`/`failed`）、`lineUserId`（あれば） |
 | `patient` | 患者。`lineUserId`、`m3ChartNo`、`contactPref`（auto/line/email など）、`needsReview`（要確認の印） |
 | `reminderLog` | 送った記録。キー＝sha256(来院キー\|回\|来院時刻)。本文は残さない |
-| `lineContact` | 公式アカウントとやりとりした LINE（userId・初回/最終日時・表示名）。**発言の中身は残さない** |
+| `lineContact` | 公式アカウントの友だち・やりとりした LINE（userId・初回/最終日時・表示名・患者が送った文の新しい30件／各200字）。送った文は手動連携の検索だけに使い、一覧には出さない |
 | intake（申請） | LINE 予約フォームの申請。申請者の LINE ID を含む（画面には出さない） |
 | meta `reminderSettings` / `reminderSecrets` | リマインドの設定／LINE のトークン・SMTP パスワード（画面に出さない） |
 | meta `airSyncSettings` / `airSyncSecrets` / `airRetired` | Air の取り込み設定／ログイン情報／Air 終了の記録 |
@@ -85,6 +85,9 @@
 
 - Webhook：予約申請の文面や「問診票」の発言に、無料の返信で問診票の入口を返す。あわせて `lineContact` に「やりとりした LINE」を残す（表示名は7日に1回まで取りに行く）
 - 患者画面の「LINEと連携…」：`lineContact` と申請者（申請の氏名）を候補に出し、選ぶと患者の `lineUserId` に入る（`GET patients/{id}/line-candidates`、`POST patients/{id}/link-line`）
+  - 探せる言葉：LINE の表示名・申請の氏名・患者が送った文（文で当たったときはその文だけを出す）。院が LINE 公式アカウントの管理画面で付けたチャットの名前は、LINE の API で受け取れないので使えない
+  - 友だち全員を候補に入れる：`tools/line-followers.php`（友だち一覧 API。認証済みアカウントで使える。通数は使わない。表示名がまだない人だけ問い合わせる）。新しい友だちは Webhook の友だち追加で入る
+  - 送った文は Webhook で受け取った分から（過去のトークは LINE の API で取れない）
 
 ## 4-2. 予約詳細（カレンダー右列）の操作
 
