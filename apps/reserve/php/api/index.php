@@ -1,7 +1,7 @@
 <?php
 /**
  * API の入口。/reserve/api/v1/... へのアクセスは .htaccess でここに集まる。
- * URL とメソッドで処理を振り分ける（Node.js 版の src/app/api/v1 と同じ）。
+ * URL とメソッドで処理を振り分ける。
  */
 declare(strict_types=1);
 

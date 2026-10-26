@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** 日付・時刻（日本時間、夏時間なし）。Node.js 版 time.ts と同じ */
+/** 日付・時刻（日本時間、夏時間なし） */
 function jst(): DateTimeZone
 {
     static $tz = null;

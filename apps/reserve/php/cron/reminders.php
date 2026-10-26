@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Airリザーブの取り込みとリマインドの送信（ロリポップの cron から呼ぶ。院のパソコンが止まっていても送れるように）。
- * ロリポップの cron は CGI 版の PHP で動くため、「ウェブからの通信でないこと」で見分ける。
+ * リマインドの送信（Airリザーブの取り込みは 2026-10-22 に終了。終了後は何もしない）。
+ * サーバーの systemd タイマー（reserve-reminders.timer）から呼ぶ。院のパソコンが止まっていても送れるように。
+ * 「ウェブからの通信でないこと」で見分ける。
  * このフォルダはウェブから開けない（.htaccess）。
  */
 if (isset($_SERVER['REQUEST_METHOD']) || isset($_SERVER['HTTP_HOST'])) {

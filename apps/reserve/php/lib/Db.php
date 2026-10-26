@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * 保存先（Node.js 版 db.ts と同じ形式）。
+ * 保存先。
  * docs 表に「種類・ID・暗号化したJSON・索引列」を1件ずつ持つ。暗号は AES-256-GCM（IV12バイト＋タグ16バイト＋本文）。
  */
 final class Db
@@ -412,7 +412,7 @@ final class Db
         return ['before' => $before, 'after' => (int) filesize($file)];
     }
 
-    /** 索引列（暗号化しない）：日付と患者IDだけ。Node.js 版 indexKeys と同じ */
+    /** 索引列（暗号化しない）：日付と患者IDだけ */
     private static function indexKeys(string $kind, string $id, mixed $v): array
     {
         return match ($kind) {
@@ -463,7 +463,7 @@ final class Db
         return $out;
     }
 
-    /** ID順に読む（Node.js 版と同じ並び。同じ開始時刻の予約の順番がそろう） */
+    /** ID順に読む（同じ開始時刻の予約の順番がそろう） */
     private function order(): string
     {
         return ' ORDER BY id';

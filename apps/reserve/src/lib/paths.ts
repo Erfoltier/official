@@ -1,7 +1,7 @@
 /**
  * アプリを置く場所（パス）の扱い。
  * - 通常（Node.js で動かす）：サイトの直下（/）
- * - ロリポップ用の書き出し：/reserve など（NEXT_PUBLIC_BASE_PATH）
+ * - 静的書き出し：NEXT_PUBLIC_BASE_PATH（本番 EC2 は ''、/reserve などにも置ける）
  *
  * next/link の href は自動で前置されるので、ここを通すのは <a> と location だけ。
  */

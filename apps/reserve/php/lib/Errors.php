@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** 予約・患者などの処理のエラー（Node.js 版の StoreError と同じ） */
+/** 予約・患者などの処理のエラー */
 final class StoreError extends RuntimeException
 {
     public function __construct(public readonly string $codeName, string $message)
@@ -10,7 +10,7 @@ final class StoreError extends RuntimeException
     }
 }
 
-/** ログイン・権限のエラー（Node.js 版の AuthError と同じ） */
+/** ログイン・権限のエラー */
 final class AuthError extends RuntimeException
 {
     public function __construct(public readonly string $codeName, string $message)
@@ -19,7 +19,7 @@ final class AuthError extends RuntimeException
     }
 }
 
-/** 入力の形が正しくない（Node.js 版の zod の検証エラーにあたる） */
+/** 入力の形が正しくない */
 final class InputError extends RuntimeException
 {
 }

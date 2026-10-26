@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addDays, nowInClinic, toIso } from "@/lib/domain/time";
 import { cleanName, hasForbiddenChars, searchKey } from "@/lib/domain/text";
-import { AIR_LANES, AIR_MENUS } from "@/lib/seed/airreserve-import";
 import { withPhp } from "./php/server";
 
 describe("氏名の扱い", () => {
@@ -23,34 +22,6 @@ describe("氏名の扱い", () => {
     expect(searchKey("ﾔﾏﾀﾞ")).toBe(searchKey("ヤマダ"));
     expect(searchKey("ＡＮＮＡ")).toBe(searchKey("anna"));
     expect(searchKey("min-ji")).toBe(searchKey("Minji"));
-  });
-});
-
-describe("Airリザーブから移した設定", () => {
-  it("レーン4件・メニュー35件", () => {
-    expect(AIR_LANES.map((l) => l.name)).toEqual([
-      "メインレーン（医師）",
-      "1番レーン(レーザー脱毛など)",
-      "3番レーン針脱毛、ハイフ",
-      "4番ネオボ撮影・麻酔・ゼオ説明",
-    ]);
-    expect(AIR_MENUS).toHaveLength(35);
-    expect(new Set(AIR_MENUS.map((m) => m.id)).size).toBe(35);
-  });
-
-  it("提供時間・料金・レーンを再現している", () => {
-    const by = (name: string) => AIR_MENUS.find((m) => m.name === name)!;
-    expect(by("シミまとめ標準20分").duration).toEqual({ kind: "fixed", minutes: 20 });
-    expect(by("針脱毛").duration).toEqual({ kind: "range", min: 5, max: 600, step: 5 });
-    expect(by("全顔炭酸ガスフラクショナル").priceYen).toBe(49500);
-    expect(by("予約（メモに自由記載）").capacity).toBe(4);
-    expect(by("マッサージピール").laneIds).toEqual(["lane-1", "lane-3"]);
-    expect(by("ボトックス初診標準20分").defaultMinutes).toBe(20);
-    // 「使用しない」と書かれたメニューは選択肢から外す
-    expect(AIR_MENUS.filter((m) => !m.active).map((m) => m.name)).toEqual([
-      "色素レーザー5/5使用しない11/3",
-      "スネコス【再診】使用しない9/30",
-    ]);
   });
 });
 

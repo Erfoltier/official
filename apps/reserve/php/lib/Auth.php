@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * スタッフとPINログイン・ログイン状態（Node.js 版 staff.ts / session.ts と同じ）。
+ * スタッフとPINログイン・ログイン状態。
  * - PINは PBKDF2-SHA256（210,000回）。5回続けて間違えると5分間ロック
  * - ログイン状態は署名付きCookie（中身はスタッフID・版・期限だけ。HMAC-SHA256で改ざん検出）
  */
@@ -73,7 +73,7 @@ final class Auth
     private static function pinMatches(array $rec, string $pin): bool
     {
         if (($rec['pinAlg'] ?? '') !== 'pbkdf2-sha256') {
-            // 古い形式（scrypt）はPHPでは確かめられない。Node版でPINを設定し直すか、管理者がPINを変更する
+            // 古い形式（scrypt）はPHPでは確かめられない。管理者がPINを変更する
             return false;
         }
         $given = hash_pbkdf2('sha256', $pin, (string) $rec['pinSalt'], (int) ($rec['pinIter'] ?? self::PIN_ITERATIONS), 64, false);
@@ -518,7 +518,7 @@ function is_https(): bool
         || ($_SERVER['SERVER_PORT'] ?? '') === '443';
 }
 
-/** Node.js 版と同じ形のID（"接頭辞-時刻36進-乱数"） */
+/** ID（"接頭辞-時刻36進-乱数"） */
 function new_id(string $prefix): string
 {
     return $prefix . '-' . base_convert((string) (int) floor(microtime(true) * 1000), 10, 36) . '-' . bin2hex(random_bytes(3));

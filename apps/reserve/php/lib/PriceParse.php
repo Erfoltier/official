@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * ホームページの料金表（HTML の表）から料金を読み取る。Node.js 版（src/lib/domain/priceParse.ts）と同じ手順。
+ * ホームページの料金表（HTML の表）から料金を読み取る。
  */
 final class PriceParse
 {

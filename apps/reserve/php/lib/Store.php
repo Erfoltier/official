@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * 予約・患者・記録の処理（Node.js 版 store.ts と同じ動き・同じ文言）。
+ * 予約・患者・記録の処理。
  * PHPは1回の通信ごとに起動するので、必要な分だけをデータベースから読む
  * （予約・記録は索引列で「その日」「その患者」の分だけ）。
  */
@@ -1961,7 +1961,7 @@ final class Store
     }
 
     /** 名前で患者を探す（漢字・フリガナ・ローマ字のどれかが空白を除いて同じで、ちょうど1人のときだけ） */
-    /** 番号の比べ方：数字だけにして先頭の0を落とす（「00123」と「123」を同じに）。Node.js 版 refKey と同じ */
+    /** 番号の比べ方：数字だけにして先頭の0を落とす（「00123」と「123」を同じに） */
     private static function refKey(?string $v): string
     {
         $d = preg_replace('/\D/u', '', mb_convert_kana((string) $v, 'n', 'UTF-8'));
@@ -4672,7 +4672,7 @@ final class Store
     }
 
     /** 結びついている問診票を、患者の空いている欄へ写し直す（写す仕組みより前に結びついた回答のため。何度実行しても重ならない） */
-    // ---- M3 の患者一覧との照合（漢字の氏名を補う。Node.js 版と同じ） ----
+    // ---- M3 の患者一覧との照合（漢字の氏名を補う） ----
     // 7万件の CSV はブラウザの中だけで読み、ここへは「照合できた患者の番号と補う値」だけが届く
 
     private const HAS_KANJI = '/\p{Han}/u';
@@ -4885,7 +4885,7 @@ final class Store
         return ['questionnaires' => count($qs), 'patients' => count($changed)];
     }
 
-    // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方。Node.js 版と同じ）
+    // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方）
     private const Q_KNOWN = '/性別|タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
     private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
 
@@ -5770,7 +5770,7 @@ function js_trim(string $s): string
     return (string) preg_replace('/^[\s\x{00a0}\x{3000}\x{feff}]+|[\s\x{00a0}\x{3000}\x{feff}]+$/u', '', $s);
 }
 
-/** Google スプレッドシート・ドキュメントの共有リンク → 書き出しのアドレス（Node.js 版の googleExportUrl と同じ） */
+/** Google スプレッドシート・ドキュメントの共有リンク → 書き出しのアドレス */
 function google_export_url(string $input): ?array
 {
     $u = parse_url(trim($input));

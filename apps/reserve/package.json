@@ -9,8 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "build:static": "BUILD_TARGET=static NEXT_PUBLIC_BASE_PATH=${BASE_PATH-/reserve} NEXT_PUBLIC_METHOD_OVERRIDE=1 next build",
-    "build:lolipop": "bash scripts/build-lolipop.sh"
+    "build:static": "BUILD_TARGET=static NEXT_PUBLIC_BASE_PATH=${BASE_PATH-/reserve} NEXT_PUBLIC_METHOD_OVERRIDE=1 next build"
   },
   "dependencies": {
     "fflate": "^0.8.3",

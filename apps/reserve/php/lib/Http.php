@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * 応答と入力の検査（Node.js 版 http.ts と schemas.ts と同じ）。
+ * 応答と入力の検査。
  */
 final class Http
 {
