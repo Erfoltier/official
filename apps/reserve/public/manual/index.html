@@ -132,7 +132,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><a href="#s5">5. 予約を動かす・長さを変える</a><ol class="sub"><li><a href="#t14">5-1. ドラッグで動かす（時間・レーン）</a></li><li><a href="#t15">5-2. 長さを変える</a></li><li><a href="#t16">5-3. 別の日へ移す・メニューを変える（予約を変更）</a></li></ol></li>
 <li><a href="#s6">6. 来院から会計までの状態の付け方</a><ol class="sub"><li><a href="#t17">6-1. 予約の詳細パネル</a></li><li><a href="#t18">6-2. 状態を付ける</a></li><li><a href="#t19">6-3. 自由入力（ひとこと）</a></li></ol></li>
 <li><a href="#s7">7. キャンセル</a><ol class="sub"><li><a href="#t20">7-1. キャンセル・無断キャンセルにする</a></li><li><a href="#t21">7-2. キャンセルした予約を見る</a></li><li><a href="#t22">7-3. 取り消した予約を「予約」に戻す</a></li></ol></li>
-<li><a href="#s8">8. 患者を探す・登録する・編集する</a><ol class="sub"><li><a href="#t23">8-1. 患者を探す</a></li><li><a href="#t24">8-2. 患者を登録する（予約なしで）</a></li><li><a href="#t25">8-3. 患者画面の見方</a></li><li><a href="#t26">8-4. 基本情報を直す</a></li><li><a href="#t27">8-5. 施術歴（簡易カルテ）・今後の予約</a></li><li><a href="#t28">8-6. 変更履歴</a></li><li><a href="#t29">8-7. 重複している患者をまとめる（統合）</a></li><li><a href="#t30">8-8. 患者を削除する・元に戻す</a></li><li><a href="#t31">8-9. ほかの人が同時に同じ患者を直したとき</a></li></ol></li>
+<li><a href="#s8">8. 患者を探す・登録する・編集する</a><ol class="sub"><li><a href="#t23">8-1. 患者を探す</a></li><li><a href="#t24">8-2. 患者を登録する（予約なしで）</a></li><li><a href="#t25">8-3. 患者画面の見方</a></li><li><a href="#t26">8-4. 基本情報を直す</a></li><li><a href="#t26b">8-4-2. LINE と連携する</a></li><li><a href="#t27">8-5. 施術歴（簡易カルテ）・今後の予約</a></li><li><a href="#t28">8-6. 変更履歴</a></li><li><a href="#t29">8-7. 重複している患者をまとめる（統合）</a></li><li><a href="#t30">8-8. 患者を削除する・元に戻す</a></li><li><a href="#t31">8-9. ほかの人が同時に同じ患者を直したとき</a></li></ol></li>
 <li><a href="#s9">9. 問診票</a><ol class="sub"><li><a href="#t32">9-1. 回答が患者に結びつく決まり</a></li><li><a href="#t33">9-2. 結びつかなかった回答を結びつける</a></li></ol></li>
 <li><a href="#s10">10. カルテ・同意書・見積</a><ol class="sub"><li><a href="#t34">10-1. カルテ（施術の記録）</a></li><li><a href="#t35">10-2. 同意書</a></li><li><a href="#t36">10-3. 見積・会計</a></li></ol></li>
 <li><a href="#s11">11. 1日の流れ（朝・診療中・終業）</a><ol class="sub"><li><a href="#t37">朝（診療前）</a></li><li><a href="#t38">診療中</a></li><li><a href="#t39">終業</a></li></ol></li>
@@ -451,7 +451,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </tr>
 <tr>
 <td>②</td>
-<td>🗓 予約を変更（<a href="#t16">5-3</a>）</td>
+<td>🗓 予約を変更（<a href="#t16">5-3</a>）・✕ 予約キャンセル（<a href="#s7">7章</a>）</td>
 </tr>
 <tr>
 <td>③</td>
@@ -463,10 +463,11 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </tr>
 <tr>
 <td>⑤</td>
-<td>キャンセル／無断キャンセル（<a href="#s7">7章</a>）</td>
+<td>連絡：「LINE未連携 → 連携する」（<a href="#t26b">8-4-2</a>）・電話</td>
 </tr>
 </tbody>
 </table></div>
+<blockquote><p>2026年10月21日から、キャンセルは上の操作ボタンの <strong>「✕ 予約キャンセル」</strong> 1つにまとまりました（写真は変更前の画面です）。</p></blockquote>
 <p>ほかに、日時・レーン・施術・担当記録（登録した人・最後に変えた人）・リマインドの状態、その日の写真・ファイル（📷 撮影／📎 ファイル）、連絡（電話番号を押すと電話をかけられる端末ではそのまま発信）、予約メモがあります。名前の横の「＋注意事項」で注意事項をその場で書き足せます。「＋申請ID」で予約申請IDを入れ直せます（<a href="#t12">4-4</a>）。</p>
 <figure><button class="zoom" type="button" data-src="img/20b-detail-panel-lower.webp" aria-label="拡大：詳細パネルの下の部分"><img src="img/20b-detail-panel-lower.webp" alt="詳細パネルの下の部分" width="1440" height="900" loading="lazy"></button><figcaption>詳細パネルの下の部分</figcaption></figure>
 <p><strong>リマインドの状態</strong>（①）は「未送信」「LINE送信済」「メール送信済」「送信失敗」の4つのどれかです。送信済のときは送った回が付きます（例：「LINE送信済（前日）」）。送らなかった来院は「未送信」のあとに理由が出ます（例：「未送信（送り先なし）」＝LINE のつながりもメールアドレスもない、「未送信（不要の患者）」＝リマインド不要の患者、「（LINE の残り通数が少ない）」「（申請の名前・生年月日が患者と合わない）」など）。送信失敗のときも理由が出ます（例：「送信失敗（メール送信の失敗）」）。送信状況は 設定 →「リマインド」の <strong>リマインド送信状況の確認</strong> で、日付ごとにまとめて確かめられます（<a href="#u1">13章</a>）。</p>
@@ -494,13 +495,17 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <h3 id="t20">7-1. キャンセル・無断キャンセルにする</h3>
 <ol>
 <li>予約枠を押して詳細を開きます。</li>
-<li>下の <strong>「キャンセル」</strong> または <strong>「無断キャンセル」</strong> を押します。</li>
-<li>「○○さんの予約をキャンセルにします。よろしいですか？」と出ます。<strong>はい</strong>（①）で確定、<strong>いいえ</strong>（②）でやめます。誤タッチ防止のため、必ずこの確認が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/22-cancel-confirm.webp" aria-label="拡大：キャンセルの確認"><img src="img/22-cancel-confirm.webp" alt="キャンセルの確認" width="1440" height="900" loading="lazy"></button></span></li>
+<li>上の操作ボタンの <strong>「✕ 予約キャンセル」</strong>（赤い文字）を押します。</li>
+<li>「○○さんの予約をキャンセルにします。よろしいですか？」と確認が出ます。誤タッチ防止のため、必ずこの確認が出ます。
+   - 連絡なしで来なかったときは <strong>「無断キャンセル」</strong> にチェックを入れます（文が「無断キャンセルにします」に変わります）。
+   - <strong>「キャンセルの理由（任意）」</strong> に、なぜキャンセルになったかを書けます（200字まで。例：体調不良のため、日を改めて連絡するとのこと）。書いた理由は患者画面の「キャンセル履歴」に残ります（<a href="#t21">7-2</a>）。
+   - <strong>確定</strong> で決まり、<strong>いいえ</strong> でやめます。写真は変更前の確認画面です。<span class="fig"><button class="zoom" type="button" data-src="img/22-cancel-confirm.webp" aria-label="拡大：キャンセルの確認"><img src="img/22-cancel-confirm.webp" alt="キャンセルの確認" width="1440" height="900" loading="lazy"></button></span></li>
 <li>確定すると、予約表から枠が消えます（詳細にはキャンセルの札が付きます）。<span class="fig"><button class="zoom" type="button" data-src="img/23-cancelled.webp" aria-label="拡大：キャンセルした"><img src="img/23-cancelled.webp" alt="キャンセルした" width="1440" height="900" loading="lazy"></button></span></li>
 </ol>
 <p>管理操作のできる人は、「🗓 予約を変更」の画面の左下 <strong>「予約を取り消す」→「はい、取り消す」</strong> でも取り消せます。</p>
 <h3 id="t21">7-2. キャンセルした予約を見る</h3>
-<p>上のバーの <strong>「キャンセル表示」</strong> を押すと、取り消した予約が斜線入りで薄く表示されます。</p>
+<p><strong>患者ごとに見る</strong>：患者画面の <strong>「キャンセル履歴（○件）」</strong> を押して開くと、その患者のキャンセル・無断キャンセルした予約が新しい順に並びます。予約の日時・キャンセルか無断キャンセルか・メニュー・理由（書かなかったときは「（記入なし）」）・キャンセルにした日時と担当者が出ます。予約の詳細でも、「この予約はキャンセルです。」の横に理由が出ます。</p>
+<p><strong>予約表で見る</strong>：上のバーの <strong>「キャンセル表示」</strong> を押すと、取り消した予約が斜線入りで薄く表示されます。</p>
 <figure><button class="zoom" type="button" data-src="img/24-show-cancelled.webp" aria-label="拡大：キャンセル表示"><img src="img/24-show-cancelled.webp" alt="キャンセル表示" width="1440" height="900" loading="lazy"></button><figcaption>キャンセル表示</figcaption></figure>
 <h3 id="t22">7-3. 取り消した予約を「予約」に戻す</h3>
 <p>間違えてキャンセル・無断キャンセルにしたときは、入れ直さずに元へ戻せます。</p>
@@ -509,7 +514,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>取り消した予約の枠（①）を押すと、右に詳細が開きます。上に「この予約はキャンセルになっています。」と出ます（取り消した予約はドラッグでは動かせません）。</li>
 <li><strong>「予約に戻す」</strong>（②）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/24b-cancelled-detail.webp" aria-label="拡大：取り消した予約の詳細"><img src="img/24b-cancelled-detail.webp" alt="取り消した予約の詳細" width="1440" height="900" loading="lazy"></button></span></li>
 <li>「この予約を『予約』に戻します。よろしいですか？」とブラウザの確認が出るので、<strong>OK</strong>（①）を押します。やめるときは <strong>キャンセル</strong>（②）。ボタンの見た目と名前はブラウザによって少し違います（この写真は、ブラウザの枠ごと撮っています）。<span class="fig"><button class="zoom" type="button" data-src="img/24c-restore-confirm.webp" aria-label="拡大：予約に戻す確認"><img src="img/24c-restore-confirm.webp" alt="予約に戻す確認" width="1440" height="900" loading="lazy"></button></span></li>
-<li>予約は「予約」の状態に戻り、予約表に普通の枠で表示されます。同じ時間に別の予約が入っていれば、右上に赤い三角が付きます。</li>
+<li>予約は「予約」の状態に戻り、予約表に普通の枠で表示されます。同じ時間に別の予約が入っていれば、右上に赤い三角が付きます。予約に戻すと、キャンセルの理由とキャンセル履歴からも消えます。</li>
 </ol>
 <hr />
 <h2 id="s8">8. 患者を探す・登録する・編集する</h2>
@@ -536,6 +541,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>施術歴</strong>（②）：本日の予約／過去の履歴／今後の予約</li>
 <li>同意書・見積・会計の控え</li>
 <li>その他の操作（写真比較・重複している患者をまとめる・この患者を削除）</li>
+<li><strong>キャンセル履歴</strong>（押すと開く。<a href="#t21">7-2</a>）</li>
 <li>変更履歴</li>
 </ol>
 <h3 id="t26">8-4. 基本情報を直す</h3>
@@ -551,6 +557,21 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>一番下の「○項目を変更中」を確かめ、<strong>保存</strong>（③）を押します。やめるときは「元に戻す」。<span class="fig"><button class="zoom" type="button" data-src="img/37-patient-save.webp" aria-label="拡大：保存"><img src="img/37-patient-save.webp" alt="保存" width="1440" height="900" loading="lazy"></button></span></li>
 </ol>
 <p>LINE欄の「紐付けを解除」で、LINEの紐付けを外せます（確認が出ます）。</p>
+<h3 id="t26b">8-4-2. LINE と連携する</h3>
+<p>リマインドを LINE で届けるには、患者と LINE がつながっている（連携済み）必要があります。</p>
+<p><strong>ふつうは自動でつながります。</strong> 予約に予約申請ID が入った時点で（予約の申請ID欄・予約メモのどちらでも）、その申請をした LINE が患者に自動で連携されます。予約が先で申請があとから届いたときも、届いた時点でつながります。一度つながれば、受付で直接取った次回予約（申請IDなし）にも LINE でリマインドが届きます。</p>
+<p><strong>手動で連携するのは、次のようなときだけです。</strong> 予約申請フォームを使わずに予約した（電話・受付・LINE のトークだけで予約した）／家族の LINE で申請した／申請の氏名・生年月日が患者と合わない など。</p>
+<ol>
+<li>予約の詳細の連絡欄にある <strong>「LINE未連携 → 連携する」</strong> を押します（患者画面からでも同じです）。</li>
+<li>患者画面が開き、基本情報が開いた状態で <strong>LINE 欄</strong>（色の枠で囲まれます）までスクロールし、候補の一覧が出ます。</li>
+<li>候補は、公式アカウントの <strong>友だち全員（LINE の表示名）</strong> と、<strong>予約申請をした LINE（申請の氏名）</strong> です。やりとりの新しい順に並びます。</li>
+<li>検索欄に言葉を入れて絞ります。探せるのは次の3つです。
+   - LINE の <strong>表示名</strong>（ひらがな・カタカナ・空白の違いは問いません）
+   - 予約申請に書かれた <strong>氏名</strong>
+   - 患者が公式アカウントに <strong>送ったメッセージの言葉</strong>（言葉で見つかったときは、その文が候補の横に小さく出ます）</li>
+<li>LINE 公式アカウントのチャットの名前と見比べて、合っている候補の <strong>「連携」</strong> を押し、確認で OK を押します。ほかの患者にすでに連携済みの LINE には「○○ にも連携済みです」と出ます（家族で同じ LINE を使う場合だけ続けてください）。</li>
+</ol>
+<blockquote><p>院が LINE 公式アカウントの管理画面で付け直したチャットの名前（漢字フルネームなど）は、LINE の仕組み上 LANE RESERVE から読み取れないため、検索には使えません。あだなの方は、LINE の表示名か、その方が送ったメッセージの言葉で探してください。メッセージの言葉で探せるのは、2026年10月26日以降に届いたメッセージです。</p></blockquote>
 <h3 id="t27">8-5. 施術歴（簡易カルテ）・今後の予約</h3>
 <figure><button class="zoom" type="button" data-src="img/39-visit-history.webp" aria-label="拡大：施術歴"><img src="img/39-visit-history.webp" alt="施術歴" width="1440" height="900" loading="lazy"></button><figcaption>施術歴</figcaption></figure>
 <ul>
