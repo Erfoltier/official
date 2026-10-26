@@ -285,6 +285,22 @@ final class LineLink
         return $out;
     }
 
+    /** 1人の「やりとりした LINE」（なければ LINE に表示名を問い合わせて入れる。友だちでなければ null） */
+    public static function contact(string $uid): ?array
+    {
+        $db = Db::i();
+        $cur = $db->get('lineContact', $uid);
+        if (!is_array($cur) || empty($cur['displayName'])) {
+            $name = self::profileName($uid);
+            if ($name === null) {
+                return null;
+            }
+            $cur = [...(is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower']), 'displayName' => $name, 'profileAt' => now_iso()];
+            $db->put('lineContact', $uid, $cur);
+        }
+        return ['userId' => $uid, 'displayName' => (string) ($cur['displayName'] ?? ''), 'lastAt' => (string) ($cur['lastAt'] ?? ''), 'names' => []];
+    }
+
     /** LINE のプロフィールの表示名（取れなければ null） */
     private static function profileName(string $uid): ?string
     {

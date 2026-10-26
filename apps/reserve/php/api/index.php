@@ -327,7 +327,7 @@ try {
     if ($method === 'GET' && $n === 3 && $p[0] === 'patients' && $p[2] === 'line-candidates') {
         $s = $me();
         Auth::noteAccess($s, 'LINEの連携候補を表示', 'patient:' . V::id($p[1]));
-        Http::json(['items' => Store::lineCandidates(mb_substr($q('q') ?? '', 0, 40))]);
+        Http::json(['items' => Store::lineCandidates(mb_substr($q('q') ?? '', 0, 200))]);
     }
     if ($method === 'POST' && $n === 3 && $p[0] === 'patients' && $p[2] === 'link-line') {
         $s = $me();

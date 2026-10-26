@@ -2723,6 +2723,16 @@ final class Store
                 $linked[$p['lineUserId']][] = ['id' => $p['id'], 'name' => $p['name']];
             }
         }
+        // 院が LINE 公式アカウントの管理画面で付けた名前は API で受け取れないため、そのチャットの URL（…/chat/U…）か
+        // LINE の ID を貼ったら、その人だけを出す（管理画面の名前で探して開き、URL をコピーして貼る）
+        if (preg_match('#/chat/(U[0-9a-f]{32})#', $query, $m) || preg_match('#^\s*(U[0-9a-f]{32})\s*$#', $query, $m)) {
+            $c = $byUid[$m[1]] ?? LineLink::contact($m[1]);
+            if ($c === null) {
+                return [];
+            }
+            unset($c['texts']);
+            return [[...$c, 'byUrl' => true, 'patients' => $linked[$m[1]] ?? []]];
+        }
         $q = search_key($query);
         $out = [];
         foreach ($byUid as $uid => $c) {
