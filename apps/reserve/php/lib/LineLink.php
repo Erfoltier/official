@@ -179,8 +179,7 @@ final class LineLink
         if (empty($cur['profileAt']) || time() - strtotime((string) $cur['profileAt']) > 7 * 86400) {
             $prof = self::profile($uid);
             if ($prof !== null) {
-                $cur['displayName'] = $prof['name'];
-                $cur['pictureHash'] = $prof['picture'];
+                $cur = self::withProfile($cur, $prof, self::pictureDhashes([$uid => $prof['picture']])[$uid] ?? '');
             }
             $cur['profileAt'] = now_iso();
         }
@@ -220,7 +219,7 @@ final class LineLink
         // 表示名がまだない人だけ、20人ずつまとめて問い合わせる
         $todo = array_values(array_filter($todo, function ($uid) use ($db) {
             $cur = $db->get('lineContact', $uid);
-            return !is_array($cur) || empty($cur['displayName']) || !array_key_exists('pictureHash', $cur);
+            return !is_array($cur) || empty($cur['displayName']) || !array_key_exists('pictureUrl', $cur);
         }));
         foreach (array_chunk($todo, 20) as $chunk) {
             if ($maxSeconds !== null && microtime(true) - $started > $maxSeconds) {
@@ -228,15 +227,15 @@ final class LineLink
                 break;
             }
             $names = self::profileNames($chunk, $tok);
-            $db->transaction(function () use ($db, $chunk, $names, &$res) {
+            $dh = self::pictureDhashes(array_filter(array_map(fn($p) => $p['picture'], $names)));
+            $db->transaction(function () use ($db, $chunk, $names, $dh, &$res) {
                 foreach ($chunk as $uid) {
                     $cur = $db->get('lineContact', $uid);
                     $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
                     $res['added'] += isset($cur['profileAt']) ? 0 : 1;
                     $cur['profileAt'] = now_iso();
                     if (isset($names[$uid])) {
-                        $cur['displayName'] = $names[$uid]['name'];
-                        $cur['pictureHash'] = $names[$uid]['picture'];
+                        $cur = self::withProfile($cur, $names[$uid], $dh[$uid] ?? '');
                         $res['named']++;
                     } else {
                         $res['failed']++;
@@ -246,6 +245,113 @@ final class LineLink
             });
         }
         return $res;
+    }
+
+    /** プロフィールを「やりとりした LINE」に入れる（画像はアドレスと見た目の指紋。画像そのものは残さない） */
+    private static function withProfile(array $cur, array $prof, string $dhash): array
+    {
+        unset($cur['pictureHash']);
+        return [...$cur, 'displayName' => $prof['name'], 'pictureUrl' => $prof['picture'], 'pictureDhash' => $dhash];
+    }
+
+    /**
+     * プロフィール画像の見た目の指紋（dHash：9×8 に縮めて、となりより明るいかの 64 ビットを16進で）。
+     * 画像のアドレスは表示する場所ごとに変わるが、見た目は同じなので、管理画面の画像と見比べられる
+     * （同じ写真なら大きさが違っても 0〜4、別の人は 26 以上離れる。拡張機能の background.js と同じ計算）
+     */
+    public static function dhash(string $bytes): ?string
+    {
+        $im = @imagecreatefromstring($bytes);
+        if ($im === false) {
+            return null;
+        }
+        $mid = imagecreatetruecolor(64, 64);
+        imagecopyresampled($mid, $im, 0, 0, 0, 0, 64, 64, imagesx($im), imagesy($im));
+        $small = imagecreatetruecolor(9, 8);
+        imagecopyresampled($small, $mid, 0, 0, 0, 0, 9, 8, 64, 64);
+        $hex = '';
+        for ($y = 0; $y < 8; $y++) {
+            $row = [];
+            for ($x = 0; $x < 9; $x++) {
+                $c = imagecolorat($small, $x, $y);
+                $row[] = 0.299 * (($c >> 16) & 255) + 0.587 * (($c >> 8) & 255) + 0.114 * ($c & 255);
+            }
+            $bits = 0;
+            for ($x = 0; $x < 8; $x++) {
+                $bits = ($bits << 1) | ($row[$x] < $row[$x + 1] ? 1 : 0);
+            }
+            $hex .= sprintf('%02x', $bits);
+        }
+        return $hex;
+    }
+
+    /** 2つの指紋の違うビットの数 */
+    private static function hamming(string $a, string $b): int
+    {
+        $n = 0;
+        for ($i = 0; $i < 16; $i += 2) {
+            $n += substr_count(decbin(hexdec(substr($a, $i, 2)) ^ hexdec(substr($b, $i, 2))), '1');
+        }
+        return $n;
+    }
+
+    /** 見た目の指紋が近い人（10 ビット以内）を近い順に */
+    private static function nearByPicture(array $all, string $dh): array
+    {
+        $near = [];
+        foreach ($all as $uid => $c) {
+            if (is_array($c) && strlen((string) ($c['pictureDhash'] ?? '')) === 16) {
+                $d = self::hamming($dh, (string) $c['pictureDhash']);
+                if ($d <= 10) {
+                    $near[(string) $uid] = $d;
+                }
+            }
+        }
+        asort($near);
+        return $near;
+    }
+
+    /** 何人かのプロフィール画像（小さい版）を同時に読み、見た目の指紋にする */
+    private static function pictureDhashes(array $urls): array
+    {
+        $out = [];
+        if (self::$transport !== null || !function_exists('curl_multi_init')) {
+            foreach ($urls as $k => $u) {
+                [$code, $raw] = $u !== '' ? self::http('GET', $u . '/small', [], null) : [0, ''];
+                $h = $code === 200 ? self::dhash($raw) : null;
+                if ($h !== null) {
+                    $out[$k] = $h;
+                }
+            }
+            return $out;
+        }
+        $mh = curl_multi_init();
+        $hs = [];
+        foreach ($urls as $k => $u) {
+            if ($u === '') {
+                continue;
+            }
+            $ch = curl_init($u . '/small');
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_FOLLOWLOCATION => true]);
+            curl_multi_add_handle($mh, $ch);
+            $hs[$k] = $ch;
+        }
+        do {
+            $st = curl_multi_exec($mh, $running);
+            if ($running) {
+                curl_multi_select($mh, 1.0);
+            }
+        } while ($running && $st === CURLM_OK);
+        foreach ($hs as $k => $ch) {
+            $h = curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200 ? self::dhash((string) curl_multi_getcontent($ch)) : null;
+            if ($h !== null) {
+                $out[$k] = $h;
+            }
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+        return $out;
     }
 
     /** 何人かの表示名をまとめて問い合わせる（同時に送る。試験では $transport で1人ずつ） */
@@ -305,7 +411,7 @@ final class LineLink
 
     /**
      * 管理画面で開いたチャットを、LINE の利用者に結びつける（Chrome 拡張の「LINE チャット連携」から）。
-     * 手がかりの強い順：トークに出ている予約申請ID → プロフィール画像 → 表示名（同じ人が1人だけのとき）。
+     * 手がかりの強い順：トークに出ている予約申請ID → プロフィール画像の見た目（dHash）→ 表示名（同じ人が1人だけのとき）。
      * 申請IDが別々の人を指す・画像が合わないときは結びつけない。見出しの名前（院で付けた名前のことがある）は検索用に残す
      */
     public static function learnChat(array $in): array
@@ -323,10 +429,10 @@ final class LineLink
             return ['ok' => false, 'reason' => 'other_account'];
         }
         $name = trim(mb_substr((string) ($in['name'] ?? ''), 0, 60));
-        $icon = preg_match('/^[A-Za-z0-9_-]{10,200}$/', (string) ($in['iconHash'] ?? '')) ? (string) $in['iconHash'] : '';
+        $icon = preg_match('/^[0-9a-f]{16}$/', (string) ($in['iconDhash'] ?? '')) ? (string) $in['iconDhash'] : '';
         // 開いたチャットは、だれか決まらなくても残す（あとでスタッフがチャットの URL を貼って手動で連携するときに使う）
         $seen = $db->get('lineChat', $chatId);
-        $db->put('lineChat', $chatId, [...(is_array($seen) ? $seen : []), 'chatId' => $chatId, 'name' => $name, 'iconHash' => $icon, 'at' => now_iso()]);
+        $db->put('lineChat', $chatId, [...(is_array($seen) ? $seen : []), 'chatId' => $chatId, 'name' => $name, 'iconDhash' => $icon, 'at' => now_iso()]);
         $all = $db->all('lineContact');
         $uid = null;
         $how = '';
@@ -344,9 +450,11 @@ final class LineLink
         if ($uids) {
             [$uid, $how] = [array_key_first($uids), 'request'];
         } elseif ($icon !== '') {
-            $hit = array_keys(array_filter($all, fn($c) => is_array($c) && ($c['pictureHash'] ?? '') === $icon));
-            if (count($hit) === 1) {
-                [$uid, $how] = [(string) $hit[0], 'picture'];
+            // いちばん近い人が、2番目よりはっきり近いときだけ（似た写真の人を取り違えないように）
+            $near = self::nearByPicture($all, $icon);
+            $ds = array_values($near);
+            if ($ds && (count($ds) === 1 || $ds[1] >= $ds[0] + 8)) {
+                [$uid, $how] = [(string) array_key_first($near), 'picture'];
             }
         }
         if ($uid === null && $name !== '') {
@@ -360,7 +468,7 @@ final class LineLink
             return ['ok' => false, 'reason' => 'not_found'];
         }
         $cur = is_array($all[$uid] ?? null) ? $all[$uid] : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
-        if ($how !== 'picture' && $icon !== '' && !empty($cur['pictureHash']) && $cur['pictureHash'] !== $icon) {
+        if ($how !== 'picture' && $icon !== '' && strlen((string) ($cur['pictureDhash'] ?? '')) === 16 && self::hamming($icon, (string) $cur['pictureDhash']) > 16) {
             return ['ok' => false, 'reason' => 'picture_mismatch'];
         }
         self::bindChat($uid, $chatId, $name);
@@ -394,11 +502,11 @@ final class LineLink
     {
         $db = Db::i();
         $c = $db->get('lineContact', $uid);
-        $pic = is_array($c) ? (string) ($c['pictureHash'] ?? '') : '';
-        if ($pic === '' || !empty($c['chatId'])) {
+        $pic = is_array($c) ? (string) ($c['pictureDhash'] ?? '') : '';
+        if (strlen($pic) !== 16 || !empty($c['chatId'])) {
             return false;
         }
-        $hit = array_keys(array_filter($db->all('lineChat'), fn($ch) => is_array($ch) && empty($ch['userId']) && ($ch['iconHash'] ?? '') === $pic));
+        $hit = array_keys(array_filter($db->all('lineChat'), fn($ch) => is_array($ch) && empty($ch['userId']) && strlen((string) ($ch['iconDhash'] ?? '')) === 16 && self::hamming($pic, (string) $ch['iconDhash']) <= 10));
         if (count($hit) !== 1) {
             return false;
         }
@@ -421,8 +529,8 @@ final class LineLink
             return [(string) $seen['userId']];
         }
         $all = $db->all('lineContact');
-        $icon = (string) ($seen['iconHash'] ?? '');
-        $hit = $icon !== '' ? array_keys(array_filter($all, fn($c) => is_array($c) && ($c['pictureHash'] ?? '') === $icon)) : [];
+        $icon = (string) ($seen['iconDhash'] ?? '');
+        $hit = strlen($icon) === 16 ? array_keys(self::nearByPicture($all, $icon)) : [];
         if (!$hit && ($seen['name'] ?? '') !== '') {
             $key = search_key((string) $seen['name']);
             $hit = array_keys(array_filter($all, fn($c) => is_array($c) && !empty($c['displayName']) && search_key((string) $c['displayName']) === $key));
@@ -430,7 +538,7 @@ final class LineLink
         return array_map('strval', array_slice($hit, 0, 20));
     }
 
-    /** LINE のプロフィール：表示名と画像の番号（profile.line-scdn.net/ のあとの部分。管理画面の画像と見比べる）。取れなければ null */
+    /** LINE のプロフィール：表示名と画像のアドレス。取れなければ null */
     private static function profile(string $uid): ?array
     {
         $tok = Reminder::lineToken();
@@ -446,7 +554,7 @@ final class LineLink
         if (!is_array($j) || !is_string($j['displayName'] ?? null)) {
             return null;
         }
-        $pic = preg_match('#^https://s?profile\.line-scdn\.net/([A-Za-z0-9_-]{10,200})#', (string) ($j['pictureUrl'] ?? ''), $m) ? $m[1] : '';
+        $pic = preg_match('#^https://s?profile\.line-scdn\.net/[A-Za-z0-9_-]{10,200}$#', (string) ($j['pictureUrl'] ?? '')) ? (string) $j['pictureUrl'] : '';
         return ['name' => mb_substr($j['displayName'], 0, 60), 'picture' => $pic];
     }
 

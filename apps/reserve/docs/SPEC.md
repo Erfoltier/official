@@ -29,6 +29,7 @@
 | 入口 | Apache（`/etc/httpd/conf.d/20-ishida-https.conf`）。Basic認証 `/etc/httpd/ishida.htpasswd`。証明書は certbot（自動更新） |
 | 控え | 反映・データ操作ごと：`/srv/reserve/private/data/backups/`（新しい40件）。毎日：AWS Backup `ishida-daily`（3時ごろ、サーバー丸ごとのスナップショット） |
 | S3 | `ishida-deploy-…`（反映する一式）・`ishida-audit-logs-…`・`ishida-ops-logs-…`・`ishida-web-backup-…` |
+| PHP の拡張 | pdo_sqlite・openssl・curl・gd（gd は 10/27 に追加。LINE の画像の指紋に使う） |
 | 操作の入口 | AWS SSM（AWS-RunShellScript）。SSH は閉じている。IAM：Claude Code は claude-ops、ChatGPT／Codex は chatgpt-ops |
 | 旧ロリポップ | 予約システム・データは削除済み（10/16）。残るのは ishidahihuka.jp/reserve/ → reserve.ishidahihuka.jp の転送、ホームページ（WordPress）、メール（SMTP 送信に使う）、ネオボワール配布用スクリプト |
 
@@ -95,8 +96,8 @@
 - 予約詳細の「LINEで連絡 ↗」：管理画面（chat.line.biz）のその人のチャットを新しいタブで開く（`GET patients/{id}/line-chat` → `LineLink::chatInfo`）
   - LINE は「送る宛先＝利用者ID」と「管理画面のチャットID」を別々に付け、対応を API で教えない。対応表は `lineContact.chatId`、公式アカウントの番号（URL の前半）は meta `lineChatAccount`
   - 対応表にない人は、チャット一覧を開いて LINE の表示名をコピーする（検索欄に貼るだけ）
-  - 対応表は Chrome 拡張「LINE チャット連携」（`extensions/line-chat/`。build:static の前に `scripts/zip-extension.mjs` が `public/integrations/line-chat-extension.zip` にまとめる）が自動で作る。スタッフが管理画面でチャットを開くたびに、URL のチャットID・トークに出ている予約申請ID・見出しの名前・プロフィール画像の番号を `POST integration/line-chats`（鍵 `lc_`＝設定 → 外部機器の連携 →「LINE チャット連携」）へ送る。トークの本文は送らない
-  - 結びつけ（`LineLink::learnChat`）：予約申請ID → プロフィール画像（`lineContact.pictureHash`。友だち取り込み・Webhook で保存）→ 表示名（1人だけのとき）。申請IDが別々の人を指す・画像が合わないときは結びつけない。見出しの名前は `chatName` に残し、手動連携の検索に使う
+  - 対応表は Chrome 拡張「LINE チャット連携」（`extensions/line-chat/`。build:static の前に `scripts/zip-extension.mjs` が `public/integrations/line-chat-extension.zip` にまとめる）が自動で作る。スタッフが管理画面でチャットを開くたびに、URL のチャットID・トークに出ている予約申請ID・見出しの名前・プロフィール画像の見た目の指紋（dHash。拡張機能の background.js で作る）を `POST integration/line-chats`（鍵 `lc_`＝設定 → 外部機器の連携 →「LINE チャット連携」）へ送る。トークの本文は送らない
+  - 結びつけ（`LineLink::learnChat`）：予約申請ID → プロフィール画像の見た目（`lineContact.pictureDhash`。友だち取り込み・Webhook で LINE の画像の小さい版から作る。`LineLink::dhash`。10 ビット以内で、2番目より 8 ビット以上近いときだけ）→ 表示名（1人だけのとき）。申請IDが別々の人を指す・画像が 16 ビットより離れるときは結びつけない。画像のアドレスの番号は表示する場所ごとに変わるので照合に使えない（10/27 に確認）。同じ写真なら大きさが違っても 0〜4 ビット、別の人は 26 ビット以上離れる（本番の画像で確認）。見出しの名前は `chatName` に残し、手動連携の検索に使う
   - 手動の連携（「LINEと連携…」）も残す。検索欄に管理画面のチャットの URL を貼ると、拡張機能が見たそのチャットの人（決まっていなければ同じ画像・同じ表示名の人）が候補に出て、連携と同時にチャットも覚える（`linkPatientLine` の chatId → `LineLink::bindChat`）。一覧から選んだときも、拡張機能が見て決まらなかったチャットに同じ画像のものが1つだけあればつなぐ（`bindSeenChat`）。手動の連携1回でリマインドと「LINEで連絡」の両方が通じる（院長の指示）。開いたチャットは `lineChat`（チャットID・見出しの名前・画像の番号）に残す
   - 患者ごとの手作業にはしない（院長の指示）。管理画面の作りが変わって読めなくなっても、一覧＋表示名コピーで連絡は続けられる
 

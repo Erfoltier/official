@@ -1,16 +1,48 @@
 // 拡張機能から LANE RESERVE へ送る（管理画面のページからは直接送れないため、ここで送る）
 const SERVER = "https://reserve.ishidahihuka.jp";
 
+/**
+ * プロフィール画像の見た目の指紋（dHash）。LANE RESERVE の LineLink::dhash と同じ計算：
+ * 64×64 → 9×8 に縮め、各行でとなりより明るいかの 8 ビット × 8 行を16進に。画像そのものは送らない
+ */
+async function dhash(url) {
+  const blob = await (await fetch(url)).blob();
+  const bmp = await createImageBitmap(blob);
+  const mid = new OffscreenCanvas(64, 64);
+  const mc = mid.getContext("2d");
+  mc.imageSmoothingQuality = "high";
+  mc.drawImage(bmp, 0, 0, 64, 64);
+  const small = new OffscreenCanvas(9, 8);
+  const sc = small.getContext("2d");
+  sc.imageSmoothingQuality = "high";
+  sc.drawImage(mid, 0, 0, 9, 8);
+  const px = sc.getImageData(0, 0, 9, 8).data;
+  let hex = "";
+  for (let y = 0; y < 8; y++) {
+    const row = [];
+    for (let x = 0; x < 9; x++) {
+      const i = (y * 9 + x) * 4;
+      row.push(0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]);
+    }
+    let bits = 0;
+    for (let x = 0; x < 8; x++) bits = (bits << 1) | (row[x] < row[x + 1] ? 1 : 0);
+    hex += bits.toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (!msg || msg.type !== "learn") return;
   chrome.storage.local.get(["token"], async ({ token }) => {
     if (!token) return;
     let last;
     try {
+      const { iconUrl, ...data } = msg.data;
+      if (iconUrl) data.iconDhash = await dhash(iconUrl).catch(() => "");
       const r = await fetch(`${SERVER}/api/v1/integration/line-chats`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Token": token },
-        body: JSON.stringify(msg.data),
+        body: JSON.stringify(data),
       });
       const j = await r.json().catch(() => ({}));
       last = { at: new Date().toISOString(), status: r.status, ok: !!j.ok, how: j.how || "", reason: j.reason || "" };

@@ -269,6 +269,18 @@ describe("未連携の患者に、手動で LINE を連携する", () => {
 });
 
 describe("LINE チャット連携（Chrome 拡張）", () => {
+  it("プロフィール画像の指紋は、同じ写真なら大きさが違ってもほぼ同じ、別の写真なら大きく違う", async () => {
+    const [same, other] = await h.srv.php<[number, number]>(`
+      $draw = function (int $size, bool $flip) { $im = imagecreatetruecolor($size, $size);
+        for ($x = 0; $x < $size; $x++) for ($y = 0; $y < $size; $y++) { $v = (int) (255 * ($flip ? ($size - $x) : $x) / $size * (0.5 + 0.5 * $y / $size)); imagesetpixel($im, $x, $y, imagecolorallocate($im, $v, (int) ($v * 0.8), 255 - $v)); }
+        ob_start(); imagepng($im); return ob_get_clean(); };
+      $ham = fn($a, $b) => array_sum(array_map(fn($i) => substr_count(decbin(hexdec(substr($a, $i, 2)) ^ hexdec(substr($b, $i, 2))), '1'), range(0, 14, 2)));
+      $a = LineLink::dhash($draw(400, false)); $b = LineLink::dhash($draw(60, false)); $c = LineLink::dhash($draw(400, true));
+      return [$ham($a, $b), $ham($a, $c)];`);
+    expect(same).toBeLessThanOrEqual(4);
+    expect(other).toBeGreaterThan(20);
+  });
+
   it("開いたチャットを、予約申請ID・プロフィール画像・表示名で患者の LINE に結びつけ、「LINEで連絡」で直接開ける", async () => {
     const c = await h.srv.as("staff-admin");
     const { token } = await c.post("/device-links", { source: "linechat", name: "受付" });
@@ -278,8 +290,11 @@ describe("LINE チャット連携（Chrome 拡張）", () => {
     const U2 = "U" + "2".repeat(32);
     const RID = "R20261027100000AB12CD05";
     // 友だち（表示名と画像）と、U1 の予約申請
-    await h.srv.php(`Db::i()->put('lineContact', '${U1}', ['userId' => '${U1}', 'displayName' => 'はなこ', 'pictureHash' => 'PIC1xxxxxxxxxx']);
-      Db::i()->put('lineContact', '${U2}', ['userId' => '${U2}', 'displayName' => 'Taro', 'pictureHash' => 'PIC2xxxxxxxxxx']); return true;`);
+    // 画像の指紋（dHash）：同じ写真なら数ビット違い、別の人は大きく違う
+    const P1 = "f0f0f0f0f0f0f0f0";
+    const P2 = "0f0f0f0f0f0f0f0f";
+    await h.srv.php(`Db::i()->put('lineContact', '${U1}', ['userId' => '${U1}', 'displayName' => 'はなこ', 'pictureDhash' => '${P1}']);
+      Db::i()->put('lineContact', '${U2}', ['userId' => '${U2}', 'displayName' => 'Taro', 'pictureDhash' => '${P2}']); return true;`);
     const dir = path.join(h.srv.dir, "intake");
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, `${RID}.json`), JSON.stringify({ requestId: RID, type: "reservation_intake", source: { userId: U1 }, intake: { name: "連携 花子" } }));
@@ -290,13 +305,13 @@ describe("LINE チャット連携（Chrome 拡張）", () => {
     expect((await send({ account: A, chatId: "U" + "c".repeat(32) }, "lc_" + "0".repeat(40))).status).toBe(401);
     // 申請IDで結びつく。見出しの名前（院で付けた名前）も残り、検索で使える
     const C1 = "U" + "c".repeat(32);
-    expect((await send({ account: A, chatId: C1, requestIds: [RID], name: "連携花子（院で付けた名前）", iconHash: "PIC1xxxxxxxxxx" })).data).toEqual({ ok: true, how: "request" });
+    expect((await send({ account: A, chatId: C1, requestIds: [RID], name: "連携花子（院で付けた名前）", iconDhash: "f0f0f0f0f0f0f0f1" })).data).toEqual({ ok: true, how: "request" });
     expect(await c.get(`/patients/${p.id}/line-chat`)).toMatchObject({ chatUrl: `https://chat.line.biz/${A}/chat/${C1}` });
     expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("院で付けた")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([U1]);
-    // 画像だけでも結びつく。申請IDの人と画像が違えば結びつけない
+    // 画像の見た目だけでも結びつく（少し違っても同じ写真なら）。申請IDの人と画像が違えば結びつけない
     const C2 = "U" + "d".repeat(32);
-    expect((await send({ account: A, chatId: C2, iconHash: "PIC2xxxxxxxxxx" })).data).toEqual({ ok: true, how: "picture" });
-    expect((await send({ account: A, chatId: C2, requestIds: [RID], iconHash: "PIC2xxxxxxxxxx" })).data).toEqual({ ok: false, reason: "picture_mismatch" });
+    expect((await send({ account: A, chatId: C2, iconDhash: "0f0f0f0f0f0f0f0e" })).data).toEqual({ ok: true, how: "picture" });
+    expect((await send({ account: A, chatId: C2, requestIds: [RID], iconDhash: P2 })).data).toEqual({ ok: false, reason: "picture_mismatch" });
     // 手がかりがなければ結びつけない。別の公式アカウントは断る
     expect((await send({ account: A, chatId: "U" + "e".repeat(32), name: "だれでもない" })).data).toEqual({ ok: false, reason: "not_found" });
     expect((await send({ account: "U" + "b".repeat(32), chatId: C1, requestIds: [RID] })).data).toEqual({ ok: false, reason: "other_account" });
@@ -304,8 +319,8 @@ describe("LINE チャット連携（Chrome 拡張）", () => {
     // 手動の連携：同じ表示名が2人いて自動では決まらないチャットも、URL を貼って選べば、リマインドと「LINEで連絡」の両方が一度に通じる
     const U3 = "U" + "3".repeat(32);
     const U4 = "U" + "4".repeat(32);
-    await h.srv.php(`Db::i()->put('lineContact', '${U3}', ['userId' => '${U3}', 'displayName' => '同名', 'pictureHash' => '']);
-      Db::i()->put('lineContact', '${U4}', ['userId' => '${U4}', 'displayName' => '同名', 'pictureHash' => '']); return true;`);
+    await h.srv.php(`Db::i()->put('lineContact', '${U3}', ['userId' => '${U3}', 'displayName' => '同名']);
+      Db::i()->put('lineContact', '${U4}', ['userId' => '${U4}', 'displayName' => '同名']); return true;`);
     const C3 = "U" + "f".repeat(32);
     expect((await send({ account: A, chatId: C3, name: "同名" })).data).toEqual({ ok: false, reason: "not_found" });
     const q = await c.post("/patients", { name: "手動 同名", kana: "シュドウ ドウメイ" });
