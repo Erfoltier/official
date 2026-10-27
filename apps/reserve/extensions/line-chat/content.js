@@ -17,9 +17,19 @@ function collect() {
     (cols[k] = cols[k] || new Set()).add(i.src);
   }
   const listCol = Object.keys(cols).sort((x, y) => cols[y].size - cols[x].size)[0];
-  const listRight = listCol !== undefined && cols[listCol].size >= 3
-    ? Math.max(...all.filter((i) => Math.round(i.getBoundingClientRect().left / 50) === +listCol).map((i) => i.getBoundingClientRect().right))
-    : window.innerWidth * 0.3;
+  // チャット一覧の右端：アイコンの列だけでなく、その横の名前・最後のメッセージ（ほかの患者の申請IDが出る）まで含む枠の右端。
+  // 一覧のアイコンをすべて含むいちばん内側の枠を一覧とみなす
+  let listRight = window.innerWidth * 0.3;
+  if (listCol !== undefined && cols[listCol].size >= 3) {
+    const listIcons = all.filter((i) => Math.round(i.getBoundingClientRect().left / 50) === +listCol);
+    listRight = Math.max(...listIcons.map((i) => i.getBoundingClientRect().right));
+    let box = listIcons[0].parentElement;
+    while (box && box !== document.body && !listIcons.every((i) => box.contains(i))) box = box.parentElement;
+    if (box && box !== document.body) {
+      const r = box.getBoundingClientRect().right;
+      if (r < window.innerWidth * 0.6) listRight = Math.max(listRight, r);
+    }
+  }
   const icons = all.filter((i) => i.getBoundingClientRect().left > listRight + 10);
   const minLeft = Math.min(...icons.map((i) => i.getBoundingClientRect().left));
   const count = {};
@@ -27,12 +37,14 @@ function collect() {
   const iconUrl = Object.keys(count).sort((a, b) => count[b] - count[a])[0] || "";
   // 名前は、確実に読める場所がわかるまで送らない（画面上部の院のアカウント名を読まないように）
   const name = "";
-  // トーク欄に出ている予約申請ID
+  // トーク欄に出ている予約申請ID（相手のアイコンが見えていれば、その左端より右だけ。トークの吹き出しはアイコンの右に出る）
+  const talkLeft = iconUrl ? Math.max(listRight + 10, minLeft - 20) : listRight + 10;
   const ids = new Set();
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     const found = n.nodeValue.match(/R\d{14}[0-9A-F]{8}/gi);
-    if (found && n.parentElement && n.parentElement.getBoundingClientRect().left > listRight + 10) found.forEach((s) => ids.add(s.toUpperCase()));
+    const r = found && n.parentElement ? n.parentElement.getBoundingClientRect() : null;
+    if (r && r.width > 0 && r.left > talkLeft) found.forEach((s) => ids.add(s.toUpperCase()));
   }
   return { account: m[1], chatId: m[2], name: name.slice(0, 60), iconUrl, requestIds: [...ids].slice(0, 10) };
 }
