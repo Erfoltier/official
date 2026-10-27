@@ -16,7 +16,7 @@ final class LaneBookingSafety
     {
         $p = require __DIR__ . '/LaneBookingPolicy.php';
         if (!is_array($p) || ($p['mode'] ?? '') !== 'fixed_test'
-            || ($p['patientName'] ?? '') !== '試験 太郎'
+            || !in_array($p['patientName'] ?? '', ['試験 太郎', '試験 花子'], true)
             || ($p['laneId'] ?? '') !== 'lane-main'
             || ($p['menuId'] ?? '') !== 'menu-s000099B91'
             || ($p['menuName'] ?? '') !== 'シミまとめ標準20分'
@@ -27,6 +27,11 @@ final class LaneBookingSafety
             || !is_string($p['revision'] ?? null) || $p['revision'] === '') {
             self::fail('policy_invalid');
         }
+        if ($p['patientName'] === '試験 花子'
+            && (($p['patientId'] ?? '') !== 'p-new-muw2qgcj-124d9a'
+                || ($p['revision'] ?? '') !== 'fixed-hanako-20261027-v1'
+                || ($p['requestId'] ?? '') !== 'R20261027LaneHanako1230Main1100'
+                || ($p['date'] ?? '') !== '2026-12-30' || $p['start'] !== 660 || $p['end'] !== 680)) self::fail('hanako_scope');
         $d = DateTimeImmutable::createFromFormat('!Y-m-d', (string) ($p['date'] ?? ''), new DateTimeZone('Asia/Tokyo'));
         if (!$d || $d->format('Y-m-d') !== $p['date'] || $d->format('N') !== '3') self::fail('pilot_date_invalid');
         return $p;
@@ -149,6 +154,11 @@ final class LaneBookingSafety
         if (!is_string($p['patientId']) || $p['patientId'] === '') self::fail('test_patient_not_bound');
         $patient = Db::i()->get('patient', $p['patientId']);
         if (!$patient || !empty($patient['deleted']) || self::normalizeName((string) ($patient['name'] ?? '')) !== self::normalizeName($p['patientName'])) self::fail('test_patient_mismatch');
+        if ($p['patientName'] === '試験 花子'
+            && (self::normalizeName((string) ($patient['kana'] ?? '')) !== 'シケンハナコ'
+                || (string) ($patient['chartNo'] ?? '') !== '10087'
+                || ($patient['birthDate'] ?? '') !== '' && $patient['birthDate'] !== '2000-01-01'
+                || ($patient['phone'] ?? '') !== '' && $patient['phone'] !== '09012345678')) self::fail('hanako_identity_changed');
     }
 
     private static function minimal(array $r, array $p, array $by): array
@@ -170,12 +180,17 @@ final class LaneBookingSafety
         self::exactKeys($in, ['patientId', 'requestId', 'memo', 'slot', 'revision', 'observedAt']);
         Store::init(); $p = self::policy();
         if ($p['enabled'] !== true || $p['externalCalendarIsolated'] !== true) self::fail('pilot_disabled');
+        if ($p['patientName'] === '試験 花子'
+            && (($in['requestId'] ?? '') !== $p['requestId']
+                || !is_int($p['expiresAt'] ?? null) || $p['expiresAt'] <= time() || $p['expiresAt'] > time() + 120)) self::fail('hanako_approval_expired_or_changed');
         if ($in['patientId'] !== $p['patientId'] || !is_array($in['slot'])) self::fail('patient_or_slot_invalid');
         if (!is_string($in['requestId']) || !preg_match('/^R[0-9][A-Za-z0-9_-]{15,79}$/D', $in['requestId'])) self::fail('request_id_invalid');
         if (!is_string($in['memo']) || $in['memo'] === '' || strlen($in['memo']) > 12000 || strip_tags($in['memo']) !== $in['memo']) self::fail('memo_invalid');
         self::request($in['slot'], $p);
         $payloadHash = hash('sha256', json_encode([$in['patientId'], $in['requestId'], $in['memo'], $p['date'], $p['laneId'], $p['menuId'], $p['start'], $p['end']], JSON_THROW_ON_ERROR));
         return Db::i()->transaction(function () use ($in, $p, $by, $payloadHash) {
+            if ($p['patientName'] === '試験 花子'
+                && (self::policy() !== $p || $p['expiresAt'] <= time())) self::fail('hanako_policy_changed_or_expired');
             self::patient($p); $db = Db::i();
             $key = hash('sha256', $by['id'] . '|' . $in['requestId']);
             $receipt = $db->get('safeBookingReceipt', $key);
