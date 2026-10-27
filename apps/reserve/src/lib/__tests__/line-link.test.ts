@@ -314,6 +314,12 @@ describe("LINE チャット連携（Chrome 拡張）", () => {
     expect((await send({ account: A, chatId: C2, requestIds: [RID], iconDhash: P2 })).data).toEqual({ ok: false, reason: "picture_mismatch" });
     // 同じ画像が別のチャットでも出たら、相手の写真ではない（院のアカウントのアイコンなど）ので画像では結びつけない
     expect((await send({ account: A, chatId: "U" + "9".repeat(32), iconDhash: P2 })).data).toEqual({ ok: false, reason: "not_found" });
+    // 別々の人の申請IDが見えても、相手の写真がはっきり合う人が1人なら、その人に結びつける
+    const RID2 = "R20261027110000AB12CD06";
+    writeFileSync(path.join(dir, `${RID2}.json`), JSON.stringify({ requestId: RID2, type: "reservation_intake", source: { userId: U2 }, intake: { name: "家族" } }));
+    const C4 = "U" + "8".repeat(32);
+    expect((await send({ account: A, chatId: C4, requestIds: [RID, RID2] })).data).toEqual({ ok: false, reason: "ambiguous" });
+    expect((await send({ account: A, chatId: C4, requestIds: [RID, RID2], iconDhash: "f0f0f0f0f0f0f0f3" })).data).toEqual({ ok: true, how: "request" });
     // 手がかりがなければ結びつけない。別の公式アカウントは断る
     expect((await send({ account: A, chatId: "U" + "e".repeat(32), name: "だれでもない" })).data).toEqual({ ok: false, reason: "not_found" });
     expect((await send({ account: "U" + "b".repeat(32), chatId: C1, requestIds: [RID] })).data).toEqual({ ok: false, reason: "other_account" });

@@ -459,7 +459,12 @@ final class LineLink
             }
         }
         if (count($uids) > 1) {
-            return ['ok' => false, 'reason' => 'ambiguous'];
+            // 申請IDが別々の人を指す（家族が代わりに申請したなど）：相手の写真がはっきり合う人が1人だけなら、その人
+            $near = $icon !== '' ? array_intersect_key(self::nearByPicture($all, $icon, 6), $uids) : [];
+            if (count($near) !== 1) {
+                return ['ok' => false, 'reason' => 'ambiguous'];
+            }
+            $uids = [array_key_first($near) => true];
         }
         if ($uids) {
             [$uid, $how] = [array_key_first($uids), 'request'];
