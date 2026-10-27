@@ -91,14 +91,18 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       alive = false;
     };
   }, [patient?.id, patient?.lineUserId, maskNames]);
-  const openLineChat = () => {
-    if (!lineChat) return;
-    if (lineChat.chatUrl) {
-      window.open(lineChat.chatUrl, "_blank", "noopener");
-      return;
+  const openLineChat = async () => {
+    if (!lineChat || !patient) return;
+    // 押したときに最新の開き先を読み直す（右の詳細を開いたあとに管理画面でチャットを開いて覚えた場合も、すぐ直接開けるように）。
+    // 先にタブを開いておかないとブラウザに止められるので、空のタブを開いてから行き先を入れる
+    const tab = window.open("about:blank", "_blank");
+    const fresh = await fetchLineChat(patient.id).catch(() => lineChat);
+    if (tab) {
+      tab.opener = null;
+      tab.location.href = fresh.chatUrl ?? fresh.listUrl;
     }
+    if (fresh.chatUrl) return;
     // 対応表にまだない人：チャット一覧を開き、表示名をコピーしておく（検索欄に貼るだけで見つかる）
-    window.open(lineChat.listUrl, "_blank", "noopener");
     if (lineChat.displayName) {
       navigator.clipboard?.writeText(lineChat.displayName).then(
         () => setLineNoteOf({ pid: lineChat.pid, text: `LINE の表示名「${lineChat.displayName}」をコピーしました。開いたチャット一覧の検索欄に貼り付けてください` }),

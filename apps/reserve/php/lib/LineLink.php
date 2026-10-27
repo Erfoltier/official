@@ -295,14 +295,28 @@ final class LineLink
         return $n;
     }
 
-    /** 見た目の指紋が近い人（10 ビット以内）を近い順に */
-    private static function nearByPicture(array $all, string $dh): array
+    /**
+     * 同じ画像が別のチャットでも出ていれば、それは相手の写真ではない（院のアカウント自身のアイコンや既定の画像）。
+     * そのときは画像で結びつけない（10/27、院のアイコンを読んで別の人に結びつけたことがあったため）
+     */
+    private static function iconSeenElsewhere(string $chatId, string $icon): bool
+    {
+        foreach (Db::i()->all('lineChat') as $id => $c) {
+            if (strcasecmp((string) $id, $chatId) !== 0 && strlen((string) ($c['iconDhash'] ?? '')) === 16 && self::hamming($icon, (string) $c['iconDhash']) <= 3) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 見た目の指紋が近い人（$max ビット以内）を近い順に */
+    private static function nearByPicture(array $all, string $dh, int $max = 6): array
     {
         $near = [];
         foreach ($all as $uid => $c) {
             if (is_array($c) && strlen((string) ($c['pictureDhash'] ?? '')) === 16) {
                 $d = self::hamming($dh, (string) $c['pictureDhash']);
-                if ($d <= 10) {
+                if ($d <= $max) {
                     $near[(string) $uid] = $d;
                 }
             }
@@ -449,9 +463,9 @@ final class LineLink
         }
         if ($uids) {
             [$uid, $how] = [array_key_first($uids), 'request'];
-        } elseif ($icon !== '') {
-            // いちばん近い人が、2番目よりはっきり近いときだけ（似た写真の人を取り違えないように）
-            $near = self::nearByPicture($all, $icon);
+        } elseif ($icon !== '' && !self::iconSeenElsewhere($chatId, $icon)) {
+            // ほぼ同じ写真（6 ビット以内）で、2番目よりはっきり近いときだけ（似た写真の人を取り違えないように）
+            $near = self::nearByPicture($all, $icon, 6);
             $ds = array_values($near);
             if ($ds && (count($ds) === 1 || $ds[1] >= $ds[0] + 8)) {
                 [$uid, $how] = [(string) array_key_first($near), 'picture'];
@@ -506,7 +520,7 @@ final class LineLink
         if (strlen($pic) !== 16 || !empty($c['chatId'])) {
             return false;
         }
-        $hit = array_keys(array_filter($db->all('lineChat'), fn($ch) => is_array($ch) && empty($ch['userId']) && strlen((string) ($ch['iconDhash'] ?? '')) === 16 && self::hamming($pic, (string) $ch['iconDhash']) <= 10));
+        $hit = array_keys(array_filter($db->all('lineChat'), fn($ch) => is_array($ch) && empty($ch['userId']) && strlen((string) ($ch['iconDhash'] ?? '')) === 16 && self::hamming($pic, (string) $ch['iconDhash']) <= 6));
         if (count($hit) !== 1) {
             return false;
         }

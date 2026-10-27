@@ -312,6 +312,8 @@ describe("LINE チャット連携（Chrome 拡張）", () => {
     const C2 = "U" + "d".repeat(32);
     expect((await send({ account: A, chatId: C2, iconDhash: "0f0f0f0f0f0f0f0e" })).data).toEqual({ ok: true, how: "picture" });
     expect((await send({ account: A, chatId: C2, requestIds: [RID], iconDhash: P2 })).data).toEqual({ ok: false, reason: "picture_mismatch" });
+    // 同じ画像が別のチャットでも出たら、相手の写真ではない（院のアカウントのアイコンなど）ので画像では結びつけない
+    expect((await send({ account: A, chatId: "U" + "9".repeat(32), iconDhash: P2 })).data).toEqual({ ok: false, reason: "not_found" });
     // 手がかりがなければ結びつけない。別の公式アカウントは断る
     expect((await send({ account: A, chatId: "U" + "e".repeat(32), name: "だれでもない" })).data).toEqual({ ok: false, reason: "not_found" });
     expect((await send({ account: "U" + "b".repeat(32), chatId: C1, requestIds: [RID] })).data).toEqual({ ok: false, reason: "other_account" });

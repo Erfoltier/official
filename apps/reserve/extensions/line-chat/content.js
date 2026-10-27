@@ -12,17 +12,13 @@ const inChatPane = (el) => {
 function collect() {
   const m = location.pathname.match(/^\/(U[0-9a-f]{32})\/chat\/(U[0-9a-f]{32})/i);
   if (!m) return null;
-  // 相手のプロフィール画像：トーク欄でいちばん多く出ている画像（相手の発言の横に並ぶ）。指紋は background.js で作る
-  const count = {};
-  for (const img of document.querySelectorAll('img[src*="profile.line-scdn.net"]')) {
-    if (PIC.test(img.src) && inChatPane(img)) count[img.src] = (count[img.src] || 0) + 1;
-  }
-  const iconUrl = Object.keys(count).sort((a, b) => count[b] - count[a])[0] || "";
-  // 見出しの名前：トーク欄の上のほうの header（なければプロフィール画像のある header）の1行目
-  const headers = [...document.querySelectorAll("header")];
-  const header =
-    headers.filter((h) => inChatPane(h) && h.innerText.trim()).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0] ||
-    headers.filter((h) => h.querySelector('img[src*="profile.line-scdn.net"]') && h.innerText.trim()).sort((a, b) => b.getBoundingClientRect().left - a.getBoundingClientRect().left)[0];
+  // トーク欄の見出し（相手の名前とアイコンがある header）。トーク欄に並ぶアイコンには院のアカウント自身のものも
+  // 混ざるので、相手のアイコンは見出しの中のものだけを使う。指紋は background.js で作る
+  const header = [...document.querySelectorAll("header")]
+    .filter((h) => inChatPane(h) && h.innerText.trim())
+    .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+  const img = header && [...header.querySelectorAll("img")].find((i) => PIC.test(i.src));
+  const iconUrl = img ? img.src : "";
   const name = ((header && header.innerText) || "").split("\n").map((s) => s.trim()).find(Boolean) || "";
   // トーク欄に出ている予約申請ID
   const ids = new Set();
