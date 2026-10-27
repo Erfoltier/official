@@ -179,6 +179,13 @@ try {
             Http::json(Store::receiveDevicePhoto($link, $in));
         }
     }
+    // LINE チャット連携（院のパソコンの Chrome 拡張が、管理画面で開いたチャットの番号と手がかりを送る）
+    if ($p[0] === 'integration' && ($p[1] ?? '') === 'line-chats' && $method === 'POST' && $n === 2) {
+        $link = Http::deviceLink('linechat');
+        Store::touchDeviceLink($link['id']);
+        $in = Http::readJson(8192);
+        Http::json(LineLink::learnChat(is_array($in) ? $in : []));
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));

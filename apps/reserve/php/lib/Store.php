@@ -1837,7 +1837,7 @@ final class Store
 
     // ---- 機器の連携（ネオボワールなど。院のパソコンに置いた取り込み係が写真を送ってくる） ----
 
-    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール', 'google' => 'Google連携（問診票・同意書・料金表）', 'booking' => '自動予約（予約の入力・変更・取り消し）'];
+    private const DEVICE_SOURCES = ['neovoir' => 'ネオボワール', 'google' => 'Google連携（問診票・同意書・料金表）', 'booking' => '自動予約（予約の入力・変更・取り消し）', 'linechat' => 'LINE チャット連携（Chrome 拡張）'];
 
     /** 連携の一覧と受け取りの状況（鍵そのものは返さない） */
     public static function deviceLinks(): array
@@ -1873,7 +1873,7 @@ final class Store
             throw new StoreError('invalid', '連携できない機器です');
         }
         $name = self::checkText('名前', $input['name'] ?? '', 40, false) ?: self::DEVICE_SOURCES[$source];
-        $token = ['neovoir' => 'nv_', 'google' => 'gi_', 'booking' => 'bk_'][$source] . bin2hex(random_bytes(20));
+        $token = ['neovoir' => 'nv_', 'google' => 'gi_', 'booking' => 'bk_', 'linechat' => 'lc_'][$source] . bin2hex(random_bytes(20));
         $id = new_id('dl');
         $link = ['id' => $id, 'source' => $source, 'name' => $name, 'createdAt' => now_iso(), 'createdBy' => $by, 'received' => 0];
         Db::i()->put('deviceLink', $id, [...$link, 'tokenHash' => hash('sha256', $token)]);
@@ -2699,7 +2699,7 @@ final class Store
         $byUid = [];
         foreach (Db::i()->all('lineContact') as $c) {
             if (is_array($c) && !empty($c['userId'])) {
-                $byUid[$c['userId']] = ['userId' => $c['userId'], 'displayName' => $c['displayName'] ?? '', 'lastAt' => $c['lastAt'] ?? '', 'names' => [], 'texts' => array_column((array) ($c['texts'] ?? []), 'text')];
+                $byUid[$c['userId']] = ['userId' => $c['userId'], 'displayName' => $c['displayName'] ?? '', 'lastAt' => $c['lastAt'] ?? '', 'names' => [], 'chatName' => (string) ($c['chatName'] ?? ''), 'texts' => array_column((array) ($c['texts'] ?? []), 'text')];
             }
         }
         foreach (Intake::all() as $rec) {
@@ -2708,7 +2708,7 @@ final class Store
                 continue;
             }
             $at = (string) ($rec['receivedAt'] ?? $rec['createdAt'] ?? $rec['submittedAt'] ?? '');
-            $byUid[$uid] ??= ['userId' => $uid, 'displayName' => '', 'lastAt' => '', 'names' => [], 'texts' => []];
+            $byUid[$uid] ??= ['userId' => $uid, 'displayName' => '', 'lastAt' => '', 'names' => [], 'chatName' => '', 'texts' => []];
             $n = trim((string) ($rec['intake']['name'] ?? ''));
             if ($n !== '' && !in_array($n, $byUid[$uid]['names'], true)) {
                 $byUid[$uid]['names'][] = $n;
@@ -2729,7 +2729,7 @@ final class Store
             $texts = $c['texts'];
             unset($c['texts']);
             if ($q !== '') {
-                if (!str_contains(search_key($c['displayName'] . ' ' . implode(' ', $c['names'])), $q)) {
+                if (!str_contains(search_key($c['displayName'] . ' ' . $c['chatName'] . ' ' . implode(' ', $c['names'])), $q)) {
                     // 表示名・申請の氏名で見つからなければ、患者が送った文から探し、合った文だけを見せる
                     $hit = array_values(array_filter($texts, fn($t) => str_contains(search_key((string) $t), $q)));
                     if (!$hit) {

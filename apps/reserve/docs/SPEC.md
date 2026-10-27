@@ -95,7 +95,9 @@
 - 予約詳細の「LINEで連絡 ↗」：管理画面（chat.line.biz）のその人のチャットを新しいタブで開く（`GET patients/{id}/line-chat` → `LineLink::chatInfo`）
   - LINE は「送る宛先＝利用者ID」と「管理画面のチャットID」を別々に付け、対応を API で教えない。対応表は `lineContact.chatId`、公式アカウントの番号（URL の前半）は meta `lineChatAccount`
   - 対応表にない人は、チャット一覧を開いて LINE の表示名をコピーする（検索欄に貼るだけ）
-  - 対応表は管理画面の「連絡先」一覧からまとめて作る予定（院長の確認待ち）。患者ごとの手作業にはしない（院長の指示）
+  - 対応表は Chrome 拡張「LINE チャット連携」（`extensions/line-chat/`。build:static の前に `scripts/zip-extension.mjs` が `public/integrations/line-chat-extension.zip` にまとめる）が自動で作る。スタッフが管理画面でチャットを開くたびに、URL のチャットID・トークに出ている予約申請ID・見出しの名前・プロフィール画像の番号を `POST integration/line-chats`（鍵 `lc_`＝設定 → 外部機器の連携 →「LINE チャット連携」）へ送る。トークの本文は送らない
+  - 結びつけ（`LineLink::learnChat`）：予約申請ID → プロフィール画像（`lineContact.pictureHash`。友だち取り込み・Webhook で保存）→ 表示名（1人だけのとき）。申請IDが別々の人を指す・画像が合わないときは結びつけない。見出しの名前は `chatName` に残し、手動連携の検索に使う
+  - 患者ごとの手作業にはしない（院長の指示）。管理画面の作りが変わって読めなくなっても、一覧＋表示名コピーで連絡は続けられる
 
 ## 4-2. 予約詳細（カレンダー右列）の操作
 

@@ -177,9 +177,10 @@ final class LineLink
         }
         // 表示名は1週間に1回だけ LINE に問い合わせる（変わることがあるため）
         if (empty($cur['profileAt']) || time() - strtotime((string) $cur['profileAt']) > 7 * 86400) {
-            $name = self::profileName($uid);
-            if ($name !== null) {
-                $cur['displayName'] = $name;
+            $prof = self::profile($uid);
+            if ($prof !== null) {
+                $cur['displayName'] = $prof['name'];
+                $cur['pictureHash'] = $prof['picture'];
             }
             $cur['profileAt'] = now_iso();
         }
@@ -219,7 +220,7 @@ final class LineLink
         // 表示名がまだない人だけ、20人ずつまとめて問い合わせる
         $todo = array_values(array_filter($todo, function ($uid) use ($db) {
             $cur = $db->get('lineContact', $uid);
-            return !is_array($cur) || empty($cur['displayName']);
+            return !is_array($cur) || empty($cur['displayName']) || !array_key_exists('pictureHash', $cur);
         }));
         foreach (array_chunk($todo, 20) as $chunk) {
             if ($maxSeconds !== null && microtime(true) - $started > $maxSeconds) {
@@ -234,7 +235,8 @@ final class LineLink
                     $res['added'] += isset($cur['profileAt']) ? 0 : 1;
                     $cur['profileAt'] = now_iso();
                     if (isset($names[$uid])) {
-                        $cur['displayName'] = $names[$uid];
+                        $cur['displayName'] = $names[$uid]['name'];
+                        $cur['pictureHash'] = $names[$uid]['picture'];
                         $res['named']++;
                     } else {
                         $res['failed']++;
@@ -252,7 +254,7 @@ final class LineLink
         $out = [];
         if (self::$transport !== null || !function_exists('curl_multi_init')) {
             foreach ($uids as $uid) {
-                $n = self::profileName($uid);
+                $n = self::profile($uid);
                 if ($n !== null) {
                     $out[$uid] = $n;
                 }
@@ -275,8 +277,9 @@ final class LineLink
         } while ($running && $st === CURLM_OK);
         foreach ($hs as $uid => $ch) {
             $j = curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200 ? json_decode((string) curl_multi_getcontent($ch), true) : null;
-            if (is_array($j) && is_string($j['displayName'] ?? null)) {
-                $out[$uid] = mb_substr($j['displayName'], 0, 60);
+            $prof = self::profileOf($j);
+            if ($prof !== null) {
+                $out[$uid] = $prof;
             }
             curl_multi_remove_handle($mh, $ch);
             curl_close($ch);
@@ -300,16 +303,94 @@ final class LineLink
         return ['displayName' => is_array($c) ? (string) ($c['displayName'] ?? '') : '', 'chatUrl' => $chat, 'listUrl' => $list];
     }
 
-    /** LINE のプロフィールの表示名（取れなければ null） */
-    private static function profileName(string $uid): ?string
+    /**
+     * 管理画面で開いたチャットを、LINE の利用者に結びつける（Chrome 拡張の「LINE チャット連携」から）。
+     * 手がかりの強い順：トークに出ている予約申請ID → プロフィール画像 → 表示名（同じ人が1人だけのとき）。
+     * 申請IDが別々の人を指す・画像が合わないときは結びつけない。見出しの名前（院で付けた名前のことがある）は検索用に残す
+     */
+    public static function learnChat(array $in): array
+    {
+        $acct = (string) ($in['account'] ?? '');
+        $chatId = (string) ($in['chatId'] ?? '');
+        if (!preg_match('/^U[0-9a-f]{32}$/i', $acct) || !preg_match('/^U[0-9a-f]{32}$/i', $chatId)) {
+            return ['ok' => false, 'reason' => 'invalid'];
+        }
+        $db = Db::i();
+        $known = (string) ($db->meta('lineChatAccount') ?? '');
+        if ($known === '') {
+            $db->setMeta('lineChatAccount', $acct);
+        } elseif (strcasecmp($known, $acct) !== 0) {
+            return ['ok' => false, 'reason' => 'other_account'];
+        }
+        $name = trim(mb_substr((string) ($in['name'] ?? ''), 0, 60));
+        $icon = preg_match('/^[A-Za-z0-9_-]{10,200}$/', (string) ($in['iconHash'] ?? '')) ? (string) $in['iconHash'] : '';
+        $all = $db->all('lineContact');
+        $uid = null;
+        $how = '';
+        $uids = [];
+        foreach (array_slice((array) ($in['requestIds'] ?? []), 0, 10) as $rid) {
+            $rec = is_string($rid) && preg_match('/^R\d{14}[0-9A-F]{8}$/i', $rid) ? Intake::record(strtoupper($rid)) : null;
+            $u = is_array($rec) ? (string) ($rec['source']['userId'] ?? '') : '';
+            if (preg_match('/^U[0-9a-f]{32}$/', $u)) {
+                $uids[$u] = true;
+            }
+        }
+        if (count($uids) > 1) {
+            return ['ok' => false, 'reason' => 'ambiguous'];
+        }
+        if ($uids) {
+            [$uid, $how] = [array_key_first($uids), 'request'];
+        } elseif ($icon !== '') {
+            $hit = array_keys(array_filter($all, fn($c) => is_array($c) && ($c['pictureHash'] ?? '') === $icon));
+            if (count($hit) === 1) {
+                [$uid, $how] = [(string) $hit[0], 'picture'];
+            }
+        }
+        if ($uid === null && $name !== '') {
+            $key = search_key($name);
+            $hit = array_keys(array_filter($all, fn($c) => is_array($c) && !empty($c['displayName']) && search_key((string) $c['displayName']) === $key));
+            if (count($hit) === 1) {
+                [$uid, $how] = [(string) $hit[0], 'name'];
+            }
+        }
+        if ($uid === null) {
+            return ['ok' => false, 'reason' => 'not_found'];
+        }
+        $cur = is_array($all[$uid] ?? null) ? $all[$uid] : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
+        if ($how !== 'picture' && $icon !== '' && !empty($cur['pictureHash']) && $cur['pictureHash'] !== $icon) {
+            return ['ok' => false, 'reason' => 'picture_mismatch'];
+        }
+        $db->transaction(function () use ($db, $all, $uid, $chatId, $cur, $name) {
+            // 同じチャットが別の人に付いていれば外す（1つのチャットは1人）
+            foreach ($all as $other => $c) {
+                if ($other !== $uid && is_array($c) && strcasecmp((string) ($c['chatId'] ?? ''), $chatId) === 0) {
+                    unset($c['chatId'], $c['chatName']);
+                    $db->put('lineContact', (string) $other, $c);
+                }
+            }
+            $db->put('lineContact', $uid, [...$cur, 'chatId' => $chatId, 'chatName' => $name, 'chatAt' => now_iso()]);
+        });
+        return ['ok' => true, 'how' => $how];
+    }
+
+    /** LINE のプロフィール：表示名と画像の番号（profile.line-scdn.net/ のあとの部分。管理画面の画像と見比べる）。取れなければ null */
+    private static function profile(string $uid): ?array
     {
         $tok = Reminder::lineToken();
         if ($tok === '' || (self::testMode() && self::$transport === null)) {
             return null;
         }
         [$code, $raw] = self::http('GET', self::API . '/v2/bot/profile/' . $uid, ['Authorization: Bearer ' . $tok], null);
-        $j = $code === 200 ? json_decode($raw, true) : null;
-        return is_array($j) && is_string($j['displayName'] ?? null) ? mb_substr($j['displayName'], 0, 60) : null;
+        return self::profileOf($code === 200 ? json_decode($raw, true) : null);
+    }
+
+    private static function profileOf(mixed $j): ?array
+    {
+        if (!is_array($j) || !is_string($j['displayName'] ?? null)) {
+            return null;
+        }
+        $pic = preg_match('#^https://s?profile\.line-scdn\.net/([A-Za-z0-9_-]{10,200})#', (string) ($j['pictureUrl'] ?? ''), $m) ? $m[1] : '';
+        return ['name' => mb_substr($j['displayName'], 0, 60), 'picture' => $pic];
     }
 
     /**

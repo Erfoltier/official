@@ -267,3 +267,38 @@ describe("未連携の患者に、手動で LINE を連携する", () => {
     expect((await c.get(`/patients/${p.id}/line-chat`)).chatUrl).toBe(`https://chat.line.biz/${A}/chat/${C}`);
   });
 });
+
+describe("LINE チャット連携（Chrome 拡張）", () => {
+  it("開いたチャットを、予約申請ID・プロフィール画像・表示名で患者の LINE に結びつけ、「LINEで連絡」で直接開ける", async () => {
+    const c = await h.srv.as("staff-admin");
+    const { token } = await c.post("/device-links", { source: "linechat", name: "受付" });
+    const send = (body: object, t = token) => h.srv.client().raw("POST", "/api/v1/integration/line-chats", body, { "X-Device-Token": t });
+    const A = "U" + "a".repeat(32);
+    const U1 = "U" + "1".repeat(32);
+    const U2 = "U" + "2".repeat(32);
+    const RID = "R20261027100000AB12CD05";
+    // 友だち（表示名と画像）と、U1 の予約申請
+    await h.srv.php(`Db::i()->put('lineContact', '${U1}', ['userId' => '${U1}', 'displayName' => 'はなこ', 'pictureHash' => 'PIC1xxxxxxxxxx']);
+      Db::i()->put('lineContact', '${U2}', ['userId' => '${U2}', 'displayName' => 'Taro', 'pictureHash' => 'PIC2xxxxxxxxxx']); return true;`);
+    const dir = path.join(h.srv.dir, "intake");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, `${RID}.json`), JSON.stringify({ requestId: RID, type: "reservation_intake", source: { userId: U1 }, intake: { name: "連携 花子" } }));
+    const p = await c.post("/patients", { name: "連携 花子", kana: "レンケイ ハナコ" });
+    await c.post(`/patients/${p.id}/link-line`, { userId: U1, version: p.version });
+
+    // 鍵がない・ほかの連携の鍵では入れない
+    expect((await send({ account: A, chatId: "U" + "c".repeat(32) }, "lc_" + "0".repeat(40))).status).toBe(401);
+    // 申請IDで結びつく。見出しの名前（院で付けた名前）も残り、検索で使える
+    const C1 = "U" + "c".repeat(32);
+    expect((await send({ account: A, chatId: C1, requestIds: [RID], name: "連携花子（院で付けた名前）", iconHash: "PIC1xxxxxxxxxx" })).data).toEqual({ ok: true, how: "request" });
+    expect(await c.get(`/patients/${p.id}/line-chat`)).toMatchObject({ chatUrl: `https://chat.line.biz/${A}/chat/${C1}` });
+    expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("院で付けた")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([U1]);
+    // 画像だけでも結びつく。申請IDの人と画像が違えば結びつけない
+    const C2 = "U" + "d".repeat(32);
+    expect((await send({ account: A, chatId: C2, iconHash: "PIC2xxxxxxxxxx" })).data).toEqual({ ok: true, how: "picture" });
+    expect((await send({ account: A, chatId: C2, requestIds: [RID], iconHash: "PIC2xxxxxxxxxx" })).data).toEqual({ ok: false, reason: "picture_mismatch" });
+    // 手がかりがなければ結びつけない。別の公式アカウントは断る
+    expect((await send({ account: A, chatId: "U" + "e".repeat(32), name: "だれでもない" })).data).toEqual({ ok: false, reason: "not_found" });
+    expect((await send({ account: "U" + "b".repeat(32), chatId: C1, requestIds: [RID] })).data).toEqual({ ok: false, reason: "other_account" });
+  });
+});

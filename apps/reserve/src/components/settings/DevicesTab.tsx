@@ -31,6 +31,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   const [newToken, setNewToken] = useState<string | null>(null);
   const [newGoogleKey, setNewGoogleKey] = useState<string | null>(null);
   const [newBookingKey, setNewBookingKey] = useState<string | null>(null);
+  const [newLineChatKey, setNewLineChatKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -63,6 +64,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   const active = status?.links.filter((l) => !l.revoked && l.source === "neovoir") ?? [];
   const googleKeys = status?.links.filter((l) => !l.revoked && l.source === "google") ?? [];
   const bookingKeys = status?.links.filter((l) => !l.revoked && l.source === "booking") ?? [];
+  const lineChatKeys = status?.links.filter((l) => !l.revoked && l.source === "linechat") ?? [];
   const serverUrl = typeof window === "undefined" ? "" : `${window.location.origin}${withBase("")}`.replace(/\/$/, "");
 
   return (
@@ -217,6 +219,40 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           }}
           newKey={newBookingKey}
           onCloseKey={() => setNewBookingKey(null)}
+          notify={notify}
+        />
+      )}
+
+      {isAdmin && status && (
+        <BookingKeysCard
+          title="LINE チャット連携（院のパソコンの Chrome）"
+          intro={
+            <>
+              予約詳細の「LINEで連絡」から、LINE 公式アカウントの管理画面のその患者のチャットを直接開けるようにする連携です。院のパソコンの Chrome に拡張機能を入れておくと、管理画面でチャットを開くたびに、そのチャットがどの患者かを自動で LANE RESERVE に覚えさせます（トークの本文は送りません）。
+              <br />
+              入れ方：①下で鍵を発行 ②
+              <a href={withBase("/integrations/line-chat-extension.zip")} download>
+                拡張機能（zip）をダウンロード
+              </a>
+              して展開 ③ Chrome で <code>chrome://extensions</code> を開き、右上の「デベロッパー モード」をオン →「パッケージ化されていない拡張機能を読み込む」で展開したフォルダを選ぶ ④ Chrome の右上のパズルの印から拡張機能を開き、鍵を貼って保存。LINE の管理画面を使うパソコンごとに行います。
+            </>
+          }
+          defaultName="LINE チャット連携（受付のパソコン）"
+          pasteHint="Chrome の拡張機能（LANE RESERVE LINE チャット連携）を開き、鍵の欄に貼って「保存」を押してください。"
+          keys={lineChatKeys}
+          serverUrl={serverUrl}
+          busy={busy}
+          onCreate={(name) =>
+            run(async () => {
+              const r = await createDeviceLink(name, "linechat");
+              setNewLineChatKey(r.token);
+            })
+          }
+          onRevoke={(l) => {
+            if (window.confirm(`「${l.name}」の鍵を無効にします。この鍵を入れたパソコンからは送れなくなります。よろしいですか？`)) run(() => revokeDeviceLink(l.id), "鍵を無効にしました");
+          }}
+          newKey={newLineChatKey}
+          onCloseKey={() => setNewLineChatKey(null)}
           notify={notify}
         />
       )}
@@ -439,6 +475,11 @@ function GoogleKeysCard(props: {
 
 /** 自動予約プログラム（ChatGPT など）の接続キー。予約の入力・変更・取り消しだけができる */
 function BookingKeysCard(props: {
+  /** 自動予約のほか、LINE チャット連携の鍵にも使う（見出し・説明・貼り先だけを変える） */
+  title?: string;
+  intro?: React.ReactNode;
+  defaultName?: string;
+  pasteHint?: string;
   keys: DeviceLink[];
   serverUrl: string;
   busy: boolean;
@@ -449,11 +490,15 @@ function BookingKeysCard(props: {
   notify: (t: string) => void;
 }) {
   const { keys, serverUrl, busy, newKey, onCreate, onRevoke, onCloseKey, notify } = props;
-  const [name, setName] = useState("ChatGPT 自動予約");
+  const [name, setName] = useState(props.defaultName ?? "ChatGPT 自動予約");
   const api = `${serverUrl}/api/v1/integration/booking`;
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>自動予約プログラムの接続キー（ChatGPT など）</h3>
+      <h3 className={styles.cardTitle}>{props.title ?? "自動予約プログラムの接続キー（ChatGPT など）"}</h3>
+      {props.intro ? (
+        <p className={styles.hint}>{props.intro}</p>
+      ) : (
+      <>
       <p className={styles.hint}>
         外部の自動予約プログラムが、予約の入力・変更・取り消しをするときに使う接続キーです。このキーでは、院長と同じようにカルテ・メモ・写真・問診票・同意書・見積・設定も見て変えられます（スタッフ・PIN・二要素認証・接続キーの操作と、控えからの復元はできません）。
         プログラムが入れた予約は、カレンダーの変更履歴に「自動予約（キーの名前）」と残ります。
@@ -465,6 +510,8 @@ function BookingKeysCard(props: {
         </a>{" "}
         を見てください。入口のアドレス：<code>{api}</code>
       </p>
+      </>
+      )}
       {keys.map((l) => (
         <div key={l.id} className={styles.prefRow}>
           <b>{l.name}</b>
@@ -490,7 +537,7 @@ function BookingKeysCard(props: {
               閉じる
             </button>
           </div>
-          <p className={styles.hint}>自動予約プログラムの設定（ChatGPT の GPT なら「アクション」の認証 → API キー）に貼り付けてください。チャットの本文やメールには貼り付けないでください。</p>
+          <p className={styles.hint}>{props.pasteHint ?? "自動予約プログラムの設定（ChatGPT の GPT なら「アクション」の認証 → API キー）に貼り付けてください。"}チャットの本文やメールには貼り付けないでください。</p>
         </div>
       ) : (
         <div className={styles.actions} style={{ alignItems: "center" }}>

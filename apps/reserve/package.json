@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "build:static": "BUILD_TARGET=static NEXT_PUBLIC_BASE_PATH=${BASE_PATH-/reserve} NEXT_PUBLIC_METHOD_OVERRIDE=1 next build"
+    "build:static": "BUILD_TARGET=static NEXT_PUBLIC_BASE_PATH=${BASE_PATH-/reserve} NEXT_PUBLIC_METHOD_OVERRIDE=1 next build",
+    "prebuild:static": "node scripts/zip-extension.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",
