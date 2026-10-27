@@ -1,6 +1,15 @@
 // 拡張機能から LANE RESERVE へ送る（管理画面のページからは直接送れないため、ここで送る）
 const SERVER = "https://reserve.ishidahihuka.jp";
 
+// 1.0.8 までこのパソコンだけに保存していた鍵を、同期の保存場所へ移す（入れ直し不要）
+chrome.storage.local.get(["token"], ({ token }) => {
+  if (!token) return;
+  chrome.storage.sync.get(["token"], (cur) => {
+    if (!cur.token) chrome.storage.sync.set({ token });
+    chrome.storage.local.remove("token");
+  });
+});
+
 function badge(text, color) {
   chrome.action.setBadgeText({ text });
   chrome.action.setBadgeBackgroundColor({ color });
@@ -42,7 +51,8 @@ chrome.runtime.onMessage.addListener((msg) => {
     return;
   }
   if (!msg || msg.type !== "learn") return;
-  chrome.storage.local.get(["token"], async ({ token }) => {
+  // 鍵は Chrome の同期（院の Google アカウント）で全パソコンに配る。1台で保存すれば、ほかのパソコンでは入力不要
+  chrome.storage.sync.get(["token"], async ({ token }) => {
     if (!token) return;
     let last;
     // アイコンの印で、いまの状態を見せる（…＝読み取り中、✓＝結びつけた、？＝特定できない、鍵＝鍵の問題）

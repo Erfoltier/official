@@ -2,7 +2,7 @@ const HOW = { request: "予約申請IDで結びつけました", picture: "プ�
 const WHY = { not_found: "この人は LANE RESERVE でまだ特定できません", ambiguous: "別々の人の予約申請IDが見えたので結びつけませんでした", picture_mismatch: "プロフィール画像が合わないので結びつけませんでした", other_account: "別の公式アカウントです", invalid: "読み取れませんでした" };
 
 function show() {
-  chrome.storage.local.get(["token", "last", "scan"], ({ token, last, scan }) => {
+  chrome.storage.sync.get(["token"], ({ token }) => chrome.storage.local.get(["last", "scan"], ({ last, scan }) => {
     const el = document.getElementById("state");
     if (!token) return (el.innerHTML = "<small>鍵がまだ保存されていません</small>");
     const seen = scan
@@ -12,13 +12,14 @@ function show() {
     const t = new Date(last.at).toLocaleString("ja-JP");
     const msg = last.status === 401 ? "鍵が正しくないか、止められています" : last.ok ? HOW[last.how] || "結びつけました" : WHY[last.reason] || `送れませんでした（${last.reason || last.status}）`;
     el.innerHTML = `<small>最後に開いたチャット（${t}）：${msg}</small>` + seen;
-  });
+  }));
 }
 
 document.getElementById("save").addEventListener("click", () => {
   const token = document.getElementById("token").value.trim();
   if (!/^lc_[0-9a-f]{40}$/.test(token)) return alert("lc_ で始まる鍵を貼ってください");
-  chrome.storage.local.set({ token, last: null }, () => {
+  chrome.storage.local.set({ last: null });
+  chrome.storage.sync.set({ token }, () => {
     document.getElementById("token").value = "";
     show();
   });
