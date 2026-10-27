@@ -19,8 +19,15 @@ final class LaneMutationSafety
         foreach (['patientId','patientName','reservationId','requestId','m3PatientId','m3VisitId','date','laneId','menuId','menuName','safePilotRevision'] as $key) {
             if (!is_string($p[$key] ?? null) || $p[$key] === '') self::fail('policy_binding_missing');
         }
+        if ($p['safePilotRevision'] === 'fixed-m11r-20261027-v1'
+            && ($p['patientId'] !== 'p-new-muw2osez-7b5626' || $p['patientName'] !== '試験 太郎'
+                || $p['requestId'] !== 'R20261027LaneM11R1230Main1300' || $p['m3PatientId'] !== '2117349'
+                || !preg_match('/^[0-9]+$/D', $p['m3VisitId']) || !preg_match('/^r-[A-Za-z0-9_-]{5,100}$/D', $p['reservationId'])
+                || $p['date'] !== '2026-12-30' || $p['laneId'] !== 'lane-main' || $p['menuId'] !== 'menu-x021'
+                || $p['menuName'] !== '再診 色素レーザー' || ($p['allowedStarts'] ?? null) !== [840])) self::fail('m11_scope');
         return $p;
     }
+    private static function minutes(array $p): int { return $p['safePilotRevision'] === 'fixed-m11r-20261027-v1' ? 10 : 20; }
     private static function release(array $p): void {
         if ($p['enabled'] !== true || $p['sourceCompatibilityVerified'] !== true || $p['externalCalendarIsolated'] !== true) self::fail('disabled');
         if (!str_starts_with((string)(config()['db_dsn'] ?? ''), 'sqlite:')) self::fail('sqlite_required');
@@ -55,7 +62,7 @@ final class LaneMutationSafety
     private static function target(array $t, array $p): void {
         self::keys($t, ['date','laneId','menuId','start','end']);
         foreach (['date','laneId','menuId'] as $k) if ($t[$k] !== $p[$k]) self::fail('target_scope');
-        if (!is_int($t['start']) || !is_int($t['end']) || $t['start'] % 5 || $t['end'] - $t['start'] !== 20
+        if (!is_int($t['start']) || !is_int($t['end']) || $t['start'] % 5 || $t['end'] - $t['start'] !== self::minutes($p)
             || !in_array($t['start'], $p['allowedStarts'], true)) self::fail('target_time');
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $t['date'], new DateTimeZone('Asia/Tokyo'));
         if (!$date || $date->format('Y-m-d') !== $t['date'] || $date->format('N') !== '3' || strtotime(self::iso($t['date'], $t['start'])) <= time()) self::fail('target_date');
@@ -63,7 +70,7 @@ final class LaneMutationSafety
         // Require an existing clinic definition; never run those migrations here.
         $db = Db::i(); $menu = $db->get('menu', $p['menuId']); $lane = $db->get('lane', $p['laneId']); $c = $db->meta('clinic') ?? config()['clinic'] ?? [];
         if (!$menu || empty($menu['active']) || !empty($menu['deleted']) || ($menu['name'] ?? '') !== $p['menuName']
-            || ($menu['duration']['kind'] ?? '') !== 'fixed' || ($menu['duration']['minutes'] ?? 0) !== 20 || !in_array($p['laneId'], $menu['laneIds'] ?? [], true)
+            || ($menu['duration']['kind'] ?? '') !== 'fixed' || ($menu['duration']['minutes'] ?? 0) !== self::minutes($p) || !in_array($p['laneId'], $menu['laneIds'] ?? [], true)
             || !$lane || empty($lane['active']) || !empty($lane['deleted']) || ($c['slotMin'] ?? null) !== 5
             || !is_int($c['dayStartMin'] ?? null) || !is_int($c['dayEndMin'] ?? null) || $t['start'] < $c['dayStartMin'] || $t['end'] > $c['dayEndMin']) self::fail('catalog_changed');
         $note = $db->get('dayNote', $p['date'] . '|' . $p['laneId']);
@@ -112,8 +119,16 @@ final class LaneMutationSafety
             $sourceStart = strtotime($r['startAt'] ?? ''); $sourceEnd = strtotime($r['endAt'] ?? '');
             if (($r['version'] ?? null) !== $in['version'] || ($r['status'] ?? '') !== 'booked' || ($r['laneId'] ?? '') !== $p['laneId']
                 || ($r['menuIds'] ?? []) !== [$p['menuId']] || substr($r['startAt'] ?? '',0,10) !== $p['date']
-                || substr($r['endAt'] ?? '',0,10) !== $p['date'] || $sourceStart === false || $sourceEnd === false || $sourceStart <= time() || $sourceEnd - $sourceStart !== 1200
+                || substr($r['endAt'] ?? '',0,10) !== $p['date'] || $sourceStart === false || $sourceEnd === false || $sourceStart <= time() || $sourceEnd - $sourceStart !== self::minutes($p) * 60
                 || $m['startAt'] !== $r['startAt'] || $m['endAt'] !== $r['endAt']) self::fail('source_conflict');
+            if ($p['safePilotRevision'] === 'fixed-m11r-20261027-v1') {
+                $change = $in['operation'] === 'change';
+                if ($in['operationId'] !== $p['requestId'] . ($change ? 'Change' : 'Cancel')
+                    || $in['version'] !== ($change ? 1 : 2)
+                    || $r['startAt'] !== self::iso($p['date'], $change ? 780 : 840)
+                    || $r['endAt'] !== self::iso($p['date'], $change ? 790 : 850)
+                    || $approval['expiresAt'] <= time() || $approval['expiresAt'] > time() + 120) self::fail('m11_sequence');
+            }
             if (!is_string($r['memo'] ?? null) || !hash_equals($in['memoHash'],hash('sha256',$r['memo']))
                 || preg_match('/Air予約番号\s*[:：]/u',strip_tags($r['memo'])) === 1 || !empty($r['fromAir'])
                 || ($r['reminder']['status'] ?? '') !== 'skipped' || ($r['reminder']['reason'] ?? '') !== 'fixed_test_pilot') self::fail('memo_origin_notification');
