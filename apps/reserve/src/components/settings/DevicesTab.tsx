@@ -230,11 +230,11 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
             <>
               予約詳細の「LINEで連絡」から、LINE 公式アカウントの管理画面のその患者のチャットを直接開けるようにする連携です。院のパソコンの Chrome に拡張機能を入れておくと、管理画面でチャットを開くたびに、そのチャットがどの患者かを自動で LANE RESERVE に覚えさせます（トークの本文は送りません）。
               <br />
-              入れ方：①下で鍵を発行 ②
+              入れ方（パソコンごとに最初の1回）：① パソコン版 Google ドライブに院のアカウントでログインし、「LANE RESERVE LINEチャット連携（Chrome拡張）」フォルダを「オフラインで使用可能」にする ② Chrome に院のアカウントでログイン（同期オン） ③ <code>chrome://extensions</code> で「デベロッパー モード」をオン →「パッケージ化されていない拡張機能を読み込む」でそのフォルダを選ぶ ④ 拡張機能を開いて「鍵がまだ保存されていません」と出たときだけ、下で発行した鍵を貼って保存。詳しくはマニュアル13章。ドライブが使えないときは
               <a href={withBase("/integrations/line-chat-extension.zip")} download>
-                拡張機能（zip）をダウンロード
+                拡張機能（zip）
               </a>
-              して展開 ③ Chrome で <code>chrome://extensions</code> を開き、右上の「デベロッパー モード」をオン →「パッケージ化されていない拡張機能を読み込む」で展開したフォルダを選ぶ ④ Chrome の右上のパズルの印から拡張機能を開き、鍵を貼って保存。LINE の管理画面を使うパソコンごとに行います。
+              を展開したフォルダでも動きます。
             </>
           }
           defaultName="LINE チャット連携（受付のパソコン）"
