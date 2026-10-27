@@ -37,6 +37,10 @@ async function dhash(url) {
 }
 
 chrome.runtime.onMessage.addListener((msg) => {
+  if (msg && msg.type === "switch") {
+    badge("…", "#888888");
+    return;
+  }
   if (!msg || msg.type !== "learn") return;
   chrome.storage.local.get(["token"], async ({ token }) => {
     if (!token) return;

@@ -37,14 +37,36 @@ function collect() {
   return { account: m[1], chatId: m[2], name: name.slice(0, 60), iconUrl, requestIds: [...ids].slice(0, 10) };
 }
 
-// 管理画面は画面を切り替えても URL だけが変わるので、2秒ごとに見て、変わったときだけ送る
+// 管理画面はチャットを切り替えても、ページは読み込み直さず（F5 にならず）、URL が先に変わって中身があとから入れ替わる。
+// 1秒ごとに読み、同じ内容が2回続いた（画面が落ち着いた）ときだけ送る。切り替えの途中で前の人のアイコンを送らないように
+// 前のチャットで読めたアイコン・予約申請IDが新しいチャットでも見えたら、入れ替わる前の画面の残りとみなして使わない
+// （1人に1チャットなので、別のチャットに同じ人のものは出ない）
+let pendingKey = "";
+let curChat = "";
+let prev = { chatId: "", iconUrl: "", ids: [] };
+let shown = { chatId: "", iconUrl: "", ids: [] };
 setInterval(() => {
   const d = collect();
   if (!d) return;
+  if (d.chatId !== curChat) {
+    // 別の患者のチャットに移った：読み取り中の印を出し、前のチャットの読み取り結果を覚えておく
+    if (curChat) prev = shown.chatId === curChat ? shown : { chatId: curChat, iconUrl: "", ids: [] };
+    curChat = d.chatId;
+    chrome.runtime.sendMessage({ type: "switch" });
+  }
+  if (prev.chatId && prev.chatId !== d.chatId) {
+    if (d.iconUrl && d.iconUrl === prev.iconUrl) d.iconUrl = "";
+    d.requestIds = d.requestIds.filter((x) => !prev.ids.includes(x));
+  }
+  shown = { chatId: d.chatId, iconUrl: d.iconUrl || (shown.chatId === d.chatId ? shown.iconUrl : ""), ids: d.requestIds };
   const key = [d.chatId, d.requestIds.join(","), d.iconUrl, d.name].join("|");
+  if (key !== pendingKey) {
+    pendingKey = key;
+    return;
+  }
   if (key === lastKey) return;
   lastKey = key;
   // 何が読めたか（中身ではなく、あるかないか）を拡張機能の画面に出す
   chrome.storage.local.set({ scan: { at: new Date().toISOString(), ids: d.requestIds.length, icon: !!d.iconUrl, name: !!d.name } });
   chrome.runtime.sendMessage({ type: "learn", data: d });
-}, 2000);
+}, 1000);
