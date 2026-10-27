@@ -12,14 +12,23 @@ const inChatPane = (el) => {
 function collect() {
   const m = location.pathname.match(/^\/(U[0-9a-f]{32})\/chat\/(U[0-9a-f]{32})/i);
   if (!m) return null;
-  // トーク欄の見出し（相手の名前とアイコンがある header）。トーク欄に並ぶアイコンには院のアカウント自身のものも
-  // 混ざるので、相手のアイコンは見出しの中のものだけを使う。指紋は background.js で作る
-  const header = [...document.querySelectorAll("header")]
-    .filter((h) => inChatPane(h) && h.innerText.trim())
-    .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
-  const img = header && [...header.querySelectorAll("img")].find((i) => PIC.test(i.src));
-  const iconUrl = img ? img.src : "";
-  const name = ((header && header.innerText) || "").split("\n").map((s) => s.trim()).find(Boolean) || "";
+  // 相手のアイコン：トーク欄では相手の発言が左にアイコン付きで並び、院の発言は右に並ぶ。
+  // トーク欄の中でいちばん左にあるアイコン（相手の発言の横）を使う。指紋は background.js で作る
+  // トーク欄の範囲は、返信を書く入力欄の左右の端で決める（左のチャット一覧のアイコンを拾わないように）
+  const box = document.querySelector("textarea");
+  const pane = box && box.getBoundingClientRect();
+  const icons = pane
+    ? [...document.querySelectorAll("img")].filter((i) => {
+        const r = i.getBoundingClientRect();
+        return PIC.test(i.src) && r.width > 0 && r.left >= pane.left - 80 && r.right <= pane.left + pane.width * 0.35;
+      })
+    : [];
+  const minLeft = Math.min(...icons.map((i) => i.getBoundingClientRect().left));
+  const count = {};
+  for (const i of icons) if (i.getBoundingClientRect().left <= minLeft + 40) count[i.src] = (count[i.src] || 0) + 1;
+  const iconUrl = Object.keys(count).sort((a, b) => count[b] - count[a])[0] || "";
+  // 名前は、確実に読める場所がわかるまで送らない（画面上部の院のアカウント名を読まないように）
+  const name = "";
   // トーク欄に出ている予約申請ID
   const ids = new Set();
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
