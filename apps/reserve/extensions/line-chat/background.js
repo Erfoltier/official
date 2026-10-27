@@ -1,6 +1,11 @@
 // 拡張機能から LANE RESERVE へ送る（管理画面のページからは直接送れないため、ここで送る）
 const SERVER = "https://reserve.ishidahihuka.jp";
 
+function badge(text, color) {
+  chrome.action.setBadgeText({ text });
+  chrome.action.setBadgeBackgroundColor({ color });
+}
+
 /**
  * プロフィール画像の見た目の指紋（dHash）。LANE RESERVE の LineLink::dhash と同じ計算：
  * 64×64 → 9×8 に縮め、各行でとなりより明るいかの 8 ビット × 8 行を16進に。画像そのものは送らない
@@ -36,6 +41,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   chrome.storage.local.get(["token"], async ({ token }) => {
     if (!token) return;
     let last;
+    // アイコンの印で、いまの状態を見せる（…＝読み取り中、✓＝結びつけた、？＝特定できない、鍵＝鍵の問題）
+    badge("…", "#888888");
     try {
       const { iconUrl, ...data } = msg.data;
       if (iconUrl) data.iconDhash = await dhash(iconUrl).catch(() => "");
@@ -50,6 +57,8 @@ chrome.runtime.onMessage.addListener((msg) => {
       last = { at: new Date().toISOString(), status: 0, ok: false, reason: String(e).slice(0, 80) };
     }
     chrome.storage.local.set({ last });
-    chrome.action.setBadgeText({ text: last.ok ? "✓" : last.status === 401 ? "鍵" : "" });
+    if (last.ok) badge("✓", "#1a7f37");
+    else if (last.status === 401) badge("鍵", "#c0392b");
+    else badge("？", "#d97706");
   });
 });
