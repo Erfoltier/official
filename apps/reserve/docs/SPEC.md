@@ -26,7 +26,7 @@
 | 設定 | `/srv/reserve/private/config.php`（暗号鍵・連携トークンなど。リポジトリに入れない） |
 | データ | `/srv/reserve/private/data/reserve.db`、バックアップは同じ場所の `backups/` |
 | 定期実行 | systemd `reserve-reminders.timer`（10分ごと）→ `php/cron/reminders.php`（apache ユーザー）。リマインド（Air の取り込みは 10/22 に終了） |
-| 入口 | Apache（`/etc/httpd/conf.d/20-ishida-https.conf`）。Basic認証 `/etc/httpd/ishida.htpasswd`。証明書は certbot（自動更新） |
+| 入口 | Apache（`/etc/httpd/conf.d/20-ishida-https.conf`）。Basic認証 `/etc/httpd/ishida.htpasswd`。Basic認証を省くのは、連携API（合言葉の見出しつき）・自動予約の入口・`GET /integrations/line-chat-privacy.html`（Chrome ウェブストアの審査用。10/27 追加）だけ。証明書は certbot（自動更新） |
 | 控え | 反映・データ操作ごと：`/srv/reserve/private/data/backups/`（新しい40件）。毎日：AWS Backup `ishida-daily`（3時ごろ、サーバー丸ごとのスナップショット） |
 | S3 | `ishida-deploy-…`（反映する一式）・`ishida-audit-logs-…`・`ishida-ops-logs-…`・`ishida-web-backup-…` |
 | PHP の拡張 | pdo_sqlite・openssl・curl・gd（gd は 10/27 に追加。LINE の画像の指紋に使う） |
