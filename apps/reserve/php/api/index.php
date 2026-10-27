@@ -202,6 +202,22 @@ try {
         $link = Http::bookingLink();
         $by = ['id' => 'booking:' . $link['id'], 'name' => '自動予約（' . $link['name'] . '）'];
         $sub = $p[2] ?? '';
+        // Fixed-test mutation candidate: existing booking authentication remains mandatory.
+        if ($sub === 'safe-mutations') {
+            require_once __DIR__ . '/../lib/LaneMutationSafety.php';
+            if ($method === 'POST' && $n === 3) {
+                Http::json(LaneMutationSafety::mutate(Http::readJson(16_384), $by));
+            }
+            // Keep existing safe-reservations GET; no new public inspection endpoint.
+            Http::json(['error'=>'not_found','message'=>'安全用APIの対象外です'],404);
+        }
+        // Insert only after the existing booking authentication and actor gate.
+        if ($sub === 'safe-patients' && $n === 3) {
+            require_once __DIR__ . '/../lib/LanePatientSafety.php';
+            if ($method === 'GET') Http::json(LanePatientSafety::inspect((string)($_GET['requestId']??''),(string)($_GET['identityHash']??''),$by));
+            if ($method === 'POST') Http::json(LanePatientSafety::create(Http::readJson(4096),$by),201);
+            Http::json(['error'=>'not_found','message'=>'安全用APIの対象外です'],404);
+        }
         // Fixed-test safety API: existing booking-link authentication above remains mandatory.
         if (str_starts_with($sub, 'safe-')) {
             require_once __DIR__ . '/../lib/LaneBookingSafety.php';

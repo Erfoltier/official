@@ -38,7 +38,7 @@
 **だれが反映しても（Claude Code・Codex・人）、必ずサーバーの `release` を使う。予約データの控えを取れなければ反映されない。**
 
 1. テストを通し、`claude/admiring-wozniak-kikcrr` にコミット・プッシュ
-2. 一式（静的書き出し＋PHP）を固めて S3 `ishida-deploy-965825500741` に `app-<コミット>.tgz` で置く
+2. `php php/tools/check-fixed-trial-package.php` で固定試験拡張5ファイル・API経路・無効設定を確認する。一式（静的書き出し＋PHP）を固め、別の一時ディレクトリに展開した `app/tools/check-fixed-trial-package.php` でも同じチェックを通してから、S3 `ishida-deploy-965825500741` に `app-<コミット>.tgz` で置く。実機試験中の有効policy・承認・鍵を配布へコピーしない
 3. サーバーで `sudo /srv/reserve/bin/release <コミット> <claude か codex>`（SSM の AWS-RunShellScript から）
    - 中身：控え（`backup before-<コミット>`）→ 展開 → `php -l` → 切り替え → 応答の確認（Basic認証のため 401 が正常）。記録は `/srv/reserve/releases/RELEASES.log`
    - 戻すとき：`sudo /srv/reserve/bin/release <前のコミット>`
@@ -133,12 +133,14 @@
 | 口 | 鍵 | 用途 |
 |---|---|---|
 | `booking/...` | `X-Booking-Token`（設定 → 外部機器 →「自動予約」で発行する `bk_` の鍵） | ChatGPT／Codex の自動予約。予約の入力・変更・取り消し・メニュー作成・患者の検索と登録。`booking/api/...` でスタッフ画面と同じ API（スタッフ・鍵・ログイン・復元は不可）。手順書：`public/integrations/booking-api.html` |
-| `booking/safe-*` | 同上 | Codex の試験予約（`LaneBookingSafety`）。患者の作成・取り消しはしない |
+| `booking/safe-*` | 同上 | Codexの固定試験。既存の予約作成・読取に加え、`safe-mutations` の変更/取消、`safe-patients` の患者登録/読取を含む。追加2系統は標準では無効 |
 | `reservations/{id}/request-id` | 連携トークン | 予約申請IDの書き込み |
 | `patients/{id}/m3-chart-no` | 連携トークン | M3 カルテ番号の書き込み |
 | `questionnaires` / `consent-templates` / `prices` / `photos` | 連携トークン・機器の鍵 | 問診票・同意書のひな形・料金・写真の受け取り |
 
 - 自動予約の操作は監査に「自動予約（鍵の名前）」で残る。試験中のため回数の制限はかけない（院長の方針）
+- 固定試験の追加処理は `LaneMutationSafety` / `LaneMutationReadback` / `LanePatientSafety` に置く。`LaneMutationPolicy` と `LanePatientPolicy` は配布時に無効・承認なし・releaseRootなしとし、通常APIや他患者の処理から使わない。対象本人・操作・版・短い承認期限・新鮮な読取証拠・独立した完了確認が必要。保存ルールの存在やファイルの配布だけを、操作の承認・完了の証拠にしない
+- 患者登録は氏名/カナ/電話の既存候補があれば拒否し、結果不明時は再登録しない。予約変更・取消は元の版/所有者/メモ/m3証拠を照合し、固定試験の通知抑止を保持する。サーバー側処理自体はm3やLINEへ送信しない
 - Air で入れた予約は、Air 終了までは自動予約から変えられない
 
 ## 9. 院長の決めたこと（変えるときは院長に確認）
