@@ -263,11 +263,9 @@
   background: var(--grad-line);
 }
 
+/* 年月・今日の文字は配色の濃い色に本文の色を混ぜ、淡い配色でも地に沈まない濃さにする */
 .title {
-  background: var(--grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: color-mix(in srgb, var(--accent-strong) 70%, var(--text));
 }
 
 .title .caret {
@@ -277,7 +275,7 @@
 .today {
   background: var(--accent-soft);
   border-color: var(--accent-line);
-  color: var(--accent-strong);
+  color: color-mix(in srgb, var(--accent-strong) 70%, var(--text));
 }
 
 .day[data-selected] {
