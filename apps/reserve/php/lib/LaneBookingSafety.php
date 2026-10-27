@@ -50,6 +50,13 @@ final class LaneBookingSafety
 
     public static function testPatient(): array
     {
+        return self::policy()['patientName'] === '試験 花子'
+            ? Store::withoutMaintenance(fn() => self::testPatientChecked())
+            : self::testPatientChecked();
+    }
+
+    private static function testPatientChecked(): array
+    {
         $p = self::policy();
         if (is_string($p['patientId'] ?? null) && $p['patientId'] !== '') {
             // Explicitly selected fixed-test ID takes precedence over name duplicates.
@@ -68,6 +75,13 @@ final class LaneBookingSafety
     }
 
     public static function constraints(): array
+    {
+        return self::policy()['patientName'] === '試験 花子'
+            ? Store::withoutMaintenance(fn() => self::constraintsChecked())
+            : self::constraintsChecked();
+    }
+
+    private static function constraintsChecked(): array
     {
         Store::init();
         $p = self::policy();
@@ -145,6 +159,13 @@ final class LaneBookingSafety
 
     public static function availability(array $r): array
     {
+        return self::policy()['patientName'] === '試験 花子'
+            ? Store::withoutMaintenance(fn() => self::availabilityChecked($r))
+            : self::availabilityChecked($r);
+    }
+
+    private static function availabilityChecked(array $r): array
+    {
         Store::init(); $p = self::policy();
         return Db::i()->transaction(fn() => self::state($r, $p));
     }
@@ -176,6 +197,13 @@ final class LaneBookingSafety
     }
 
     public static function create(array $in, array $by): array
+    {
+        return self::policy()['patientName'] === '試験 花子'
+            ? Store::withoutMaintenance(fn() => self::createChecked($in, $by))
+            : self::createChecked($in, $by);
+    }
+
+    private static function createChecked(array $in, array $by): array
     {
         self::exactKeys($in, ['patientId', 'requestId', 'memo', 'slot', 'revision', 'observedAt']);
         Store::init(); $p = self::policy();

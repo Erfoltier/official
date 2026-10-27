@@ -31,6 +31,22 @@ final class Store
     private static ?array $products = null;
     private static ?array $stages = null;
     private static ?array $seed = null;
+    private static bool $scopedTrial = false;
+
+    /** The fixed Hanako API reuses booking validation without unrelated maintenance. */
+    public static function withoutMaintenance(callable $operation): mixed
+    {
+        if (Db::i()->meta('initialized') !== true) {
+            throw new StoreError('conflict', '試験用の初期化済みデータが必要です');
+        }
+        $previous = self::$scopedTrial;
+        self::$scopedTrial = true;
+        try {
+            return $operation();
+        } finally {
+            self::$scopedTrial = $previous;
+        }
+    }
 
     public static function reset(): void
     {
@@ -47,6 +63,7 @@ final class Store
     /** 初回だけ、Airリザーブから移したレーン・メニューを入れる */
     public static function init(): void
     {
+        if (self::$scopedTrial) return;
         static $done = false;
         if ($done) {
             return;
@@ -773,7 +790,7 @@ final class Store
     private static function putReservation(array $r): void
     {
         Db::i()->put('reservation', $r['id'], $r);
-        self::linkLineFromReservation($r);
+        if (!self::$scopedTrial) self::linkLineFromReservation($r);
     }
 
     /**
