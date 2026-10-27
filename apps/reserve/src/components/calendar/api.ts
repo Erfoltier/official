@@ -438,6 +438,10 @@ export interface LineCandidate {
   lastAt: string;
   /** 患者が送った文で見つかったとき、その文（の初め） */
   matchedText?: string;
+  /** 院で付けた名前（管理画面のチャットの見出し。拡張機能が見たもの） */
+  chatName?: string;
+  /** 管理画面のチャットの URL を貼って見つけたとき、そのチャットの番号（連携すると開き先も覚える） */
+  chatId?: string;
   /** すでにこの LINE が紐付いている患者 */
   patients: { id: string; name: string }[];
 }
@@ -451,8 +455,9 @@ export function fetchLineChat(patientId: string): Promise<{ displayName: string;
   return call(`/api/v1/patients/${encodeURIComponent(patientId)}/line-chat`);
 }
 
-export function linkLine(patientId: string, userId: string, version: number): Promise<unknown> {
-  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/link-line`, { method: "POST", body: JSON.stringify({ userId, version }) });
+/** chatId（管理画面のチャットの URL から）を付けると、チャットの開き先も同時に覚える */
+export function linkLine(patientId: string, userId: string, version: number, chatId?: string): Promise<unknown> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/link-line`, { method: "POST", body: JSON.stringify({ userId, version, ...(chatId && { chatId }) }) });
 }
 
 export function unlinkLine(id: string, version: number): Promise<PatientDetail> {

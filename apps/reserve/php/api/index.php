@@ -334,12 +334,12 @@ try {
     if ($method === 'GET' && $n === 3 && $p[0] === 'patients' && $p[2] === 'line-candidates') {
         $s = $me();
         Auth::noteAccess($s, 'LINEの連携候補を表示', 'patient:' . V::id($p[1]));
-        Http::json(['items' => Store::lineCandidates(mb_substr($q('q') ?? '', 0, 40))]);
+        Http::json(['items' => Store::lineCandidates(mb_substr($q('q') ?? '', 0, 200))]);
     }
     if ($method === 'POST' && $n === 3 && $p[0] === 'patients' && $p[2] === 'link-line') {
         $s = $me();
         $in = Http::readJson();
-        Http::json(Store::linkPatientLine(V::id($p[1]), is_array($in) ? (string) ($in['userId'] ?? '') : '', is_array($in) ? (int) ($in['version'] ?? 0) : 0, $actor($s)));
+        Http::json(Store::linkPatientLine(V::id($p[1]), is_array($in) ? (string) ($in['userId'] ?? '') : '', is_array($in) ? (int) ($in['version'] ?? 0) : 0, $actor($s), is_array($in) ? (string) ($in['chatId'] ?? '') : ''));
     }
     if ($method === 'GET' && $n === 3 && $p[0] === 'patients' && $p[2] === 'line-chat') {
         $s = $me();

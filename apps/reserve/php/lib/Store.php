@@ -2723,6 +2723,16 @@ final class Store
                 $linked[$p['lineUserId']][] = ['id' => $p['id'], 'name' => $p['name']];
             }
         }
+        // 管理画面のチャットの URL を貼ったら、そのチャットの人（拡張機能が見たチャットから）。連携するとチャットも覚える
+        if (preg_match('#/chat/(U[0-9a-f]{32})#i', $query, $m)) {
+            $out = [];
+            foreach (LineLink::candidatesForChat($m[1]) as $uid) {
+                $c = $byUid[$uid] ?? ['userId' => $uid, 'displayName' => '', 'lastAt' => '', 'names' => [], 'chatName' => '', 'texts' => []];
+                unset($c['texts']);
+                $out[] = [...$c, 'chatId' => $m[1], 'patients' => $linked[$uid] ?? []];
+            }
+            return $out;
+        }
         $q = search_key($query);
         $out = [];
         foreach ($byUid as $uid => $c) {
@@ -2755,7 +2765,8 @@ final class Store
         return LineLink::chatInfo((string) $p['lineUserId']);
     }
 
-    public static function linkPatientLine(string $id, string $uid, int $version, ?array $by = null): array
+    /** スタッフが選んだ LINE を患者に連携する。$chatId（管理画面のチャットの URL から）があれば、チャットの開き先も同時に覚える */
+    public static function linkPatientLine(string $id, string $uid, int $version, ?array $by = null, string $chatId = ''): array
     {
         $cur = self::patient($id);
         if ($cur['version'] !== $version) {
@@ -2771,6 +2782,11 @@ final class Store
         $next = [...$cur, 'lineUserId' => $uid, 'version' => $cur['version'] + 1, 'updatedAt' => $now];
         self::putPatient($next);
         self::recordChange($id, ['LINE紐付け（スタッフが選択）'], $now, $by);
+        if (preg_match('/^U[0-9a-f]{32}$/i', $chatId)) {
+            LineLink::bindChat($uid, $chatId);
+        } else {
+            LineLink::bindSeenChat($uid);
+        }
         return $next;
     }
 

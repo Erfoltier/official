@@ -550,10 +550,10 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
   return (
     <div ref={boxRef}>
       <p className={styles.muted}>
-        公式アカウントの友だち（LINE の表示名）と、予約申請をした LINE（申請の氏名）が、やりとりの新しい順に並びます。表示名・申請の氏名・患者が送ったメッセージの言葉で探せます。院で付けたチャットの名前（LINE 公式アカウントの管理画面で変えた名前）は LINE から受け取れないため、探す言葉には使えません。
+        公式アカウントの友だち（LINE の表示名）と、予約申請をした LINE（申請の氏名）が、やりとりの新しい順に並びます。表示名・申請の氏名・院で付けた名前（LINE チャット連携を入れたパソコンで一度開いたチャット）・患者が送ったメッセージの言葉で探せます。LINE 公式アカウントの管理画面でその人のチャットを開き、アドレス欄の URL を貼って探すと、連携と同時に「LINEで連絡」の開き先も覚えます。
       </p>
       <div className={styles.lineRow}>
-        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="表示名・申請の氏名・メッセージの言葉で探す" aria-label="LINEの表示名で探す" style={{ flex: 1 }} />
+        <input className={styles.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="表示名・申請の氏名・メッセージの言葉、またはチャットの URL" aria-label="LINEの表示名で探す" style={{ flex: 1 }} />
         <button type="button" className={styles.btn} onClick={() => setOpen(false)}>
           閉じる
         </button>
@@ -561,7 +561,11 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
       {!items ? (
         <p className={styles.muted}>読み込み中…</p>
       ) : items.length === 0 ? (
-        <p className={styles.muted}>見つかりません。患者に公式アカウントへ何か一言送ってもらうと、ここに出ます。</p>
+        <p className={styles.muted}>
+          {/\/chat\/U[0-9a-f]{32}/i.test(q)
+            ? "このチャットはまだ LANE RESERVE に届いていません。LINE チャット連携を入れたパソコンの管理画面で、このチャットを一度開いてからもう一度貼ってください。"
+            : "見つかりません。患者に公式アカウントへ何か一言送ってもらうと、ここに出ます。"}
+        </p>
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: "6px 0", maxHeight: 280, overflow: "auto" }}>
           {items.map((c) => (
@@ -569,7 +573,9 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
               <span style={{ flex: 1, minWidth: 0 }}>
                 <b>{c.displayName || "（表示名なし）"}</b>
                 {c.names.length > 0 && <span className={styles.muted}>　申請：{c.names.join("・")}</span>}
+                {c.chatName && c.chatName !== c.displayName && <span className={styles.muted}>　院で付けた名前：{c.chatName}</span>}
                 {c.matchedText && <span className={styles.muted}>　「{c.matchedText}」</span>}
+                {c.chatId && <span className={styles.muted}>　（貼ったチャットの人。連携すると開き先も覚えます）</span>}
                 <br />
                 <small className={styles.muted}>
                   {stamp(c.lastAt)}
@@ -586,7 +592,7 @@ function LineLinkPicker(props: { patientId: string; version: number; initialOpen
                   if (!window.confirm(`「${who}」をこの患者の LINE として連携します${warn}。よろしいですか？`)) return;
                   setBusy(true);
                   try {
-                    await linkLine(props.patientId, c.userId, props.version);
+                    await linkLine(props.patientId, c.userId, props.version, c.chatId);
                     await props.onLinked();
                   } catch (e) {
                     props.onError(e instanceof Error ? e.message : "連携できませんでした");

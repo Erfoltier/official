@@ -300,5 +300,24 @@ describe("LINE チャット連携（Chrome 拡張）", () => {
     // 手がかりがなければ結びつけない。別の公式アカウントは断る
     expect((await send({ account: A, chatId: "U" + "e".repeat(32), name: "だれでもない" })).data).toEqual({ ok: false, reason: "not_found" });
     expect((await send({ account: "U" + "b".repeat(32), chatId: C1, requestIds: [RID] })).data).toEqual({ ok: false, reason: "other_account" });
+
+    // 手動の連携：同じ表示名が2人いて自動では決まらないチャットも、URL を貼って選べば、リマインドと「LINEで連絡」の両方が一度に通じる
+    const U3 = "U" + "3".repeat(32);
+    const U4 = "U" + "4".repeat(32);
+    await h.srv.php(`Db::i()->put('lineContact', '${U3}', ['userId' => '${U3}', 'displayName' => '同名', 'pictureHash' => '']);
+      Db::i()->put('lineContact', '${U4}', ['userId' => '${U4}', 'displayName' => '同名', 'pictureHash' => '']); return true;`);
+    const C3 = "U" + "f".repeat(32);
+    expect((await send({ account: A, chatId: C3, name: "同名" })).data).toEqual({ ok: false, reason: "not_found" });
+    const q = await c.post("/patients", { name: "手動 同名", kana: "シュドウ ドウメイ" });
+    const url = `https://chat.line.biz/${A}/chat/${C3}`;
+    const cands = (await c.get(`/patients/${q.id}/line-candidates?q=${encodeURIComponent(url)}`)).items;
+    expect(cands.map((x: { userId: string }) => x.userId).sort()).toEqual([U3, U4]);
+    expect(cands[0].chatId).toBe(C3);
+    await c.post(`/patients/${q.id}/link-line`, { userId: U4, version: q.version, chatId: C3 });
+    const d = await c.get(`/patients/${q.id}`);
+    expect(d.patient?.lineUserId ?? d.lineUserId).toBe(U4);
+    expect((await c.get(`/patients/${q.id}/line-chat`)).chatUrl).toBe(url);
+    // 次からはそのチャットの人だけが出る
+    expect((await c.get(`/patients/${q.id}/line-candidates?q=${encodeURIComponent(url)}`)).items.map((x: { userId: string }) => x.userId)).toEqual([U4]);
   });
 });

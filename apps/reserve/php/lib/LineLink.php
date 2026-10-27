@@ -324,6 +324,9 @@ final class LineLink
         }
         $name = trim(mb_substr((string) ($in['name'] ?? ''), 0, 60));
         $icon = preg_match('/^[A-Za-z0-9_-]{10,200}$/', (string) ($in['iconHash'] ?? '')) ? (string) $in['iconHash'] : '';
+        // 開いたチャットは、だれか決まらなくても残す（あとでスタッフがチャットの URL を貼って手動で連携するときに使う）
+        $seen = $db->get('lineChat', $chatId);
+        $db->put('lineChat', $chatId, [...(is_array($seen) ? $seen : []), 'chatId' => $chatId, 'name' => $name, 'iconHash' => $icon, 'at' => now_iso()]);
         $all = $db->all('lineContact');
         $uid = null;
         $how = '';
@@ -360,17 +363,71 @@ final class LineLink
         if ($how !== 'picture' && $icon !== '' && !empty($cur['pictureHash']) && $cur['pictureHash'] !== $icon) {
             return ['ok' => false, 'reason' => 'picture_mismatch'];
         }
-        $db->transaction(function () use ($db, $all, $uid, $chatId, $cur, $name) {
-            // 同じチャットが別の人に付いていれば外す（1つのチャットは1人）
-            foreach ($all as $other => $c) {
+        self::bindChat($uid, $chatId, $name);
+        return ['ok' => true, 'how' => $how];
+    }
+
+    /** LINE の利用者と管理画面のチャットを結びつける（1つのチャットは1人。別の人に付いていれば外す） */
+    public static function bindChat(string $uid, string $chatId, string $name = ''): void
+    {
+        $db = Db::i();
+        $db->transaction(function () use ($db, $uid, $chatId, $name) {
+            foreach ($db->all('lineContact') as $other => $c) {
                 if ($other !== $uid && is_array($c) && strcasecmp((string) ($c['chatId'] ?? ''), $chatId) === 0) {
                     unset($c['chatId'], $c['chatName']);
                     $db->put('lineContact', (string) $other, $c);
                 }
             }
-            $db->put('lineContact', $uid, [...$cur, 'chatId' => $chatId, 'chatName' => $name, 'chatAt' => now_iso()]);
+            $cur = $db->get('lineContact', $uid);
+            $cur = is_array($cur) ? $cur : ['userId' => $uid, 'firstAt' => now_iso(), 'lastAt' => '', 'lastType' => 'follower'];
+            $seen = $db->get('lineChat', $chatId);
+            $name = $name !== '' ? $name : (is_array($seen) ? (string) ($seen['name'] ?? '') : '');
+            $db->put('lineContact', $uid, [...$cur, 'chatId' => $chatId, 'chatName' => $name !== '' ? $name : ($cur['chatName'] ?? ''), 'chatAt' => now_iso()]);
+            if (is_array($seen)) {
+                $db->put('lineChat', $chatId, [...$seen, 'userId' => $uid]);
+            }
         });
-        return ['ok' => true, 'how' => $how];
+    }
+
+    /** 一覧から選んで手動で連携したとき：拡張機能が見たまま決まっていなかったチャットのうち、プロフィール画像が同じものが1つだけならつなぐ */
+    public static function bindSeenChat(string $uid): bool
+    {
+        $db = Db::i();
+        $c = $db->get('lineContact', $uid);
+        $pic = is_array($c) ? (string) ($c['pictureHash'] ?? '') : '';
+        if ($pic === '' || !empty($c['chatId'])) {
+            return false;
+        }
+        $hit = array_keys(array_filter($db->all('lineChat'), fn($ch) => is_array($ch) && empty($ch['userId']) && ($ch['iconHash'] ?? '') === $pic));
+        if (count($hit) !== 1) {
+            return false;
+        }
+        self::bindChat($uid, (string) $hit[0]);
+        return true;
+    }
+
+    /**
+     * 管理画面のチャットの URL（…/chat/U…）から、手動連携の候補を探す。拡張機能が見たチャットなら、結びついた人、
+     * または同じプロフィール画像・同じ表示名の人。見ていないチャットは空（そのチャットを一度開けば出る）
+     */
+    public static function candidatesForChat(string $chatId): array
+    {
+        $db = Db::i();
+        $seen = $db->get('lineChat', $chatId);
+        if (!is_array($seen)) {
+            return [];
+        }
+        if (!empty($seen['userId'])) {
+            return [(string) $seen['userId']];
+        }
+        $all = $db->all('lineContact');
+        $icon = (string) ($seen['iconHash'] ?? '');
+        $hit = $icon !== '' ? array_keys(array_filter($all, fn($c) => is_array($c) && ($c['pictureHash'] ?? '') === $icon)) : [];
+        if (!$hit && ($seen['name'] ?? '') !== '') {
+            $key = search_key((string) $seen['name']);
+            $hit = array_keys(array_filter($all, fn($c) => is_array($c) && !empty($c['displayName']) && search_key((string) $c['displayName']) === $key));
+        }
+        return array_map('strval', array_slice($hit, 0, 20));
     }
 
     /** LINE のプロフィール：表示名と画像の番号（profile.line-scdn.net/ のあとの部分。管理画面の画像と見比べる）。取れなければ null */
