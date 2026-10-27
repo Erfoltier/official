@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { ageSexText } from "@/lib/domain/age";
 import { CautionInline } from "@/components/patients/CautionInline";
 import type { DayBundle, PatientFile, Reservation, ReservationStatus } from "@/lib/domain/types";
-import { ApiError, fetchFiles, linkLineFromReservation, remindNow } from "./api";
+import { ApiError, fetchFiles, fetchLineChat, linkLineFromReservation, remindNow } from "./api";
 import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
 import { ChartDialog } from "@/components/charts/ChartDialog";
@@ -76,6 +76,36 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const [memo, setMemo] = useState(r.memo ?? "");
   const [reminding, setReminding] = useState(false);
   const [lineLinked, setLineLinked] = useState(false);
+  /** LINE のチャットを開く先（連携済みの患者だけ、開いたときに読む。押してすぐ新しいタブを開けるように） */
+  const [lineChatOf, setLineChatOf] = useState<{ pid: string; displayName: string; chatUrl: string | null; listUrl: string } | null>(null);
+  const [lineNoteOf, setLineNoteOf] = useState<{ pid: string; text: string } | null>(null);
+  // 別の患者に切り替えた直後に、前の患者のチャットを開かないよう、患者が合うときだけ使う
+  const lineChat = lineChatOf && lineChatOf.pid === patient?.id ? lineChatOf : null;
+  const lineNote = lineNoteOf && lineNoteOf.pid === patient?.id ? lineNoteOf.text : null;
+  useEffect(() => {
+    if (!patient?.lineUserId || maskNames) return;
+    let alive = true;
+    const pid = patient.id;
+    fetchLineChat(pid).then((v) => alive && setLineChatOf({ pid, ...v }), () => {});
+    return () => {
+      alive = false;
+    };
+  }, [patient?.id, patient?.lineUserId, maskNames]);
+  const openLineChat = () => {
+    if (!lineChat) return;
+    if (lineChat.chatUrl) {
+      window.open(lineChat.chatUrl, "_blank", "noopener");
+      return;
+    }
+    // 対応表にまだない人：チャット一覧を開き、表示名をコピーしておく（検索欄に貼るだけで見つかる）
+    window.open(lineChat.listUrl, "_blank", "noopener");
+    if (lineChat.displayName) {
+      navigator.clipboard?.writeText(lineChat.displayName).then(
+        () => setLineNoteOf({ pid: lineChat.pid, text: `LINE の表示名「${lineChat.displayName}」をコピーしました。開いたチャット一覧の検索欄に貼り付けてください` }),
+        () => setLineNoteOf({ pid: lineChat.pid, text: `LINE の表示名は「${lineChat.displayName}」です。開いたチャット一覧で探してください` }),
+      );
+    }
+  };
   /** 予約キャンセルは誤タッチで消えないよう確認を挟む。無断キャンセルはその中のチェックで分ける */
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [noShow, setNoShow] = useState(false);
@@ -612,9 +642,13 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       <div className={styles.panelSection}>
         <div className={styles.sectionLabel}>連絡</div>
         <div className={styles.contactRow}>
-          {patient?.lineUserId || maskNames ? (
-            <button className={styles.btn} disabled title={patient?.lineUserId ? "LINE での連絡は準備中です" : "この患者は LINE 未連携です"}>
-              {patient?.lineUserId ? "LINEで連絡（準備中）" : "LINE未連携"}
+          {patient?.lineUserId && !maskNames ? (
+            <button type="button" className={styles.btn} disabled={!lineChat} onClick={openLineChat} title="LINE 公式アカウントの管理画面で、この患者とのチャットを新しいタブで開きます">
+              LINEで連絡 ↗
+            </button>
+          ) : maskNames ? (
+            <button className={styles.btn} disabled>
+              {patient?.lineUserId ? "LINE連携済み" : "LINE未連携"}
             </button>
           ) : (
             <button type="button" className={styles.btn} onClick={() => onEditPatient({ line: true })} title="押すと患者画面で LINE と連携できます">
@@ -627,6 +661,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             </a>
           )}
         </div>
+        {lineNote && <p className={styles.hint}>{lineNote}</p>}
       </div>
 
       <div className={styles.panelSection}>

@@ -258,5 +258,12 @@ describe("未連携の患者に、手動で LINE を連携する", () => {
     expect(second).toMatchObject({ followers: 2, named: 0 });
     const p = await c.post("/patients", { name: "友達 雪子", kana: "トモダチ ユキコ" });
     expect((await c.get(`/patients/${p.id}/line-candidates?q=${encodeURIComponent("ゆきん")}`)).items.map((x: { userId: string }) => x.userId)).toEqual([F1]);
+    // 「LINEで連絡」：対応表にない人はチャット一覧と表示名、対応表にある人はそのチャット
+    await c.post(`/patients/${p.id}/link-line`, { userId: F1, version: p.version });
+    expect(await c.get(`/patients/${p.id}/line-chat`)).toEqual({ displayName: "ゆきんこ", chatUrl: null, listUrl: "https://chat.line.biz/" });
+    const A = "U" + "a".repeat(32);
+    const C = "U" + "c".repeat(32);
+    await h.srv.php(`Db::i()->setMeta('lineChatAccount', '${A}'); $c = Db::i()->get('lineContact', '${F1}'); $c['chatId'] = '${C}'; Db::i()->put('lineContact', '${F1}', $c); return true;`);
+    expect((await c.get(`/patients/${p.id}/line-chat`)).chatUrl).toBe(`https://chat.line.biz/${A}/chat/${C}`);
   });
 });

@@ -446,6 +446,11 @@ export function fetchLineCandidates(patientId: string, q: string): Promise<{ ite
   return call(`/api/v1/patients/${encodeURIComponent(patientId)}/line-candidates?q=${encodeURIComponent(q)}`);
 }
 
+/** 患者の LINE のチャット（管理画面）を開く先。chatUrl がなければ一覧を開いて表示名で探す */
+export function fetchLineChat(patientId: string): Promise<{ displayName: string; chatUrl: string | null; listUrl: string }> {
+  return call(`/api/v1/patients/${encodeURIComponent(patientId)}/line-chat`);
+}
+
 export function linkLine(patientId: string, userId: string, version: number): Promise<unknown> {
   return call(`/api/v1/patients/${encodeURIComponent(patientId)}/link-line`, { method: "POST", body: JSON.stringify({ userId, version }) });
 }

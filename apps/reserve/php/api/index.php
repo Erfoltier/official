@@ -334,6 +334,10 @@ try {
         $in = Http::readJson();
         Http::json(Store::linkPatientLine(V::id($p[1]), is_array($in) ? (string) ($in['userId'] ?? '') : '', is_array($in) ? (int) ($in['version'] ?? 0) : 0, $actor($s)));
     }
+    if ($method === 'GET' && $n === 3 && $p[0] === 'patients' && $p[2] === 'line-chat') {
+        $s = $me();
+        Http::json(Store::patientLineChat(V::id($p[1])));
+    }
     // 予約の申請で見つかった LINE を患者に紐付ける（スタッフが確かめて押す）
     if ($method === 'POST' && $n === 3 && $p[0] === 'reservations' && $p[2] === 'link-line') {
         $s = $me();

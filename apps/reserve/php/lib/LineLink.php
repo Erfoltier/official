@@ -285,6 +285,21 @@ final class LineLink
         return $out;
     }
 
+    /**
+     * 管理画面（chat.line.biz）でその人のチャットを開く先。LINE は「送る宛先（利用者ID）」と「管理画面のチャットID」を別々に付け、
+     * 対応を API で教えないため、対応表（lineContact の chatId）にある人は直接、ない人はチャット一覧を開く。
+     * 公式アカウントの番号（URL の前半）は meta lineChatAccount
+     */
+    public static function chatInfo(string $uid): array
+    {
+        $db = Db::i();
+        $c = $db->get('lineContact', $uid);
+        $acct = (string) ($db->meta('lineChatAccount') ?? '');
+        $list = $acct !== '' ? "https://chat.line.biz/{$acct}" : 'https://chat.line.biz/';
+        $chat = is_array($c) && !empty($c['chatId']) && $acct !== '' ? "{$list}/chat/{$c['chatId']}" : null;
+        return ['displayName' => is_array($c) ? (string) ($c['displayName'] ?? '') : '', 'chatUrl' => $chat, 'listUrl' => $list];
+    }
+
     /** LINE のプロフィールの表示名（取れなければ null） */
     private static function profileName(string $uid): ?string
     {

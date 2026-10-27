@@ -2745,6 +2745,16 @@ final class Store
     }
 
     /** 患者に LINE を手動で連携する（スタッフが表示名・申請の氏名で確かめて選ぶ）。家族で同じ LINE を使うこともあるので、ほかの患者に紐付いていても連携できる */
+    /** 予約詳細の「LINEで連絡」：患者の LINE のチャットを開く先 */
+    public static function patientLineChat(string $id): array
+    {
+        $p = self::patient($id);
+        if (empty($p['lineUserId'])) {
+            throw new StoreError('invalid', 'この患者は LINE と連携していません');
+        }
+        return LineLink::chatInfo((string) $p['lineUserId']);
+    }
+
     public static function linkPatientLine(string $id, string $uid, int $version, ?array $by = null): array
     {
         $cur = self::patient($id);
