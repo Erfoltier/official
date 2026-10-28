@@ -294,7 +294,8 @@ final class Monshin
             $bad = match ($x['type']) {
                 'date' => !is_date_string($v) ? '日付を選んでください' : null,
                 'tel' => !preg_match('/^[0-9０-９\-－ー‐()（）+＋\s]{10,20}$/u', $v) || strlen(digits_only(normalize_width($v))) < 10 ? '電話番号を数字で入力してください（例：09012345678）' : null,
-                'email' => !filter_var(normalize_width($v), FILTER_VALIDATE_EMAIL) ? 'メールアドレスの形が正しくありません' : null,
+                // docomo・au の古いアドレス（.. や @ の直前の . を含む）も受け付けるよう、@ の前後と @ の後ろの . だけを見る
+                'email' => !preg_match('/^[^\s@]+@[^\s@.][^\s@]*\.[^\s@]+$/u', normalize_width($v)) ? 'メールアドレスの形が正しくありません' : null,
                 'choice' => !in_array($v, $x['options'], true) ? '選択肢から選んでください' : null,
                 default => null,
             };

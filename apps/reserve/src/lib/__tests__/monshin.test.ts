@@ -122,3 +122,12 @@ describe("患者が入力する問診票", () => {
     expect(html).toContain('value="紹介"');
   });
 });
+
+describe("問診票のメールアドレス", () => {
+  it("docomo・au の古いアドレス（.. や @ の直前の .）も受け付け、形の崩れたものは断る", async () => {
+    const check = (v: string) =>
+      h.srv.php(`return array_keys(Monshin::validate([['id' => 'm', 'label' => 'メールアドレス', 'type' => 'email', 'required' => true, 'options' => []]], ['q_m' => ${JSON.stringify(v)}])[0]);`);
+    for (const ok of ["a..b@docomo.ne.jp", "abc.@ezweb.ne.jp", "x@gmail.com", "ｘ＠ｇｍａｉｌ．ｃｏｍ"]) expect(await check(ok), ok).toEqual([]);
+    for (const bad of ["bad", "a@b", "a@.com", "a b@x.jp"]) expect(await check(bad), bad).toEqual(["m"]);
+  });
+});
