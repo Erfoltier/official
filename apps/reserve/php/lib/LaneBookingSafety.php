@@ -15,7 +15,7 @@ final class LaneBookingSafety
     private static function policy(): array
     {
         $p = require __DIR__ . '/LaneBookingPolicy.php';
-        $m11 = is_array($p) && ($p['revision'] ?? '') === 'fixed-m11r-20261027-v1';
+        $m11 = is_array($p) && ($p['revision'] ?? '') === 'fixed-m11r-jan2027-20261028-v1';
         $minutes = $m11 ? 10 : 20;
         if (!is_array($p) || ($p['mode'] ?? '') !== 'fixed_test'
             || !in_array($p['patientName'] ?? '', ['試験 太郎', '試験 花子'], true)
@@ -31,8 +31,8 @@ final class LaneBookingSafety
         }
         if ($m11 && (($p['patientName'] ?? '') !== '試験 太郎'
             || ($p['patientId'] ?? '') !== 'p-new-muw2osez-7b5626'
-            || ($p['requestId'] ?? '') !== 'R20261027LaneM11R1230Main1300'
-            || ($p['date'] ?? '') !== '2026-12-30' || $p['start'] !== 780 || $p['end'] !== 790)) self::fail('m11_scope');
+            || ($p['requestId'] ?? '') !== 'R20261028LaneM11R0106Main1300'
+            || ($p['date'] ?? '') !== '2027-01-06' || $p['start'] !== 780 || $p['end'] !== 790)) self::fail('m11_scope');
         if ($p['patientName'] === '試験 花子'
             && (($p['patientId'] ?? '') !== 'p-new-muw2qgcj-124d9a'
                 || ($p['revision'] ?? '') !== 'fixed-hanako-20261027-v1'
@@ -45,7 +45,7 @@ final class LaneBookingSafety
 
     private static function isolated(array $p): bool
     {
-        return $p['patientName'] === '試験 花子' || $p['revision'] === 'fixed-m11r-20261027-v1';
+        return $p['patientName'] === '試験 花子' || $p['revision'] === 'fixed-m11r-jan2027-20261028-v1';
     }
 
     private static function exactKeys(array $v, array $required): void
@@ -157,7 +157,7 @@ final class LaneBookingSafety
         if (trim((string) ($note['text'] ?? '')) !== '') $unknown = true;
         sort($digest);
         $revision = hash('sha256', json_encode([$p, $catalog, $digest, $note], JSON_THROW_ON_ERROR));
-        return ['schemaVersion' => 1, 'scope' => $p['revision'] === 'fixed-m11r-20261027-v1' ? 'fixed_test_main_pigment_only' : 'fixed_test_main_spots_only',
+        return ['schemaVersion' => 1, 'scope' => $p['revision'] === 'fixed-m11r-jan2027-20261028-v1' ? 'fixed_test_main_pigment_only' : 'fixed_test_main_spots_only',
             'status' => $unknown ? 'human_review' : ($busy ? 'unavailable' : 'available'),
             'reason' => $unknown ? 'day_state_unverified' : ($busy ? 'lane_busy' : 'verified_pilot_slot'),
             'date' => $p['date'], 'laneId' => $p['laneId'], 'menuId' => $p['menuId'],
@@ -206,15 +206,15 @@ final class LaneBookingSafety
         // Read the one completed M11 sequence after its expiring write policy
         // was restored. minimal() still verifies the current credential owner.
         $m11 = $r && $p['patientId'] === 'p-new-muw2osez-7b5626'
-            && ($r['patientId'] ?? '') === $p['patientId'] && ($r['safePilotRevision'] ?? '') === 'fixed-m11r-20261027-v1'
-            && ($r['requestId'] ?? '') === 'R20261027LaneM11R1230Main1300'
+            && ($r['patientId'] ?? '') === $p['patientId'] && ($r['safePilotRevision'] ?? '') === 'fixed-m11r-jan2027-20261028-v1'
+            && ($r['requestId'] ?? '') === 'R20261028LaneM11R0106Main1300'
             && ($r['laneId'] ?? '') === 'lane-main' && ($r['menuIds'] ?? []) === ['menu-x021']
             && in_array([$r['version'] ?? null, $r['status'] ?? '', $r['startAt'] ?? '', $r['endAt'] ?? ''], [
-                [1,'booked','2026-12-30T13:00:00+09:00','2026-12-30T13:10:00+09:00'],
-                [2,'booked','2026-12-30T14:00:00+09:00','2026-12-30T14:10:00+09:00'],
-                [3,'cancelled','2026-12-30T14:00:00+09:00','2026-12-30T14:10:00+09:00'],
+                [1,'booked','2027-01-06T13:00:00+09:00','2027-01-06T13:10:00+09:00'],
+                [2,'booked','2027-01-06T14:00:00+09:00','2027-01-06T14:10:00+09:00'],
+                [3,'cancelled','2027-01-06T14:00:00+09:00','2027-01-06T14:10:00+09:00'],
             ], true);
-        if (!$r || (!$m11 && (($r['safePilotRevision'] ?? '') === 'fixed-m11r-20261027-v1'
+        if (!$r || (!$m11 && (($r['safePilotRevision'] ?? '') === 'fixed-m11r-jan2027-20261028-v1'
             || ($r['safePilotRevision'] ?? '') !== $p['revision']))) self::fail('reservation_not_pilot');
         return self::minimal($r, $p, $by);
     }

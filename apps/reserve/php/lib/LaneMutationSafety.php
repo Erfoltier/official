@@ -19,15 +19,15 @@ final class LaneMutationSafety
         foreach (['patientId','patientName','reservationId','requestId','m3PatientId','m3VisitId','date','laneId','menuId','menuName','safePilotRevision'] as $key) {
             if (!is_string($p[$key] ?? null) || $p[$key] === '') self::fail('policy_binding_missing');
         }
-        if ($p['safePilotRevision'] === 'fixed-m11r-20261027-v1'
+        if ($p['safePilotRevision'] === 'fixed-m11r-jan2027-20261028-v1'
             && ($p['patientId'] !== 'p-new-muw2osez-7b5626' || $p['patientName'] !== '試験 太郎'
-                || $p['requestId'] !== 'R20261027LaneM11R1230Main1300' || $p['m3PatientId'] !== '2117349'
+                || $p['requestId'] !== 'R20261028LaneM11R0106Main1300' || $p['m3PatientId'] !== '2117349'
                 || !preg_match('/^[0-9]+$/D', $p['m3VisitId']) || !preg_match('/^r-[A-Za-z0-9_-]{5,100}$/D', $p['reservationId'])
-                || $p['date'] !== '2026-12-30' || $p['laneId'] !== 'lane-main' || $p['menuId'] !== 'menu-x021'
+                || $p['date'] !== '2027-01-06' || $p['laneId'] !== 'lane-main' || $p['menuId'] !== 'menu-x021'
                 || $p['menuName'] !== '再診 色素レーザー' || ($p['allowedStarts'] ?? null) !== [840])) self::fail('m11_scope');
         return $p;
     }
-    private static function minutes(array $p): int { return $p['safePilotRevision'] === 'fixed-m11r-20261027-v1' ? 10 : 20; }
+    private static function minutes(array $p): int { return $p['safePilotRevision'] === 'fixed-m11r-jan2027-20261028-v1' ? 10 : 20; }
     private static function release(array $p): void {
         if ($p['enabled'] !== true || $p['sourceCompatibilityVerified'] !== true || $p['externalCalendarIsolated'] !== true) self::fail('disabled');
         if (!str_starts_with((string)(config()['db_dsn'] ?? ''), 'sqlite:')) self::fail('sqlite_required');
@@ -121,7 +121,7 @@ final class LaneMutationSafety
                 || ($r['menuIds'] ?? []) !== [$p['menuId']] || substr($r['startAt'] ?? '',0,10) !== $p['date']
                 || substr($r['endAt'] ?? '',0,10) !== $p['date'] || $sourceStart === false || $sourceEnd === false || $sourceStart <= time() || $sourceEnd - $sourceStart !== self::minutes($p) * 60
                 || $m['startAt'] !== $r['startAt'] || $m['endAt'] !== $r['endAt']) self::fail('source_conflict');
-            if ($p['safePilotRevision'] === 'fixed-m11r-20261027-v1') {
+            if ($p['safePilotRevision'] === 'fixed-m11r-jan2027-20261028-v1') {
                 $change = $in['operation'] === 'change';
                 if ($in['operationId'] !== $p['requestId'] . ($change ? 'Change' : 'Cancel')
                     || $in['version'] !== ($change ? 1 : 2)
