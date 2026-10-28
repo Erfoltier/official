@@ -17,6 +17,32 @@ header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; 
 header_remove('X-Powered-By');
 
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+
+/** 送れなかった理由をサーバーの記録に残す。入力した中身は残さず、どの質問が空か・どの質問で止まったかだけ */
+function monshin_diag(string $why, array $form, array $post, array $errors): void
+{
+    $filled = [];
+    $bad = [];
+    foreach ($form['questions'] as $i => $x) {
+        $v = $post['q_' . $x['id']] ?? '';
+        $filled[] = (is_array($v) ? (bool) $v : trim((string) $v) !== '') ? '1' : '0';
+        if (isset($errors[$x['id']])) {
+            $bad[] = $i . ':' . mb_substr($errors[$x['id']], 0, 8);
+        }
+    }
+    $stamp = (string) ($post['stamp'] ?? '');
+    error_log('monshin-diag ' . json_encode([
+        'why' => $why,
+        'keys' => count($post),
+        'filled' => implode('', $filled),
+        'bad' => $bad,
+        'stamp' => $stamp === '' ? 'none' : (preg_match('/^\d{13}\.[0-9a-f]{32}$/', $stamp) ? 'ok-shape' : 'odd:' . strlen($stamp)),
+        'ct' => substr((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 0, 40),
+        'len' => (int) ($_SERVER['CONTENT_LENGTH'] ?? 0),
+        'site' => (string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? ''),
+        'origin' => parse_url((string) ($_SERVER['HTTP_ORIGIN'] ?? ''), PHP_URL_HOST) ?? '',
+    ], JSON_UNESCAPED_UNICODE));
+}
 $errors = [];
 $general = '';
 $post = [];
@@ -44,8 +70,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         $general = '入力内容をご確認ください。';
         http_response_code(400);
+        monshin_diag('fields', $form, $post, $errors);
     } catch (StoreError $e) {
         $general = $e->getMessage();
+        monshin_diag($e->codeName . ':' . mb_substr($e->getMessage(), 0, 12), $form, $post, []);
         http_response_code($e->codeName === 'locked' ? 429 : 400);
     } catch (Throwable $e) {
         error_log('monshin: ' . get_class($e));
@@ -55,6 +83,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $done = ($_GET['done'] ?? '') === '1' && !$post;
+// 送れなかったとき、送信ボタンのすぐ上にも直す所を出す（スマホは送信後もページの下のほうが表示されたままのことが多く、上の案内が目に入らないため）
+$fix = [];
+foreach ($form['questions'] as $x) {
+    if (isset($errors[$x['id']])) {
+        $fix[] = '「' . $x['label'] . '」：' . $errors[$x['id']];
+    }
+}
 $title = $form['title'] . '｜' . ($clinic['name'] ?? '');
 $val = function (string $id) use ($post) {
     $v = $post['q_' . $id] ?? '';
@@ -120,6 +155,11 @@ $picked = function (string $id, string $opt) use ($post): bool {
       <?php if ($err): ?><p class="msg"><?= $h($err) ?></p><?php endif; ?>
     </div>
     <?php endforeach; ?>
+    <?php if ($general !== ''): ?>
+      <div class="alert" role="alert"><strong>まだ送信されていません。</strong><?= $h($general) ?>
+        <?php if ($fix): ?><ul><?php foreach ($fix as $f): ?><li><?= $h($f) ?></li><?php endforeach; ?></ul><?php endif; ?>
+      </div>
+    <?php endif; ?>
     <button type="submit">送信する</button>
   </form>
 <?php endif; ?>

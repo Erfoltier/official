@@ -21,7 +21,7 @@
 |---|---|
 | サーバー | AWS EC2 `i-080e478ee9bffc889`（東京、Amazon Linux 2023、Apache、PHP 8.3、SQLite） |
 | 予約画面 | `https://reserve.ishidahihuka.jp/`（Basic認証＋スタッフPIN） |
-| 問診票 | `https://monshin.ishidahihuka.jp/`（LINE の Webhook・LIFF もここ） |
+| 問診票 | `https://monshin.ishidahihuka.jp/`（LINE の Webhook・LIFF もここ）。LINE 以外（メールのリンクなど）からはトップの `index.php` の入力画面。送れなかったときは、上と送信ボタンのすぐ上の両方に直す所を出し、理由を Apache の error_log に `monshin-diag`（入力の中身は残さず、どの質問が空か・どこで止まったかだけ）で残す |
 | プログラム | `/srv/reserve/releases/<コミット>/app`、`/srv/reserve/app` がその時の版へのリンク |
 | 設定 | `/srv/reserve/private/config.php`（暗号鍵・連携トークンなど。リポジトリに入れない） |
 | データ | `/srv/reserve/private/data/reserve.db`、バックアップは同じ場所の `backups/` |

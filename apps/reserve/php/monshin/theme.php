@@ -32,7 +32,7 @@ input:focus,textarea:focus{outline:3px solid rgba(133,112,95,.16);border-color:v
 .opt{display:flex;gap:9px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:11px;margin:0 0 8px;font-size:.9rem;background:rgba(255,255,255,.38)}
 .opt input{width:19px;height:19px;margin:0;accent-color:var(--green)}
 .msg{color:var(--danger);font-size:.84rem;margin:6px 0 0}
-.alert{background:#fff0f0;border:1px solid #e1b2b2;color:var(--danger);border-radius:12px;padding:14px;font-size:.88rem;margin:0 0 14px}
+.alert ul{margin:8px 0 0;padding-left:1.2em}.alert strong{display:block;margin-bottom:4px}.alert{background:#fff0f0;border:1px solid #e1b2b2;color:var(--danger);border-radius:12px;padding:14px;font-size:.88rem;margin:0 0 14px}
 .muted{color:var(--muted);font-size:.86rem}
 .known dt{color:var(--muted);font-size:.8rem}.known dd{margin:0 0 6px;font-weight:700}
 .pre,.done{white-space:pre-wrap}

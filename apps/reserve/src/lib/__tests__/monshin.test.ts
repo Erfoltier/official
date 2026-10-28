@@ -38,6 +38,9 @@ describe("患者が入力する問診票", () => {
     const missing = await send({ stamp, [`q_${ids["お名前"]}`]: "問診 たろう" });
     expect(missing.status).toBe(400);
     expect(missing.html, /class="alert"[^>]*>([^<]*)/.exec(missing.html)?.[1]).toContain("入力してください");
+    // スマホは送信後も下のほうが表示されたままなので、送信ボタンのすぐ上にも直す所を出す
+    const bottom = missing.html.slice(missing.html.lastIndexOf("まだ送信されていません"));
+    expect(bottom).toMatch(/<li>「[^」]+」：入力してください<\/li>[\s\S]*type="submit"/);
     const ok = await send({
       stamp,
       [`q_${ids["お名前"]}`]: "問診 たろう",
