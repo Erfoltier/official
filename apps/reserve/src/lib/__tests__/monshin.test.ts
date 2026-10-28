@@ -39,6 +39,21 @@ describe("患者が入力する問診票", () => {
     expect(missing.status).toBe(400);
     expect(missing.html, /class="alert"[^>]*>([^<]*)/.exec(missing.html)?.[1]).toContain("入力してください");
     // スマホは送信後も下のほうが表示されたままなので、送信ボタンのすぐ上にも直す所を出す
+    // iPhone の Safari は送り元を null で送ることがある。ブラウザが同じページからと示していれば受け付ける
+    const nullOrigin = await fetch(`${h.srv.base}/monshin/`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Origin: "null", "Sec-Fetch-Site": "same-origin" },
+      body: new URLSearchParams({ stamp }).toString(),
+    }).then((r) => r.text());
+    expect(nullOrigin).not.toContain("このページから送信してください");
+    const crossNull = await fetch(`${h.srv.base}/monshin/`, {
+      method: "POST",
+      redirect: "manual",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Origin: "null", "Sec-Fetch-Site": "cross-site" },
+      body: new URLSearchParams({ stamp }).toString(),
+    }).then((r) => r.text());
+    expect(crossNull).toContain("このページから送信してください");
     const bottom = missing.html.slice(missing.html.lastIndexOf("まだ送信されていません"));
     expect(bottom).toMatch(/<li>「[^」]+」：入力してください<\/li>[\s\S]*type="submit"/);
     const ok = await send({

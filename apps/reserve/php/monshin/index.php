@@ -12,7 +12,8 @@ require __DIR__ . '/theme.php';
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
-header('Referrer-Policy: no-referrer');
+// no-referrer だと iPhone の Safari などは送信時の送り元（Origin）を null にし、別サイトからの送信と区別できなくなる
+header('Referrer-Policy: same-origin');
 header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 header_remove('X-Powered-By');
 
@@ -59,7 +60,9 @@ try {
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $post = $_POST;
     try {
-        if (Http::crossSiteWrite()) {
+        // 送り元が null でも、ブラウザが「同じページから」と示していれば受け付ける（古い版のページを開いたままの人のため）
+        $nullSameOrigin = ($_SERVER['HTTP_ORIGIN'] ?? '') === 'null' && ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '') === 'same-origin';
+        if (Http::crossSiteWrite() && !$nullSameOrigin) {
             throw new StoreError('invalid', 'このページから送信してください');
         }
         $errors = Monshin::submit($post, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
