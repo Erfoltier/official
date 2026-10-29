@@ -16,6 +16,7 @@ if [ ! -f "$CONF" ]; then
 <?php
 // 開発用の設定（自動で作成。Git に入れない）
 return [
+    'seed' => 'ishida',
     'base_path' => '',
     'db_dsn' => 'sqlite:' . __DIR__ . '/reserve.db',
     'encryption_key' => '$(php -r 'echo bin2hex(random_bytes(32));')',

@@ -215,7 +215,7 @@ function DocumentCard({
       <h3 className={styles.cardTitle}>見積書・同意書に記載する院の情報</h3>
       <label className={styles.field}>
         <span>書類に記載する院名（空欄の場合は「{clinic.name}」）</span>
-        <input className={styles.input} value={docName} maxLength={60} onChange={(ev) => setDocName(ev.target.value)} disabled={!canEdit} placeholder="例：いしだ美容皮膚科" />
+        <input className={styles.input} value={docName} maxLength={60} onChange={(ev) => setDocName(ev.target.value)} disabled={!canEdit} placeholder="例：○○美容皮膚科" />
       </label>
       <label className={styles.field}>
         <span>住所</span>
@@ -228,7 +228,7 @@ function DocumentCard({
         </label>
         <label className={styles.field}>
           <span>発行者・医師名（空欄の場合は記載なし）</span>
-          <input className={styles.input} value={issuer} maxLength={60} onChange={(ev) => setIssuer(ev.target.value)} disabled={!canEdit} placeholder="例：院長 石田 ○○" />
+          <input className={styles.input} value={issuer} maxLength={60} onChange={(ev) => setIssuer(ev.target.value)} disabled={!canEdit} placeholder="例：院長 山田 ○○" />
         </label>
       </div>
       <div className={styles.timeRow}>

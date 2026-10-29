@@ -7,6 +7,8 @@ defined('RESERVE') || exit;
 
 return [
     // アプリを置いた場所（URLのパス）。https://example.com/reserve/ なら '/reserve'
+    // 初回に入れるレーン・メニューなど：'standard'（汎用の最小限。新しい院）／'ishida'（いしだ皮フ科の内容）
+    'seed' => 'standard',
     'base_path' => '/reserve',
 
     // 保存先。SQLite（標準）。data フォルダは .htaccess で外から見えないようにしてある

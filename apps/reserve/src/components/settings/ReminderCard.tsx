@@ -212,7 +212,7 @@ export function ReminderCard(props: { menus: Menu[]; onChanged: () => void; noti
         </label>
         <label>
           <span>送信元メールアドレス</span>
-          <input className={styles.input} type="email" value={draft.fromEmail} placeholder="info@ishidahihuka.jp" onChange={(e) => set("fromEmail", e.target.value)} />
+          <input className={styles.input} type="email" value={draft.fromEmail} placeholder="info@example.jp" onChange={(e) => set("fromEmail", e.target.value)} />
         </label>
         <label>
           <span>送信者名（空欄なら院名）</span>

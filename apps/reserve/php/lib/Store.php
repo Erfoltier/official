@@ -57,7 +57,9 @@ final class Store
 
     private static function seed(): array
     {
-        return self::$seed ??= json_decode((string) file_get_contents(RESERVE_ROOT . '/seed/seed.json'), true, 512, JSON_THROW_ON_ERROR);
+        // 初期データ：新しい院は汎用の最小限（seed-standard.json）。config.php の 'seed' => 'ishida' でいしだ皮フ科の内容
+        $name = preg_match('/^[a-z0-9-]{1,40}$/', (string) (config()['seed'] ?? '')) ? (string) config()['seed'] : 'standard';
+        return self::$seed ??= json_decode((string) file_get_contents(RESERVE_ROOT . "/seed/seed-{$name}.json"), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /** 初回だけ、Airリザーブから移したレーン・メニューを入れる */

@@ -23,16 +23,16 @@ final class AirSync
         return [
             'enabled' => false,
             'time' => '07:00',
-            // Air の予約カレンダー（リソースのまとまり）の番号。いしだ皮フ科「美容皮膚科」
-            'groupId' => 'I00009C273',
+            // Air の予約カレンダー（リソースのまとまり）の番号。院ごとに設定画面で入れる
+            'groupId' => '',
             // こまめな取り込み：この分ごとに、今日から rangeDays 日先までを取り込む（0 で止める）。7:00〜21:00 のあいだだけ
             'interval' => 15,
             'rangeDays' => 120,
             // こまめな取り込みで取り込む日（診療日）。曜日（0=日〜6=土）・祝日・ホームページの「特別診療日」。
-            // 曜日が空で祝日も URL もないときは毎日。いしだ皮フ科の美容皮膚科は水曜・祝日・特別診療日
-            'clinicWeekdays' => [3],
-            'clinicHolidays' => true,
-            'specialDaysUrl' => 'https://ishidahihuka.jp/',
+            // 曜日が空で祝日も URL もないときは毎日
+            'clinicWeekdays' => [],
+            'clinicHolidays' => false,
+            'specialDaysUrl' => '',
         ];
     }
 

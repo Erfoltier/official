@@ -101,7 +101,7 @@ POST https://（ドメイン）/reserve/api/v1/integration/patients/（患者ID�
 | `cron/reminders.php` | 定期実行（リマインド。systemd のタイマーから） |
 | `tools/` | 本番データの一括操作の道具（流す前に控えを取る） |
 | `monshin/` | 問診票・LINE の Webhook・LIFF・予約申請フォーム |
-| `seed/seed.json` | 初回に入れるレーン・メニュー |
+| `seed/seed-standard.json`（新しい院）・`seed/seed-ishida.json`（config の `seed` => `ishida`） | 初回に入れるレーン・メニューなど |
 
 ## 開発者向け
 

@@ -144,7 +144,7 @@ export async function startPhp(opts: { demo?: boolean } = {}): Promise<PhpServer
   const integrationToken = randomBytes(24).toString("hex");
   writeFileSync(
     conf,
-    `<?php return ['base_path' => '', 'db_dsn' => 'sqlite:' . __DIR__ . '/reserve.db', 'encryption_key' => '${randomBytes(32).toString("hex")}', ` +
+    `<?php return ['seed' => 'ishida', 'base_path' => '', 'db_dsn' => 'sqlite:' . __DIR__ . '/reserve.db', 'encryption_key' => '${randomBytes(32).toString("hex")}', ` +
       `'session_secret' => '${randomBytes(32).toString("hex")}', 'integration_token' => '${integrationToken}', 'initial_admin_pin' => '${ADMIN_PIN}', ` +
       `'line_intake_dir' => __DIR__ . '/intake', 'line_test_mode' => true, 'intake' => ['queue_dir' => __DIR__ . '/intakeq', 'token_secret' => '${"s".repeat(40)}', 'liff_id' => '1234567890-AbCdEfGh']];\n`,
     { mode: 0o600 },

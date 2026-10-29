@@ -198,7 +198,7 @@ function Register-AgentTask {
 if ($Setup) {
   New-Item -ItemType Directory -Force -Path $Dir | Out-Null
   Write-Host '=== ネオボワール → 予約カレンダー 取り込み係の準備 ==='
-  $url = Read-Host '予約カレンダーのアドレス（例 https://ishidahihuka.jp/reserve）'
+  $url = Read-Host '予約カレンダーのアドレス（例 https://reserve.example.jp）'
   $token = Read-Host '接続用の鍵（設定 → 外部機器の連携 で発行したもの）' -AsSecureString
   $basicProtected = Read-BasicProtected
   $folder = Read-Host "ネオボワールの写真が保存されるフォルダ（そのまま Enter で $DefaultFolder）"
