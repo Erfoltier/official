@@ -246,6 +246,19 @@
 @keyframes tt2-shine { 0%, 60% { left: -40%; } 100% { left: 130%; } }
 .tt-guide .tt-btn:hover { color: #0B1430; transform: translateY(-2px); box-shadow: 0 0 0 1px #fff, 0 0 44px rgba(91, 216, 255, .7), 0 22px 40px -12px rgba(0, 0, 0, .7); }
 .tt-guide .tt-btn-light { background: #fff; }
+.tt-guide .tt-btn-tag {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #FF4D6A;
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: .06em;
+  vertical-align: 1px;
+}
+.tt-guide .tt-measure-note { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13.5px; color: #fff; }
+.tt-guide .tt-measure-note strong { color: #FF8597; }
 
 /* ---------- マーキー ---------- */
 .tt-guide .tt-marquee {
@@ -630,7 +643,7 @@
 .tt-guide .tt-measure-w { left: 50%; bottom: -22px; transform: translateX(-50%); }
 .tt-guide .tt-measure-h { right: -34px; top: 50%; transform: translateY(-50%); }
 .tt-guide .tt-measure-title { font-weight: 700; color: #fff; margin-bottom: 4px; }
-.tt-guide .tt-measure-text p:last-child { font-size: 14px; color: #C9D3EC; }
+.tt-guide .tt-measure-text p:nth-child(2) { font-size: 14px; color: #C9D3EC; }
 .tt-guide .tt-measure-text strong { color: #5BD8FF; }
 .tt-guide .tt-price-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 30px 0 18px; }
 .tt-guide .tt-plan {
