@@ -18,12 +18,13 @@ final class LaneBookingSafety
         $m11 = is_array($p) && ($p['revision'] ?? '') === 'fixed-m11r-jan2027-20261028-v1';
         $m12 = is_array($p) && ($p['revision'] ?? '') === 'fixed-m12r-jan2027-20261029-v1';
         $a36 = is_array($p) && ($p['revision'] ?? '') === 'fixed-a36i-jan2027-20261029-v1';
-        $minutes = $m12 ? 15 : ($m11 ? 10 : 20);
+        $a39 = is_array($p) && ($p['revision'] ?? '') === 'fixed-a39i-jan2027-20261029-v1';
+        $minutes = $a39 ? 30 : ($m12 ? 15 : ($m11 ? 10 : 20));
         if (!is_array($p) || ($p['mode'] ?? '') !== 'fixed_test'
             || !in_array($p['patientName'] ?? '', ['試験 太郎', '試験 花子'], true)
             || ($p['laneId'] ?? '') !== 'lane-main'
-            || ($p['menuId'] ?? '') !== ($a36 ? 'menu-s0000BB7B7' : ($m12 ? 'menu-x103' : ($m11 ? 'menu-x021' : 'menu-s000099B91')))
-            || ($p['menuName'] ?? '') !== ($a36 ? '完全初診' : ($m12 ? 'Qスイッチルビーレーザー（シミ）' : ($m11 ? '再診 色素レーザー' : 'シミまとめ標準20分')))
+            || ($p['menuId'] ?? '') !== ($a39 ? 'menu-x017' : ($a36 ? 'menu-s0000BB7B7' : ($m12 ? 'menu-x103' : ($m11 ? 'menu-x021' : 'menu-s000099B91'))))
+            || ($p['menuName'] ?? '') !== ($a39 ? '初診 その他（お悩み2種類以上）' : ($a36 ? '完全初診' : ($m12 ? 'Qスイッチルビーレーザー（シミ）' : ($m11 ? '再診 色素レーザー' : 'シミまとめ標準20分'))))
             || ($p['minutes'] ?? 0) !== $minutes
             || !is_int($p['start'] ?? null) || !is_int($p['end'] ?? null)
             || $p['start'] % 5 || $p['end'] % 5 || $p['end'] - $p['start'] !== $minutes
@@ -43,6 +44,10 @@ final class LaneBookingSafety
             || ($p['patientId'] ?? '') !== 'p-new-muw2osez-7b5626'
             || ($p['requestId'] ?? '') !== 'R20261029LaneA36I0106Main1300'
             || ($p['date'] ?? '') !== '2027-01-06' || $p['start'] !== 780 || $p['end'] !== 800)) self::fail('a36_scope');
+        if ($a39 && (($p['patientName'] ?? '') !== '試験 太郎'
+            || ($p['patientId'] ?? '') !== 'p-new-muw2osez-7b5626'
+            || ($p['requestId'] ?? '') !== 'R20261029LaneA39I0106Main1300'
+            || ($p['date'] ?? '') !== '2027-01-06' || $p['start'] !== 780 || $p['end'] !== 810)) self::fail('a39_scope');
         if ($p['patientName'] === '試験 花子'
             && (($p['patientId'] ?? '') !== 'p-new-muw2qgcj-124d9a'
                 || ($p['revision'] ?? '') !== 'fixed-hanako-20261027-v1'
@@ -55,7 +60,7 @@ final class LaneBookingSafety
 
     private static function isolated(array $p): bool
     {
-        return $p['patientName'] === '試験 花子' || in_array($p['revision'], ['fixed-m11r-jan2027-20261028-v1','fixed-m12r-jan2027-20261029-v1','fixed-a36i-jan2027-20261029-v1'], true);
+        return $p['patientName'] === '試験 花子' || in_array($p['revision'], ['fixed-m11r-jan2027-20261028-v1','fixed-m12r-jan2027-20261029-v1','fixed-a36i-jan2027-20261029-v1','fixed-a39i-jan2027-20261029-v1'], true);
     }
 
     private static function exactKeys(array $v, array $required): void
@@ -143,6 +148,8 @@ final class LaneBookingSafety
         } elseif ($p['revision'] === 'fixed-a36i-jan2027-20261029-v1') {
             if (($m['duration'] ?? null) !== ['kind'=>'range','min'=>10,'max'=>360,'step'=>5]
                 || ($m['defaultMinutes'] ?? null) !== 10 || $m['laneIds'] !== ['lane-main','lane-1','lane-3']) self::fail('menu_duration_changed');
+        } elseif ($p['revision'] === 'fixed-a39i-jan2027-20261029-v1') {
+            if (($m['duration'] ?? null) !== ['kind'=>'fixed','minutes'=>30] || ($m['defaultMinutes'] ?? null) !== 30 || $m['laneIds'] !== ['lane-main']) self::fail('menu_duration_changed');
         } elseif (($m['duration']['kind'] ?? '') !== 'fixed' || ($m['duration']['minutes'] ?? 0) !== $p['minutes']) self::fail('menu_duration_changed');
         $c = Store::clinic();
         if (($c['slotMin'] ?? null) !== 5 || !is_int($c['dayStartMin'] ?? null) || !is_int($c['dayEndMin'] ?? null)
@@ -173,7 +180,7 @@ final class LaneBookingSafety
         if (trim((string) ($note['text'] ?? '')) !== '') $unknown = true;
         sort($digest);
         $revision = hash('sha256', json_encode([$p, $catalog, $digest, $note], JSON_THROW_ON_ERROR));
-        return ['schemaVersion' => 1, 'scope' => $p['revision'] === 'fixed-a36i-jan2027-20261029-v1' ? 'fixed_test_main_initial_only' : ($p['revision'] === 'fixed-m12r-jan2027-20261029-v1' ? 'fixed_test_main_q_ruby_only' : ($p['revision'] === 'fixed-m11r-jan2027-20261028-v1' ? 'fixed_test_main_pigment_only' : 'fixed_test_main_spots_only')),
+        return ['schemaVersion' => 1, 'scope' => $p['revision'] === 'fixed-a39i-jan2027-20261029-v1' ? 'fixed_test_main_multi_concern_only' : ($p['revision'] === 'fixed-a36i-jan2027-20261029-v1' ? 'fixed_test_main_initial_only' : ($p['revision'] === 'fixed-m12r-jan2027-20261029-v1' ? 'fixed_test_main_q_ruby_only' : ($p['revision'] === 'fixed-m11r-jan2027-20261028-v1' ? 'fixed_test_main_pigment_only' : 'fixed_test_main_spots_only'))),
             'status' => $unknown ? 'human_review' : ($busy ? 'unavailable' : 'available'),
             'reason' => $unknown ? 'day_state_unverified' : ($busy ? 'lane_busy' : 'verified_pilot_slot'),
             'date' => $p['date'], 'laneId' => $p['laneId'], 'menuId' => $p['menuId'],
@@ -248,7 +255,16 @@ final class LaneBookingSafety
                 [2,'booked','2027-01-06T14:00:00+09:00','2027-01-06T14:20:00+09:00'],
                 [3,'cancelled','2027-01-06T14:00:00+09:00','2027-01-06T14:20:00+09:00'],
             ], true);
-        if (!$r || (!$m11 && !$m12 && !$a36 && (in_array($r['safePilotRevision'] ?? '', ['fixed-m11r-jan2027-20261028-v1','fixed-m12r-jan2027-20261029-v1','fixed-a36i-jan2027-20261029-v1'], true)
+        $a39 = $r && $p['patientId'] === 'p-new-muw2osez-7b5626'
+            && ($r['patientId'] ?? '') === $p['patientId'] && ($r['safePilotRevision'] ?? '') === 'fixed-a39i-jan2027-20261029-v1'
+            && ($r['requestId'] ?? '') === 'R20261029LaneA39I0106Main1300'
+            && ($r['laneId'] ?? '') === 'lane-main' && ($r['menuIds'] ?? []) === ['menu-x017']
+            && in_array([$r['version'] ?? null, $r['status'] ?? '', $r['startAt'] ?? '', $r['endAt'] ?? ''], [
+                [1,'booked','2027-01-06T13:00:00+09:00','2027-01-06T13:30:00+09:00'],
+                [2,'booked','2027-01-06T14:00:00+09:00','2027-01-06T14:30:00+09:00'],
+                [3,'cancelled','2027-01-06T14:00:00+09:00','2027-01-06T14:30:00+09:00'],
+            ], true);
+        if (!$r || (!$m11 && !$m12 && !$a36 && !$a39 && (in_array($r['safePilotRevision'] ?? '', ['fixed-m11r-jan2027-20261028-v1','fixed-m12r-jan2027-20261029-v1','fixed-a36i-jan2027-20261029-v1','fixed-a39i-jan2027-20261029-v1'], true)
             || ($r['safePilotRevision'] ?? '') !== $p['revision']))) self::fail('reservation_not_pilot');
         return self::minimal($r, $p, $by);
     }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit(1); }
 $root = dirname(__DIR__);
 $expected = [
-    'lib/LaneBookingSafety.php' => 'dd109f408bf8db1829b265f6d07c44e7749468fdc6f73c80978bc38f9144874b',
-    'lib/LaneMutationSafety.php' => '3fec685cb29ec27dac42fce40e782a1246d3462d7484d275212031bc344e37f0',
+    'lib/LaneBookingSafety.php' => 'ca8f3bac5b36e1e401684c7cfe0f58cbc6baae4c67709fe245a751cbe18c0d27',
+    'lib/LaneMutationSafety.php' => 'cd0ab0bdef3bda02dcd1fdbddf02d17f49c98acf74068c20152aec4caccda0f8',
     'lib/LaneMutationReadback.php' => '2c855b0814e2816cc2fed016ec485e413a31d1c8b8c7d118bb4697999f97c347',
     'lib/LaneMutationPolicy.php' => '9b262dd114121c9a110b962c80e0e47a18e31ebffb5c64761625058e4593bfc3',
     'lib/LanePatientSafety.php' => '2e7ac5a05cb4aea5c9dd1020373af3e7e334f5c719b718b6f2fea2ae16c1b9e2',

@@ -5,9 +5,11 @@ require $argv[1].'/lib/LaneBookingSafety.php';
 require $argv[1].'/lib/LaneMutationSafety.php';
 $root=realpath($argv[1]);$db=Db::i();$checks=0;
 $m12=($argv[2]??'m11')==='m12';$a36=($argv[2]??'m11')==='a36';
-$minutes=$a36?20:($m12?15:10);
+$a39=($argv[2]??'m11')==='a39';
+$minutes=$a39?30:($a36?20:($m12?15:10));
 $requestId=$a36?'R20261029LaneA36I0106Main1300':($m12?'R20261029LaneM12R0106Main1300':'R20261028LaneM11R0106Main1300');
 $revision=$a36?'fixed-a36i-jan2027-20261029-v1':($m12?'fixed-m12r-jan2027-20261029-v1':'fixed-m11r-jan2027-20261028-v1');
+if($a39){$requestId='R20261029LaneA39I0106Main1300';$revision='fixed-a39i-jan2027-20261029-v1';}
 $originalBookingPolicy=require $root.'/lib/LaneBookingPolicy.php';
 $check=function(bool $ok)use(&$checks):void{if(!$ok)throw new RuntimeException('assertion_failed_'.($checks+1));$checks++;};
 $set=function(string $name,array $p)use($root):void{file_put_contents($root.'/lib/'.$name.'.php','<?php return '.var_export($p,true).';');};
@@ -18,17 +20,18 @@ $db->put('patient',$patient['id'],$patient);$db->put('patient',$sentinel['id'],$
 $db->put('lane','lane-main',['id'=>'lane-main','name'=>'メイン','active'=>true]);
 $menu=['id'=>$m12?'menu-x103':'menu-x021','name'=>$m12?'Qスイッチルビーレーザー（シミ）':'再診 色素レーザー','active'=>true,'duration'=>$m12?['kind'=>'range','min'=>5,'max'=>60,'step'=>5]:['kind'=>'fixed','minutes'=>10],'defaultMinutes'=>$minutes,'laneIds'=>['lane-main']];$db->put('menu',$menu['id'],$menu);
 if($a36){$menu=['id'=>'menu-s0000BB7B7','name'=>'完全初診','active'=>true,'duration'=>['kind'=>'range','min'=>10,'max'=>360,'step'=>5],'defaultMinutes'=>10,'laneIds'=>['lane-main','lane-1','lane-3']];$db->put('menu',$menu['id'],$menu);}
+if($a39){$menu=['id'=>'menu-x017','name'=>'初診 その他（お悩み2種類以上）','active'=>true,'duration'=>['kind'=>'fixed','minutes'=>30],'defaultMinutes'=>30,'laneIds'=>['lane-main']];$db->put('menu',$menu['id'],$menu);}
 $p=['mode'=>'fixed_test','enabled'=>true,'externalCalendarIsolated'=>true,'revision'=>$revision,
  'patientId'=>$patient['id'],'patientName'=>$patient['name'],'requestId'=>$requestId,
  'date'=>'2027-01-06','laneId'=>'lane-main','menuId'=>$menu['id'],'menuName'=>$menu['name'],'minutes'=>$minutes,'start'=>780,'end'=>780+$minutes,'expiresAt'=>time()+110];
 $by=['id'=>'booking:synthetic','name'=>'合成試験','role'=>'integration'];
 $slot=['date'=>$p['date'],'laneId'=>$p['laneId'],'menuId'=>$p['menuId'],'start'=>780,'end'=>780+$minutes,'nonce'=>str_repeat('a',20)];
-$set('LaneBookingPolicy',$p);$a=LaneBookingSafety::availability($slot);$check($a['scope']===($a36?'fixed_test_main_initial_only':($m12?'fixed_test_main_q_ruby_only':'fixed_test_main_pigment_only'))&&$a['status']==='available');
+$set('LaneBookingPolicy',$p);$a=LaneBookingSafety::availability($slot);$check($a['scope']===($a39?'fixed_test_main_multi_concern_only':($a36?'fixed_test_main_initial_only':($m12?'fixed_test_main_q_ruby_only':'fixed_test_main_pigment_only')))&&$a['status']==='available');
 $in=['patientId'=>$patient['id'],'requestId'=>$p['requestId'],'memo'=>'合成試験原文 '.$p['requestId'],'slot'=>$slot,'revision'=>$a['revision'],'observedAt'=>$a['observedAt']];
 $reject=function(callable $fn)use($db,$check):void{$before=$db->all('reservation');$failed=false;try{$fn();}catch(StoreError){$failed=true;}$check($failed);$check($before===$db->all('reservation'));};
 foreach([['enabled'=>false],['externalCalendarIsolated'=>false],['patientId'=>'other'],['patientName'=>'試験 花子'],['date'=>'2026-12-31'],['date'=>'2026-12-30'],['date'=>'2027-01-13'],['requestId'=>'R20261027LaneM11R1230Main1300'],['revision'=>'fixed-m11r-20261027-v1'],['start'=>840,'end'=>850],['minutes'=>$minutes+5],['menuId'=>'menu-s000099B91'],['menuName'=>'wrong'],['requestId'=>'R20261027OtherTrial'],['expiresAt'=>time()-1],['expiresAt'=>time()+300]] as $patch){$set('LaneBookingPolicy',array_merge($p,$patch));$reject(fn()=>LaneBookingSafety::create($in,$by));}
 $set('LaneBookingPolicy',$p);$reject(fn()=>LaneBookingSafety::create(array_merge($in,['requestId'=>'R20261027OtherRequest']),$by));
-if($m12||$a36){
+if($m12||$a36||$a39){
  foreach([['defaultMinutes'=>99],['duration'=>['kind'=>'fixed','minutes'=>15]],['duration'=>['kind'=>'range','min'=>11,'max'=>60,'step'=>5]],['laneIds'=>['lane-main','lane-1']]] as $patch){
   $db->put('menu',$menu['id'],array_merge($menu,$patch));$reject(fn()=>LaneBookingSafety::create($in,$by));
  }
@@ -53,7 +56,7 @@ foreach([['patientId'=>'other'],['requestId'=>'R20261027OtherTrial'],['menuId'=>
 $set('LaneMutationPolicy',$mp);
 foreach([['operationId'=>$p['requestId'].'Other'],['target'=>array_merge($body['target'],['end'=>840+$minutes+5])],['version'=>2],['m3Proof'=>array_merge($m,['visitId'=>'99990002'])],['observedAt'=>'2020-01-01T00:00:00Z']] as $patch){$bad=array_merge($body,$patch);$approve($mp,$bad);$reject(fn()=>LaneMutationSafety::mutate($bad,$by));}
 $approve($mp,$body);
-if($m12||$a36){
+if($m12||$a36||$a39){
  foreach([['defaultMinutes'=>99],['duration'=>['kind'=>'fixed','minutes'=>15]],['laneIds'=>['lane-main','lane-1']]] as $patch){
   $db->put('menu',$menu['id'],array_merge($menu,$patch));$reject(fn()=>LaneMutationSafety::mutate($body,$by));
  }
