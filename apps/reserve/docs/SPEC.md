@@ -6,6 +6,10 @@
 
 ## 0. 構造の約束（煩雑にしないために）
 
+### 10/29 M12-Rの限定候補（実機未検証）
+
+既存安全APIに固定試験太郎の別申請 `R20261029LaneM12R0106Main1300`、2027-01-06、`menu-x103`・医師main15分を追加。登録13:00〜13:15（版1）→14:00〜14:15（版2）→取消（版3）だけを許可する。現行メニューのrange 5〜60/step5、default15、mainのみを全文照合し、カタログの可変時間から任意の時間を許可しない。M11と同様にDBロック内占有・本人・所有者・原文・期限・m3証拠を照合し、一般保守と患者自動通知を抑止する。配布policyは元値と無効を保持し、操作ごとのbackup・一時設定・復元と独立読戻しを必須とする。M11とM12の申請・版・メニュー・15/10分の証拠を混用しない。
+
 ### 10/28 M11-Rの1月への日時変更（本番未反映）
 
 既存 `LaneBookingSafety` / `LaneMutationSafety` に、試験太郎の固定申請 `R20261028LaneM11R0106Main1300`・2027-01-06・医師main・`menu-x021`（再診 色素レーザー）10分の限定分岐を1月用の新revisionへ更新。12/30の旧申請は登録前に空きなしで停止し、再実行しない。登録は13:00〜13:10、変更は版1から14:00〜14:10の版2、取消はその版2から版3だけ。最大120秒の操作承認、DBロック内再照合、受付証拠・原文メモ・通知抑止・不明結果の再送禁止を維持する。登録時は花子と同じ保守抑止を利用し、一般患者や初期データに触れない。
@@ -44,7 +48,7 @@
 **だれが反映しても（Claude Code・Codex・人）、必ずサーバーの `release` を使う。予約データの控えを取れなければ反映されない。**
 
 1. テストを通し、`claude/admiring-wozniak-kikcrr` にコミット・プッシュ
-2. `php php/tools/check-fixed-trial-package.php` で固定試験拡張5ファイル・API経路・無効設定を確認する。一式（静的書き出し＋PHP）を固め、別の一時ディレクトリに展開した `app/tools/check-fixed-trial-package.php` でも同じチェックを通してから、S3 `ishida-deploy-965825500741` に `app-<コミット>.tgz` で置く。実機試験中の有効policy・承認・鍵を配布へコピーしない
+2. `php php/tools/check-fixed-trial-package.php` で固定試験拡張6ファイル・API経路・無効設定を確認する。一式（静的書き出し＋PHP）を固め、別の一時ディレクトリに展開した `app/tools/check-fixed-trial-package.php` でも同じチェックを通してから、S3 `ishida-deploy-965825500741` に `app-<コミット>.tgz` で置く。実機試験中の有効policy・承認・鍵を配布へコピーしない
 3. サーバーで `sudo /srv/reserve/bin/release <コミット> <claude か codex>`（SSM の AWS-RunShellScript から）
    - 中身：控え（`backup before-<コミット>`）→ 展開 → `php -l` → 切り替え → 応答の確認（Basic認証のため 401 が正常）。記録は `/srv/reserve/releases/RELEASES.log`
    - 戻すとき：`sudo /srv/reserve/bin/release <前のコミット>`

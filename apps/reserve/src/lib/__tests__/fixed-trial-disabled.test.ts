@@ -5,9 +5,9 @@ import { withPhp } from "./php/server";
 
 const h = withPhp();
 describe("固定試験拡張の無効状態での配布", () => {
-  it("配布に必要な5ファイルとAPI経路を含み、有効な承認を同梱しない", async () => {
+  it("配布に必要な6ファイルとAPI経路を含み、有効な承認を同梱しない", async () => {
     const { stdout } = await promisify(execFile)("php", ["php/tools/check-fixed-trial-package.php"]);
-    expect(JSON.parse(stdout)).toEqual({ status: "verified", disabled: true, files: 5, databaseAccess: false });
+    expect(JSON.parse(stdout)).toEqual({ status: "verified", disabled: true, files: 6, databaseAccess: false });
   });
   it("認証なしを拒否し、正しい予約鍵でも無効policyでは患者・予約を書き換えない", async () => {
     const staff = await h.srv.as("staff-admin");
