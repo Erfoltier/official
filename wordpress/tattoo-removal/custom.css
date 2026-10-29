@@ -1,0 +1,236 @@
+/* ===== タトゥー除去ページ（.tt-guide 内だけに適用） ===== */
+.tt-guide {
+  --tt-ink: #273238;
+  --tt-teal: #2F515F;
+  --tt-teal-deep: #213c47;
+  --tt-gold: #B08D57;
+  --tt-sand: #D2B48C;
+  --tt-mist: #F4F6F6;
+  --tt-line: #E3E0DA;
+  --tt-mincho: "Yu Mincho", YuMincho, "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  --tt-gothic: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, "Noto Sans JP", sans-serif;
+  color: var(--tt-ink);
+  font-family: var(--tt-gothic);
+  font-size: 15px;
+  line-height: 1.9;
+  letter-spacing: .03em;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.tt-guide *, .tt-guide *::before, .tt-guide *::after { box-sizing: border-box; }
+.tt-guide p { margin: 0; }
+.tt-guide br:empty { display: none; }
+.tt-guide a { color: var(--tt-teal); }
+.tt-guide a:focus-visible { outline: 2px solid var(--tt-gold); outline-offset: 3px; }
+
+/* ヒーロー */
+.tt-guide .tt-hero {
+  padding: 56px 48px 48px;
+  background: #fff;
+  border-top: 3px solid var(--tt-teal);
+  border-bottom: 1px solid var(--tt-line);
+}
+.tt-guide .tt-place { color: var(--tt-gold); font-size: 13px; letter-spacing: .12em; margin-bottom: 18px; }
+.tt-guide .tt-title {
+  font-family: var(--tt-mincho);
+  font-weight: 500;
+  font-size: 44px;
+  line-height: 1.35;
+  letter-spacing: .12em;
+  color: var(--tt-teal-deep);
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.tt-guide .tt-title::before, .tt-guide .tt-title::after { display: none; }
+.tt-guide .tt-title-sub {
+  display: block;
+  margin-top: 10px;
+  font-size: 17px;
+  letter-spacing: .14em;
+  color: var(--tt-gold);
+}
+.tt-guide .tt-lead { max-width: 40em; margin-bottom: 32px; }
+.tt-guide .tt-points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--tt-line);
+  border-bottom: 1px solid var(--tt-line);
+  margin-bottom: 36px;
+}
+.tt-guide .tt-point { padding: 18px 20px; }
+.tt-guide .tt-point + .tt-point { border-left: 1px solid var(--tt-line); }
+.tt-guide .tt-point strong { display: block; font-family: var(--tt-mincho); font-size: 16px; color: var(--tt-teal-deep); }
+.tt-guide .tt-point span { display: block; font-size: 13px; color: #5d676c; }
+
+/* ボタン */
+.tt-guide .tt-cta { text-align: center; }
+.tt-guide .tt-btn {
+  display: inline-block;
+  min-width: 300px;
+  padding: 16px 40px;
+  background: var(--tt-teal);
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: .1em;
+  text-decoration: none;
+  border: 1px solid var(--tt-teal);
+  transition: background-color .2s, color .2s;
+}
+.tt-guide .tt-btn:hover { background: #fff; color: var(--tt-teal); }
+.tt-guide .tt-btn-light { background: #fff; color: var(--tt-teal-deep); border-color: #fff; }
+.tt-guide .tt-btn-light:hover { background: transparent; color: #fff; }
+
+/* 目次 */
+.tt-guide .tt-toc { margin: 40px 0 8px; padding: 28px 40px; background: var(--tt-mist); }
+.tt-guide .tt-toc-title { font-family: var(--tt-mincho); font-size: 17px; color: var(--tt-teal-deep); margin-bottom: 10px; }
+.tt-guide .tt-toc ol { columns: 2; column-gap: 40px; margin: 0; padding-left: 1.5em; }
+.tt-guide .tt-toc li { margin: 0 0 4px; font-size: 14px; break-inside: avoid; }
+.tt-guide .tt-toc a { text-decoration: none; }
+.tt-guide .tt-toc a:hover { text-decoration: underline; }
+
+/* セクション */
+.tt-guide .tt-sec { padding: 64px 48px; scroll-margin-top: 100px; }
+.tt-guide .tt-sec-mist { background: var(--tt-mist); }
+.tt-guide .tt-sec-dark { background: var(--tt-teal-deep); color: #e9eef0; }
+.tt-guide .tt-h {
+  font-family: var(--tt-mincho);
+  font-weight: 500;
+  font-size: 27px;
+  line-height: 1.5;
+  letter-spacing: .1em;
+  color: var(--tt-teal-deep);
+  margin: 0 0 28px;
+  padding: 0 0 16px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--tt-sand);
+}
+.tt-guide .tt-h::before, .tt-guide .tt-h::after { display: none; }
+.tt-guide .tt-sec-dark .tt-h { color: #fff; border-bottom-color: rgba(210, 180, 140, .6); }
+.tt-guide .tt-text { max-width: 44em; margin-bottom: 18px; }
+.tt-guide .tt-text:last-child { margin-bottom: 0; }
+.tt-guide .tt-note { font-size: 13px; color: #6a7378; margin-top: 16px; }
+.tt-guide .tt-sec-dark .tt-note { color: #b9c6cb; }
+
+.tt-guide .tt-checks { list-style: none; margin: 0 0 24px; padding: 0; }
+.tt-guide .tt-checks li { position: relative; padding: 10px 0 10px 28px; border-bottom: 1px dotted var(--tt-line); }
+.tt-guide .tt-checks li::before {
+  content: "";
+  position: absolute; left: 4px; top: 21px;
+  width: 9px; height: 9px;
+  border: 1px solid var(--tt-gold);
+  transform: rotate(45deg);
+}
+
+/* 3つの波長 */
+.tt-guide .tt-waves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 36px; background: rgba(255, 255, 255, .14); }
+.tt-guide .tt-wave { position: relative; padding: 34px 26px 28px; background: var(--tt-teal-deep); }
+.tt-guide .tt-wave::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; }
+.tt-guide .tt-wave-532::before { background: #3fa772; }
+.tt-guide .tt-wave-694::before { background: #c0393f; }
+.tt-guide .tt-wave-1064::before { background: linear-gradient(90deg, #6b3b4a, #2a2230); }
+.tt-guide .tt-wave-nm { font-family: var(--tt-mincho); font-size: 56px; line-height: 1; color: #fff; letter-spacing: .02em; }
+.tt-guide .tt-wave-nm span { font-size: 18px; margin-left: 4px; color: var(--tt-sand); }
+.tt-guide .tt-wave-name { margin-top: 14px; font-size: 13px; color: var(--tt-sand); letter-spacing: .08em; }
+.tt-guide .tt-wave-target { margin-top: 10px; font-size: 15px; color: #fff; }
+.tt-guide .tt-chips { display: flex; gap: 8px; margin-top: 16px; }
+.tt-guide .tt-chip { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); }
+.tt-guide .tt-c-red { background: #c8323a; }
+.tt-guide .tt-c-orange { background: #e2782f; }
+.tt-guide .tt-c-yellow { background: #e9c443; }
+.tt-guide .tt-c-pink { background: #e58aa6; }
+.tt-guide .tt-c-blue { background: #2f64b4; }
+.tt-guide .tt-c-green { background: #2f8a5a; }
+.tt-guide .tt-c-black { background: #111; }
+.tt-guide .tt-c-navy { background: #1c2a52; }
+
+/* 回数・間隔 */
+.tt-guide .tt-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+.tt-guide .tt-fact { padding: 26px 28px; border: 1px solid var(--tt-line); border-top: 2px solid var(--tt-teal); }
+.tt-guide .tt-fact-label { font-size: 13px; color: var(--tt-gold); letter-spacing: .1em; }
+.tt-guide .tt-fact-value { font-family: var(--tt-mincho); font-size: 30px; color: var(--tt-teal-deep); margin: 4px 0 10px; }
+.tt-guide .tt-fact-text { font-size: 14px; }
+
+/* 表 */
+.tt-guide table { width: 100%; border-collapse: collapse; margin: 8px 0 0; background: #fff; font-size: 15px; }
+.tt-guide th, .tt-guide td { padding: 14px 18px; border: 0; border-bottom: 1px solid var(--tt-line); text-align: left; vertical-align: top; }
+.tt-guide thead th { background: var(--tt-teal); color: #fff; font-weight: 500; font-size: 14px; letter-spacing: .06em; }
+.tt-guide .tt-price td:first-child { font-family: var(--tt-mincho); font-size: 17px; color: var(--tt-teal-deep); white-space: nowrap; }
+.tt-guide .tt-price .tt-yen { font-family: var(--tt-mincho); font-size: 19px; text-align: right; white-space: nowrap; color: var(--tt-teal-deep); }
+.tt-guide .tt-price th:last-child { text-align: right; }
+.tt-guide .tt-table td:first-child { white-space: nowrap; font-weight: 600; color: var(--tt-teal-deep); }
+
+.tt-guide .tt-examples { margin-top: 28px; padding: 24px 28px; background: #fff; border-left: 3px solid var(--tt-sand); }
+.tt-guide .tt-examples-title { font-family: var(--tt-mincho); font-size: 17px; color: var(--tt-teal-deep); margin-bottom: 8px; }
+.tt-guide .tt-examples dl { margin: 0; }
+.tt-guide .tt-examples dl > div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dotted var(--tt-line); }
+.tt-guide .tt-examples dt { font-weight: 400; }
+.tt-guide .tt-examples dd { margin: 0; font-family: var(--tt-mincho); font-size: 18px; color: var(--tt-teal-deep); }
+.tt-guide .tt-notes { margin: 24px 0 0; padding-left: 1.3em; font-size: 14px; }
+.tt-guide .tt-notes li { margin-bottom: 4px; }
+
+/* 流れ（順番がある手順） */
+.tt-guide .tt-steps { list-style: none; margin: 0; padding: 0; counter-reset: tt-step; }
+.tt-guide .tt-steps li { position: relative; counter-increment: tt-step; padding: 0 0 28px 72px; }
+.tt-guide .tt-steps li::before {
+  content: counter(tt-step);
+  position: absolute; left: 0; top: 0;
+  width: 44px; height: 44px; line-height: 42px;
+  text-align: center;
+  font-family: var(--tt-mincho); font-size: 20px;
+  color: var(--tt-teal-deep);
+  border: 1px solid var(--tt-sand);
+  border-radius: 50%;
+  background: #fff;
+}
+.tt-guide .tt-steps li::after { content: ""; position: absolute; left: 22px; top: 48px; bottom: 4px; width: 1px; background: var(--tt-line); }
+.tt-guide .tt-steps li:last-child { padding-bottom: 0; }
+.tt-guide .tt-steps li:last-child::after { display: none; }
+.tt-guide .tt-step-title { font-family: var(--tt-mincho); font-size: 18px; color: var(--tt-teal-deep); padding-top: 6px; }
+.tt-guide .tt-step-text { font-size: 14px; margin-top: 4px; }
+
+/* リスク */
+.tt-guide .tt-risks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+.tt-guide .tt-risks li { padding: 16px 0; border-bottom: 1px solid var(--tt-line); font-size: 14px; }
+.tt-guide .tt-risks strong { display: block; font-family: var(--tt-mincho); font-size: 16px; font-weight: 600; color: var(--tt-teal-deep); margin-bottom: 4px; }
+
+/* よくある質問 */
+.tt-guide .tt-faq { margin: 0; }
+.tt-guide .tt-faq dt { position: relative; padding: 18px 0 8px 40px; font-family: var(--tt-mincho); font-size: 17px; font-weight: 600; color: var(--tt-teal-deep); border-top: 1px solid var(--tt-line); }
+.tt-guide .tt-faq dd { position: relative; margin: 0; padding: 0 0 18px 40px; font-size: 14px; }
+.tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { position: absolute; left: 4px; font-family: var(--tt-mincho); font-size: 20px; line-height: 1.3; }
+.tt-guide .tt-faq dt::before { content: "Q"; color: var(--tt-teal); top: 17px; }
+.tt-guide .tt-faq dd::before { content: "A"; color: var(--tt-gold); top: -2px; }
+
+/* 締め */
+.tt-guide .tt-close { text-align: center; }
+.tt-guide .tt-close .tt-text { margin: 0 auto 28px; }
+.tt-guide .tt-close-title { font-family: var(--tt-mincho); font-size: 26px; letter-spacing: .12em; color: #fff; margin-bottom: 14px; }
+
+/* スマホ */
+@media (max-width: 767px) {
+  .tt-guide { font-size: 14px; }
+  .tt-guide .tt-hero { padding: 36px 20px 32px; }
+  .tt-guide .tt-title { font-size: 31px; }
+  .tt-guide .tt-title-sub { font-size: 14px; }
+  .tt-guide .tt-points { grid-template-columns: 1fr; }
+  .tt-guide .tt-point + .tt-point { border-left: 0; border-top: 1px solid var(--tt-line); }
+  .tt-guide .tt-btn { min-width: 0; width: 100%; padding: 15px 20px; }
+  .tt-guide .tt-toc { padding: 22px 20px; }
+  .tt-guide .tt-toc ol { columns: 1; }
+  .tt-guide .tt-sec { padding: 44px 20px; }
+  .tt-guide .tt-h { font-size: 22px; }
+  .tt-guide .tt-waves, .tt-guide .tt-facts, .tt-guide .tt-risks { grid-template-columns: 1fr; }
+  .tt-guide .tt-wave-nm { font-size: 46px; }
+  .tt-guide th, .tt-guide td { padding: 12px 10px; font-size: 13px; }
+  .tt-guide .tt-price td:first-child { font-size: 15px; }
+  .tt-guide .tt-price .tt-yen { font-size: 16px; }
+  .tt-guide .tt-table td:first-child { white-space: normal; }
+  .tt-guide .tt-examples { padding: 20px; }
+  .tt-guide .tt-steps li { padding-left: 60px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tt-guide .tt-btn { transition: none; }
+}
