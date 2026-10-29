@@ -440,6 +440,30 @@
 .tt-guide .tt-dc-text { font-size: 13.5px; line-height: 1.85; color: var(--tx2); }
 
 /* ---------- 機器・モード ---------- */
+/* 国内承認機 */
+.tt-guide .tt-approved {
+  display: flex; align-items: flex-start; gap: 22px;
+  margin: 0 0 30px;
+  padding: 22px 26px;
+  border: 1px solid rgba(91, 216, 255, .35);
+  border-radius: 18px;
+  background: linear-gradient(120deg, rgba(91, 216, 255, .10), rgba(91, 216, 255, .02));
+  box-shadow: 0 0 30px rgba(91, 216, 255, .10) inset;
+}
+.tt-guide .tt-approved-badge {
+  flex: none;
+  display: grid; place-items: center;
+  width: 92px; height: 92px;
+  border-radius: 50%;
+  border: 1.5px solid #5BD8FF;
+  color: #fff;
+  font-size: 15px; font-weight: 700; letter-spacing: .06em;
+  text-align: center;
+  box-shadow: 0 0 22px rgba(91, 216, 255, .45), 0 0 0 6px rgba(91, 216, 255, .08);
+}
+.tt-guide .tt-approved-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 6px; text-wrap: balance; }
+.tt-guide .tt-approved-body p:nth-child(2) { font-size: 14px; color: #C9D3EC; }
+.tt-guide .tt-approved-no { margin-top: 8px; font-size: 12.5px; color: #5BD8FF; letter-spacing: .04em; }
 .tt-guide .tt-split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 36px; align-items: start; margin-bottom: 24px; }
 .tt-guide .tt-modes { display: grid; gap: 14px; }
 .tt-guide .tt-mode {
@@ -858,6 +882,8 @@
   .tt-guide .tt-cases, .tt-guide .tt-facts, .tt-guide .tt-steps, .tt-guide .tt-risks,
   .tt-guide .tt-checks, .tt-guide .tt-over dl { grid-template-columns: 1fr; }
   .tt-guide .tt-price-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tt-guide .tt-approved { flex-direction: column; gap: 14px; padding: 18px; }
+  .tt-guide .tt-approved-badge { width: auto; height: auto; padding: 4px 14px; border-radius: 999px; font-size: 13px; }
   .tt-guide .tt-measure { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px; }
   .tt-guide .tt-plan { padding: 20px 10px; }
   .tt-guide .tt-plan-yen { font-size: 24px; }
