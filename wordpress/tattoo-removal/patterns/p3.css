@@ -41,6 +41,7 @@
 .tt-guide a { color: var(--blue-d); }
 .tt-guide a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
 .tt-guide strong { font-weight: 700; }
+.tt-guide .nw { white-space: nowrap; }
 /* 改行：文節単位（auto-phrase）。text-wrap: pretty は Chrome で auto-phrase を無効化するため使わない。
    短い文は balance（auto-phrase と併用可）で行長をそろえ、1〜2文字の泣き別れを防ぐ */
 .tt-guide dd, .tt-guide .tt-toc li, .tt-guide .tt-summary dd, .tt-guide .tt-risks li, .tt-guide .tt-step-text, .tt-guide .tt-fact-text, .tt-guide .tt-dc-text, .tt-guide .tt-mode, .tt-guide .tt-tl-state, .tt-guide .tt-tl-care, .tt-guide .tt-checks li, .tt-guide .tt-notes li, .tt-guide .tt-note, .tt-guide .tt-close-note, .tt-guide .tt-case-cap { text-wrap: balance; }
@@ -266,6 +267,7 @@
   letter-spacing: -.01em;
   color: var(--blue);
   text-transform: none;
+  white-space: nowrap;
 }
 .tt-guide .tt-h-en::after { content: ""; width: 72px; height: 1px; background: var(--blue); opacity: .5; }
 .tt-guide .tt-text { max-width: 40em; margin-bottom: 18px; color: #2A3A55; }
@@ -572,10 +574,32 @@
 @keyframes tt3-tilt { from { transform: rotateX(32deg); } to { transform: rotateX(14deg); } }
 
 /* ---------- タブレット ---------- */
+@media (max-width: 1100px) {
+  /* 列が細くなると文節より短い行幅になり改行が乱れるため、段組みを減らす */
+  .tt-guide .tt-decide { grid-template-columns: 1fr; max-width: 560px; }
+  .tt-guide .tt-dc:nth-child(n) { transform: none; }
+  .tt-guide .tt-dc:nth-child(2) { margin-left: 40px; }
+  .tt-guide .tt-dc:nth-child(3) { margin-left: 80px; }
+  .tt-guide .tt-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tt-guide .tt-steps li:nth-child(n) { transform: none; }
+  .tt-guide .tt-steps li:nth-child(even) { transform: translateY(22px); }
+  .tt-guide .tt-tl { grid-template-columns: 1fr; gap: 6px; }
+  .tt-guide .tt-tl:nth-child(n) { margin-left: 0; }
+  .tt-guide .tt-tl:nth-child(n)::before { left: -30px; }
+  .tt-guide .tt-summary dl { grid-template-columns: 1fr; }
+}
 @media (max-width: 1000px) {
-  .tt-guide .tt-title-main { font-size: 42px; }
+  .tt-guide .tt-title-main { font-size: 40px; }
   .tt-guide .tt-points { grid-template-columns: 1fr; }
   .tt-guide .tt-point:nth-child(2) { transform: none; }
+  .tt-guide .tt-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tt-guide .tt-card:nth-child(n) { transform: none; }
+  .tt-guide .tt-card:nth-child(even) { transform: translateY(24px); }
+  .tt-guide .tt-waves { grid-template-columns: 1fr; max-width: 520px; }
+  .tt-guide .tt-wave:nth-child(2) { margin: 0 0 0 40px; }
+  .tt-guide .tt-wave:nth-child(3) { margin: 0 0 0 80px; }
+  .tt-guide .tt-split { grid-template-columns: 1fr; }
+  .tt-guide .tt-price-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ---------- スマホ ---------- */
@@ -588,7 +612,7 @@
   .tt-guide .tt-title-main { font-size: 30px; }
   .tt-guide .tt-title-sub { font-size: 14.5px; }
   .tt-guide .tt-place { font-size: 11.5px; padding: 4px 12px; }
-  .tt-guide .tt-lead { font-size: 14px; letter-spacing: .03em; }
+  .tt-guide .tt-lead { font-size: 14px; letter-spacing: .02em; }
   .tt-guide .tt-cta-left { text-align: center; }
   .tt-guide .tt-btn { display: flex; width: 100%; padding: 17px 16px; letter-spacing: .04em; font-size: 14.5px; }
   .tt-guide .tt-marquee span { font-size: 22px; }
@@ -648,6 +672,12 @@
   .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { left: 18px; font-size: 26px; }
   .tt-guide .tt-close { padding: 56px 20px; }
   .tt-guide .tt-close-title { font-size: 22px; }
+}
+@media (max-width: 380px) {
+  .tt-guide .tt-lead { letter-spacing: 0; }
+  .tt-guide .tt-h { font-size: 20px; }
+  .tt-guide .tt-h-en { font-size: 38px; white-space: nowrap; }
+  .tt-guide .tt-sec { padding-left: 16px; padding-right: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tt-guide *, .tt-guide *::before, .tt-guide *::after { animation: none !important; transition: none !important; }

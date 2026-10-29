@@ -46,6 +46,7 @@
 .tt-guide a { color: inherit; }
 .tt-guide a:focus-visible { outline: 2px solid var(--sumi); outline-offset: 4px; }
 .tt-guide strong { font-weight: 700; }
+.tt-guide .nw { white-space: nowrap; }
 /* text-wrap: pretty は auto-phrase と併用すると文節を割るため使わない */
 
 /* ---------- ヒーロー ---------- */
@@ -652,7 +653,7 @@
 .tt-guide .tt-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 56px 40px;
+  gap: 56px 32px;
   counter-reset: p1step;
 }
 .tt-guide .tt-steps li { position: relative; counter-increment: p1step; padding-top: 22px; border-top: 1px solid var(--sumi); }
@@ -669,7 +670,7 @@
   -webkit-text-stroke: 1px var(--sumi);
 }
 .tt-guide .tt-step-title { font-family: var(--mincho); font-weight: 700; font-size: 19px; letter-spacing: .08em; text-wrap: balance; }
-.tt-guide .tt-step-text { margin-top: 8px; font-size: 13.5px; line-height: 1.9; color: var(--sumi-2); }
+.tt-guide .tt-step-text { margin-top: 8px; font-size: 13.5px; line-height: 1.9; letter-spacing: .02em; max-width: 17em; color: var(--sumi-2); }
 
 /* ---------- 経過 ---------- */
 .tt-guide .tt-timeline { border-top: 1px solid var(--sumi); }
@@ -759,11 +760,11 @@
   content: "RESERVE";
   position: absolute;
   z-index: -1;
-  right: -14px;
-  bottom: -30px;
+  left: 50px;
+  bottom: -26px;
   font-family: var(--display);
   font-weight: 800;
-  font-size: 180px;
+  font-size: 136px;
   line-height: 1;
   letter-spacing: -.05em;
   color: transparent;
@@ -842,7 +843,7 @@
   .tt-guide .tt-marquee span::after { margin-left: 32px; }
   .tt-guide .tt-summary { display: block; padding: 96px 20px 48px; }
   .tt-guide .tt-summary-title { margin-bottom: 16px; font-size: 19px; }
-  .tt-guide .tt-summary dl > div { grid-template-columns: 1fr; gap: 2px; font-size: 13.5px; }
+  .tt-guide .tt-summary dl > div { grid-template-columns: 1fr; gap: 2px; font-size: 13.5px; letter-spacing: .01em; }
   .tt-guide .tt-toc { padding: 48px 20px; }
   .tt-guide .tt-toc ol { columns: 1; }
   .tt-guide .tt-sec { padding: 72px 20px; }
@@ -895,11 +896,11 @@
   .tt-guide .tt-tl { grid-template-columns: 1fr; gap: 6px; }
   .tt-guide .tt-tl-care { padding-left: 14px; }
   .tt-guide .tt-risks { grid-template-columns: 1fr; }
-  .tt-guide .tt-faq dt { padding-left: 48px; font-size: 16px; }
-  .tt-guide .tt-faq dd { padding-left: 48px; font-size: 13.5px; }
-  .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { font-size: 24px; }
+  .tt-guide .tt-faq dt { padding-left: 0; font-size: 16px; }
+  .tt-guide .tt-faq dd { padding-left: 0; font-size: 14px; letter-spacing: .04em; }
+  .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { position: static; display: inline; margin-right: .35em; font-size: 18px; }
   .tt-guide .tt-close { padding: 80px 20px 120px; }
-  .tt-guide .tt-close::before { font-size: 84px; bottom: -12px; }
+  .tt-guide .tt-close::before { left: 16px; font-size: 50px; bottom: -8px; }
   .tt-guide .tt-close-title { font-size: 23px; letter-spacing: .05em; }
   .tt-guide .tt-close .tt-cta { text-align: center; }
 }

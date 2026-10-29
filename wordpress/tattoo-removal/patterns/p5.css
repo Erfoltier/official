@@ -40,7 +40,7 @@
 .tt-guide li::marker { content: ""; }
 .tt-guide img { display: block; max-width: 100%; height: auto; border: 0; box-shadow: none; }
 .tt-guide strong { font-weight: 700; }
-.tt-guide .nw { white-space: nowrap; } /* 本文側で <span class="nw">徒歩1分</span> のように囲むと改行しない */
+.tt-guide .nw { white-space: nowrap; } /* 本文側で <bdi class="nw">徒歩1分</bdi> のように囲むと改行しない */
 .tt-guide a { color: var(--p-teal); text-underline-offset: 3px; }
 .tt-guide a:focus-visible { outline: 2px solid var(--p-gold); outline-offset: 4px; }
 .tt-guide h2, .tt-guide h3 { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
@@ -571,7 +571,7 @@
 }
 .tt-guide .tt-steps li::after { content: ""; position: absolute; left: 0; top: -1px; width: 36px; height: 1px; background: var(--p-teal); }
 .tt-guide .tt-step-title { font-family: var(--p-mincho); font-size: 18px; font-weight: 600; letter-spacing: .1em; text-wrap: balance; }
-.tt-guide .tt-step-text { margin-top: 8px; font-size: 13.5px; line-height: 1.9; color: #34444B; }
+.tt-guide .tt-step-text { margin-top: 8px; font-size: 13.5px; line-height: 1.9; color: #34444B; letter-spacing: .03em; }
 
 /* ---------- 経過 ---------- */
 .tt-guide .tt-timeline { display: grid; gap: 0; border-top: 1px solid var(--p-gold-lt); }
@@ -582,7 +582,7 @@
 
 /* ---------- リスク ---------- */
 .tt-guide .tt-risks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; border-top: 1px solid var(--p-line); }
-.tt-guide .tt-risks li { padding: 20px 0; border-bottom: 1px solid var(--p-line); font-size: 13.5px; line-height: 1.9; color: #34444B; }
+.tt-guide .tt-risks li { padding: 20px 0; border-bottom: 1px solid var(--p-line); font-size: 13.5px; line-height: 1.9; color: #34444B; letter-spacing: .05em; padding-right: 44px; }
 .tt-guide .tt-risks strong { display: block; margin-bottom: 4px; font-family: var(--p-mincho); font-size: 16px; font-weight: 600; letter-spacing: .08em; color: var(--p-ink); text-wrap: balance; }
 
 /* ---------- 受けられない方 ---------- */
@@ -727,7 +727,7 @@
   .tt-guide .tt-close-title { font-size: 21px; letter-spacing: .08em; }
   /* 390px幅で文節の途中に改行が入らないよう調整した値 */
   .tt-guide .tt-summary dd { font-size: 14px; letter-spacing: .04em; }
-  .tt-guide .tt-risks li { font-size: 14px; letter-spacing: .05em; }
+  .tt-guide .tt-risks li { font-size: 14px; letter-spacing: .05em; padding-right: 0; }
   .tt-guide .tt-faq dd { font-size: 13px; letter-spacing: 0; }
 }
 @media (prefers-reduced-motion: reduce) {

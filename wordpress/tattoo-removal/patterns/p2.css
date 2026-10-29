@@ -788,3 +788,6 @@
 @media (prefers-reduced-motion: reduce) {
   .tt-guide *, .tt-guide *::before, .tt-guide *::after { animation: none !important; transition: none !important; }
 }
+
+/* 改行させない語句 */
+.tt-guide .nw { white-space: nowrap; }

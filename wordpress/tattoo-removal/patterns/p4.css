@@ -38,6 +38,7 @@
 .tt-guide a { color: var(--blue-deep); }
 .tt-guide a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .tt-guide strong { font-weight: 700; }
+.tt-guide .nw { white-space: nowrap; }
 .tt-guide p, .tt-guide dd, .tt-guide li { text-wrap: wrap; }
 
 /* ---------- ヒーロー ---------- */
@@ -560,6 +561,7 @@
   .tt-guide .tt-lead { font-size: 14px; letter-spacing: .02em; text-wrap: wrap; }
   .tt-guide .tt-artmake-fix, .tt-guide #tt-artmake .tt-text { letter-spacing: .02em; }
   .tt-guide .tt-faq dt { text-wrap: wrap; }
+
   .tt-guide .tt-device-cap span { display: none; }
   .tt-guide .tt-hero-device { order: -1; margin-bottom: 24px; }
   .tt-guide .tt-device-stage { max-width: 118px; padding-bottom: 18px; }
