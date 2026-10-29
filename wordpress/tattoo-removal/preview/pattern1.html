@@ -1,0 +1,1157 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>パターン1 プレビュー</title><style>/* preview-fonts: syne:600,700,800; shippori-mincho:500,600,700; noto-sans-jp:400,500,700 */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500;600;700&family=Syne:wght@600;700;800&display=swap");
+
+/* =========================================================
+   タトゥー除去ページ　パターン1：モノクローム・エディトリアル
+   色は「波長」「症例写真」「LINEボタン」だけが持つ
+   ========================================================= */
+.tt-guide {
+  --sumi: #1C1D21;
+  --sumi-2: #2A2B30;
+  --paper: #FFFFFF;
+  --mist: #F1F1EF;
+  --rule: #D8D8D6;
+  --sub: #5E5F63;
+  --line-green: #06C755;
+  --g: #12A15E;
+  --r: #E0313F;
+  --v: #6C3CF0;
+  --display: "Syne", "Helvetica Neue", Arial, sans-serif;
+  --mincho: "Shippori Mincho", "Yu Mincho", YuMincho, "Hiragino Mincho ProN", serif;
+  --sans: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, sans-serif;
+  --shadow-far: 0 50px 80px -40px rgba(28, 29, 33, .45), 0 18px 30px -18px rgba(28, 29, 33, .25);
+  --shadow-near: 0 1px 2px rgba(28, 29, 33, .08), 0 14px 28px -14px rgba(28, 29, 33, .28);
+  position: relative;
+  max-width: 1040px;
+  margin: 0 auto;
+  color: var(--sumi);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.95;
+  letter-spacing: .04em;
+  word-break: auto-phrase;
+  line-break: strict;
+  overflow: hidden;
+  overflow: clip;
+}
+.tt-guide *, .tt-guide *::before, .tt-guide *::after { box-sizing: border-box; }
+.tt-guide p, .tt-guide figure, .tt-guide dl, .tt-guide dd, .tt-guide dt { margin: 0; padding: 0; }
+.tt-guide ul, .tt-guide ol { margin: 0; padding: 0; list-style: none; }
+.tt-guide li { margin: 0; padding: 0; background: none; border: 0; }
+.tt-guide li::marker { content: ""; }
+.tt-guide h2, .tt-guide h3 { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.tt-guide h2::before, .tt-guide h2::after, .tt-guide h3::before, .tt-guide h3::after { content: none; display: none; }
+.tt-guide img { display: block; max-width: 100%; height: auto; border: 0; box-shadow: none; }
+.tt-guide a { color: inherit; }
+.tt-guide a:focus-visible { outline: 2px solid var(--sumi); outline-offset: 4px; }
+.tt-guide strong { font-weight: 700; }
+.tt-guide .nw { white-space: nowrap; }
+/* text-wrap: pretty は auto-phrase と併用すると文節を割るため使わない */
+
+/* ---------- ヒーロー ---------- */
+.tt-guide .tt-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  column-gap: 40px;
+  align-items: end;
+  padding: 150px 56px 0;
+  background: var(--paper);
+  isolation: isolate;
+  z-index: 2;
+}
+.tt-guide .tt-hero::before {
+  content: "TATTOO REMOVAL";
+  white-space: nowrap;
+  position: absolute;
+  z-index: -1;
+  left: 54px;
+  top: 34px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 63px;
+  line-height: 1;
+  letter-spacing: -.045em;
+  color: transparent;
+  -webkit-text-stroke: 1px #BDBDBB;
+  pointer-events: none;
+}
+.tt-guide .tt-hero-body { position: relative; padding-bottom: 72px; }
+.tt-guide .tt-place {
+  display: inline-block;
+  margin-bottom: 34px;
+  padding: 6px 14px;
+  background: var(--sumi);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  line-height: 1.6;
+  text-wrap: balance;
+}
+.tt-guide .tt-title { font-weight: 600; }
+.tt-guide .tt-title-main {
+  display: block;
+  font-family: var(--mincho);
+  font-weight: 600;
+  font-size: 54px;
+  line-height: 1.3;
+  letter-spacing: .08em;
+  color: var(--sumi);
+  text-wrap: balance;
+}
+.tt-guide .tt-title-sub {
+  display: block;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--sumi);
+  max-width: 30em;
+  font-family: var(--mincho);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.7;
+  letter-spacing: .08em;
+  color: var(--sumi-2);
+  text-wrap: balance;
+}
+.tt-guide .tt-lead {
+  max-width: 36em;
+  margin: 28px 0 36px;
+  font-size: 14.5px;
+  color: var(--sub);
+}
+.tt-guide .tt-points {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 40px;
+}
+.tt-guide .tt-point { padding: 16px 18px 16px 0; }
+.tt-guide .tt-point + .tt-point { padding-left: 18px; border-left: 1px solid var(--rule); }
+.tt-guide .tt-point strong { display: block; font-size: 14px; font-weight: 700; line-height: 1.5; letter-spacing: .02em; text-wrap: balance; }
+.tt-guide .tt-point span { display: block; margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--sub); text-wrap: balance; }
+
+/* 本体：大きく浮かせ、下の帯にまたがる */
+.tt-guide .tt-hero-device {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -120px;
+  align-self: end;
+}
+.tt-guide .tt-device-stage { position: relative; width: 300px; margin: 0 auto; padding-bottom: 40px; }
+.tt-guide .tt-pedestal {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 260px;
+  height: 46px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(28, 29, 33, .38), rgba(28, 29, 33, 0));
+}
+.tt-guide .tt-device-img {
+  position: relative;
+  width: 100%;
+  filter: drop-shadow(0 40px 34px rgba(28, 29, 33, .32)) drop-shadow(0 6px 8px rgba(28, 29, 33, .18));
+  animation: p1-rise 1.6s cubic-bezier(.16, .84, .24, 1) both, p1-float 7s ease-in-out 1.6s infinite;
+}
+.tt-guide .tt-device-cap {
+  position: absolute;
+  right: -8px;
+  top: 38%;
+  writing-mode: vertical-rl;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .18em;
+  color: var(--sumi);
+}
+.tt-guide .tt-device-cap span {
+  display: block;
+  margin-right: 6px;
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: var(--sub);
+}
+@keyframes p1-rise { from { opacity: 0; transform: translateY(70px); } to { opacity: 1; transform: none; } }
+@keyframes p1-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+/* ---------- ボタン（LINEの色だけ許す） ---------- */
+.tt-guide .tt-cta { text-align: center; }
+.tt-guide .tt-cta-left { text-align: left; }
+.tt-guide .tt-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 34px 18px 30px;
+  background: var(--line-green);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 18px 30px -14px rgba(6, 199, 85, .7);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s;
+}
+.tt-guide .tt-btn::after {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  transition: width .35s cubic-bezier(.2, .8, .2, 1);
+}
+.tt-guide .tt-btn:hover { color: #fff; transform: translateY(-3px); box-shadow: 0 26px 38px -16px rgba(6, 199, 85, .75); }
+.tt-guide .tt-btn:hover::after { width: 44px; }
+.tt-guide .tt-btn-light { background: var(--line-green); }
+
+/* ---------- マーキー（細い帯） ---------- */
+.tt-guide .tt-marquee {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  background: var(--sumi);
+  color: #fff;
+  padding: 14px 0;
+}
+.tt-guide .tt-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: p1-marquee 40s linear infinite;
+}
+.tt-guide .tt-marquee span {
+  padding: 0 28px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: .14em;
+  white-space: nowrap;
+}
+.tt-guide .tt-marquee span::after { content: "/"; margin-left: 56px; color: #6E6F73; }
+@keyframes p1-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ---------- まとめ ---------- */
+.tt-guide .tt-summary {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 40px;
+  margin: 0;
+  padding: 140px 56px 72px;
+  background: var(--mist);
+}
+.tt-guide .tt-summary-title {
+  font-family: var(--mincho);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: .1em;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.tt-guide .tt-summary-title::before {
+  content: "Summary";
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .14em;
+  color: var(--sub);
+}
+.tt-guide .tt-summary dl { border-top: 1px solid var(--sumi); }
+.tt-guide .tt-summary dl > div {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.tt-guide .tt-summary dt { font-weight: 700; }
+.tt-guide .tt-summary dd { color: var(--sumi-2); }
+
+/* ---------- 目次 ---------- */
+.tt-guide .tt-toc { padding: 64px 56px; border-bottom: 1px solid var(--rule); }
+.tt-guide .tt-toc-title {
+  margin-bottom: 20px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .16em;
+  color: var(--sub);
+}
+.tt-guide .tt-toc ol { columns: 2; column-gap: 56px; counter-reset: p1toc; }
+.tt-guide .tt-toc li { counter-increment: p1toc; break-inside: avoid; border-bottom: 1px solid var(--rule); }
+.tt-guide .tt-toc a {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  text-decoration: none;
+  text-wrap: balance;
+  transition: padding-left .3s;
+}
+.tt-guide .tt-toc a::before {
+  content: counter(p1toc, decimal-leading-zero);
+  flex: none;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--sub);
+}
+.tt-guide .tt-toc a:hover { padding-left: 8px; }
+
+/* ---------- セクション共通 ---------- */
+.tt-guide .tt-sec { position: relative; padding: 112px 56px; scroll-margin-top: 100px; }
+.tt-guide .tt-sec-tint { background: var(--mist); }
+.tt-guide .tt-h {
+  display: block;
+  margin: 0 0 48px;
+  font-family: var(--mincho);
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.55;
+  letter-spacing: .08em;
+  color: var(--sumi);
+  text-wrap: balance;
+}
+.tt-guide .tt-h-en {
+  display: block;
+  margin: 0 0 14px -4px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 96px;
+  line-height: .95;
+  letter-spacing: -.035em;
+  color: var(--sumi);
+  white-space: nowrap;
+}
+.tt-guide .tt-text { max-width: 40em; margin-bottom: 20px; color: var(--sumi-2); }
+.tt-guide .tt-text:last-child { margin-bottom: 0; }
+.tt-guide .tt-note { margin-top: 24px; font-size: 12.5px; line-height: 1.9; color: var(--sub); }
+
+/* こんな方に：2段組の誌面リスト */
+.tt-guide .tt-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 56px;
+  border-top: 1px solid var(--sumi);
+}
+.tt-guide .tt-card {
+  position: relative;
+  padding: 22px 0 22px 34px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.tt-guide .tt-card p { text-wrap: balance; }
+.tt-guide .tt-card::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 33px;
+  width: 16px;
+  height: 1px;
+  background: var(--sumi);
+}
+
+/* ---------- 医師セクション（墨の面＋浮くパネル） ---------- */
+.tt-guide .tt-sec-doctor {
+  background: var(--sumi);
+  color: #fff;
+  padding-bottom: 112px;
+}
+.tt-guide .tt-sec-doctor .tt-h, .tt-guide .tt-sec-doctor .tt-h-en { color: #fff; }
+.tt-guide .tt-sec-doctor .tt-h-en { color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, .7); }
+.tt-guide .tt-sec-doctor .tt-text { color: #C9CACE; }
+.tt-guide .tt-sec-doctor > .tt-text:last-child { margin-top: 120px; }
+.tt-guide .tt-decide {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 64px 0 0;
+}
+.tt-guide .tt-dc {
+  position: relative;
+  padding: 36px 30px 34px;
+  background: var(--paper);
+  color: var(--sumi);
+  box-shadow: var(--shadow-far);
+}
+.tt-guide .tt-dc:nth-child(2) { transform: translateY(36px); }
+.tt-guide .tt-dc:nth-child(3) { transform: translateY(72px); }
+.tt-guide .tt-dc-see { font-size: 13px; font-weight: 500; color: var(--sub); letter-spacing: .06em; text-wrap: balance; }
+.tt-guide .tt-dc-arrow { width: 1px; height: 30px; margin: 12px 0; background: var(--sumi); }
+.tt-guide .tt-dc-choose {
+  margin-bottom: 16px;
+  font-family: var(--mincho);
+  font-weight: 700;
+  font-size: 23px;
+  line-height: 1.5;
+  letter-spacing: .08em;
+  text-wrap: balance;
+}
+.tt-guide .tt-dc-text { font-size: 13.5px; line-height: 1.9; color: var(--sumi-2); }
+
+/* ---------- 機器と波長 ---------- */
+.tt-guide .tt-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  margin-bottom: 36px;
+}
+.tt-guide .tt-modes { display: grid; gap: 0; border-top: 1px solid var(--sumi); }
+.tt-guide .tt-mode {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--sub);
+}
+.tt-guide .tt-mode strong {
+  display: block;
+  margin: 8px 0 2px;
+  font-family: var(--mincho);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: .08em;
+  color: var(--sumi);
+}
+.tt-guide .tt-mode-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border: 1px solid var(--sumi);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: var(--sumi);
+}
+.tt-guide .tt-mode-tag-q { background: var(--sumi); color: #fff; }
+
+/* 皮膚断面図 */
+.tt-guide .tt-skin { margin: 56px 0 48px; perspective: 1600px; }
+.tt-guide .tt-skin-block {
+  position: relative;
+  height: 340px;
+  overflow: hidden;
+  transform: rotateX(12deg);
+  transform-origin: 50% 100%;
+  box-shadow: var(--shadow-far);
+}
+.tt-guide .tt-layer { position: absolute; left: 0; right: 0; }
+.tt-guide .tt-layer > span {
+  position: absolute;
+  right: 18px;
+  top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: rgba(28, 29, 33, .55);
+}
+.tt-guide .tt-layer-epi { top: 0; height: 54px; background: linear-gradient(180deg, #F7E4DA, #EFD2C3); }
+.tt-guide .tt-layer-der { top: 54px; height: 210px; background: linear-gradient(180deg, #ECC5B3, #DFAB97); }
+.tt-guide .tt-layer-sub { top: 264px; bottom: 0; background: repeating-linear-gradient(90deg, #F7EED9 0 18px, #F1E4C8 18px 19px); }
+.tt-guide .tt-ink { position: absolute; z-index: 2; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 255, 255, .55), 0 3px 6px rgba(0, 0, 0, .3); }
+.tt-guide .tt-ink-a { left: calc(18% - 2px); top: 38px; width: 16px; height: 16px; background: #E23A44; }
+.tt-guide .tt-ink-b { left: calc(18% + 12px); top: 52px; width: 12px; height: 12px; background: #F08A2E; }
+.tt-guide .tt-ink-c { left: calc(49% - 2px); top: 102px; width: 18px; height: 18px; background: #2E62C9; }
+.tt-guide .tt-ink-d { left: calc(49% + 14px); top: 116px; width: 13px; height: 13px; background: #279158; }
+.tt-guide .tt-ink-e { left: calc(80% - 2px); top: 160px; width: 22px; height: 22px; background: #15161A; }
+.tt-guide .tt-ink-f { left: calc(80% + 16px); top: 178px; width: 15px; height: 15px; background: #1F2A55; }
+.tt-guide .tt-ray {
+  position: absolute;
+  top: 0;
+  width: 26px;
+  border-radius: 0 0 13px 13px;
+  transform-origin: top;
+  animation: p1-ray 1.6s cubic-bezier(.2, .8, .2, 1) both;
+}
+.tt-guide .tt-ray b {
+  position: absolute;
+  left: calc(100% + 24px);
+  bottom: -10px;
+  padding: 2px 10px;
+  background: #fff;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  box-shadow: var(--shadow-near);
+}
+.tt-guide .tt-ray-532 { left: calc(18% - 6px); height: 104px; background: linear-gradient(180deg, rgba(18, 161, 94, .08), rgba(18, 161, 94, .9)); box-shadow: 0 0 26px rgba(18, 161, 94, .6); }
+.tt-guide .tt-ray-532 b { color: var(--g); }
+.tt-guide .tt-ray-694 { left: calc(49% - 4px); height: 168px; background: linear-gradient(180deg, rgba(224, 49, 63, .08), rgba(224, 49, 63, .9)); box-shadow: 0 0 26px rgba(224, 49, 63, .55); animation-delay: .2s; }
+.tt-guide .tt-ray-694 b { color: var(--r); }
+.tt-guide .tt-ray-1064 { left: calc(80% - 2px); height: 226px; background: linear-gradient(180deg, rgba(108, 60, 240, .08), rgba(108, 60, 240, .9)); box-shadow: 0 0 26px rgba(108, 60, 240, .55); animation-delay: .4s; }
+.tt-guide .tt-ray-1064 b { color: var(--v); }
+@keyframes p1-ray { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+.tt-guide .tt-skin figcaption { margin-top: 18px; font-size: 12.5px; color: var(--sub); text-align: center; text-wrap: balance; }
+
+/* 波長：誌面の3段組。色はここだけ */
+.tt-guide .tt-waves {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--sumi);
+}
+.tt-guide .tt-wave { padding: 30px 28px 30px 0; }
+.tt-guide .tt-wave + .tt-wave { padding-left: 28px; border-left: 1px solid var(--rule); }
+.tt-guide .tt-wave-nm {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 54px;
+  line-height: 1;
+  letter-spacing: -.04em;
+  white-space: nowrap;
+}
+.tt-guide .tt-wave-532 .tt-wave-nm { color: var(--g); }
+.tt-guide .tt-wave-694 .tt-wave-nm { color: var(--r); }
+.tt-guide .tt-wave-1064 .tt-wave-nm { color: var(--v); }
+.tt-guide .tt-wave-nm span { margin-left: 4px; font-size: 18px; letter-spacing: 0; }
+.tt-guide .tt-wave-name { margin-top: 14px; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--sub); }
+.tt-guide .tt-wave-target { margin-top: 6px; font-size: 14.5px; line-height: 1.75; text-wrap: balance; }
+.tt-guide .tt-chips { display: flex; gap: 6px; margin-top: 16px; }
+.tt-guide .tt-chip { width: 16px; height: 16px; border-radius: 50%; box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--rule); }
+.tt-guide .tt-c-red { background: #E23A44; }
+.tt-guide .tt-c-orange { background: #F08A2E; }
+.tt-guide .tt-c-yellow { background: #F2CB3A; }
+.tt-guide .tt-c-brown { background: #8A5A3B; }
+.tt-guide .tt-c-purple { background: #8B47C9; }
+.tt-guide .tt-c-blue { background: #2E62C9; }
+.tt-guide .tt-c-green { background: #279158; }
+.tt-guide .tt-c-black { background: #15161A; }
+.tt-guide .tt-c-navy { background: #1F2A55; }
+.tt-guide .tt-c-darkbrown { background: #4A2E22; }
+
+/* ---------- アートメイク（白地に大きな引用風） ---------- */
+.tt-guide #tt-artmake .tt-text:first-of-type {
+  max-width: 40em;
+  padding-left: 28px;
+  border-left: 2px solid var(--sumi);
+  font-family: var(--mincho);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 2;
+  color: var(--sumi);
+}
+.tt-guide #tt-artmake .tt-text:first-of-type + .tt-text { margin-top: 24px; padding-left: 30px; }
+
+/* ---------- 症例（写真だけが色を持つ。段違いで浮かせる） ---------- */
+.tt-guide .tt-cases {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin: 8px 0 120px;
+}
+.tt-guide .tt-case { background: var(--paper); padding: 12px 12px 18px; box-shadow: var(--shadow-far); }
+.tt-guide .tt-case:nth-child(2) { transform: translateY(48px); }
+.tt-guide .tt-case:nth-child(3) { transform: translateY(96px); }
+.tt-guide .tt-ba { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.tt-guide .tt-ba figure { position: relative; overflow: hidden; }
+.tt-guide .tt-ba img { width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform 1.2s cubic-bezier(.2, .8, .2, 1); }
+.tt-guide .tt-case:hover .tt-ba img { transform: scale(1.05); }
+.tt-guide .tt-ba figcaption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 3px 10px;
+  background: var(--sumi);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+}
+.tt-guide .tt-ba figure + figure figcaption { background: #fff; color: var(--sumi); }
+.tt-guide .tt-case-cap { margin-top: 14px; padding: 0 4px; font-size: 12px; line-height: 1.7; color: var(--sub); text-wrap: balance; }
+.tt-guide .tt-case-detail { border-top: 1px solid var(--sumi); font-size: 13.5px; }
+.tt-guide .tt-case-detail > div {
+  display: grid;
+  grid-template-columns: 9em minmax(0, 1fr);
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  line-height: 1.8;
+}
+.tt-guide .tt-case-detail dt { font-weight: 700; }
+.tt-guide .tt-case-detail a { text-underline-offset: 3px; }
+
+/* ---------- 回数・間隔（大きな数字） ---------- */
+.tt-guide .tt-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 40px;
+  border-top: 1px solid var(--sumi);
+}
+.tt-guide .tt-fact { padding: 32px 40px 32px 0; }
+.tt-guide .tt-fact + .tt-fact { padding-left: 40px; border-left: 1px solid var(--rule); }
+.tt-guide .tt-fact-label { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--sub); }
+.tt-guide .tt-fact-value {
+  margin: 10px 0 14px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 84px;
+  line-height: 1;
+  letter-spacing: -.04em;
+  white-space: nowrap;
+}
+.tt-guide .tt-fact-value small { margin-left: 10px; font-family: var(--mincho); font-weight: 600; font-size: 18px; letter-spacing: .06em; }
+.tt-guide .tt-fact-text { font-size: 13.5px; line-height: 1.9; color: var(--sumi-2); }
+
+/* ---------- 料金（価格表を誌面の表組みに） ---------- */
+.tt-guide .tt-price-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 40px 0 32px;
+  background: var(--paper);
+  box-shadow: var(--shadow-far);
+}
+.tt-guide .tt-plan { position: relative; padding: 34px 24px 30px; transition: background-color .4s; }
+.tt-guide .tt-plan + .tt-plan { border-left: 1px solid var(--rule); }
+.tt-guide .tt-plan:hover { background: var(--sumi); color: #fff; }
+.tt-guide .tt-plan:hover .tt-plan-size { color: #B9BABE; }
+.tt-guide .tt-plan-area { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -.01em; }
+.tt-guide .tt-plan-area span { margin-left: 2px; font-size: 13px; }
+.tt-guide .tt-plan-size { min-height: 1.8em; font-size: 12px; color: var(--sub); }
+.tt-guide .tt-plan-yen {
+  margin-top: 26px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -.03em;
+  white-space: nowrap;
+}
+.tt-guide .tt-plan-yen span { margin-left: 3px; font-family: var(--sans); font-weight: 700; font-size: 13px; letter-spacing: 0; }
+.tt-guide .tt-over { padding: 30px 0 0; border-top: 1px solid var(--sumi); }
+.tt-guide .tt-over-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 24px; margin-bottom: 18px; }
+.tt-guide .tt-over-label { font-family: var(--mincho); font-weight: 700; font-size: 20px; letter-spacing: .08em; }
+.tt-guide .tt-over-rule { font-size: 14px; color: var(--sub); }
+.tt-guide .tt-over-rule strong { margin-left: 8px; font-family: var(--display); font-weight: 800; font-size: 26px; color: var(--sumi); letter-spacing: -.02em; }
+.tt-guide .tt-over dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule); }
+.tt-guide .tt-over dl > div { padding: 18px 20px 18px 0; border-bottom: 1px solid var(--rule); }
+.tt-guide .tt-over dl > div + div { padding-left: 20px; border-left: 1px solid var(--rule); }
+.tt-guide .tt-over dt { font-family: var(--display); font-weight: 700; font-size: 15px; }
+.tt-guide .tt-over dt small { margin-left: 8px; font-family: var(--sans); font-size: 11px; font-weight: 400; color: var(--sub); }
+.tt-guide .tt-over dd { margin-top: 4px; font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -.02em; white-space: nowrap; }
+.tt-guide .tt-notes { margin-top: 28px; font-size: 13px; color: var(--sub); }
+.tt-guide .tt-notes li { position: relative; padding-left: 1.3em; margin-bottom: 4px; }
+.tt-guide .tt-notes li::before { content: "※"; position: absolute; left: 0; }
+
+/* ---------- 流れ（順番がある＝番号を使う） ---------- */
+.tt-guide .tt-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 56px 32px;
+  counter-reset: p1step;
+}
+.tt-guide .tt-steps li { position: relative; counter-increment: p1step; padding-top: 22px; border-top: 1px solid var(--sumi); }
+.tt-guide .tt-steps li::before {
+  content: counter(p1step, decimal-leading-zero);
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: -.04em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--sumi);
+}
+.tt-guide .tt-step-title { font-family: var(--mincho); font-weight: 700; font-size: 19px; letter-spacing: .08em; text-wrap: balance; }
+.tt-guide .tt-step-text { margin-top: 8px; font-size: 13.5px; line-height: 1.9; letter-spacing: .02em; max-width: 17em; color: var(--sumi-2); }
+
+/* ---------- 経過 ---------- */
+.tt-guide .tt-timeline { border-top: 1px solid var(--sumi); }
+.tt-guide .tt-tl {
+  display: grid;
+  grid-template-columns: 11em minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  padding: 26px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+.tt-guide .tt-tl-when { font-family: var(--mincho); font-weight: 700; font-size: 17px; letter-spacing: .06em; text-wrap: balance; }
+.tt-guide .tt-tl-care { padding-left: 20px; border-left: 1px solid var(--rule); color: var(--sumi); }
+
+/* ---------- リスク ---------- */
+.tt-guide .tt-risks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 40px;
+  border-top: 1px solid var(--sumi);
+}
+.tt-guide .tt-risks li { padding: 22px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; line-height: 1.85; color: var(--sumi-2); }
+.tt-guide .tt-risks strong {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--mincho);
+  font-weight: 700;
+  font-size: 16.5px;
+  letter-spacing: .06em;
+  color: var(--sumi);
+  text-wrap: balance;
+}
+
+/* ---------- 受けられない方 ---------- */
+.tt-guide .tt-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 56px;
+  border-top: 1px solid var(--sumi);
+}
+.tt-guide .tt-checks li { position: relative; padding: 16px 0 16px 30px; border-bottom: 1px solid var(--rule); font-size: 14.5px; line-height: 1.75; }
+.tt-guide .tt-checks li::before { content: ""; position: absolute; left: 2px; top: 28px; width: 14px; height: 1px; background: var(--sumi); }
+
+/* ---------- よくある質問 ---------- */
+.tt-guide .tt-faq { border-top: 1px solid var(--sumi); }
+.tt-guide .tt-faq dt {
+  position: relative;
+  padding: 28px 0 8px 64px;
+  font-family: var(--mincho);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: .06em;
+  text-wrap: balance;
+}
+.tt-guide .tt-faq dd {
+  position: relative;
+  padding: 0 0 28px 64px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.95;
+  color: var(--sumi-2);
+}
+.tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before {
+  position: absolute;
+  left: 0;
+  font-family: var(--mincho);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1;
+}
+.tt-guide .tt-faq dt::before { content: "Q."; top: 26px; }
+.tt-guide .tt-faq dd::before { content: "A."; top: 0; color: #9A9B9F; }
+
+/* ---------- 締め ---------- */
+.tt-guide .tt-close {
+  position: relative;
+  padding: 120px 56px 200px;
+  background: var(--sumi);
+  color: #fff;
+  text-align: left;
+  overflow: hidden;
+  isolation: isolate;
+}
+.tt-guide .tt-close::before {
+  content: "RESERVE";
+  position: absolute;
+  z-index: -1;
+  left: 50px;
+  bottom: -26px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 136px;
+  line-height: 1;
+  letter-spacing: -.05em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, .22);
+  white-space: nowrap;
+}
+.tt-guide .tt-close-title {
+  max-width: 16em;
+  margin-bottom: 18px;
+  font-family: var(--mincho);
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.5;
+  letter-spacing: .08em;
+  text-wrap: balance;
+}
+.tt-guide .tt-close-text { max-width: 32em; margin-bottom: 40px; color: #C9CACE; }
+.tt-guide .tt-close .tt-cta { text-align: left; }
+.tt-guide .tt-close-note { margin-top: 28px; font-size: 12px; color: #A4A5AA; }
+
+/* ---------- スクロール入場（対応ブラウザのみ・ゆっくり） ---------- */
+@supports (animation-timeline: view()) {
+  .tt-guide .tt-reveal {
+    animation: p1-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 70%;
+  }
+  .tt-guide .tt-h-en {
+    animation: p1-slide linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 40%;
+  }
+  .tt-guide .tt-ray {
+    animation: p1-ray linear both;
+    animation-timeline: view();
+    animation-range: entry 40% cover 45%;
+  }
+  .tt-guide .tt-ray-694 { animation-range: entry 50% cover 50%; }
+  .tt-guide .tt-ray-1064 { animation-range: entry 60% cover 55%; }
+}
+@keyframes p1-in { from { opacity: 0; translate: 0 40px; } to { opacity: 1; translate: 0 0; } }
+@keyframes p1-slide { from { opacity: 0; translate: -60px 0; } to { opacity: 1; translate: 0 0; } }
+
+/* ---------- タブレット ---------- */
+@media (max-width: 1024px) {
+  .tt-guide .tt-hero { grid-template-columns: minmax(0, 1fr) 260px; padding: 80px 36px 0; }
+  .tt-guide .tt-hero::before { left: 34px; font-size: 54px; }
+  .tt-guide .tt-title-main { font-size: 44px; }
+  .tt-guide .tt-device-stage { width: 230px; }
+  .tt-guide .tt-sec, .tt-guide .tt-toc { padding-left: 36px; padding-right: 36px; }
+  .tt-guide .tt-summary { padding-left: 36px; padding-right: 36px; grid-template-columns: 1fr; gap: 20px; }
+  .tt-guide .tt-h-en { font-size: 76px; }
+  .tt-guide .tt-risks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- スマホ ---------- */
+@media (max-width: 767px) {
+  .tt-guide { font-size: 14px; line-height: 1.9; letter-spacing: .03em; }
+  .tt-guide .tt-hero { display: block; padding: 126px 20px 0; }
+  .tt-guide .tt-hero::before { content: "TATTOO\A REMOVAL"; white-space: pre; left: 18px; top: 20px; font-size: 38px; line-height: .98; letter-spacing: -.04em; }
+  .tt-guide .tt-hero-body { padding-bottom: 40px; }
+  .tt-guide .tt-place { margin-bottom: 24px; font-size: 11px; letter-spacing: .04em; }
+  .tt-guide .tt-title-main { font-size: 30px; letter-spacing: .06em; }
+  .tt-guide .tt-title-sub { font-size: 15px; margin-top: 16px; padding-top: 16px; letter-spacing: .05em; }
+  .tt-guide .tt-lead { font-size: 14px; margin: 22px 0 28px; }
+  .tt-guide .tt-points { grid-template-columns: 1fr; margin-bottom: 30px; }
+  .tt-guide .tt-point, .tt-guide .tt-point + .tt-point { padding: 14px 0; border-left: 0; }
+  .tt-guide .tt-point + .tt-point { border-top: 1px solid var(--rule); }
+  .tt-guide .tt-cta-left { text-align: center; }
+  .tt-guide .tt-btn { display: flex; justify-content: center; padding: 17px 16px; font-size: 14px; letter-spacing: .04em; }
+  .tt-guide .tt-hero-device { margin: 8px 0 -70px; }
+  .tt-guide .tt-device-stage { width: 170px; }
+  .tt-guide .tt-device-cap { right: 16px; top: 30%; }
+  .tt-guide .tt-marquee { padding: 10px 0; }
+  .tt-guide .tt-marquee span { font-size: 12px; padding: 0 16px; }
+  .tt-guide .tt-marquee span::after { margin-left: 32px; }
+  .tt-guide .tt-summary { display: block; padding: 96px 20px 48px; }
+  .tt-guide .tt-summary-title { margin-bottom: 16px; font-size: 19px; }
+  .tt-guide .tt-summary dl > div { grid-template-columns: 1fr; gap: 2px; font-size: 13.5px; letter-spacing: .01em; }
+  .tt-guide .tt-toc { padding: 48px 20px; }
+  .tt-guide .tt-toc ol { columns: 1; }
+  .tt-guide .tt-sec { padding: 72px 20px; }
+  .tt-guide .tt-h { margin-bottom: 32px; font-size: 20px; letter-spacing: .05em; }
+  .tt-guide .tt-h-en { font-size: 40px; line-height: 1; margin-bottom: 10px; white-space: normal; }
+  .tt-guide .tt-cards, .tt-guide .tt-checks { grid-template-columns: 1fr; }
+  .tt-guide .tt-card { padding: 16px 0 16px 28px; font-size: 14px; }
+  .tt-guide .tt-card::before { top: 28px; }
+  .tt-guide .tt-decide { grid-template-columns: 1fr; gap: 16px; margin-top: 40px; }
+  .tt-guide .tt-dc:nth-child(2), .tt-guide .tt-dc:nth-child(3) { transform: none; }
+  .tt-guide .tt-dc { padding: 26px 22px; }
+  .tt-guide .tt-dc-choose { font-size: 20px; }
+  .tt-guide .tt-sec-doctor > .tt-text:last-child { margin-top: 36px; }
+  .tt-guide .tt-split { grid-template-columns: 1fr; gap: 28px; }
+  .tt-guide .tt-skin-block { height: 300px; transform: none; }
+  .tt-guide .tt-layer-der { height: 180px; }
+  .tt-guide .tt-layer-sub { top: 234px; }
+  .tt-guide .tt-layer > span { right: 10px; font-size: 10px; }
+  .tt-guide .tt-ray { width: 18px; }
+  .tt-guide .tt-ray-532 { left: 10%; height: 96px; }
+  .tt-guide .tt-ray-694 { left: 42%; height: 150px; }
+  .tt-guide .tt-ray-1064 { left: 74%; height: 200px; }
+  .tt-guide .tt-ink-a { left: 10%; top: 32px; } .tt-guide .tt-ink-b { left: calc(10% + 12px); top: 44px; }
+  .tt-guide .tt-ink-c { left: 42%; top: 86px; } .tt-guide .tt-ink-d { left: calc(42% + 12px); top: 100px; }
+  .tt-guide .tt-ink-e { left: 74%; top: 134px; } .tt-guide .tt-ink-f { left: calc(74% + 12px); top: 150px; }
+  .tt-guide .tt-ray b { left: 50%; bottom: auto; top: 6px; transform: translateX(-50%); font-size: 10px; padding: 1px 6px; }
+  .tt-guide .tt-waves { grid-template-columns: 1fr; }
+  .tt-guide .tt-wave, .tt-guide .tt-wave + .tt-wave { padding: 24px 0; border-left: 0; }
+  .tt-guide .tt-wave + .tt-wave { border-top: 1px solid var(--rule); }
+  .tt-guide .tt-wave-nm { font-size: 52px; }
+  .tt-guide #tt-artmake .tt-text:first-of-type { padding-left: 18px; font-size: 15.5px; }
+  .tt-guide #tt-artmake .tt-text:first-of-type + .tt-text { padding-left: 20px; }
+  .tt-guide .tt-cases { grid-template-columns: 1fr; gap: 22px; margin-bottom: 48px; }
+  .tt-guide .tt-case:nth-child(2), .tt-guide .tt-case:nth-child(3) { transform: none; }
+  .tt-guide .tt-case-detail > div { grid-template-columns: 1fr; gap: 2px; }
+  .tt-guide .tt-facts { grid-template-columns: 1fr; }
+  .tt-guide .tt-fact, .tt-guide .tt-fact + .tt-fact { padding: 24px 0; border-left: 0; }
+  .tt-guide .tt-fact + .tt-fact { border-top: 1px solid var(--rule); }
+  .tt-guide .tt-fact-value { font-size: 60px; }
+  .tt-guide .tt-price-grid { grid-template-columns: 1fr; }
+  .tt-guide .tt-plan { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: baseline; column-gap: 12px; padding: 18px 18px; }
+  .tt-guide .tt-plan + .tt-plan { border-left: 0; border-top: 1px solid var(--rule); }
+  .tt-guide .tt-plan-area { grid-column: 1; grid-row: 1; font-size: 19px; }
+  .tt-guide .tt-plan-size { grid-column: 1; grid-row: 2; min-height: 0; }
+  .tt-guide .tt-plan-yen { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-self: end; margin: 0; font-size: 26px; }
+  .tt-guide .tt-over dl { grid-template-columns: 1fr; }
+  .tt-guide .tt-over dl > div, .tt-guide .tt-over dl > div + div { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0; border-left: 0; }
+  .tt-guide .tt-over dd { margin: 0; font-size: 22px; }
+  .tt-guide .tt-steps { grid-template-columns: 1fr; gap: 36px; }
+  .tt-guide .tt-tl { grid-template-columns: 1fr; gap: 6px; }
+  .tt-guide .tt-tl-care { padding-left: 14px; }
+  .tt-guide .tt-risks { grid-template-columns: 1fr; }
+  .tt-guide .tt-faq dt { padding-left: 0; font-size: 16px; }
+  .tt-guide .tt-faq dd { padding-left: 0; font-size: 14px; letter-spacing: .04em; }
+  .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { position: static; display: inline; margin-right: .35em; font-size: 18px; }
+  .tt-guide .tt-close { padding: 80px 20px 120px; }
+  .tt-guide .tt-close::before { left: 16px; font-size: 50px; bottom: -8px; }
+  .tt-guide .tt-close-title { font-size: 23px; letter-spacing: .05em; }
+  .tt-guide .tt-close .tt-cta { text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tt-guide *, .tt-guide *::before, .tt-guide *::after { animation: none !important; transition: none !important; }
+}
+</style><style>body{margin:0;background:#fff}.wp-mock{max-width:1100px;margin:0 auto;padding:40px 20px}</style><div class="wp-mock"><div class="tt-guide">
+<div class="tt-hero">
+<div class="tt-hero-body">
+<p class="tt-place">JR東大宮駅 <bdi class="nw">徒歩1分</bdi>｜いしだ皮フ科・美容皮膚科（さいたま市見沼区）</p>
+<h2 class="tt-title"><span class="tt-title-main">埼玉・大宮のタトゥー除去</span><span class="tt-title-sub">刺青・入れ墨・アートメイクを、ピコレーザーで薄くする治療</span></h2>
+<p class="tt-lead">いしだ皮フ科・美容皮膚科では、3つの波長を1台で使い分けられるピコレーザー「ディスカバリーピコプラス」で、タトゥー（刺青・入れ墨）とアートメイクの除去を行っています。保険診療でアザやシミのレーザー治療を日常的に行っている医師が、インクの色・濃さ・深さに合わせて<bdi class="nw">照射方法</bdi>を設定します。</p>
+<div class="tt-points">
+<div class="tt-point"><strong>黒もカラーも同一料金</strong><span>1回 <bdi class="nw">29,700円</bdi>〜（税込）</span></div>
+<div class="tt-point"><strong>3波長 × 2モード</strong><span>532・694・1064nm</span></div>
+<div class="tt-point"><strong><bdi class="nw">大宮駅から2駅</bdi></strong><span>JR東大宮駅 東口<bdi class="nw">徒歩1分</bdi></span></div>
+</div>
+<p class="tt-cta tt-cta-left"><a class="tt-btn" href="https://lin.ee/OFlfdeH" target="_blank" rel="noopener">LINEでタトゥー除去を相談する</a></p>
+</div>
+<figure class="tt-hero-device">
+<div class="tt-device-stage"><span class="tt-pedestal" aria-hidden="true"></span><img src="../images/tattoo-pico-device.webp" alt="タトゥー除去に使用するピコレーザー ディスカバリーピコプラス（Quanta System社）" width="296" height="685" class="tt-device-img"></div>
+<figcaption class="tt-device-cap">Discovery PICO Plus<span>Quanta System社（イタリア）</span></figcaption>
+</figure>
+</div>
+<div class="tt-marquee" aria-hidden="true"><div class="tt-marquee-track"><span>TATTOO REMOVAL</span><span>PICO LASER</span><span>532nm</span><span>694nm</span><span>1064nm</span><span>SAITAMA OMIYA</span><span>TATTOO REMOVAL</span><span>PICO LASER</span><span>532nm</span><span>694nm</span><span>1064nm</span><span>SAITAMA OMIYA</span></div></div>
+<div class="tt-summary">
+<p class="tt-summary-title">このページのまとめ</p>
+<dl>
+<div><dt>治療内容</dt><dd>ピコレーザーによるタトゥー・刺青・入れ墨・アートメイクの除去</dd></div>
+<div><dt>使用機器</dt><dd>ディスカバリーピコプラス（532nm・694nm・1064nm、ピコ秒／ナノ秒）</dd></div>
+<div><dt>料金</dt><dd>1回<bdi class="nw">29,700円</bdi>〜（税込）。黒もカラーも同一料金で、面積で決まります</dd></div>
+<div><dt>回数・間隔</dt><dd><bdi class="nw">5〜10回以上</bdi>が目安。<bdi class="nw">6〜8週間以上</bdi>あけて照射します</dd></div>
+<div><dt>場所</dt><dd>埼玉県さいたま市見沼区、JR東大宮駅東口<bdi class="nw">徒歩1分</bdi>（大宮駅から宇都宮線で2駅）</dd></div>
+<div><dt>予約</dt><dd>LINEで予約。美容皮膚科は水曜・祝日・特別診療日の<bdi class="nw">完全予約制</bdi></dd></div>
+</dl>
+</div>
+<nav class="tt-toc" aria-label="このページの目次">
+<p class="tt-toc-title">目次</p>
+<ol>
+<li><a href="#tt-for">こんな方がご相談に来られます</a></li>
+<li><a href="#tt-doctor">レーザー治療を日常的に行う医師が照射方法を設定</a></li>
+<li><a href="#tt-device">ディスカバリーピコプラスと3つの波長</a></li>
+<li><a href="#tt-artmake">アートメイク除去について</a></li>
+<li><a href="#tt-case">症例写真（メーカー提供）</a></li>
+<li><a href="#tt-count">治療回数と間隔の目安</a></li>
+<li><a href="#tt-price">タトゥー除去の料金</a></li>
+<li><a href="#tt-flow">治療の流れ</a></li>
+<li><a href="#tt-after">照射後の経過とアフターケア</a></li>
+<li><a href="#tt-risk">副作用・リスク</a></li>
+<li><a href="#tt-ng">治療を受けられない方</a></li>
+<li><a href="#tt-faq">よくある質問</a></li>
+</ol>
+</nav>
+<div class="tt-sec" id="tt-for">
+<h3 class="tt-h"><span class="tt-h-en">For you</span>こんな方がご相談に来られます</h3>
+<div class="tt-cards">
+<div class="tt-card"><p>就職・転職や結婚を機に、タトゥー・刺青を消したい</p></div>
+<div class="tt-card"><p>温泉・ジム・プールで人目を気にせず過ごしたい</p></div>
+<div class="tt-card"><p>カラーのタトゥーでも料金が上がらないか心配</p></div>
+<div class="tt-card"><p>眉などのアートメイクが濃すぎる・形が合わなくなった</p></div>
+<div class="tt-card"><p>カバーアップの前に、今の図柄を薄くしておきたい</p></div>
+<div class="tt-card"><p>他院で治療を受けたが、色が残っている</p></div>
+</div>
+</div>
+<div class="tt-sec tt-sec-doctor" id="tt-doctor">
+<h3 class="tt-h"><span class="tt-h-en">Doctor</span>レーザー治療を日常的に行う医師が、照射方法を設定します</h3>
+<p class="tt-text">当院では保険診療で、太田母斑や異所性蒙古斑などのアザ、シミなどの色素性疾患をレーザーで治療しています。皮膚の中の色素がどの深さに、どれくらいの濃さで、どんな大きさの粒で存在するかを見極めて照射する点は、タトゥー・刺青の除去も同じです。</p>
+<div class="tt-decide">
+<div class="tt-dc tt-reveal"><p class="tt-dc-see">インクの色</p><p class="tt-dc-arrow" aria-hidden="true"></p><p class="tt-dc-choose">波長を決める</p><p class="tt-dc-text">色ごとに吸収されやすい光が異なるため、532・694・1064nmから選びます。複数の色が入ったタトゥーは、波長を切り替えて照射します。</p></div>
+<div class="tt-dc tt-reveal"><p class="tt-dc-see">インクの粒の大きさ</p><p class="tt-dc-arrow" aria-hidden="true"></p><p class="tt-dc-choose">モードを決める</p><p class="tt-dc-text">細かい粒子にはピコ秒、大きな塊にはナノ秒と、照射の時間幅を使い分けます。</p></div>
+<div class="tt-dc tt-reveal"><p class="tt-dc-see">濃さ・深さ・肌の反応</p><p class="tt-dc-arrow" aria-hidden="true"></p><p class="tt-dc-choose">出力と照射径を決める</p><p class="tt-dc-text">インクの濃さや深さ、部位、肌の色に合わせて設定し、前回の照射後の反応を見て毎回調整します。</p></div>
+</div>
+<p class="tt-text">照射後の色素沈着・色素脱失・水ぶくれなどの肌の変化も、皮膚科として経過を診察し、必要に応じて治療します。</p>
+</div>
+<div class="tt-sec tt-sec-tint" id="tt-device">
+<h3 class="tt-h"><span class="tt-h-en">Device</span>ディスカバリーピコプラスと3つの波長</h3>
+<div class="tt-split">
+<div>
+<p class="tt-text">ディスカバリーピコプラスは、イタリアのQuanta System社が製造するタトゥー除去用のレーザー機器です。1兆分の1秒単位（ピコ秒）の照射と、10億分の1秒単位（ナノ秒）の照射の2つのモードを備えています。</p>
+<p class="tt-text">ピコ秒の照射は、熱よりも衝撃波でインクを細かく砕くため、周りの皮膚への熱ダメージを抑えられます。ナノ秒の照射は、大きなインクの塊に作用します。砕かれたインクは、時間をかけて体内の免疫細胞に取り込まれ、排出されていきます。</p>
+</div>
+<ul class="tt-modes">
+<li class="tt-mode tt-reveal"><span class="tt-mode-tag">PICO</span><strong>ピコ秒モード</strong>532nm・1064nm<br>細かいインク粒子に</li>
+<li class="tt-mode tt-reveal"><span class="tt-mode-tag tt-mode-tag-q">Q-SWITCHED</span><strong>ナノ秒モード</strong>532nm・694nm・1064nm<br>大きなインクの塊に</li>
+</ul>
+</div>
+<p class="tt-text">インクは色ごとに吸収しやすい光の波長が異なり、波長が長いほど皮膚の深い層まで届きます。3つの波長を1台で使えるため、黒一色のタトゥーにもカラーのタトゥーにも、インクの深さにも合わせて照射できます。</p>
+<figure class="tt-skin">
+<div class="tt-skin-block">
+<div class="tt-layer tt-layer-epi"><span>表皮</span></div>
+<div class="tt-layer tt-layer-der"><span>真皮</span><i class="tt-ink tt-ink-a"></i><i class="tt-ink tt-ink-b"></i><i class="tt-ink tt-ink-c"></i><i class="tt-ink tt-ink-d"></i><i class="tt-ink tt-ink-e"></i><i class="tt-ink tt-ink-f"></i></div>
+<div class="tt-layer tt-layer-sub"><span>皮下組織</span></div>
+<span class="tt-ray tt-ray-532"><b>532nm</b></span><span class="tt-ray tt-ray-694"><b>694nm</b></span><span class="tt-ray tt-ray-1064"><b>1064nm</b></span>
+</div>
+<figcaption>波長と届く深さのイメージ図。インクがある深さに合わせて波長を選びます。</figcaption>
+</figure>
+<div class="tt-waves">
+<div class="tt-wave tt-wave-532 tt-reveal">
+<p class="tt-wave-nm">532<span>nm</span></p>
+<p class="tt-wave-name">緑色の光｜Nd:YAG</p>
+<p class="tt-wave-target">赤・オレンジ・黄・茶・紫のインク</p>
+<p class="tt-chips"><span class="tt-chip tt-c-red"></span><span class="tt-chip tt-c-orange"></span><span class="tt-chip tt-c-yellow"></span><span class="tt-chip tt-c-brown"></span><span class="tt-chip tt-c-purple"></span></p>
+</div>
+<div class="tt-wave tt-wave-694 tt-reveal">
+<p class="tt-wave-nm">694<span>nm</span></p>
+<p class="tt-wave-name">赤色の光｜ルビー</p>
+<p class="tt-wave-target">青・緑・黒・茶・紫のインク</p>
+<p class="tt-chips"><span class="tt-chip tt-c-blue"></span><span class="tt-chip tt-c-green"></span><span class="tt-chip tt-c-black"></span><span class="tt-chip tt-c-brown"></span><span class="tt-chip tt-c-purple"></span></p>
+</div>
+<div class="tt-wave tt-wave-1064 tt-reveal">
+<p class="tt-wave-nm">1064<span>nm</span></p>
+<p class="tt-wave-name">近赤外線｜Nd:YAG</p>
+<p class="tt-wave-target">黒・紺・こげ茶のインク、深い層のインク</p>
+<p class="tt-chips"><span class="tt-chip tt-c-black"></span><span class="tt-chip tt-c-navy"></span><span class="tt-chip tt-c-darkbrown"></span></p>
+</div>
+</div>
+<p class="tt-note">※波長ごとの対象色はメーカー資料に基づきます。白・肌色などの淡い色や、一部の金属を含むインクはレーザーに反応しにくく、薄く残ることがあります。<br>※医療機器承認番号：30200BZI00018000（使用目的：刺青及び色素性病変の蒸散及び除去）</p>
+</div>
+<div class="tt-sec" id="tt-artmake">
+<h3 class="tt-h"><span class="tt-h-en">Art make</span>アートメイク除去について</h3>
+<p class="tt-text">眉などのアートメイクも、タトゥーと同じくピコレーザーで色素を砕いて薄くしていきます。アートメイクの色素には、照射によって黒っぽく変化しやすい成分（酸化鉄や白色の顔料など）が含まれていることがあるため、診察で色と部位を確認し、必要に応じて小さな範囲で反応を確認してから照射範囲を広げます。</p>
+<p class="tt-text">アイラインなど目のすぐ近くは、照射できない場合があります。料金はタトゥー除去と同じく面積で決まります。</p>
+</div>
+<div class="tt-sec tt-sec-tint" id="tt-case">
+<h3 class="tt-h"><span class="tt-h-en">Case</span>症例写真（メーカー提供）</h3>
+<div class="tt-cases">
+<div class="tt-case tt-reveal">
+<div class="tt-ba"><figure><img src="../images/tattoo-case1-before.jpg" alt="ピコレーザーによるタトゥー除去 症例1 治療前" width="320" height="320" loading="lazy"><figcaption>治療前</figcaption></figure><figure><img src="../images/tattoo-case1-after.jpg" alt="ピコレーザーによるタトゥー除去 症例1 治療4回後" width="320" height="320" loading="lazy"><figcaption>4回後</figcaption></figure></div>
+<p class="tt-case-cap">治療4回／写真提供：Nicola Zerbinati MD</p>
+</div>
+<div class="tt-case tt-reveal">
+<div class="tt-ba"><figure><img src="../images/tattoo-case2-before.jpg" alt="ピコレーザーによるタトゥー除去 症例2 治療前" width="320" height="320" loading="lazy"><figcaption>治療前</figcaption></figure><figure><img src="../images/tattoo-case2-after.jpg" alt="ピコレーザーによるタトゥー除去 症例2 治療7回後" width="320" height="320" loading="lazy"><figcaption>7回後</figcaption></figure></div>
+<p class="tt-case-cap">治療7回／写真提供：Valerio Pedrelli MD</p>
+</div>
+<div class="tt-case tt-reveal">
+<div class="tt-ba"><figure><img src="../images/tattoo-case3-before.jpg" alt="ピコレーザーによるタトゥー除去 症例3 治療前" width="320" height="320" loading="lazy"><figcaption>治療前</figcaption></figure><figure><img src="../images/tattoo-case3-after.jpg" alt="ピコレーザーによるタトゥー除去 症例3 治療5回後" width="320" height="320" loading="lazy"><figcaption>5回後</figcaption></figure></div>
+<p class="tt-case-cap">治療5回／写真提供：Valerio Pedrelli MD</p>
+</div>
+</div>
+<dl class="tt-case-detail">
+<div><dt>治療内容</dt><dd>ピコレーザー（ディスカバリーピコシリーズ）によるタトゥー除去</dd></div>
+<div><dt>当院での費用</dt><dd>1回<bdi class="nw">29,700円</bdi>〜（税込・面積により異なります）。例：<bdi class="nw">〜5cm²を4回</bdi> <bdi class="nw">118,800円</bdi></dd></div>
+<div><dt>治療間隔</dt><dd><bdi class="nw">6〜8週間以上</bdi></dd></div>
+<div><dt>主なリスク</dt><dd>痛み、赤み・腫れ、水ぶくれ、色素沈着、色素脱失、瘢痕、インクの変色、色が残る可能性など（<a href="#tt-risk">詳しく見る</a>）</dd></div>
+</dl>
+</div>
+<div class="tt-sec" id="tt-count">
+<h3 class="tt-h"><span class="tt-h-en">Sessions</span>治療回数と間隔の目安</h3>
+<div class="tt-facts">
+<div class="tt-fact tt-reveal"><p class="tt-fact-label">照射の間隔</p><p class="tt-fact-value">6〜8<small>週間以上</small></p><p class="tt-fact-text">砕いたインクが排出され、皮膚が回復するまでの期間をあけて、次の照射を行います。</p></div>
+<div class="tt-fact tt-reveal"><p class="tt-fact-label">回数の目安</p><p class="tt-fact-value">5〜10<small>回以上</small></p><p class="tt-fact-text">プロが彫った黒一色のタトゥーの一般的な目安です。カラーや重ね彫り、深く入ったインクでは、さらに回数が必要になることがあります。</p></div>
+</div>
+<p class="tt-text">1回の照射で消えることはほとんどなく、照射を重ねるごとに少しずつ薄くなっていきます。インクの状態によっては、回数を重ねても跡や色が残る場合があります。</p>
+</div>
+<div class="tt-sec tt-sec-tint" id="tt-price">
+<h3 class="tt-h"><span class="tt-h-en">Price</span>タトゥー除去の料金</h3>
+<p class="tt-text">税込・1回あたりの料金です。<strong>黒一色でもカラーでも同じ料金</strong>で、照射する面積だけで決まります。アートメイク除去も同じ料金です。</p>
+<div class="tt-price-grid">
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜5<span>cm²</span></p><p class="tt-plan-size">500円玉ほど</p><p class="tt-plan-yen">29,700<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜10<span>cm²</span></p><p class="tt-plan-size">&nbsp;</p><p class="tt-plan-yen">38,500<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜30<span>cm²</span></p><p class="tt-plan-size">&nbsp;</p><p class="tt-plan-yen">49,500<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜50<span>cm²</span></p><p class="tt-plan-size">名刺ほど</p><p class="tt-plan-yen">59,400<span>円</span></p></div>
+</div>
+<div class="tt-over tt-reveal">
+<p class="tt-over-head"><span class="tt-over-label">51cm²以上</span><span class="tt-over-rule">10cm²ごとに<strong>＋5,500円</strong></span></p>
+<dl>
+<div><dt>60cm²</dt><dd>64,900円</dd></div>
+<div><dt>100cm²</dt><dd>86,900円</dd></div>
+<div><dt>150cm²<small>はがきほど</small></dt><dd>114,400円</dd></div>
+</dl>
+<p class="tt-note">50cm²を超えた分は10cm²単位で切り上げて計算します（例：100cm²の場合、59,400円＋5,500円×5＝86,900円）。</p>
+</div>
+<ul class="tt-notes">
+<li>照射範囲は診察時に測定し、治療前に料金をお伝えします。</li>
+<li>麻酔クリームを使用する場合は、麻酔クリーム代<bdi class="nw">2,750円</bdi>（税込）／回が別途かかります。</li>
+<li>タトゥー除去は保険適用外の自由診療です。</li>
+</ul>
+</div>
+<div class="tt-sec" id="tt-flow">
+<h3 class="tt-h"><span class="tt-h-en">Flow</span>治療の流れ</h3>
+<ol class="tt-steps">
+<li class="tt-reveal"><p class="tt-step-title">ご予約</p><p class="tt-step-text">LINEからご予約ください。美容皮膚科は水曜・祝日・特別診療日の<bdi class="nw">完全予約制</bdi>です。</p></li>
+<li class="tt-reveal"><p class="tt-step-title">診察・カウンセリング</p><p class="tt-step-text">インクの色・深さ・範囲と肌の状態を確認し、照射できるかどうか、回数の目安、料金、リスクをご説明します。</p></li>
+<li class="tt-reveal"><p class="tt-step-title">照射前の準備</p><p class="tt-step-text">照射部位を撮影して記録します。ご希望の方には麻酔クリームを塗布します。</p></li>
+<li class="tt-reveal"><p class="tt-step-title">照射</p><p class="tt-step-text">インクの色に合わせて波長を選び、照射します。照射時間は範囲により数分〜数十分です。</p></li>
+<li class="tt-reveal"><p class="tt-step-title">アフターケア</p><p class="tt-step-text">冷却し、軟膏を塗ってガーゼなどで保護します。ご自宅での<bdi class="nw">ケア方法</bdi>をお伝えします。</p></li>
+<li class="tt-reveal"><p class="tt-step-title">次回の照射</p><p class="tt-step-text"><bdi class="nw">6〜8週間以上</bdi>あけて、経過を診察してから次の照射を行います。</p></li>
+</ol>
+</div>
+<div class="tt-sec tt-sec-tint" id="tt-after">
+<h3 class="tt-h"><span class="tt-h-en">After care</span>照射後の経過とアフターケア</h3>
+<div class="tt-timeline">
+<div class="tt-tl tt-reveal"><p class="tt-tl-when">照射直後〜数日</p><p class="tt-tl-state">白っぽく浮き上がった後、赤み・腫れ・熱感、点状の出血がみられます。</p><p class="tt-tl-care">軟膏を塗り、ガーゼや保護テープで覆います。当日はシャワーのみで、患部はこすらないでください。</p></div>
+<div class="tt-tl tt-reveal"><p class="tt-tl-when">数日〜2週間</p><p class="tt-tl-state">水ぶくれやかさぶたができることがあります。</p><p class="tt-tl-care">水ぶくれは潰さず、かさぶたは自然にはがれるまで待ちます。</p></div>
+<div class="tt-tl tt-reveal"><p class="tt-tl-when">2週間以降</p><p class="tt-tl-state">表面が落ち着き、インクがゆっくり薄くなっていきます。</p><p class="tt-tl-care">色素沈着を防ぐため、照射部位の紫外線対策を続けてください。</p></div>
+</div>
+<p class="tt-note">※照射当日は長時間の入浴、飲酒、激しい運動など血行がよくなる行動はお控えください。</p>
+</div>
+<div class="tt-sec" id="tt-risk">
+<h3 class="tt-h"><span class="tt-h-en">Risk</span>副作用・リスク</h3>
+<ul class="tt-risks">
+<li><strong>痛み</strong>輪ゴムで強くはじかれるような痛みがあります。必要に応じて麻酔クリームを使用します。</li>
+<li><strong>赤み・腫れ・熱感・点状出血</strong>照射後に生じ、通常は数日〜1週間ほどで落ち着きます。</li>
+<li><strong>水ぶくれ・かさぶた</strong>照射の強さや部位によって生じます。</li>
+<li><strong>炎症後色素沈着</strong>照射部位が一時的に茶色くなることがあります。多くは数か月かけて薄くなります。</li>
+<li><strong>色素脱失</strong>照射部位の肌の色が抜けて白くなることがあります。</li>
+<li><strong>瘢痕・ケロイド</strong>体質や部位、もともとの彫り方によって、傷跡や<bdi class="nw">盛り上がり</bdi>が残ることがあります。</li>
+<li><strong>インクの変色</strong>白・肌色・ピンクなどのインクやアートメイクの色素は、照射によって黒っぽく変化することがあります。</li>
+<li><strong>色・図柄が残る可能性</strong>インクの種類や深さによっては、回数を重ねても完全には消えず、薄く残る場合があります。</li>
+<li><strong>感染・アレルギー反応</strong>まれに、照射部位の感染や、分解されたインクへのアレルギー反応が起こることがあります。</li>
+</ul>
+</div>
+<div class="tt-sec tt-sec-tint" id="tt-ng">
+<h3 class="tt-h"><span class="tt-h-en">Note</span>治療を受けられない方</h3>
+<p class="tt-text">次に当てはまる方は、治療をお受けいただけないか、診察で慎重に判断します。</p>
+<ul class="tt-checks">
+<li>妊娠中の方</li>
+<li>照射部位に炎症・傷・感染症がある方</li>
+<li>日焼けをしている方、直近で強い日焼けの予定がある方</li>
+<li>光線過敏症の方、光感受性を高める薬を服用中の方</li>
+<li>金製剤による治療を受けたことがある方</li>
+<li>ケロイド体質の方</li>
+<li>その他、医師が治療に適さないと判断した方</li>
+</ul>
+</div>
+<div class="tt-sec" id="tt-faq">
+<h3 class="tt-h"><span class="tt-h-en">FAQ</span>タトゥー除去のよくある質問</h3>
+<dl class="tt-faq">
+<dt>タトゥー（刺青・入れ墨）は1回で消えますか？</dt>
+<dd>1回で消えることはほとんどありません。照射を重ねるごとに少しずつ薄くなり、プロが彫った黒一色のタトゥーでも<bdi class="nw">5〜10回以上</bdi>かかるのが一般的です。</dd>
+<dt>カラーのタトゥーは料金が高くなりますか？</dt>
+<dd>いいえ。黒一色でもカラーでも同じ料金で、照射面積だけで決まります。1回<bdi class="nw">29,700円</bdi><bdi class="nw">（〜5cm²、税込）</bdi>からです。</dd>
+<dt>眉などのアートメイクも除去できますか？</dt>
+<dd>診察で色と部位を確認したうえで照射します。アートメイクの色素は照射で黒っぽく変化することがあるため、小さな範囲で反応を確認してから進めます。アイラインなど目のすぐ近くは照射できない場合があります。</dd>
+<dt>何回で終わるか、治療前にわかりますか？</dt>
+<dd>診察で回数の目安をお伝えします。実際の回数は照射ごとの反応で変わるため、毎回経過を確認しながら進めます。</dd>
+<dt>痛みはどのくらいですか？</dt>
+<dd>輪ゴムで強くはじかれるような痛みと表現される方が多いです。麻酔クリーム（<bdi class="nw">2,750円</bdi>／回）を使用できます。</dd>
+<dt>大宮駅から通えますか？</dt>
+<dd>当院はJR宇都宮線（上野東京ライン・湘南新宿ライン）の東大宮駅東口から<bdi class="nw">徒歩1分</bdi>です。<bdi class="nw">大宮駅から2駅</bdi>で、さいたま市内や埼玉県内から通いやすい場所です。</dd>
+<dt>照射した当日にシャワーを浴びられますか？</dt>
+<dd>シャワーは当日から浴びられます。患部はこすらず、湯船につかるのは医師の指示があるまでお控えください。</dd>
+</dl>
+</div>
+<div class="tt-close">
+<p class="tt-close-title">埼玉・大宮でタトゥー除去をご検討の方へ</p>
+<p class="tt-close-text">インクの色や範囲を拝見し、照射できるか、回数と料金の目安をご説明します。</p>
+<p class="tt-cta"><a class="tt-btn tt-btn-light" href="https://lin.ee/OFlfdeH" target="_blank" rel="noopener">LINEで予約・相談する</a></p>
+<p class="tt-close-note">タトゥー除去は保険適用外の自由診療です。表示価格はすべて税込です。治療効果には個人差があります。</p>
+</div>
+</div>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"MedicalWebPage","name":"埼玉・大宮のタトゥー除去（刺青・入れ墨・アートメイク）｜いしだ皮フ科・美容皮膚科","about":{"@type":"MedicalProcedure","name":"ピコレーザーによるタトゥー除去","alternateName":["刺青除去","入れ墨除去","アートメイク除去"],"procedureType":"https://schema.org/NoninvasiveProcedure","howPerformed":"ディスカバリーピコプラス（532nm・694nm・1064nm）を用い、インクの色・濃さ・深さに合わせて波長と照射方法を選んで照射します。6〜8週間以上の間隔で複数回照射します。"},"provider":{"@type":"MedicalClinic","name":"いしだ皮フ科・美容皮膚科","url":"https://ishidahihuka.jp/","telephone":"048-687-4112","address":{"@type":"PostalAddress","addressRegion":"埼玉県","addressLocality":"さいたま市見沼区","streetAddress":"東大宮5丁目41番地1","addressCountry":"JP"},"medicalSpecialty":"Dermatology"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"タトゥー（刺青・入れ墨）は1回で消えますか？","acceptedAnswer":{"@type":"Answer","text":"1回で消えることはほとんどありません。照射を重ねるごとに少しずつ薄くなり、プロが彫った黒一色のタトゥーでも5〜10回以上かかるのが一般的です。"}},{"@type":"Question","name":"カラーのタトゥーは料金が高くなりますか？","acceptedAnswer":{"@type":"Answer","text":"いいえ。黒一色でもカラーでも同じ料金で、照射面積だけで決まります。1回29,700円（〜5cm²、税込）からです。"}},{"@type":"Question","name":"眉などのアートメイクも除去できますか？","acceptedAnswer":{"@type":"Answer","text":"診察で色と部位を確認したうえで照射します。アートメイクの色素は照射で黒っぽく変化することがあるため、小さな範囲で反応を確認してから進めます。アイラインなど目のすぐ近くは照射できない場合があります。"}},{"@type":"Question","name":"何回で終わるか、治療前にわかりますか？","acceptedAnswer":{"@type":"Answer","text":"診察で回数の目安をお伝えします。実際の回数は照射ごとの反応で変わるため、毎回経過を確認しながら進めます。"}},{"@type":"Question","name":"痛みはどのくらいですか？","acceptedAnswer":{"@type":"Answer","text":"輪ゴムで強くはじかれるような痛みと表現される方が多いです。麻酔クリーム（2,750円／回）を使用できます。"}},{"@type":"Question","name":"大宮駅から通えますか？","acceptedAnswer":{"@type":"Answer","text":"当院はJR宇都宮線（上野東京ライン・湘南新宿ライン）の東大宮駅東口から徒歩1分です。大宮駅から2駅で、さいたま市内や埼玉県内から通いやすい場所です。"}},{"@type":"Question","name":"照射した当日にシャワーを浴びられますか？","acceptedAnswer":{"@type":"Answer","text":"シャワーは当日から浴びられます。患部はこすらず、湯船につかるのは医師の指示があるまでお控えください。"}}]}]}</script>
+</div></html>
