@@ -3,6 +3,7 @@
 1. [docs/STATUS.md](docs/STATUS.md)：今の状態・残っている作業
 2. [docs/HISTORY.md](docs/HISTORY.md)：院長の決定・好み・経緯（会話が長くなって前のことを忘れても、ここが正本）
 3. [docs/SPEC.md](docs/SPEC.md)：今の仕様・約束事・反映の手順
+4. [docs/INSTALL.md](docs/INSTALL.md)：新しい院（他院・他社販売）への入れ方
 
 - 前のことを答えるときは、記憶で答えず、上の3つ・`git log`・本番で確かめてから答える
 - 作業を終えたら、同じコミットで STATUS.md（残りの作業・数字）と HISTORY.md（新しい指示・決定・出来事を1〜3行）を直す。仕様を変えたら SPEC.md も直す

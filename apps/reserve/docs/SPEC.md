@@ -61,6 +61,7 @@
 **だれが反映しても（Claude Code・Codex・人）、必ずサーバーの `release` を使う。予約データの控えを取れなければ反映されない。**
 
 1. テストを通し、`claude/admiring-wozniak-kikcrr` にコミット・プッシュ
+（一式は `bash scripts/package.sh` でも作れる。新しい院への入れ方は [INSTALL.md](INSTALL.md)。release は院ごとの値を `/srv/reserve/deploy.conf`（PUBLIC_URL・DEPLOY_BUCKET）から読み、3つめに .tgz を渡せばそれを使う）
 2. `php php/tools/check-fixed-trial-package.php` で固定試験拡張6ファイル・API経路・無効設定を確認する。一式（静的書き出し＋PHP）を固め、別の一時ディレクトリに展開した `app/tools/check-fixed-trial-package.php` でも同じチェックを通してから、S3 `ishida-deploy-965825500741` に `app-<コミット>.tgz` で置く。実機試験中の有効policy・承認・鍵を配布へコピーしない
 3. サーバーで `sudo /srv/reserve/bin/release <コミット> <claude か codex>`（SSM の AWS-RunShellScript から）
    - 中身：控え（`backup before-<コミット>`）→ 展開 → `php -l` → 切り替え → 応答の確認（Basic認証のため 401 が正常）。記録は `/srv/reserve/releases/RELEASES.log`
