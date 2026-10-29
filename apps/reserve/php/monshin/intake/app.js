@@ -1,4 +1,4 @@
-import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261011-2';
+import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261029-1';
 
 const form = document.querySelector('#intake-form');
 const preferredDate = document.querySelector('#preferred-date');
@@ -23,6 +23,8 @@ const today = new Date();
 const officialAccountId = '@609lberb';
 let monthCursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let specialDates = [];
+let weekdays = [0, 1, 2, 3, 4, 5, 6];
+let clinic = {};
 let liffReady = false;
 let liffInitError = null;
 let liffContextType = '';
@@ -120,7 +122,7 @@ async function sendAsLineUser(text, followupToken, requestId) {
   await reportDiagnostic('send_timeout', {result:'timeout', elapsedMs:performance.now()-startedAt}, requestId);
   throw Object.assign(new Error('LINE send result timed out'), {code:'LIFF_SEND_TIMEOUT'});
 }
-const refreshSubmitState = () => { submitButton.disabled = validateIntake(formData(), { specialDates, today }).length > 0; };
+const refreshSubmitState = () => { submitButton.disabled = validateIntake(formData(), { specialDates, weekdays, today }).length > 0; };
 
 function renderCalendar() {
   title.textContent = `${monthCursor.getFullYear()}年 ${monthCursor.getMonth() + 1}月`;
@@ -132,7 +134,7 @@ function renderCalendar() {
     const date = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day);
     const iso = isoLocal(date);
     const button = document.createElement('button');
-    const allowed = date >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && isAllowedClinicDate(iso, specialDates);
+    const allowed = date >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && isAllowedClinicDate(iso, specialDates, weekdays);
     button.type = 'button';
     button.textContent = String(day);
     button.disabled = !allowed;
@@ -209,6 +211,29 @@ function openBirthCalendar() {
   }
 }
 
+/** 院名・診療科・受付の案内・プライバシーポリシーを、設定 → 院の情報 の内容で画面に入れる */
+function applyClinic(c) {
+  const dept = c.department || '';
+  document.querySelectorAll('[data-clinic]').forEach(el => {
+    const key = el.dataset.clinic;
+    const value = key === 'department' ? (dept || el.dataset.fallback || '') : (c[key] || el.dataset.fallback || '');
+    if (key === 'intakeHours') {
+      el.replaceChildren(...value.split('\n').flatMap((line, i) => (i ? [document.createElement('br'), line] : [line])));
+    } else {
+      el.textContent = value;
+    }
+  });
+  document.querySelectorAll('[data-if-department]').forEach(el => { el.hidden = !dept; });
+  const logo = document.querySelector('.clinic-logo');
+  if (logo) logo.setAttribute('aria-label', [c.publicName, c.publicNameEn].filter(Boolean).join(' '));
+  const privacy = document.getElementById('privacy-link');
+  if (privacy) {
+    if (c.privacyUrl) privacy.href = c.privacyUrl;
+    privacy.closest('p').hidden = !c.privacyUrl;
+  }
+  document.title = `${dept ? `${dept} ` : ''}予約申請`;
+}
+
 async function initialize() {
   let config = {};
   try {
@@ -216,6 +241,9 @@ async function initialize() {
     if (response.ok) {
       config = await response.json();
       specialDates = Array.isArray(config.specialDates) ? config.specialDates : [];
+      if (Array.isArray(config.weekdays)) weekdays = config.weekdays;
+      clinic = config.clinic || {};
+      applyClinic(clinic);
     }
   } catch (_) {
     // Static fallback is loaded below.
@@ -267,7 +295,7 @@ privacyContinueButton.addEventListener('click', () => {
 form.addEventListener('submit', event => {
   event.preventDefault();
   const data = formData();
-  const errors = validateIntake(data, { specialDates, today });
+  const errors = validateIntake(data, { specialDates, weekdays, today });
   if (errors.length) {
     refreshSubmitState();
     errorSummary.hidden = false;
@@ -276,7 +304,7 @@ form.addEventListener('submit', event => {
     return;
   }
   errorSummary.hidden = true;
-  preview.textContent = buildLineMessage(data);
+  preview.textContent = buildLineMessage(data, clinic);
   if (liffReady) {
     confirmTitle.textContent = 'この内容をLINEへ送信します';
     confirmNote.textContent = '送信すると、この内容が患者様からのメッセージとしてLINEトークへ投稿されます。';
@@ -309,14 +337,14 @@ birthPicker.addEventListener('change', () => setBirthDate(birthPicker.value, 'ca
 document.querySelector('#back-button').addEventListener('click', () => confirmDialog.close());
 document.querySelector('#send-button').addEventListener('click', async event => {
   const button = event.currentTarget;
-  const errors = validateIntake(formData(), { specialDates, today });
+  const errors = validateIntake(formData(), { specialDates, weekdays, today });
   if (errors.length) { confirmDialog.close(); refreshSubmitState(); return; }
   button.disabled = true;
   button.textContent = '送信中…';
   try {
     if (window.liff?.isInClient()) {
       const saved = await saveReservationIntake();
-      sessionStorage.setItem('ishidaIntakeRequestId', saved.requestId);
+      sessionStorage.setItem('intakeRequestId', saved.requestId);
       const lineMessage = `${preview.textContent}\n\n予約申請ID：${saved.requestId}`;
       if (liffReady) {
         await sendAsLineUser(lineMessage, saved.followupToken, saved.requestId);

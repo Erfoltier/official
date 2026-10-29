@@ -4,35 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f5ef">
-  <title>美容皮膚科 予約申請</title>
-  <link rel="stylesheet" href="./styles.css?v=20261011-2">
+  <title>予約申請</title>
+  <link rel="stylesheet" href="./styles.css?v=20261029-1">
 </head>
 <body>
   <main class="shell">
     <header class="clinic-header">
-      <div class="clinic-logo" aria-label="いしだ皮フ科・美容皮膚科 Ishida Cosmetic Dermatology">
-        <img src="./assets/ishida-stone-i.png" alt="">
-        <span><b>いしだ皮フ科／美容皮膚科</b><small>Ishida Cosmetic Dermatology</small></span>
+      <div class="clinic-logo">
+        <img src="./assets/clinic-mark.png" alt="">
+        <span><b data-clinic="publicName"></b><small data-clinic="publicNameEn"></small></span>
       </div>
       <p class="eyebrow">RESERVATION FORM</p>
-      <h1>美容皮膚科　予約申請フォーム</h1>
-      <p>水曜日・祝日特別診療日<br><span style="white-space:nowrap">10:00〜18:30</span></p>
+      <h1><span data-clinic="department"></span>　予約申請フォーム</h1>
+      <p data-clinic="intakeHours"></p>
     </header>
 
     <div class="notice" role="note">
       <strong>ご予約成立はご返信頂いた時刻での先着確定順です。</strong>
-      <span>申請後、当院からの返信をもって予約確定となります。<br>美容皮膚科のみの受付です。</span>
+      <span>申請後、当院からの返信をもって予約確定となります。<span data-if-department hidden><br><span data-clinic="department"></span>のみの受付です。</span></span>
     </div>
 
     <form id="intake-form" novalidate>
       <section class="card">
         <div class="section-heading">
           <span class="step">1</span>
-          <div><h2>受診区分</h2><p>美容皮膚科の受診歴をお選びください</p></div>
+          <div><h2>受診区分</h2><p><span data-clinic="department" data-fallback="当院"></span>の受診歴をお選びください</p></div>
         </div>
         <div class="choice-grid two" id="visit-type-group">
-          <label class="choice"><input type="radio" name="visitType" value="initial" required><span><b>初診</b><small>美容皮膚科が初めて</small></span></label>
-          <label class="choice"><input type="radio" name="visitType" value="returning" required><span><b>再診</b><small>美容皮膚科の受診歴あり</small></span></label>
+          <label class="choice"><input type="radio" name="visitType" value="initial" required><span><b>初診</b><small><span data-clinic="department" data-fallback="当院"></span>が初めて</small></span></label>
+          <label class="choice"><input type="radio" name="visitType" value="returning" required><span><b>再診</b><small><span data-clinic="department" data-fallback="当院"></span>の受診歴あり</small></span></label>
         </div>
       </section>
 
@@ -67,7 +67,7 @@
           <span class="step">3</span>
           <div><h2>患者さま情報</h2><p>診察券と同じ内容をご入力ください</p></div>
         </div>
-        <label class="field"><span>漢字氏名 <em>必須</em></span><input name="name" autocomplete="name" maxlength="60" required placeholder="例：石田 花子"></label>
+        <label class="field"><span>漢字氏名 <em>必須</em></span><input name="name" autocomplete="name" maxlength="60" required placeholder="例：山田 花子"></label>
         <label class="field"><span>カナ氏名 <em>必須</em></span><input name="kana" maxlength="60" required inputmode="kana" placeholder="例：イシダ ハナコ"></label>
         <fieldset class="birth-date-field">
           <legend>生年月日（西暦） <em>必須</em></legend>
@@ -97,7 +97,7 @@
         </div>
         <label class="field"><span>電話番号 <em>必須</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="例：09012345678"></label>
         <fieldset>
-          <legend>いしだ皮フ科の保険通院歴 <em>必須</em></legend>
+          <legend><span data-clinic="name" data-fallback="当院"></span>の保険通院歴 <em>必須</em></legend>
           <div class="choice-grid two">
             <label class="pill"><input type="radio" name="insuranceHistory" value="有"><span>有</span></label>
             <label class="pill"><input type="radio" name="insuranceHistory" value="無"><span>無</span></label>
@@ -151,7 +151,7 @@
       <p class="dialog-kicker">ご入力の前にご確認ください</p>
       <h2 id="privacy-title">個人情報の取扱いについて</h2>
       <p id="privacy-description">送信された情報は当院のプライバシーポリシーに基づき、医療情報として適切に管理されます。</p>
-      <p class="privacy-link"><a href="https://ishidahihuka.jp/privacy-policy/" target="_blank" rel="noopener noreferrer">プライバシーポリシーを確認する</a></p>
+      <p class="privacy-link" hidden><a id="privacy-link" href="#" target="_blank" rel="noopener noreferrer">プライバシーポリシーを確認する</a></p>
       <label class="consent-choice"><input form="intake-form" type="checkbox" name="privacyConsent" value="agreed" required><span>個人情報の取扱いおよびプライバシーポリシーに同意します</span></label>
       <p class="dialog-note">同意いただけない場合は、この予約フォームをご利用いただけません。</p>
       <button type="button" class="submit-button" id="privacy-continue-button" disabled>同意して予約フォームへ進む</button>
@@ -180,6 +180,6 @@
   </dialog>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="./app.js?v=20261012-1"></script>
+  <script type="module" src="./app.js?v=20261029-1"></script>
 </body>
 </html>

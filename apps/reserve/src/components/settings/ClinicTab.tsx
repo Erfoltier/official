@@ -100,6 +100,7 @@ export function ClinicTab({
       </div>
 
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
+      <PublicCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
   );
@@ -254,6 +255,123 @@ function DocumentCard({
       {canEdit && (
         <div className={styles.actions}>
           <button className={styles.primary} onClick={save} disabled={!valid || !changed || busy}>
+            保存
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
+
+/** 患者向けの表示（LINE の予約申請フォーム・問診票の見出し・プライバシーポリシー）と、予約申請フォームで選べる日 */
+function PublicCard({
+  clinic,
+  canEdit,
+  onChanged,
+  notify,
+  fail,
+}: {
+  clinic: ClinicSettings;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  notify: (text: string) => void;
+  fail: (err: unknown) => void;
+}) {
+  const [publicName, setPublicName] = useState(clinic.publicName ?? "");
+  const [publicNameEn, setPublicNameEn] = useState(clinic.publicNameEn ?? "");
+  const [department, setDepartment] = useState(clinic.department ?? "");
+  const [privacyUrl, setPrivacyUrl] = useState(clinic.privacyUrl ?? "");
+  const [homepageUrl, setHomepageUrl] = useState(clinic.homepageUrl ?? "");
+  const [hours, setHours] = useState(clinic.intakeHours ?? "");
+  const [weekdays, setWeekdays] = useState<number[]>(clinic.intakeWeekdays ?? [0, 1, 2, 3, 4, 5, 6]);
+  const [special, setSpecial] = useState((clinic.intakeSpecialDates ?? []).join("\n"));
+  const [busy, setBusy] = useState(false);
+  const dates = special
+    .split(/[\s,、]+/)
+    .map((d) => d.trim().replace(/\//g, "-"))
+    .filter(Boolean);
+  const badDate = dates.find((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d));
+  const badUrl = [privacyUrl, homepageUrl].some((u) => u.trim() !== "" && !/^https:\/\/\S+$/.test(u.trim()));
+  const toggleDay = (d: number) => setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d].sort()));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await saveClinic({
+        publicName,
+        publicNameEn,
+        department,
+        privacyUrl: privacyUrl.trim(),
+        homepageUrl: homepageUrl.trim(),
+        intakeHours: hours,
+        intakeWeekdays: weekdays,
+        intakeSpecialDates: dates,
+      });
+      await onChanged();
+      notify("患者向けの表示を保存しました");
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>患者向けの表示・LINE の予約申請フォーム</h3>
+      <p className={styles.hint}>LINE の予約申請フォームと問診票の見出し、予約申請フォームで選べる日に使います。</p>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>正式な院名（空欄の場合は書類の院名か院名）</span>
+          <input className={styles.input} value={publicName} maxLength={60} onChange={(ev) => setPublicName(ev.target.value)} disabled={!canEdit} placeholder="例：○○皮フ科／美容皮膚科" />
+        </label>
+        <label className={styles.field}>
+          <span>英語の院名（空欄の場合は出しません）</span>
+          <input className={styles.input} value={publicNameEn} maxLength={80} onChange={(ev) => setPublicNameEn(ev.target.value)} disabled={!canEdit} placeholder="例：○○ Dermatology" />
+        </label>
+      </div>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>予約申請を受け付ける診療科（空欄なら院全体）</span>
+          <input className={styles.input} value={department} maxLength={30} onChange={(ev) => setDepartment(ev.target.value)} disabled={!canEdit} placeholder="例：美容皮膚科" />
+        </label>
+        <label className={styles.field}>
+          <span>受付日時の案内（予約申請フォームの見出しに出す）</span>
+          <textarea className={styles.input} value={hours} rows={2} maxLength={120} onChange={(ev) => setHours(ev.target.value)} disabled={!canEdit} placeholder={"例：水曜日・祝日特別診療日\n10:00〜18:30"} />
+        </label>
+      </div>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>プライバシーポリシーのアドレス</span>
+          <input className={styles.input} value={privacyUrl} maxLength={300} onChange={(ev) => setPrivacyUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
+        </label>
+        <label className={styles.field}>
+          <span>ホームページのアドレス</span>
+          <input className={styles.input} value={homepageUrl} maxLength={300} onChange={(ev) => setHomepageUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
+        </label>
+      </div>
+      <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: 0 }}>
+        <span>予約申請フォームで選べる曜日</span>
+        <div className={styles.actions} style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+          {WEEKDAY_NAMES.map((n, d) => (
+            <label key={d} className={styles.chip}>
+              <input type="checkbox" checked={weekdays.includes(d)} onChange={() => toggleDay(d)} disabled={!canEdit} /> {n}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label className={styles.field}>
+        <span>そのほかに選べる特別診療日（1行に1日、例：2026-11-03）</span>
+        <textarea className={styles.input} value={special} rows={4} onChange={(ev) => setSpecial(ev.target.value)} disabled={!canEdit} />
+      </label>
+      <p className={styles.hint} data-invalid={badDate || badUrl || undefined}>
+        {badDate ? `日付の形が正しくありません：${badDate}` : badUrl ? "アドレスは https:// で始まる形で入力してください" : "プライバシーポリシーは、予約申請フォームの同意の画面に出ます。"}
+      </p>
+      {canEdit && (
+        <div className={styles.actions}>
+          <button className={styles.primary} onClick={save} disabled={!!badDate || badUrl || busy}>
             保存
           </button>
         </div>

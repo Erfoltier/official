@@ -604,7 +604,26 @@ export function saveClinic(
   body: Partial<
     Pick<
       DayBundle["clinic"],
-      "name" | "dayStartMin" | "dayEndMin" | "slotMin" | "docName" | "address" | "phone" | "issuer" | "estimateNote" | "estimateValidDays" | "estimatePaper" | "theme"
+      | "name"
+      | "dayStartMin"
+      | "dayEndMin"
+      | "slotMin"
+      | "docName"
+      | "address"
+      | "phone"
+      | "issuer"
+      | "estimateNote"
+      | "estimateValidDays"
+      | "estimatePaper"
+      | "theme"
+      | "publicName"
+      | "publicNameEn"
+      | "department"
+      | "privacyUrl"
+      | "homepageUrl"
+      | "intakeHours"
+      | "intakeWeekdays"
+      | "intakeSpecialDates"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

@@ -716,6 +716,18 @@ export interface ClinicSettings {
   estimatePaper?: PaperSize;
   /** 画面の配色（なければ標準の「華やか」） */
   theme?: ThemeId;
+  /** 患者向けの表示（LINE の予約申請フォーム・問診票の見出し）。正式な院名・英語の院名・診療科の名前 */
+  publicName?: string;
+  publicNameEn?: string;
+  department?: string;
+  /** プライバシーポリシー・ホームページのアドレス（https://） */
+  privacyUrl?: string;
+  homepageUrl?: string;
+  /** 予約申請フォームの見出しに出す受付日時の案内（改行可） */
+  intakeHours?: string;
+  /** 予約申請フォームで選べる曜日（0=日〜6=土。なければ毎日）と、それ以外に選べる特別診療日 */
+  intakeWeekdays?: number[];
+  intakeSpecialDates?: string[];
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

@@ -8,9 +8,17 @@ export function parseIsoDate(value) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? date : null;
 }
 
-export function isAllowedClinicDate(value, specialDates = []) {
+// 受け付ける曜日（0=日〜6=土）は 設定 → 院の情報 の「LINE の予約申請フォーム」から。未設定なら毎日
+export function isAllowedClinicDate(value, specialDates = [], weekdays = [0, 1, 2, 3, 4, 5, 6]) {
   const date = parseIsoDate(value);
-  return Boolean(date) && (date.getUTCDay() === 3 || specialDates.includes(value));
+  return Boolean(date) && (weekdays.includes(date.getUTCDay()) || specialDates.includes(value));
+}
+
+/** 「水曜日」「月・木曜日」のような、受け付ける曜日の言い方 */
+export function weekdayLabel(weekdays = [0, 1, 2, 3, 4, 5, 6]) {
+  if (weekdays.length === 7) return '';
+  if (!weekdays.length) return '';
+  return `${weekdays.map(d => WEEKDAYS[d]).join('・')}曜日`;
 }
 
 export function formatJapaneseDate(value) {
@@ -19,14 +27,14 @@ export function formatJapaneseDate(value) {
   return `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月${date.getUTCDate()}日（${WEEKDAYS[date.getUTCDay()]}）`;
 }
 
-export function validateIntake(data, { specialDates = [], today = new Date() } = {}) {
+export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3, 4, 5, 6], today = new Date() } = {}) {
   const errors = [];
   const todayIso = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())).toISOString().slice(0, 10);
   if (data.privacyConsent !== 'agreed') errors.push('個人情報の取扱いへの同意が必要です');
   if (!['initial', 'returning'].includes(data.visitType)) errors.push('受診区分を選択してください');
   if (!data.preferredDate) errors.push('希望予約日を選択してください');
   else if (data.preferredDate < todayIso) errors.push('本日以降の希望予約日を選択してください');
-  else if (!isAllowedClinicDate(data.preferredDate, specialDates)) errors.push('水曜日または祝日特別診療日を選択してください');
+  else if (!isAllowedClinicDate(data.preferredDate, specialDates, weekdays)) errors.push(weekdays.length && weekdays.length < 7 ? `${weekdayLabel(weekdays)}または特別診療日を選択してください` : '受付日を選択してください');
   if (!data.timePreference) errors.push('希望時間帯を選択してください');
   if (!clean(data.name)) errors.push('漢字氏名を入力してください');
   if (!clean(data.kana)) errors.push('カナ氏名を入力してください');
@@ -42,10 +50,12 @@ export function validateIntake(data, { specialDates = [], today = new Date() } =
   return errors;
 }
 
-export function buildLineMessage(data) {
+// clinic は 設定 → 院の情報 から（department：診療科の名前、name：院名）
+export function buildLineMessage(data, clinic = {}) {
   const initial = data.visitType === 'initial';
+  const dept = clean(clinic.department);
   const lines = [
-    `【美容皮膚科・${initial ? '初診' : '再診'}予約申請】`, '',
+    `【${dept ? `${dept}・` : ''}${initial ? '初診' : '再診'}予約申請】`, '',
     `受診区分：${initial ? '①初診' : '②再診'}`,
     `希望予約日時：${formatJapaneseDate(data.preferredDate)}`,
     `希望時間帯：${clean(data.timePreference)}${clean(data.timeNote) ? `（${clean(data.timeNote)}）` : ''}`, '',
@@ -54,7 +64,7 @@ export function buildLineMessage(data) {
   ];
   if (clean(data.gender)) lines.push(`性別：${clean(data.gender)}`);
   if (initial) {
-    lines.push(`電話番号：${clean(data.phone)}`, `いしだ皮フ科保険通院歴：${clean(data.insuranceHistory)}`, '',
+    lines.push(`電話番号：${clean(data.phone)}`, `${clean(clinic.name) || '当院'}保険通院歴：${clean(data.insuranceHistory)}`, '',
       `当日施術希望：${clean(data.sameDayTreatment)}`,
       `希望治療メニューまたはお悩み：${clean(data.initialTreatment)}`,
       `具体的な部位・個数：${clean(data.initialBodyArea) || '記載なし'}`,

@@ -495,6 +495,25 @@ final class Schema
             'estimateValidDays?' => fn($x) => V::int($x, 1, 365),
             'estimatePaper?' => fn($x) => V::enum($x, ['A4', 'A5']),
             'theme?' => fn($x) => V::enum($x, ['default', 'blush', 'calm', 'seiji', 'hakuji', 'solemn', 'luxe', 'natural']),
+            // 患者向けの表示（LINE の予約申請フォーム・問診票の見出しなど）
+            'publicName?' => fn($x) => V::str($x, 80),
+            'publicNameEn?' => fn($x) => V::str($x, 100),
+            'department?' => fn($x) => V::str($x, 40),
+            'privacyUrl?' => fn($x) => V::str($x, 300),
+            'homepageUrl?' => fn($x) => V::str($x, 300),
+            'intakeHours?' => fn($x) => V::str($x, 200),
+            'intakeWeekdays?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 7) {
+                    throw new InputError();
+                }
+                return array_map(fn($d) => V::int($d, 0, 6), $x);
+            },
+            'intakeSpecialDates?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
+                    throw new InputError();
+                }
+                return array_map(fn($d) => V::date($d), $x);
+            },
             'dayStartMin?' => $min,
             'dayEndMin?' => $min,
             'slotMin?' => function ($x) {

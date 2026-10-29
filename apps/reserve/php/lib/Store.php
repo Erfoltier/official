@@ -266,6 +266,27 @@ final class Store
         return Db::i()->meta('clinic') ?? config()['clinic'] ?? self::seed()['clinic'];
     }
 
+    /**
+     * 患者向けの表示（LINE の予約申請フォーム・問診票の見出し、受け付ける日）。ログインなしのページから読むので、秘密の値は入れない。
+     * 正式な院名が空なら、書類に載せる院名 → 院名の順に使う。受け付ける曜日が未設定なら毎日
+     */
+    public static function publicInfo(): array
+    {
+        $c = self::clinic();
+        $name = (string) ($c['name'] ?? '');
+        return [
+            'name' => $name,
+            'publicName' => (string) ($c['publicName'] ?? '') ?: ((string) ($c['docName'] ?? '') ?: $name),
+            'publicNameEn' => (string) ($c['publicNameEn'] ?? ''),
+            'department' => (string) ($c['department'] ?? ''),
+            'privacyUrl' => (string) ($c['privacyUrl'] ?? ''),
+            'homepageUrl' => (string) ($c['homepageUrl'] ?? ''),
+            'intakeHours' => (string) ($c['intakeHours'] ?? ''),
+            'intakeWeekdays' => array_values(array_map('intval', (array) ($c['intakeWeekdays'] ?? [0, 1, 2, 3, 4, 5, 6]))),
+            'intakeSpecialDates' => array_values(array_filter((array) ($c['intakeSpecialDates'] ?? []), fn($d) => is_string($d) && is_date_string($d))),
+        ];
+    }
+
     public static function updateClinic(array $input, ?array $by = null): array
     {
         $next = self::clinic();
@@ -288,6 +309,47 @@ final class Store
             } else {
                 unset($next[$k]);
             }
+        }
+        // 患者向けの表示（空で消す）
+        foreach ([['publicName', '患者向けの院名', 60], ['publicNameEn', '英語の院名', 80], ['department', '診療科の名前', 30]] as [$k, $label, $max]) {
+            if (isset($input[$k])) {
+                $v = self::checkText($label, $input[$k], $max, false);
+                if ($v !== '') {
+                    $next[$k] = $v;
+                } else {
+                    unset($next[$k]);
+                }
+            }
+        }
+        if (isset($input['intakeHours'])) {
+            $v = self::checkNote('予約申請フォームの受付日時の案内', $input['intakeHours'], 120);
+            if ($v !== '') {
+                $next['intakeHours'] = $v;
+            } else {
+                unset($next['intakeHours']);
+            }
+        }
+        foreach ([['privacyUrl', 'プライバシーポリシーのアドレス'], ['homepageUrl', 'ホームページのアドレス']] as [$k, $label]) {
+            if (isset($input[$k])) {
+                $v = trim((string) $input[$k]);
+                if ($v === '') {
+                    unset($next[$k]);
+                } elseif (!preg_match('#^https://[^\s<>"]+$#', $v)) {
+                    throw new StoreError('invalid', "{$label}は https:// で始まる形で入力してください");
+                } else {
+                    $next[$k] = $v;
+                }
+            }
+        }
+        if (isset($input['intakeWeekdays'])) {
+            $days = array_values(array_unique($input['intakeWeekdays']));
+            sort($days);
+            $next['intakeWeekdays'] = $days;
+        }
+        if (isset($input['intakeSpecialDates'])) {
+            $dates = array_values(array_unique($input['intakeSpecialDates']));
+            sort($dates);
+            $next['intakeSpecialDates'] = $dates;
         }
         if (isset($input['estimateNote'])) {
             $next['estimateNote'] = self::checkNote('見積書の注意書き', $input['estimateNote'], 2000);

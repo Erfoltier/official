@@ -4,9 +4,8 @@ declare(strict_types=1);
 require __DIR__ . '/../lib/bootstrap.php';
 require __DIR__ . '/intake-common.php';
 
-const ISHIDA_INTAKE_CHANNEL_ID = '2011370154';
-const ISHIDA_INTAKE_PRIVACY_POLICY_URL = 'https://ishidahihuka.jp/privacy-policy/';
-const ISHIDA_INTAKE_PRIVACY_CONSENT_VERSION = '2026-10-11';
+// 同意の記録に残す、フォームの同意文の版（文面を変えたら日付を進める）
+const INTAKE_PRIVACY_CONSENT_VERSION = '2026-10-11';
 
 function intake_response(int $status, array $body): never
 {
@@ -29,7 +28,7 @@ function intake_verify_id_token(string $idToken): array
     if ($idToken === '') throw new RuntimeException('ID token is missing');
     // 開発用の php -S（line_test_mode）だけ：LINE に問い合わせずに試す
     if (LineLink::testMode() && preg_match('/^test:(U[0-9a-f]{32})$/', $idToken, $m)) return ['sub' => $m[1], 'aud' => 'test'];
-    $channel = intake_common_config()['channel_id'] ?: ISHIDA_INTAKE_CHANNEL_ID;
+    $channel = intake_common_config()['channel_id'];
     $payload = http_build_query(['id_token' => $idToken, 'client_id' => $channel], '', '&', PHP_QUERY_RFC3986);
     $context = stream_context_create(['http' => [
         'method' => 'POST',
@@ -91,8 +90,8 @@ try {
         'message' => ['type' => 'text', 'text' => $message],
         'intake' => $form,
         'privacyConsent' => [
-            'version' => ISHIDA_INTAKE_PRIVACY_CONSENT_VERSION,
-            'policyUrl' => ISHIDA_INTAKE_PRIVACY_POLICY_URL,
+            'version' => INTAKE_PRIVACY_CONSENT_VERSION,
+            'policyUrl' => Store::publicInfo()['privacyUrl'],
             'agreedAt' => gmdate('c'),
             'method' => 'required_checkbox_before_form_entry',
         ],
