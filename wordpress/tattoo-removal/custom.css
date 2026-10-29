@@ -602,6 +602,36 @@
 .tt-guide .tt-fact-text { font-size: 13.5px; line-height: 1.85; color: var(--tx2); }
 
 /* ---------- 料金（明るいカード） ---------- */
+/* 面積の測り方（タトゥーを囲む長方形の長辺×短辺） */
+.tt-guide .tt-measure {
+  display: flex; align-items: center; gap: 28px;
+  margin: 26px 0 0;
+  padding: 22px 26px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .04);
+}
+.tt-guide .tt-measure-fig {
+  position: relative; flex: none;
+  width: 150px; height: 96px;
+  margin: 0 18px 22px 0;
+  border: 1.5px dashed #5BD8FF;
+  border-radius: 4px;
+}
+.tt-guide .tt-measure-ink {
+  position: absolute; inset: 3px;
+  background: radial-gradient(ellipse 30% 42% at 30% 42%, #2a2f45 98%, transparent 100%),
+              radial-gradient(ellipse 34% 46% at 64% 54%, #2a2f45 98%, transparent 100%),
+              radial-gradient(ellipse 13% 20% at 87% 22%, #FF4D6A 98%, transparent 100%),
+              radial-gradient(ellipse 10% 16% at 10% 82%, #2EE89A 98%, transparent 100%);
+  opacity: .95;
+}
+.tt-guide .tt-measure-w, .tt-guide .tt-measure-h { position: absolute; font-size: 11px; color: #5BD8FF; white-space: nowrap; }
+.tt-guide .tt-measure-w { left: 50%; bottom: -22px; transform: translateX(-50%); }
+.tt-guide .tt-measure-h { right: -34px; top: 50%; transform: translateY(-50%); }
+.tt-guide .tt-measure-title { font-weight: 700; color: #fff; margin-bottom: 4px; }
+.tt-guide .tt-measure-text p:last-child { font-size: 14px; color: #C9D3EC; }
+.tt-guide .tt-measure-text strong { color: #5BD8FF; }
 .tt-guide .tt-price-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 30px 0 18px; }
 .tt-guide .tt-plan {
   position: relative;
@@ -815,6 +845,7 @@
   .tt-guide .tt-cases, .tt-guide .tt-facts, .tt-guide .tt-steps, .tt-guide .tt-risks,
   .tt-guide .tt-checks, .tt-guide .tt-over dl { grid-template-columns: 1fr; }
   .tt-guide .tt-price-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tt-guide .tt-measure { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px; }
   .tt-guide .tt-plan { padding: 20px 10px; }
   .tt-guide .tt-plan-yen { font-size: 24px; }
   .tt-guide .tt-fact-value { font-size: 42px; }

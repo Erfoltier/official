@@ -602,6 +602,36 @@
 .tt-guide .tt-fact-text { font-size: 13.5px; line-height: 1.85; color: var(--tx2); }
 
 /* ---------- 料金（明るいカード） ---------- */
+/* 面積の測り方（タトゥーを囲む長方形の長辺×短辺） */
+.tt-guide .tt-measure {
+  display: flex; align-items: center; gap: 28px;
+  margin: 26px 0 0;
+  padding: 22px 26px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .04);
+}
+.tt-guide .tt-measure-fig {
+  position: relative; flex: none;
+  width: 150px; height: 96px;
+  margin: 0 18px 22px 0;
+  border: 1.5px dashed #5BD8FF;
+  border-radius: 4px;
+}
+.tt-guide .tt-measure-ink {
+  position: absolute; inset: 3px;
+  background: radial-gradient(ellipse 30% 42% at 30% 42%, #2a2f45 98%, transparent 100%),
+              radial-gradient(ellipse 34% 46% at 64% 54%, #2a2f45 98%, transparent 100%),
+              radial-gradient(ellipse 13% 20% at 87% 22%, #FF4D6A 98%, transparent 100%),
+              radial-gradient(ellipse 10% 16% at 10% 82%, #2EE89A 98%, transparent 100%);
+  opacity: .95;
+}
+.tt-guide .tt-measure-w, .tt-guide .tt-measure-h { position: absolute; font-size: 11px; color: #5BD8FF; white-space: nowrap; }
+.tt-guide .tt-measure-w { left: 50%; bottom: -22px; transform: translateX(-50%); }
+.tt-guide .tt-measure-h { right: -34px; top: 50%; transform: translateY(-50%); }
+.tt-guide .tt-measure-title { font-weight: 700; color: #fff; margin-bottom: 4px; }
+.tt-guide .tt-measure-text p:last-child { font-size: 14px; color: #C9D3EC; }
+.tt-guide .tt-measure-text strong { color: #5BD8FF; }
 .tt-guide .tt-price-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 30px 0 18px; }
 .tt-guide .tt-plan {
   position: relative;
@@ -815,6 +845,7 @@
   .tt-guide .tt-cases, .tt-guide .tt-facts, .tt-guide .tt-steps, .tt-guide .tt-risks,
   .tt-guide .tt-checks, .tt-guide .tt-over dl { grid-template-columns: 1fr; }
   .tt-guide .tt-price-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tt-guide .tt-measure { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px; }
   .tt-guide .tt-plan { padding: 20px 10px; }
   .tt-guide .tt-plan-yen { font-size: 24px; }
   .tt-guide .tt-fact-value { font-size: 42px; }
@@ -872,7 +903,7 @@
 <dl>
 <div><dt>治療内容</dt><dd>ピコレーザーによるタトゥー・刺青・入れ墨・アートメイクの除去</dd></div>
 <div><dt>使用機器</dt><dd>ディスカバリーピコプラス（532nm・694nm・1064nm、ピコ秒／ナノ秒）</dd></div>
-<div><dt>料金</dt><dd>1回<bdi class="nw">29,700円</bdi>〜（税込）。黒もカラーも同一料金で、面積で決まります</dd></div>
+<div><dt>料金</dt><dd>1回<bdi class="nw">29,700円</bdi>〜（税込）。黒もカラーも同一料金で、タトゥー全体を囲む長方形の面積で決まります</dd></div>
 <div><dt>回数・間隔</dt><dd><bdi class="nw">5〜10回以上</bdi>が目安。<bdi class="nw">6〜8週間以上</bdi>あけて照射します</dd></div>
 <div><dt>場所</dt><dd>埼玉県さいたま市見沼区、JR東大宮駅東口<bdi class="nw">徒歩1分</bdi>（大宮駅から宇都宮線で2駅）</dd></div>
 <div><dt>診療日・予約</dt><dd>タトゥー除去は<bdi class="nw">日曜日限定</bdi>（他の美容皮膚科メニューは<bdi class="nw">水曜・祝日</bdi>）。LINEで予約する<bdi class="nw">完全予約制</bdi></dd></div>
@@ -963,7 +994,7 @@
 <div class="tt-sec" id="tt-artmake">
 <h3 class="tt-h"><span class="tt-h-en">Art make</span>アートメイク除去について</h3>
 <p class="tt-text">眉などのアートメイクも、タトゥーと同じくピコレーザーで色素を砕いて薄くしていきます。アートメイクの色素には、照射によって黒っぽく変化しやすい成分（酸化鉄や白色の<bdi class="nw">顔料など）が</bdi>含まれていることがあるため、診察で色と部位を確認し、必要に応じて小さな範囲で反応を確認してから照射範囲を広げます。</p>
-<p class="tt-text">アイラインなど目のすぐ近くは照射できません。料金はタトゥー除去と同じく面積で決まります。</p>
+<p class="tt-text">アイラインなど目のすぐ近くは照射できません。料金はタトゥー除去と同じ計算方法です。</p>
 </div>
 <div class="tt-sec tt-sec-tint" id="tt-case">
 <h3 class="tt-h"><span class="tt-h-en">Case</span>症例写真（メーカー提供）</h3>
@@ -998,24 +1029,25 @@
 </div>
 <div class="tt-sec tt-sec-tint" id="tt-price">
 <h3 class="tt-h"><span class="tt-h-en">Price</span>タトゥー除去の料金</h3>
-<p class="tt-text">税込・1回あたりの料金です。<strong>黒一色でもカラーでも同じ料金</strong>で、照射する面積だけで決まります。アートメイク除去も同じ料金です。</p>
+<p class="tt-text">税込・1回あたりの料金です。<strong>黒一色でもカラーでも同じ料金</strong>で、面積だけで決まります。アートメイク除去も同じ料金です。</p>
+<div class="tt-measure"><div class="tt-measure-fig" aria-hidden="true"><span class="tt-measure-ink"></span><span class="tt-measure-w">長辺</span><span class="tt-measure-h">短辺</span></div><div class="tt-measure-text"><p class="tt-measure-title">面積の測り方</p><p>タトゥーをすべて含めることのできる長方形を考え、その<strong>長辺×短辺</strong>の面積で料金を決めます。図柄の形にかかわらず、外側を囲む長方形の大きさで計算します。</p></div></div>
 <div class="tt-price-grid">
-<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜5<span>cm²</span></p><p class="tt-plan-size">500円玉ほど</p><p class="tt-plan-yen">29,700<span>円</span></p></div>
-<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜10<span>cm²</span></p><p class="tt-plan-size">&nbsp;</p><p class="tt-plan-yen">38,500<span>円</span></p></div>
-<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜30<span>cm²</span></p><p class="tt-plan-size">&nbsp;</p><p class="tt-plan-yen">49,500<span>円</span></p></div>
-<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜50<span>cm²</span></p><p class="tt-plan-size">名刺ほど</p><p class="tt-plan-yen">59,400<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜5<span>cm²</span></p><p class="tt-plan-size">例：2×2.5cm</p><p class="tt-plan-yen">29,700<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜10<span>cm²</span></p><p class="tt-plan-size">例：2.5×4cm</p><p class="tt-plan-yen">38,500<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜30<span>cm²</span></p><p class="tt-plan-size">例：5×6cm</p><p class="tt-plan-yen">49,500<span>円</span></p></div>
+<div class="tt-plan tt-reveal"><p class="tt-plan-area">〜50<span>cm²</span></p><p class="tt-plan-size">例：5×10cm</p><p class="tt-plan-yen">59,400<span>円</span></p></div>
 </div>
 <div class="tt-over tt-reveal">
-<p class="tt-over-head"><span class="tt-over-label">50cm²超</span><span class="tt-over-rule">10cm²あたり<strong>＋5,500円</strong></span></p>
+<p class="tt-over-head"><span class="tt-over-label">50cm²超</span><span class="tt-over-rule">10cm²あたり<strong>＋11,000円</strong></span></p>
 <dl>
-<div><dt>60cm²</dt><dd>64,900円</dd></div>
-<div><dt>100cm²</dt><dd>86,900円</dd></div>
-<div><dt>150cm²<small>はがきほど</small></dt><dd>114,400円</dd></div>
+<div><dt>60cm²</dt><dd>70,400円</dd></div>
+<div><dt>100cm²</dt><dd>114,400円</dd></div>
+<div><dt>150cm²<small>はがきほど</small></dt><dd>169,400円</dd></div>
 </dl>
-<p class="tt-note">50cm²を超えた分は、10cm²あたり5,500円を加算します（10cm²に満たない分は切り上げ。例：100cm²の場合、59,400円＋5,500円×5＝86,900円）。</p>
+<p class="tt-note">50cm²を超えた分は、10cm²あたり11,000円を加算します。10cm²に満たない分は切り上げます。<br>例：76cm²の場合、超えた分は26cm²なので30cm²として計算し、<bdi class="nw">59,400円</bdi>＋<bdi class="nw">11,000円×3</bdi><bdi class="nw">＝92,400円</bdi>です。</p>
 </div>
 <ul class="tt-notes">
-<li>照射範囲は診察時に測定し、治療前に料金をお伝えします。</li>
+<li>面積は診察時に測定し、治療前に料金をお伝えします。</li>
 <li><bdi class="nw">局所麻酔注射</bdi>を使用する場合は、極細の針による麻酔注射<bdi class="nw">1ccあたり5,500円</bdi>（税込）がかかります。</li>
 <li>総額の目安：〜5cm²を5〜10回照射する場合、<bdi class="nw">148,500〜297,000円</bdi>（税込・麻酔代別）。</li>
 <li>タトゥー除去は保険適用外の自由診療です。</li>
@@ -1075,7 +1107,7 @@
 <dt>タトゥー（刺青・入れ墨）は1回で消えますか？</dt>
 <dd>1回で消えることはほとんどありません。照射を重ねるごとに少しずつ薄くなり、プロが彫った黒一色のタトゥーでも<bdi class="nw">5〜10回以上</bdi>かかるのが一般的です。</dd>
 <dt>カラーのタトゥーは料金が高くなりますか？</dt>
-<dd>いいえ。黒一色でもカラーでも同じ料金で、照射面積だけで決まります。1回<bdi class="nw">29,700円</bdi><bdi class="nw">（〜5cm²、税込）</bdi>からです。</dd>
+<dd>いいえ。黒一色でもカラーでも同じ料金で、面積だけで決まります。1回<bdi class="nw">29,700円</bdi><bdi class="nw">（〜5cm²、税込）</bdi>からです。</dd>
 <dt>眉などのアートメイクも除去できますか？</dt>
 <dd>診察で色と部位を確認したうえで照射します。アートメイクの色素は照射で黒っぽく変化することがあるため、小さな範囲で反応を確認してから進めます。アイラインなど目のすぐ近くは照射できません。</dd>
 <dt>何回で終わるか、治療前にわかりますか？</dt>
@@ -1098,5 +1130,5 @@
 <p class="tt-close-note">タトゥー除去は保険適用外の自由診療です。表示価格はすべて税込です。治療効果には個人差があります。</p>
 </div>
 </div>
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"MedicalWebPage","name":"埼玉・大宮のタトゥー除去（刺青・入れ墨・アートメイク）｜いしだ皮フ科・美容皮膚科","about":{"@type":"MedicalProcedure","name":"ピコレーザーによるタトゥー除去","alternateName":["刺青除去","入れ墨除去","アートメイク除去"],"procedureType":"https://schema.org/NoninvasiveProcedure","howPerformed":"ディスカバリーピコプラス（532nm・694nm・1064nm）を用い、インクの色・濃さ・深さに合わせて波長と照射方法を選んで照射します。6〜8週間以上の間隔で複数回照射します。"},"provider":{"@type":"MedicalClinic","name":"いしだ皮フ科・美容皮膚科","url":"https://ishidahihuka.jp/","telephone":"048-687-4112","address":{"@type":"PostalAddress","addressRegion":"埼玉県","addressLocality":"さいたま市見沼区","streetAddress":"東大宮5-41-1","postalCode":"337-0051","addressCountry":"JP"},"medicalSpecialty":"Dermatology"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"タトゥー（刺青・入れ墨）は1回で消えますか？","acceptedAnswer":{"@type":"Answer","text":"1回で消えることはほとんどありません。照射を重ねるごとに少しずつ薄くなり、プロが彫った黒一色のタトゥーでも5〜10回以上かかるのが一般的です。"}},{"@type":"Question","name":"カラーのタトゥーは料金が高くなりますか？","acceptedAnswer":{"@type":"Answer","text":"いいえ。黒一色でもカラーでも同じ料金で、照射面積だけで決まります。1回29,700円（〜5cm²、税込）からです。"}},{"@type":"Question","name":"眉などのアートメイクも除去できますか？","acceptedAnswer":{"@type":"Answer","text":"診察で色と部位を確認したうえで照射します。アートメイクの色素は照射で黒っぽく変化することがあるため、小さな範囲で反応を確認してから進めます。アイラインなど目のすぐ近くは照射できません。"}},{"@type":"Question","name":"何回で終わるか、治療前にわかりますか？","acceptedAnswer":{"@type":"Answer","text":"診察で回数の目安をお伝えします。実際の回数は照射ごとの反応で変わるため、毎回経過を確認しながら進めます。"}},{"@type":"Question","name":"痛みはどのくらいですか？","acceptedAnswer":{"@type":"Answer","text":"輪ゴムで強くはじかれるような痛みと表現される方が多いです。レーザーの痛みに対しては麻酔クリームは麻酔注射より効きが弱いため、当院ではタトゥー除去の麻酔はクリームを使用せず、極細の針による局所麻酔注射で行っています（1ccあたり5,500円、税込）。"}},{"@type":"Question","name":"タトゥー除去は何曜日に受けられますか？","acceptedAnswer":{"@type":"Answer","text":"タトゥー除去は日曜日限定の診療です。シミ取りや注入治療など他の美容皮膚科メニュー（水曜・祝日）とは診療日が異なりますので、ご予約の際はご注意ください。"}},{"@type":"Question","name":"大宮駅から通えますか？","acceptedAnswer":{"@type":"Answer","text":"当院はJR宇都宮線（上野東京ライン・湘南新宿ライン）の東大宮駅東口から徒歩1分です。大宮駅から2駅で、さいたま市内や埼玉県内から通いやすい場所です。"}},{"@type":"Question","name":"照射した当日にシャワーを浴びられますか？","acceptedAnswer":{"@type":"Answer","text":"シャワーは当日から浴びられます。患部はこすらず、湯船につかるのは医師の指示があるまでお控えください。"}}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"MedicalWebPage","name":"埼玉・大宮のタトゥー除去（刺青・入れ墨・アートメイク）｜いしだ皮フ科・美容皮膚科","about":{"@type":"MedicalProcedure","name":"ピコレーザーによるタトゥー除去","alternateName":["刺青除去","入れ墨除去","アートメイク除去"],"procedureType":"https://schema.org/NoninvasiveProcedure","howPerformed":"ディスカバリーピコプラス（532nm・694nm・1064nm）を用い、インクの色・濃さ・深さに合わせて波長と照射方法を選んで照射します。6〜8週間以上の間隔で複数回照射します。"},"provider":{"@type":"MedicalClinic","name":"いしだ皮フ科・美容皮膚科","url":"https://ishidahihuka.jp/","telephone":"048-687-4112","address":{"@type":"PostalAddress","addressRegion":"埼玉県","addressLocality":"さいたま市見沼区","streetAddress":"東大宮5-41-1","postalCode":"337-0051","addressCountry":"JP"},"medicalSpecialty":"Dermatology"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"タトゥー（刺青・入れ墨）は1回で消えますか？","acceptedAnswer":{"@type":"Answer","text":"1回で消えることはほとんどありません。照射を重ねるごとに少しずつ薄くなり、プロが彫った黒一色のタトゥーでも5〜10回以上かかるのが一般的です。"}},{"@type":"Question","name":"カラーのタトゥーは料金が高くなりますか？","acceptedAnswer":{"@type":"Answer","text":"いいえ。黒一色でもカラーでも同じ料金で、面積だけで決まります。1回29,700円（〜5cm²、税込）からです。"}},{"@type":"Question","name":"眉などのアートメイクも除去できますか？","acceptedAnswer":{"@type":"Answer","text":"診察で色と部位を確認したうえで照射します。アートメイクの色素は照射で黒っぽく変化することがあるため、小さな範囲で反応を確認してから進めます。アイラインなど目のすぐ近くは照射できません。"}},{"@type":"Question","name":"何回で終わるか、治療前にわかりますか？","acceptedAnswer":{"@type":"Answer","text":"診察で回数の目安をお伝えします。実際の回数は照射ごとの反応で変わるため、毎回経過を確認しながら進めます。"}},{"@type":"Question","name":"痛みはどのくらいですか？","acceptedAnswer":{"@type":"Answer","text":"輪ゴムで強くはじかれるような痛みと表現される方が多いです。レーザーの痛みに対しては麻酔クリームは麻酔注射より効きが弱いため、当院ではタトゥー除去の麻酔はクリームを使用せず、極細の針による局所麻酔注射で行っています（1ccあたり5,500円、税込）。"}},{"@type":"Question","name":"タトゥー除去は何曜日に受けられますか？","acceptedAnswer":{"@type":"Answer","text":"タトゥー除去は日曜日限定の診療です。シミ取りや注入治療など他の美容皮膚科メニュー（水曜・祝日）とは診療日が異なりますので、ご予約の際はご注意ください。"}},{"@type":"Question","name":"大宮駅から通えますか？","acceptedAnswer":{"@type":"Answer","text":"当院はJR宇都宮線（上野東京ライン・湘南新宿ライン）の東大宮駅東口から徒歩1分です。大宮駅から2駅で、さいたま市内や埼玉県内から通いやすい場所です。"}},{"@type":"Question","name":"照射した当日にシャワーを浴びられますか？","acceptedAnswer":{"@type":"Answer","text":"シャワーは当日から浴びられます。患部はこすらず、湯船につかるのは医師の指示があるまでお控えください。"}}]}]}</script>
 </div></html>
