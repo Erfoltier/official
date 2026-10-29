@@ -797,6 +797,7 @@ details.priceGroup > summary {
 /* 外部機器の連携 */
 .optionBadge {
   display: inline-block;
+  white-space: nowrap;
   margin-left: 6px;
   padding: 1px 8px;
   border: 1px solid var(--accent-line);
@@ -1095,4 +1096,102 @@ details.priceGroup > summary {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+}
+
+/* ===== 設定：項目は左に縦に並べ、本文は右の残り全部を使う（PC・タブレット横） ===== */
+.sideLayout {
+  max-width: none;
+  padding: 0;
+}
+@media (min-width: 900px) {
+  .sideLayout {
+    display: grid;
+    grid-template-columns: 196px minmax(0, 1fr);
+    align-items: start;
+    min-height: 100dvh;
+  }
+  .side {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin: 0;
+    padding: 12px 10px 24px 12px;
+    border-right: 1px solid var(--line);
+  }
+  .side h1 {
+    margin: 2px 4px 6px;
+  }
+  .side .back {
+    padding: 0 4px;
+  }
+  .side .tabs {
+    flex: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .side .tabs button {
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+  }
+  .sideMain {
+    min-width: 0;
+    padding: 12px 20px 48px;
+  }
+  /* 本文の各項目は横幅いっぱいに */
+  .sideMain .devices {
+    max-width: none;
+  }
+  .sideMain .clinicCard {
+    max-width: none;
+  }
+  .sideMain .priceGroup table,
+  .sideMain .priceAdd,
+  .sideMain .priceUrls textarea {
+    max-width: none;
+  }
+  .sideMain .manualFrame {
+    height: calc(100dvh - 60px);
+  }
+}
+@media (max-width: 899px) {
+  .side {
+    padding: 12px 16px 0;
+  }
+  .sideMain {
+    padding: 0 16px 48px;
+  }
+}
+
+/* 外部機器の連携：各項目は見出しを押すと開く（開いた最初は閉じておく） */
+details.fold > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+details.fold > summary::-webkit-details-marker {
+  display: none;
+}
+details.fold > summary::before {
+  content: "▸";
+  color: var(--accent-strong);
+  transition: transform 0.15s;
+}
+details.fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+details.fold:not([open]) {
+  display: block;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }

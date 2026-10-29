@@ -71,13 +71,14 @@ export function SettingsApp() {
   const canEdit = !!me?.canManage;
 
   return (
-    <div className={styles.page} data-ui-zoom>
-      <header className={styles.head}>
+    <div className={`${styles.page} ${styles.sideLayout}`} data-ui-zoom>
+      {/* 設定の項目は左に縦に並べ、右の本文を画面いっぱいに使う */}
+      <header className={`${styles.head} ${styles.side}`}>
         <Link href="/" className={styles.back}>
           ← カレンダーへ
         </Link>
         <h1>設定</h1>
-        <nav className={styles.tabs} role="tablist">
+        <nav className={styles.tabs} role="tablist" aria-orientation="vertical">
           <button role="tab" aria-selected={tab === "lanes"} onClick={() => setTab("lanes")}>
             レーン
           </button>
@@ -135,6 +136,7 @@ export function SettingsApp() {
         </nav>
       </header>
 
+      <main className={styles.sideMain}>
       {message && (
         <div className={styles.message} data-kind={message.kind} role="status">
           {message.text}
@@ -197,6 +199,7 @@ export function SettingsApp() {
       ) : (
         <MenusTab data={data} onChanged={load} notify={notify} fail={fail} />
       )}
+      </main>
     </div>
   );
 }

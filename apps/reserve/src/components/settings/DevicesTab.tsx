@@ -73,10 +73,10 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
         院内の機器と LANE RESERVE を連携します。連携した機器のデータは、患者の施術歴（その日の写真）に自動で登録されます。
       </p>
 
-      <div className={styles.clinicCard}>
-        <h3 className={styles.cardTitle}>
+      <details className={`${styles.clinicCard} ${styles.fold}`}>
+        <summary className={styles.cardTitle}>
           ネオボワール（肌診断機）の写真 <span className={styles.optionBadge}>オプション</span>
-        </h3>
+        </summary>
         <p className={styles.hint}>
           ネオボワールの写真を閲覧できるパソコン（親機または子機）に「取り込みツール」を設置すると、撮影した写真を5分ごとに LANE RESERVE へ送信します。
           写真のファイル名の<b>氏名</b>で患者を検索し、1人に絞れればその日の施術歴に登録します。ファイル名の<b>顧客番号</b>は一度紐付くと記憶するため、次回からは同姓同名でも確実に照合できます。
@@ -181,7 +181,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           </>
         )}
         {!isAdmin && <p className={styles.muted}>連携の設定は院長・管理者のみ行えます。</p>}
-      </div>
+      </details>
 
       {isAdmin && status && (
         <GoogleKeysCard
@@ -257,8 +257,8 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
         />
       )}
 
-      <div className={styles.clinicCard}>
-        <h3 className={styles.cardTitle}>照合待ちの写真{inbox ? `（${inbox.length}枚）` : ""}</h3>
+      <details className={`${styles.clinicCard} ${styles.fold}`}>
+        <summary className={styles.cardTitle}>照合待ちの写真{inbox ? `（${inbox.length}枚）` : ""}</summary>
         <p className={styles.hint}>
           氏名で患者を1人に絞れなかった写真です。患者を選んで紐付けてください。Airリザーブから患者を移行した後などは、「名前で再照合」でまとめて紐付けられます。
         </p>
@@ -289,7 +289,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
             ))}
           </div>
         )}
-      </div>
+      </details>
     </section>
   );
 }
@@ -413,8 +413,8 @@ function GoogleKeysCard(props: {
   const { keys, serverUrl, busy, newKey, onCreate, onRevoke, onCloseKey, notify } = props;
   const api = `${serverUrl}/api/v1/integration`;
   return (
-    <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>Google 連携の接続キー（問診票・同意書・料金表）</h3>
+    <details className={`${styles.clinicCard} ${styles.fold}`}>
+      <summary className={styles.cardTitle}>Google 連携の接続キー（問診票・同意書・料金表）</summary>
       <p className={styles.hint}>
         問診票（Google フォーム）・同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVE へ送信するときに使う接続キーです。
         各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に設定してください。
@@ -469,7 +469,7 @@ function GoogleKeysCard(props: {
         </ul>
         <p className={styles.hint}>接続キーが漏れた可能性がある場合は「このキーを無効化」を押し、新しい接続キーを発行して各スクリプトに設定し直してください。</p>
       </details>
-    </div>
+    </details>
   );
 }
 
@@ -493,8 +493,8 @@ function BookingKeysCard(props: {
   const [name, setName] = useState(props.defaultName ?? "ChatGPT 自動予約");
   const api = `${serverUrl}/api/v1/integration/booking`;
   return (
-    <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>{props.title ?? "自動予約プログラムの接続キー（ChatGPT など）"}</h3>
+    <details className={`${styles.clinicCard} ${styles.fold}`}>
+      <summary className={styles.cardTitle}>{props.title ?? "自動予約プログラムの接続キー（ChatGPT など）"}</summary>
       {props.intro ? (
         <p className={styles.hint}>{props.intro}</p>
       ) : (
@@ -547,6 +547,6 @@ function BookingKeysCard(props: {
           </button>
         </div>
       )}
-    </div>
+    </details>
   );
 }
