@@ -570,7 +570,7 @@
 .tt-guide .tt-checks li::before { content: ""; position: absolute; left: 2px; top: 25px; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--r); background: rgba(240, 56, 79, .15); }
 
 /* ---------- よくある質問 ---------- */
-.tt-guide .tt-faq { display: grid; border-bottom: 1px solid var(--line); }
+.tt-guide .tt-faq { display: grid; grid-template-columns: minmax(0, 1fr); border-bottom: 1px solid var(--line); }
 .tt-guide .tt-faq dt { position: relative; margin: 0; padding: 26px 8px 6px 64px; border-top: 1px solid var(--line); font-weight: 700; font-size: 16px; line-height: 1.7; }
 .tt-guide .tt-faq dt:first-child { border-top-color: var(--ink); }
 .tt-guide .tt-faq dd { position: relative; margin: 0; padding: 4px 8px 26px 64px; font-size: 14px; line-height: 1.9; color: #2A3A55; }
@@ -726,6 +726,10 @@
   .tt-guide #tt-artmake .tt-h { margin-bottom: 24px; }
   .tt-guide .tt-steps { margin-top: 48px; }
   .tt-guide .tt-close { padding: 56px 20px; }
+  /* 390px での区切れ調整（「〜｜1週間」「）｜は」などを避ける） */
+  .tt-guide .tt-risks li, .tt-guide .tt-case-detail dd { text-wrap: wrap; }
+  .tt-guide .tt-faq dt { letter-spacing: .02em; text-wrap: wrap; }
+  .tt-guide #tt-artmake .tt-text { letter-spacing: .01em; }
   .tt-guide .tt-close-title { font-size: 22px; }
 }
 @media (max-width: 380px) {

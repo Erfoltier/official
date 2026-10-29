@@ -3,14 +3,17 @@
 /* ===== タトゥー除去ページ パターン2：ダーク・レーザーラボ（.tt-guide 内だけに適用） ===== */
 
 .tt-guide {
-  --bg0: #060A18;
+  --bg0: #070C1D;
   --bg1: #0B1430;
-  --bg2: #111C3F;
-  --tx: #EEF3FF;
-  --tx2: #AEBBDA;
-  --tx3: #7F8DB2;
+  --bg2: #10204F;
+  --tx: #F2F6FF;
+  --tx2: #C3CEEA;
+  --tx3: #93A0C4;
+  /* 斜めカット：全箇所同じ傾き（レーザービームも同じ角度） */
+  --cut: 88px;
+  --ang: -4.75deg;
   --line: rgba(160, 190, 255, .16);
-  --glass: rgba(22, 34, 72, .55);
+  --glass: rgba(26, 40, 86, .58);
   --hi: rgba(255, 255, 255, .14);
   --cyan: #5BD8FF;
   --blue: #3D7BFF;
@@ -22,7 +25,7 @@
   position: relative;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0 0 8px;
+  padding: 0;
   color: var(--tx);
   font-family: var(--jp);
   font-size: 15px;
@@ -30,9 +33,9 @@
   line-height: 1.95;
   letter-spacing: .04em;
   background:
-    radial-gradient(1200px 600px at 85% -5%, rgba(61, 123, 255, .28), transparent 60%),
-    radial-gradient(900px 500px at -10% 45%, rgba(167, 132, 255, .14), transparent 60%),
-    linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 38%, var(--bg1) 100%);
+    radial-gradient(900px 500px at -10% 40%, rgba(167, 132, 255, .12), transparent 60%),
+    radial-gradient(900px 600px at 110% 70%, rgba(61, 123, 255, .14), transparent 60%),
+    var(--bg0);
   border-radius: 32px;
   overflow: hidden;
   word-break: auto-phrase;
@@ -55,16 +58,17 @@
 .tt-guide .tt-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, .78fr);
+  gap: 12px;
   align-items: center;
-  padding: 76px 56px 64px;
+  padding: 76px 56px calc(var(--cut) + 40px);
   isolation: isolate;
-  background-image:
-    linear-gradient(rgba(140, 180, 255, .05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(140, 180, 255, .05) 1px, transparent 1px);
-  background-size: 44px 44px;
-  background-position: center top;
+  background:
+    radial-gradient(700px 520px at 78% 30%, rgba(61, 123, 255, .42), transparent 65%),
+    linear-gradient(rgba(140, 180, 255, .055) 1px, transparent 1px) center top / 44px 44px,
+    linear-gradient(90deg, rgba(140, 180, 255, .055) 1px, transparent 1px) center top / 44px 44px,
+    linear-gradient(180deg, #0F1C46 0%, var(--bg1) 100%);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), 0 100%);
 }
 /* 斜めに走るレーザービーム */
 .tt-guide .tt-hero::before,
@@ -72,21 +76,21 @@
   content: "";
   position: absolute;
   z-index: -1;
-  width: 160%;
+  width: 130%;
   height: 2px;
-  left: -30%;
-  transform: rotate(-24deg);
+  left: -15%;
+  transform: rotate(var(--ang));
   pointer-events: none;
 }
 .tt-guide .tt-hero::before {
-  top: 58%;
+  top: 44%;
   background: linear-gradient(90deg, transparent 0%, rgba(46, 232, 154, 0) 30%, rgba(46, 232, 154, .9) 50%, rgba(91, 216, 255, 0) 70%, transparent 100%);
   background-size: 200% 100%;
   box-shadow: 0 0 18px rgba(46, 232, 154, .6);
   animation: tt2-sweep 5.5s cubic-bezier(.6, 0, .2, 1) infinite;
 }
 .tt-guide .tt-hero::after {
-  top: 74%;
+  top: 52%;
   height: 1px;
   background: linear-gradient(90deg, transparent 0%, rgba(167, 132, 255, 0) 35%, rgba(167, 132, 255, .95) 52%, rgba(255, 77, 106, 0) 70%, transparent 100%);
   background-size: 200% 100%;
@@ -143,7 +147,7 @@
 .tt-guide .tt-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 34px; }
 .tt-guide .tt-point {
   position: relative;
-  padding: 14px 16px;
+  padding: 14px 14px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02));
   border: 1px solid var(--line);
@@ -151,11 +155,11 @@
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
-.tt-guide .tt-point strong { display: block; font-size: 14px; line-height: 1.5; text-wrap: balance; }
+.tt-guide .tt-point strong { display: block; font-size: 13.5px; line-height: 1.5; letter-spacing: .01em; white-space: nowrap; }
 .tt-guide .tt-point span { display: block; margin-top: 4px; font-family: var(--en); font-size: 12px; line-height: 1.5; color: var(--tx3); text-wrap: balance; }
 
-.tt-guide .tt-hero-device { position: relative; margin: 0; text-align: center; }
-.tt-guide .tt-device-stage { position: relative; max-width: 270px; margin: 0 auto; padding-bottom: 40px; }
+.tt-guide .tt-hero-device { position: relative; z-index: 2; margin: 0; text-align: center; }
+.tt-guide .tt-device-stage { position: relative; max-width: 300px; margin: 0 auto; padding-bottom: 44px; }
 /* スポットライト */
 .tt-guide .tt-device-stage::before {
   content: "";
@@ -168,7 +172,7 @@
 }
 .tt-guide .tt-pedestal {
   position: absolute; left: 50%; bottom: 8px;
-  width: 140%; height: 64px;
+  width: 150%; height: 74px;
   transform: translateX(-50%);
   border-radius: 50%;
   background:
@@ -221,11 +225,17 @@
 
 /* ---------- マーキー ---------- */
 .tt-guide .tt-marquee {
+  position: relative;
+  z-index: 1;
+  width: 112%;
+  margin: calc(var(--cut) * -0.5 - 28px) 0 0 -6%;
   overflow: hidden;
-  padding: 18px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, .02);
+  padding: 16px 0;
+  transform: rotate(var(--ang));
+  border-top: 1px solid rgba(91, 216, 255, .55);
+  border-bottom: 1px solid rgba(91, 216, 255, .18);
+  background: rgba(7, 12, 29, .82);
+  box-shadow: 0 -1px 18px rgba(91, 216, 255, .35), 0 24px 40px -20px rgba(0, 0, 0, .8);
 }
 .tt-guide .tt-marquee-track { display: flex; width: max-content; animation: tt2-marq 38s linear infinite; }
 .tt-guide .tt-marquee span {
@@ -280,7 +290,30 @@
 
 /* ---------- セクション共通 ---------- */
 .tt-guide .tt-sec { position: relative; padding: 88px 56px 24px; scroll-margin-top: 100px; }
-.tt-guide .tt-sec-tint { }
+/* 斜めの帯（ヒーロー・医師・料金・締め の4か所だけ） */
+.tt-guide .tt-sec-doctor, .tt-guide #tt-price, .tt-guide .tt-close {
+  clip-path: polygon(0 var(--cut), 100% 0, 100% calc(100% - var(--cut)), 0 100%);
+}
+.tt-guide .tt-sec-doctor::before, .tt-guide #tt-price::before, .tt-guide .tt-close::after {
+  /* 斜めの境界に沿うレーザー光のライン */
+  content: "";
+  position: absolute; left: 0; right: 0; top: 1px;
+  height: var(--cut);
+  background: linear-gradient(to top left, transparent calc(50% - 1px), var(--edge, rgba(91, 216, 255, .9)) 50%, transparent calc(50% + 1px));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
+  filter: drop-shadow(0 0 6px var(--edge, rgba(91, 216, 255, .9)));
+  pointer-events: none;
+}
+.tt-guide #tt-price {
+  --edge: rgba(46, 232, 154, .9);
+  margin-top: 40px;
+  padding-top: calc(var(--cut) + 72px);
+  padding-bottom: calc(var(--cut) + 24px);
+  background:
+    radial-gradient(700px 400px at 15% 20%, rgba(91, 216, 255, .16), transparent 65%),
+    linear-gradient(180deg, #0F1D4A 0%, #0B1636 100%);
+}
 .tt-guide .tt-h {
   position: relative;
   margin: 0 0 34px;
@@ -342,23 +375,13 @@
 
 /* ---------- 医師セクション ---------- */
 .tt-guide .tt-sec-doctor {
-  margin: 88px 32px 0;
-  padding: 72px 40px 56px;
-  border-radius: 28px;
+  margin: 64px 0 0;
+  padding: calc(var(--cut) + 64px) 56px calc(var(--cut) + 24px);
   background:
-    radial-gradient(600px 300px at 100% 0%, rgba(61, 123, 255, .35), transparent 70%),
-    linear-gradient(160deg, #13235A 0%, #0C1638 100%);
-  border: 1px solid rgba(120, 160, 255, .22);
-  box-shadow: inset 0 1px 0 var(--hi), 0 40px 80px -40px rgba(0, 0, 0, .9);
-  overflow: hidden;
-}
-.tt-guide .tt-sec-doctor::after {
-  content: "";
-  position: absolute; right: -14%; top: 9%;
-  width: 70%; height: 1px;
-  transform: rotate(-24deg);
-  background: linear-gradient(90deg, transparent, rgba(91, 216, 255, .7), transparent);
-  box-shadow: 0 0 14px rgba(91, 216, 255, .6);
+    radial-gradient(640px 360px at 100% 10%, rgba(61, 123, 255, .45), transparent 70%),
+    radial-gradient(500px 300px at 0% 100%, rgba(167, 132, 255, .22), transparent 70%),
+    linear-gradient(170deg, #16297022 0%, transparent 100%),
+    linear-gradient(170deg, #142665 0%, #0D1945 100%);
 }
 .tt-guide .tt-decide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 36px 0; counter-reset: tt2-dc; }
 .tt-guide .tt-dc {
@@ -406,20 +429,20 @@
   overflow: hidden;
   transform: rotateX(9deg);
   transform-origin: 50% 100%;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 50px 70px -36px rgba(0, 0, 0, .95), 0 0 60px -10px rgba(61, 123, 255, .35);
+  box-shadow: 0 0 0 1px rgba(160, 190, 255, .22), 0 50px 70px -36px rgba(0, 0, 0, .95), 0 0 80px -10px rgba(61, 123, 255, .45);
 }
 .tt-guide .tt-layer { position: absolute; left: 0; right: 0; }
-.tt-guide .tt-layer > span { position: absolute; right: 18px; top: 10px; font-size: 12px; font-weight: 700; letter-spacing: .1em; color: rgba(40, 20, 20, .55); }
-.tt-guide .tt-layer-epi { top: 0; height: 54px; background: linear-gradient(180deg, #F7DCCD, #EEC4B1); }
-.tt-guide .tt-layer-der { top: 54px; height: 210px; background: linear-gradient(180deg, #E6B19C, #D69983); }
-.tt-guide .tt-layer-sub { top: 264px; bottom: 0; background: repeating-radial-gradient(circle at 20% 40%, #F6E6C8 0 14px, #EDD7AE 15px 16px); }
+.tt-guide .tt-layer > span { position: absolute; right: 18px; top: 10px; font-size: 12px; font-weight: 700; letter-spacing: .1em; color: rgba(255, 236, 228, .62); }
+.tt-guide .tt-layer-epi { top: 0; height: 54px; background: linear-gradient(180deg, #8E6863, #74504F); box-shadow: inset 0 2px 0 rgba(255, 214, 200, .55), inset 0 -1px 0 rgba(0, 0, 0, .25); }
+.tt-guide .tt-layer-der { top: 54px; height: 210px; background: linear-gradient(180deg, #5C3D45, #3F2A3A); }
+.tt-guide .tt-layer-sub { top: 264px; bottom: 0; background: repeating-radial-gradient(circle at 20% 40%, #2C2440 0 14px, #3A3050 15px 16px); border-top: 1px solid rgba(0, 0, 0, .3); }
 .tt-guide .tt-skin-block::after {
   content: "";
   position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(6, 10, 24, .0) 40%, rgba(6, 10, 24, .35));
+  background: linear-gradient(180deg, rgba(7, 12, 29, 0) 55%, rgba(7, 12, 29, .55));
   pointer-events: none;
 }
-.tt-guide .tt-ink { position: absolute; z-index: 2; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 255, 255, .5), 0 3px 6px rgba(0, 0, 0, .35); }
+.tt-guide .tt-ink { position: absolute; z-index: 2; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .7), 0 0 14px rgba(255, 255, 255, .35); }
 .tt-guide .tt-ink-a { left: calc(18% - 2px); top: 38px; width: 16px; height: 16px; background: #E23A44; }
 .tt-guide .tt-ink-b { left: calc(18% + 12px); top: 52px; width: 12px; height: 12px; background: #F08A2E; }
 .tt-guide .tt-ink-c { left: calc(49% - 2px); top: 102px; width: 18px; height: 18px; background: #2E62C9; }
@@ -636,17 +659,28 @@
 .tt-guide .tt-tl::before { content: ""; position: absolute; left: -29px; top: 26px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg0); border: 2px solid var(--cyan); box-shadow: 0 0 10px var(--cyan); }
 .tt-guide .tt-tl-when { font-size: 15px; font-weight: 700; color: #fff; text-wrap: balance; }
 .tt-guide .tt-tl-state, .tt-guide .tt-tl-care { text-wrap: wrap; }
-.tt-guide .tt-tl-care { color: var(--cyan); }
+.tt-guide .tt-tl-care { color: #9FE6FF; }
+.tt-guide .tt-tl-state { color: var(--tx); }
 
 /* ---------- リスク ---------- */
-.tt-guide .tt-risks { display: grid; grid-template-columns: 1fr 1fr; gap: 0 36px; }
-.tt-guide .tt-risks li { padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; line-height: 1.85; color: var(--tx2); }
-.tt-guide .tt-risks strong { display: block; margin-bottom: 4px; font-size: 15.5px; color: #fff; text-wrap: balance; }
+.tt-guide .tt-risks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tt-guide .tt-risks li {
+  position: relative;
+  padding: 20px 20px 20px 22px;
+  border-radius: 16px;
+  background: linear-gradient(170deg, rgba(255, 255, 255, .075), rgba(255, 255, 255, .02));
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 var(--hi);
+  font-size: 13.5px; line-height: 1.85; color: var(--tx2);
+}
+.tt-guide .tt-risks li::before { content: ""; position: absolute; left: 0; top: 22px; width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--r); box-shadow: 0 0 10px var(--r); }
+.tt-guide .tt-risks strong { display: block; margin-bottom: 6px; font-size: 15.5px; color: #fff; text-wrap: balance; }
 
 /* ---------- 受けられない方 ---------- */
-.tt-guide .tt-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 0 36px; }
-.tt-guide .tt-checks li { position: relative; padding: 13px 0 13px 24px; border-bottom: 1px solid var(--line); text-wrap: wrap; }
-.tt-guide .tt-checks li::before { content: ""; position: absolute; left: 2px; top: 24px; width: 8px; height: 8px; border-radius: 50%; background: var(--r); box-shadow: 0 0 10px var(--r); }
+.tt-guide .tt-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 8px; }
+.tt-guide .tt-checks li { position: relative; padding: 14px 18px 14px 44px; border-radius: 14px; background: rgba(255, 77, 106, .06); border: 1px solid rgba(255, 77, 106, .22); color: var(--tx); font-size: 14.5px; line-height: 1.7; }
+.tt-guide .tt-checks li::before { content: ""; position: absolute; left: 18px; top: 50%; width: 12px; height: 2px; background: var(--r); box-shadow: 0 0 8px var(--r); transform: translateY(-50%) rotate(45deg); }
+.tt-guide .tt-checks li::after { content: ""; position: absolute; left: 18px; top: 50%; width: 12px; height: 2px; background: var(--r); transform: translateY(-50%) rotate(-45deg); }
 
 /* ---------- FAQ ---------- */
 .tt-guide .tt-faq { display: grid; gap: 12px; }
@@ -654,7 +688,7 @@
   position: relative;
   padding: 20px 26px 6px 66px;
   border-radius: 18px 18px 0 0;
-  background: var(--glass);
+  background: rgba(30, 46, 98, .55);
   border: 1px solid var(--line);
   border-bottom: 0;
   font-size: 15.5px;
@@ -667,11 +701,11 @@
   margin-top: -12px;
   padding: 8px 26px 20px 66px;
   border-radius: 0 0 18px 18px;
-  background: var(--glass);
+  background: rgba(30, 46, 98, .55);
   border: 1px solid var(--line);
   border-top: 0;
-  font-size: 13.5px;
-  line-height: 1.85;
+  font-size: 14px;
+  line-height: 1.9;
   color: var(--tx2);
 }
 .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before {
@@ -687,24 +721,24 @@
 /* ---------- 締め ---------- */
 .tt-guide .tt-close {
   position: relative;
-  margin: 88px 32px 24px;
-  padding: 76px 32px 64px;
-  border-radius: 28px;
+  --edge: rgba(167, 132, 255, .95);
+  margin: 72px 0 0;
+  padding: calc(var(--cut) + 72px) 32px calc(var(--cut) + 40px);
   text-align: center;
   overflow: hidden;
   background:
-    radial-gradient(500px 260px at 50% 0%, rgba(91, 216, 255, .35), transparent 70%),
-    linear-gradient(160deg, #1D3FB8 0%, #13235A 55%, #0B1430 100%);
-  border: 1px solid rgba(140, 180, 255, .3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 40px 80px -40px rgba(0, 0, 0, .9);
+    radial-gradient(520px 300px at 50% 30%, rgba(91, 216, 255, .38), transparent 70%),
+    linear-gradient(170deg, #2148D0 0%, #16307F 50%, #0E1B4D 100%);
   isolation: isolate;
+  clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%);
+  padding-bottom: 64px;
 }
 .tt-guide .tt-close::before {
   content: "";
   position: absolute; z-index: -1;
-  left: -30%; top: 70%;
-  width: 160%; height: 2px;
-  transform: rotate(-14deg);
+  left: -15%; top: 68%;
+  width: 130%; height: 2px;
+  transform: rotate(var(--ang));
   background: linear-gradient(90deg, transparent 0%, rgba(46, 232, 154, 0) 30%, rgba(46, 232, 154, .9) 50%, transparent 70%);
   background-size: 200% 100%;
   box-shadow: 0 0 16px rgba(46, 232, 154, .6);
@@ -733,10 +767,14 @@
 
 /* ---------- スマホ ---------- */
 @media (max-width: 767px) {
-  .tt-guide { font-size: 14px; border-radius: 22px; }
-  .tt-guide .tt-hero { grid-template-columns: 1fr; padding: 40px 20px 40px; gap: 8px; }
+  .tt-guide { font-size: 14px; border-radius: 22px; --cut: 36px; --ang: -5.7deg; }
+  .tt-guide .tt-risks { grid-template-columns: 1fr; }
+  .tt-guide .tt-checks li { font-size: 13.5px; letter-spacing: .02em; padding-left: 40px; padding-right: 12px; }
+  .tt-guide .tt-marquee { margin-top: -34px; }
+  .tt-guide .tt-hero { grid-template-columns: 1fr; padding: 40px 20px calc(var(--cut) + 36px); gap: 8px; }
   .tt-guide .tt-hero-device { order: -1; }
-  .tt-guide .tt-device-stage { max-width: 130px; padding-bottom: 26px; }
+  .tt-guide .tt-hero-device { margin-bottom: 0; }
+  .tt-guide .tt-device-stage { max-width: 160px; padding-bottom: 28px; }
   .tt-guide .tt-device-cap { font-size: 13px; }
   .tt-guide .tt-place { font-size: 11px; margin-bottom: 16px; }
   .tt-guide .tt-title-main { font-size: 30px; }
@@ -756,7 +794,8 @@
   .tt-guide .tt-sec { padding: 64px 20px 16px; }
   .tt-guide #tt-artmake { padding-left: 20px; }
   .tt-guide .tt-h { font-size: 22px; }
-  .tt-guide .tt-sec-doctor { margin: 64px 10px 0; padding: 48px 18px 40px; }
+  .tt-guide .tt-sec-doctor { margin: 48px 0 0; padding: calc(var(--cut) + 44px) 20px calc(var(--cut) + 36px); }
+  .tt-guide #tt-price { padding-top: calc(var(--cut) + 48px); padding-bottom: calc(var(--cut) + 40px); }
   .tt-guide .tt-cards, .tt-guide .tt-decide, .tt-guide .tt-split, .tt-guide .tt-waves,
   .tt-guide .tt-cases, .tt-guide .tt-facts, .tt-guide .tt-steps, .tt-guide .tt-risks,
   .tt-guide .tt-checks, .tt-guide .tt-over dl { grid-template-columns: 1fr; }
@@ -782,7 +821,7 @@
   .tt-guide .tt-faq dt { padding: 18px 18px 6px 56px; }
   .tt-guide .tt-faq dd { padding: 8px 18px 18px 56px; }
   .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { left: 16px; }
-  .tt-guide .tt-close { margin: 64px 10px 16px; padding: 52px 18px 44px; }
+  .tt-guide .tt-close { margin: 56px 0 0; padding: calc(var(--cut) + 44px) 18px 48px; }
   .tt-guide .tt-close-title { font-size: 21px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -905,7 +944,7 @@
 </div>
 <div class="tt-sec" id="tt-artmake">
 <h3 class="tt-h"><span class="tt-h-en">Art make</span>アートメイク除去について</h3>
-<p class="tt-text">眉などのアートメイクも、タトゥーと同じくピコレーザーで色素を砕いて薄くしていきます。アートメイクの色素には、照射によって黒っぽく変化しやすい成分（酸化鉄や白色の顔料など）が含まれていることがあるため、診察で色と部位を確認し、必要に応じて小さな範囲で反応を確認してから照射範囲を広げます。</p>
+<p class="tt-text">眉などのアートメイクも、タトゥーと同じくピコレーザーで色素を砕いて薄くしていきます。アートメイクの色素には、照射によって黒っぽく変化しやすい成分（酸化鉄や白色の<bdi class="nw">顔料など）が</bdi>含まれていることがあるため、診察で色と部位を確認し、必要に応じて小さな範囲で反応を確認してから照射範囲を広げます。</p>
 <p class="tt-text">アイラインなど目のすぐ近くは、照射できない場合があります。料金はタトゥー除去と同じく面積で決まります。</p>
 </div>
 <div class="tt-sec tt-sec-tint" id="tt-case">
@@ -925,7 +964,7 @@
 </div>
 </div>
 <dl class="tt-case-detail">
-<div><dt>治療内容</dt><dd>ピコレーザー（ディスカバリーピコシリーズ）によるタトゥー除去</dd></div>
+<div><dt>治療内容</dt><dd>ピコレーザー（ディスカバリーピコ<bdi class="nw">シリーズ）による</bdi>タトゥー除去</dd></div>
 <div><dt>当院での費用</dt><dd>1回<bdi class="nw">29,700円</bdi>〜（税込・面積により異なります）。例：<bdi class="nw">〜5cm²を4回</bdi> <bdi class="nw">118,800円</bdi></dd></div>
 <div><dt>治療間隔</dt><dd><bdi class="nw">6〜8週間以上</bdi></dd></div>
 <div><dt>主なリスク</dt><dd>痛み、赤み・腫れ、水ぶくれ、色素沈着、色素脱失、瘢痕、インクの変色、色が残る可能性など（<a href="#tt-risk">詳しく見る</a>）</dd></div>

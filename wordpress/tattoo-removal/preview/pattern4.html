@@ -45,10 +45,10 @@
 .tt-guide .tt-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, .65fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+  gap: 8px;
   align-items: center;
-  padding: 88px 56px 72px;
+  padding: 96px 48px 80px 56px;
   background: #fff;
   isolation: isolate;
 }
@@ -56,10 +56,10 @@
 .tt-guide .tt-hero::before {
   content: "";
   position: absolute; z-index: -2;
-  top: 0; bottom: 0; right: -10%;
-  width: 52%;
+  top: 0; bottom: 0; right: 0;
+  width: 50%;
   background: var(--blue);
-  clip-path: polygon(34% 0, 100% 0, 100% 100%, 0 100%);
+  clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
 }
 /* 青帯の上の巨大英字 */
 .tt-guide .tt-hero::after {
@@ -69,7 +69,7 @@
   writing-mode: vertical-rl;
   white-space: nowrap;
   font-family: var(--display);
-  font-size: 132px;
+  font-size: 150px;
   line-height: .9;
   letter-spacing: -.01em;
   color: transparent;
@@ -95,9 +95,9 @@
   display: block;
   font-family: var(--jp);
   font-weight: 900;
-  font-size: 64px;
-  line-height: 1.12;
-  letter-spacing: -.01em;
+  font-size: 80px;
+  line-height: 1.08;
+  letter-spacing: -.03em;
   color: var(--ink);
   text-wrap: balance;
 }
@@ -121,7 +121,7 @@
 .tt-guide .tt-point span { display: block; margin-top: 4px; font-family: var(--latin); font-weight: 600; font-size: 12.5px; line-height: 1.5; color: var(--sub); text-wrap: balance; }
 
 .tt-guide .tt-hero-device { position: relative; margin: 0; text-align: center; }
-.tt-guide .tt-device-stage { position: relative; width: 100%; max-width: 270px; margin: 0 auto; padding-bottom: 30px; }
+.tt-guide .tt-device-stage { position: relative; width: 100%; max-width: 340px; margin: -64px auto 0; padding-bottom: 34px; }
 .tt-guide .tt-pedestal {
   position: absolute; left: 50%; bottom: 4px;
   width: 110%; height: 46px;
@@ -133,10 +133,10 @@
   position: relative;
   width: 100%;
   margin: 0 auto;
-  filter: drop-shadow(-18px 26px 26px rgba(0, 12, 60, .45));
+  filter: drop-shadow(-26px 34px 30px rgba(0, 10, 50, .5));
   animation: p4-rise 1s cubic-bezier(.2, .8, .2, 1) both, p4-float 6s ease-in-out 1s infinite;
 }
-.tt-guide .tt-device-cap { margin-top: 10px; font-family: var(--latin); font-weight: 800; font-size: 15px; letter-spacing: .04em; color: #fff; }
+.tt-guide .tt-device-cap { margin-top: 6px; font-family: var(--latin); font-weight: 900; font-style: italic; font-size: 17px; letter-spacing: .04em; color: #fff; }
 .tt-guide .tt-device-cap span { display: block; font-family: var(--jp); font-weight: 500; font-size: 12px; color: rgba(255, 255, 255, .8); }
 @keyframes p4-rise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
 @keyframes p4-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
@@ -232,19 +232,49 @@
 
 /* ---------- セクション共通 ---------- */
 .tt-guide .tt-sec { position: relative; padding: 96px 56px; scroll-margin-top: 100px; }
-.tt-guide .tt-sec-tint {
-  background: var(--ice);
-  clip-path: polygon(0 48px, 100% 0, 100% calc(100% - 48px), 0 100%);
-  padding-top: 128px; padding-bottom: 128px;
+/* セクションのリズム：白 → 墨（／）→ 白 → 淡 → 白 → 墨（＼）→ 青（／）→ 淡 → 白 → 淡 → 白 → 白 → 青（／）
+   斜めカットは色帯だけ。角度はすべて 56px／幅 で統一 */
+.tt-guide { --cut: 56px; }
+.tt-guide .tt-sec-tint { background: var(--ice); }
+.tt-guide #tt-device, .tt-guide #tt-case, .tt-guide #tt-after, .tt-guide #tt-ng { background: #fff; }
+.tt-guide #tt-artmake, .tt-guide #tt-flow, .tt-guide #tt-risk { background: var(--ice); }
+/* 回数：墨の帯（＼） */
+.tt-guide #tt-count {
+  background: var(--ink); color: #fff;
+  clip-path: polygon(0 0, 100% var(--cut), 100% 100%, 0 calc(100% - var(--cut)));
+  padding-top: calc(96px + var(--cut)); padding-bottom: calc(96px + var(--cut));
 }
-.tt-guide .tt-sec-tint::before {
-  content: "";
-  position: absolute; right: 0; top: 0;
-  width: 38%; height: 180px;
-  background: var(--hatch);
-  clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
-  pointer-events: none;
+.tt-guide #tt-count .tt-h { color: #fff; }
+.tt-guide #tt-count .tt-h-en { color: transparent; -webkit-text-stroke: 1.5px #4D86FF; }
+.tt-guide #tt-count .tt-text { color: #D3D9E6; }
+/* 料金：青の帯（／）＋要所だけハッチング */
+.tt-guide #tt-price {
+  background: var(--blue); color: #fff;
+  clip-path: polygon(0 var(--cut), 100% 0, 100% calc(100% - var(--cut)), 0 100%);
+  padding-top: calc(104px + var(--cut)); padding-bottom: calc(104px + var(--cut));
+  margin-top: -24px;
+  isolation: isolate;
 }
+.tt-guide #tt-price::before {
+  content: ""; position: absolute; z-index: -1; right: 0; top: 0;
+  width: 42%; height: 260px;
+  background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .16) 0 2px, transparent 2px 12px);
+  clip-path: polygon(34% 0, 100% 0, 100% 100%, 0 100%);
+}
+.tt-guide #tt-price .tt-h { color: #fff; }
+.tt-guide #tt-price .tt-h-en { color: var(--ink); }
+.tt-guide #tt-price .tt-text { max-width: none; color: #fff; font-size: 16.5px; font-weight: 700; }
+.tt-guide #tt-price .tt-text strong {
+  display: inline-block;
+  margin: 0 4px;
+  padding: 0 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 1.15em;
+  font-weight: 900;
+  transform: skewX(-8deg);
+}
+.tt-guide #tt-price .tt-notes, .tt-guide #tt-price .tt-notes li::before { color: #E4ECFF; }
 .tt-guide .tt-h {
   position: relative;
   margin: 0 0 40px;
@@ -303,16 +333,8 @@
 .tt-guide .tt-sec-doctor {
   background: var(--ink);
   color: #fff;
-  clip-path: polygon(0 0, 100% 48px, 100% 100%, 0 calc(100% - 48px));
-  padding-top: 128px; padding-bottom: 128px;
-}
-.tt-guide .tt-sec-doctor::after {
-  content: "";
-  position: absolute; right: 0; top: 48px;
-  width: 40%; height: 170px;
-  background: repeating-linear-gradient(-45deg, rgba(77, 134, 255, .22) 0 2px, transparent 2px 12px);
-  clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
-  pointer-events: none;
+  clip-path: polygon(0 var(--cut), 100% 0, 100% calc(100% - var(--cut)), 0 100%);
+  padding-top: calc(96px + var(--cut)); padding-bottom: calc(96px + var(--cut));
 }
 .tt-guide .tt-sec-doctor .tt-h { color: #fff; }
 .tt-guide .tt-sec-doctor .tt-h-en { color: transparent; -webkit-text-stroke: 1.5px #4D86FF; }
@@ -432,36 +454,48 @@
 .tt-guide .tt-case-detail dt { font-weight: 900; }
 
 /* ---------- 回数・間隔 ---------- */
-.tt-guide .tt-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 28px; border: 2px solid var(--ink); }
+.tt-guide .tt-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 32px; border: 2px solid #fff; background: #fff; color: var(--ink); box-shadow: 14px 14px 0 var(--blue); }
 .tt-guide .tt-fact { position: relative; padding: 30px 30px 28px; background: #fff; }
-.tt-guide .tt-fact + .tt-fact { border-left: 2px solid var(--ink); background: var(--hatch), #fff; }
+.tt-guide .tt-fact + .tt-fact { border-left: 2px solid var(--ink); }
 .tt-guide .tt-fact-label { font-size: 14px; font-weight: 900; color: var(--blue-deep); }
-.tt-guide .tt-fact-value { margin: 6px 0 12px; font-family: var(--display); font-size: 96px; line-height: 1; letter-spacing: 0; color: var(--ink); }
+.tt-guide .tt-fact-value { margin: 6px 0 12px; font-family: var(--display); font-size: 112px; line-height: 1; letter-spacing: -.01em; color: var(--blue); }
 .tt-guide .tt-fact-value small { margin-left: 8px; font-family: var(--jp); font-size: 18px; font-weight: 900; }
 .tt-guide .tt-fact-text { max-width: 26em; font-size: 14px; line-height: 1.8; color: #2A3040; }
 
 /* ---------- 料金 ---------- */
-.tt-guide .tt-price-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 30px 0 22px; border: 2px solid var(--ink); background: #fff; }
-.tt-guide .tt-plan { position: relative; padding: 26px 18px 24px; text-align: center; transition: background-color .2s, color .2s; }
-.tt-guide .tt-plan + .tt-plan { border-left: 2px solid var(--ink); }
-.tt-guide .tt-plan:hover { background: var(--blue); color: #fff; }
+.tt-guide .tt-price-grid {
+  position: relative;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
+  margin: 34px 0 34px;
+  border: 3px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 14px 14px 0 var(--ink);
+}
+.tt-guide .tt-plan { position: relative; padding: 30px 14px 28px; text-align: center; transition: background-color .2s, color .2s; }
+.tt-guide .tt-plan + .tt-plan { border-left: 3px solid var(--ink); }
+.tt-guide .tt-plan:first-child { background: var(--ink); color: #fff; }
+.tt-guide .tt-plan:first-child .tt-plan-size { color: #C9D2E6; }
+.tt-guide .tt-plan:first-child .tt-plan-yen { color: #fff; font-size: 66px; }
+.tt-guide .tt-plan:hover { background: var(--blue-deep); color: #fff; }
 .tt-guide .tt-plan:hover .tt-plan-yen, .tt-guide .tt-plan:hover .tt-plan-size { color: #fff; }
-.tt-guide .tt-plan-area { font-family: var(--display); font-size: 30px; line-height: 1.1; letter-spacing: .01em; }
+.tt-guide .tt-plan-area { font-family: var(--display); font-size: 32px; line-height: 1.1; letter-spacing: .01em; }
 .tt-guide .tt-plan-area span { font-family: var(--latin); font-weight: 800; font-size: 15px; margin-left: 2px; }
 .tt-guide .tt-plan-size { min-height: 1.7em; font-size: 12.5px; font-weight: 700; color: var(--sub); }
-.tt-guide .tt-plan-yen { margin-top: 14px; padding-top: 14px; border-top: 2px solid currentColor; font-family: var(--display); font-size: 46px; line-height: 1; letter-spacing: .01em; color: var(--blue); }
-.tt-guide .tt-plan-yen span { font-family: var(--jp); font-weight: 900; font-size: 16px; margin-left: 2px; }
-.tt-guide .tt-over { padding: 26px 30px; background: var(--ink); color: #fff; box-shadow: 12px 12px 0 var(--blue); }
-.tt-guide .tt-over-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 16px; }
-.tt-guide .tt-over-label { padding: 3px 14px; background: var(--blue); font-size: 14px; font-weight: 900; transform: skewX(-8deg); }
-.tt-guide .tt-over-rule { font-size: 15.5px; font-weight: 700; }
-.tt-guide .tt-over-rule strong { margin-left: 6px; font-family: var(--display); font-weight: 400; font-size: 34px; color: #7FA6FF; }
-.tt-guide .tt-over dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.tt-guide .tt-over dl > div { padding: 14px 18px; border: 1.5px solid rgba(255, 255, 255, .3); }
+.tt-guide .tt-plan-yen { margin-top: 16px; padding-top: 16px; border-top: 3px solid currentColor; font-family: var(--display); font-size: 58px; line-height: 1; letter-spacing: -.01em; color: var(--blue); white-space: nowrap; }
+.tt-guide .tt-plan-yen span { font-family: var(--jp); font-weight: 900; font-size: 17px; margin-left: 2px; }
+.tt-guide .tt-over { padding: 28px 32px; background: #fff; color: var(--ink); border: 3px solid var(--ink); box-shadow: 14px 14px 0 var(--ink); }
+.tt-guide .tt-over-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 18px; }
+.tt-guide .tt-over-label { padding: 3px 14px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 900; transform: skewX(-8deg); }
+.tt-guide .tt-over-rule { font-size: 16px; font-weight: 900; }
+.tt-guide .tt-over-rule strong { margin-left: 6px; font-family: var(--display); font-weight: 400; font-size: 44px; line-height: 1; color: var(--blue); }
+.tt-guide .tt-over dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 2px solid var(--ink); }
+.tt-guide .tt-over dl > div { padding: 14px 20px; }
+.tt-guide .tt-over dl > div + div { border-left: 2px solid var(--ink); }
 .tt-guide .tt-over dt { font-family: var(--latin); font-weight: 800; font-size: 15px; }
-.tt-guide .tt-over dt small { margin-left: 6px; font-family: var(--jp); font-size: 11.5px; font-weight: 500; color: #C9D2E6; }
-.tt-guide .tt-over dd { font-family: var(--display); font-size: 34px; line-height: 1.2; letter-spacing: .01em; }
-.tt-guide .tt-over .tt-note { color: #C9D2E6; }
+.tt-guide .tt-over dt small { margin-left: 6px; font-family: var(--jp); font-size: 11.5px; font-weight: 700; color: var(--sub); }
+.tt-guide .tt-over dd { font-family: var(--display); font-size: 40px; line-height: 1.15; letter-spacing: -.01em; color: var(--ink); }
+.tt-guide .tt-over .tt-note { color: var(--sub); }
 .tt-guide .tt-notes { margin-top: 26px; font-size: 13.5px; }
 .tt-guide .tt-notes li { position: relative; margin-bottom: 4px; padding-left: 1.3em; }
 .tt-guide .tt-notes li::before { content: "※"; position: absolute; left: 0; color: var(--sub); }
@@ -513,7 +547,7 @@
   background: var(--blue);
   color: #fff;
   text-align: center;
-  clip-path: polygon(0 56px, 100% 0, 100% 100%, 0 100%);
+  clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%);
   isolation: isolate;
 }
 .tt-guide .tt-close::before {
@@ -528,7 +562,6 @@
   color: transparent;
   -webkit-text-stroke: 1.5px rgba(255, 255, 255, .22);
 }
-.tt-guide .tt-close::after { content: ""; position: absolute; z-index: -1; inset: 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 14px); }
 .tt-guide .tt-close-title { font-size: 34px; font-weight: 900; line-height: 1.4; margin-bottom: 14px; text-wrap: balance; }
 .tt-guide .tt-close-text { max-width: 30em; margin: 0 auto 34px; color: #E4ECFF; text-wrap: balance; }
 .tt-guide .tt-close .tt-btn { box-shadow: 8px 8px 0 var(--ink); }
@@ -545,18 +578,19 @@
 
 /* ---------- タブレット ---------- */
 @media (max-width: 1023px) {
-  .tt-guide .tt-title-main { font-size: 52px; }
   .tt-guide .tt-hero::after { font-size: 130px; }
   .tt-guide .tt-cards, .tt-guide .tt-risks { grid-template-columns: 1fr 1fr; }
   .tt-guide .tt-toc ol { grid-template-columns: 1fr 1fr; }
-  .tt-guide .tt-plan-yen { font-size: 36px; }
+  .tt-guide .tt-plan-yen { font-size: 44px; }
+  .tt-guide .tt-plan:first-child .tt-plan-yen { font-size: 50px; }
+  .tt-guide .tt-title-main { font-size: 62px; }
 }
 
 /* ---------- スマホ ---------- */
 @media (max-width: 767px) {
   .tt-guide { font-size: 14.5px; }
   .tt-guide .tt-hero { grid-template-columns: 1fr; padding: 40px 20px 48px; }
-  .tt-guide .tt-hero::before { top: 0; bottom: auto; right: 0; width: 100%; height: 400px; clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%); }
+  .tt-guide .tt-hero::before { top: 0; bottom: auto; right: 0; width: 100%; height: 470px; clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%); }
   .tt-guide .tt-hero::after { font-size: 70px; top: 4px; right: 4px; }
   .tt-guide .tt-lead { font-size: 14px; letter-spacing: .02em; text-wrap: wrap; }
   .tt-guide .tt-artmake-fix, .tt-guide #tt-artmake .tt-text { letter-spacing: .02em; }
@@ -564,10 +598,10 @@
 
   .tt-guide .tt-device-cap span { display: none; }
   .tt-guide .tt-hero-device { order: -1; margin-bottom: 24px; }
-  .tt-guide .tt-device-stage { max-width: 118px; padding-bottom: 18px; }
+  .tt-guide .tt-device-stage { max-width: 168px; margin-top: 0; padding-bottom: 18px; }
   .tt-guide .tt-device-cap { font-size: 13px; }
   .tt-guide .tt-place { font-size: 11.5px; transform: none; }
-  .tt-guide .tt-title-main { font-size: 37px; line-height: 1.2; }
+  .tt-guide .tt-title-main { font-size: 44px; line-height: 1.15; }
   .tt-guide .tt-title-sub { font-size: 14px; }
   .tt-guide .tt-points { grid-template-columns: 1fr; }
   .tt-guide .tt-point + .tt-point { border-left: 0; border-top: 2px solid var(--ink); }
@@ -583,24 +617,34 @@
   .tt-guide .tt-toc { margin: 44px 20px 0; }
   .tt-guide .tt-toc ol { grid-template-columns: 1fr; }
   .tt-guide .tt-sec { padding: 64px 20px; }
-  .tt-guide .tt-sec-tint, .tt-guide .tt-sec-doctor { padding-top: 88px; padding-bottom: 88px; }
-  .tt-guide .tt-sec-tint { clip-path: polygon(0 28px, 100% 0, 100% calc(100% - 28px), 0 100%); }
-  .tt-guide .tt-sec-doctor { clip-path: polygon(0 0, 100% 28px, 100% 100%, 0 calc(100% - 28px)); }
   .tt-guide .tt-h { font-size: 22px; margin-bottom: 28px; }
   .tt-guide .tt-h-en { font-size: 58px; }
   .tt-guide .tt-cards, .tt-guide .tt-decide, .tt-guide .tt-split, .tt-guide .tt-waves,
   .tt-guide .tt-cases, .tt-guide .tt-facts, .tt-guide .tt-steps, .tt-guide .tt-risks,
   .tt-guide .tt-checks, .tt-guide .tt-over dl { grid-template-columns: 1fr; }
   .tt-guide .tt-card { padding: 18px 18px 16px; font-size: 14.5px; }
+  .tt-guide .tt-checks li { font-size: 14px; letter-spacing: .01em; }
   .tt-guide .tt-dc { box-shadow: 6px 6px 0 var(--blue); }
   .tt-guide .tt-fact + .tt-fact { border-left: 0; border-top: 2px solid var(--ink); }
   .tt-guide .tt-fact-value { font-size: 72px; }
-  .tt-guide .tt-price-grid { grid-template-columns: 1fr 1fr; }
-  .tt-guide .tt-plan:nth-child(3) { border-left: 0; }
-  .tt-guide .tt-plan:nth-child(n+3) { border-top: 2px solid var(--ink); }
-  .tt-guide .tt-plan { padding: 20px 10px 18px; }
-  .tt-guide .tt-plan-yen { font-size: 32px; }
-  .tt-guide .tt-over { padding: 22px 18px; box-shadow: 6px 6px 0 var(--blue); }
+  .tt-guide .tt-price-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tt-guide .tt-price-grid { margin-top: 28px; box-shadow: 8px 8px 0 var(--ink); }
+  .tt-guide .tt-plan:first-child { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; align-items: end; column-gap: 14px; text-align: left; padding: 20px 18px; }
+  .tt-guide .tt-plan:first-child .tt-plan-yen { grid-column: 1 / -1; font-size: 64px; }
+  .tt-guide .tt-plan:nth-child(2) { border-left: 0; }
+  .tt-guide .tt-plan:first-child .tt-plan-size { min-height: 0; }
+  .tt-guide .tt-plan:nth-child(n+2) { border-top: 3px solid var(--ink); }
+  .tt-guide .tt-plan { padding: 18px 6px 16px; }
+  .tt-guide .tt-plan-area { font-size: 24px; }
+  .tt-guide .tt-plan-size { font-size: 11px; }
+  .tt-guide .tt-plan-yen { font-size: 27px; margin-top: 10px; padding-top: 10px; }
+  .tt-guide .tt-plan-yen span { font-size: 11px; margin-left: 1px; }
+  .tt-guide .tt-over { padding: 22px 16px; box-shadow: 8px 8px 0 var(--ink); }
+  .tt-guide .tt-over dl > div + div { border-left: 0; border-top: 2px solid var(--ink); }
+  .tt-guide .tt-over-rule strong { font-size: 34px; }
+  .tt-guide #tt-price .tt-text { font-size: 15px; }
+  .tt-guide .tt-facts { box-shadow: 8px 8px 0 var(--blue); }
+  .tt-guide #tt-count, .tt-guide #tt-price, .tt-guide .tt-sec-doctor { --cut: 30px; padding-top: calc(64px + var(--cut)); padding-bottom: calc(64px + var(--cut)); }
   .tt-guide .tt-skin-block { height: 300px; box-shadow: 8px 8px 0 var(--ink); }
   .tt-guide .tt-layer-der { height: 180px; }
   .tt-guide .tt-layer-sub { top: 234px; }
@@ -743,7 +787,7 @@
 </div>
 <div class="tt-sec" id="tt-artmake">
 <h3 class="tt-h"><span class="tt-h-en">Art make</span>アートメイク除去について</h3>
-<p class="tt-text">眉などのアートメイクも、タトゥーと同じくピコレーザーで色素を砕いて薄くしていきます。アートメイクの色素には、照射によって黒っぽく変化しやすい成分（酸化鉄や白色の顔料など）が含まれていることがあるため、診察で色と部位を確認し、必要に応じて小さな範囲で反応を確認してから照射範囲を広げます。</p>
+<p class="tt-text">眉などのアートメイクも、タトゥーと同じくピコレーザーで色素を砕いて薄くしていきます。アートメイクの色素には、照射によって黒っぽく変化しやすい成分（酸化鉄や白色の<bdi class="nw">顔料など）が</bdi>含まれていることがあるため、診察で色と部位を確認し、必要に応じて小さな範囲で反応を確認してから照射範囲を広げます。</p>
 <p class="tt-text">アイラインなど目のすぐ近くは、照射できない場合があります。料金はタトゥー除去と同じく面積で決まります。</p>
 </div>
 <div class="tt-sec tt-sec-tint" id="tt-case">
@@ -763,7 +807,7 @@
 </div>
 </div>
 <dl class="tt-case-detail">
-<div><dt>治療内容</dt><dd>ピコレーザー（ディスカバリーピコシリーズ）によるタトゥー除去</dd></div>
+<div><dt>治療内容</dt><dd>ピコレーザー（ディスカバリーピコ<bdi class="nw">シリーズ）による</bdi>タトゥー除去</dd></div>
 <div><dt>当院での費用</dt><dd>1回<bdi class="nw">29,700円</bdi>〜（税込・面積により異なります）。例：<bdi class="nw">〜5cm²を4回</bdi> <bdi class="nw">118,800円</bdi></dd></div>
 <div><dt>治療間隔</dt><dd><bdi class="nw">6〜8週間以上</bdi></dd></div>
 <div><dt>主なリスク</dt><dd>痛み、赤み・腫れ、水ぶくれ、色素沈着、色素脱失、瘢痕、インクの変色、色が残る可能性など（<a href="#tt-risk">詳しく見る</a>）</dd></div>
