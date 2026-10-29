@@ -94,7 +94,7 @@ details summary { cursor: pointer; font-weight: 600; }
 <li>LANE RESERVE を開き、<strong>設定 → 外部機器の連携</strong> を開きます。</li>
 <li>「<strong>自動予約プログラムの接続キー（ChatGPT など）</strong>」の欄で、キーの名前（例：<code>ChatGPT 自動予約</code>）を確かめて「<strong>接続キーを発行</strong>」を押します。</li>
 <li><code>bk_</code> で始まる接続キーが<strong>1回だけ</strong>表示されます。「コピー」を押して、すぐにプログラムの設定（次の章）に貼り付けてください。画面を閉じると二度と表示されません。</li>
-<li>同じ欄に出ている<strong>入口のアドレス</strong>（<code>https://reserve.ishidahihuka.jp/api/v1/integration/booking</code>）も控えます。</li>
+<li>同じ欄に出ている<strong>入口のアドレス</strong>（<code>https://（院の LANE RESERVE のアドレス）/api/v1/integration/booking</code>）も控えます。</li>
 </ol>
 <div class="flag">接続キーは、院長と同じようにカルテ・患者情報・設定を見て変えられる大切な鍵です。チャットの本文・メール・紙に書かないでください。漏れたかもしれないときは、同じ欄の「<strong>このキーを無効化</strong>」を押してから、新しいキーを発行し直してください。無効にしたキーはすぐ使えなくなります。</div>
 <p>プログラムごとに別のキーを発行すると、どのプログラムが入れた予約か履歴で見分けられ、1つだけ止めることもできます。</p>
@@ -206,7 +206,7 @@ details summary { cursor: pointer; font-weight: 600; }
 
 <h2 id="ref">9. 一覧表と、プログラムに貼るスキーマ（技術者向け）</h2>
 <section class="card">
-<p>入口：<code>https://reserve.ishidahihuka.jp/api/v1/integration/booking</code>。すべての要求にヘッダー <code>X-Booking-Token: （接続キー）</code>（または <code>Authorization: Bearer （接続キー）</code>）を付けます。本文は JSON（<code>Content-Type: application/json</code>）。日時は ISO 8601（<code>+09:00</code> 付き）、日付は <code>YYYY-MM-DD</code>。</p>
+<p>入口：<code>https://（院の LANE RESERVE のアドレス）/api/v1/integration/booking</code>。すべての要求にヘッダー <code>X-Booking-Token: （接続キー）</code>（または <code>Authorization: Bearer （接続キー）</code>）を付けます。本文は JSON（<code>Content-Type: application/json</code>）。日時は ISO 8601（<code>+09:00</code> 付き）、日付は <code>YYYY-MM-DD</code>。</p>
 <table>
 <tr><th>操作</th><th>方法とパス</th><th>内容</th></tr>
 <tr><td>ping</td><td><code>GET /ping</code></td><td>接続の確認</td></tr>
@@ -222,7 +222,7 @@ details summary { cursor: pointer; font-weight: 600; }
 </table>
 <h3>例（curl）</h3>
 <pre><code>KEY='bk_…'   # 接続キー（画面からコピーしたもの）
-API='https://reserve.ishidahihuka.jp/api/v1/integration/booking'
+API='https://（院の LANE RESERVE のアドレス）/api/v1/integration/booking'
 curl -s "$API/options" -H "X-Booking-Token: $KEY"
 curl -s "$API/day?date=2026-10-21" -H "X-Booking-Token: $KEY"
 curl -s -X POST "$API/reservations" -H "X-Booking-Token: $KEY" -H 'Content-Type: application/json' \
@@ -235,11 +235,11 @@ curl -s -X POST "$API/reservations" -H "X-Booking-Token: $KEY" -H 'Content-Type:
   "info": {
     "title": "LANE RESERVE 自動予約",
     "version": "1.0.0",
-    "description": "いしだ皮フ科／美容皮膚科の予約の入力・変更・取り消し。日時は +09:00 付きの ISO 8601。"
+    "description": "（院名）の予約の入力・変更・取り消し。日時は +09:00 付きの ISO 8601。"
   },
   "servers": [
     {
-      "url": "https://reserve.ishidahihuka.jp/api/v1/integration/booking"
+      "url": "https://（院の LANE RESERVE のアドレス）/api/v1/integration/booking"
     }
   ],
   "components": {
@@ -1385,7 +1385,7 @@ curl -s -X POST "$API/reservations" -H "X-Booking-Token: $KEY" -H 'Content-Type:
 
 <h2 id="staffapi">10. スタッフの画面と同じ操作（カルテ・写真・問診票・同意書・見積・設定）</h2>
 <section class="card">
-<p>入口：<code>https://reserve.ishidahihuka.jp/api/v1/integration/booking/api</code> のあとに、スタッフの画面が使っているパスを続けます。接続キー（<code>X-Booking-Token</code>）は予約の入口と同じです。<strong>院長と同じ権限</strong>で動き、変更履歴・操作ログには「自動予約（キーの名前）」と残ります。</p>
+<p>入口：<code>https://（院の LANE RESERVE のアドレス）/api/v1/integration/booking/api</code> のあとに、スタッフの画面が使っているパスを続けます。接続キー（<code>X-Booking-Token</code>）は予約の入口と同じです。<strong>院長と同じ権限</strong>で動き、変更履歴・操作ログには「自動予約（キーの名前）」と残ります。</p>
 <ul>
 <li>変える前に、必ず GET で今の内容を読み、返ってきた <code>version</code> を付けて送ります（ほかの人が先に直していると 409 になります。読み直してやり直してください）。</li>
 <li>送る形は、GET で読んだ形に合わせます。知らない項目を送ると「入力内容が正しくありません」（400）になります。</li>

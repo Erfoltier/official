@@ -8,7 +8,8 @@
   small { color: #666; }
 </style>
 <b>LANE RESERVE LINE チャット連携</b>
-<p><small>LANE RESERVE の 設定 → 外部機器の連携 →「LINE チャット連携」で発行した鍵を貼って保存してください。院の Google アカウントで Chrome にログインしているパソコンには、1台で保存すれば自動で入ります。</small></p>
+<p><small>LANE RESERVE の 設定 → 外部機器の連携 →「LINE チャット連携」で発行した鍵と、その画面に出ている LANE RESERVE のアドレスを貼って保存してください。院の Google アカウントで Chrome にログインしているパソコンには、1台で保存すれば自動で入ります。</small></p>
+<input id="server" type="url" placeholder="LANE RESERVE のアドレス（https://…）" autocomplete="off" />
 <input id="token" type="password" placeholder="lc_ で始まる鍵" autocomplete="off" />
 <button id="save">保存</button>
 <p id="state"><small>読み込み中…</small></p>

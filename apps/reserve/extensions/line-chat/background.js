@@ -1,5 +1,15 @@
 // 拡張機能から LANE RESERVE へ送る（管理画面のページからは直接送れないため、ここで送る）
-const SERVER = "https://reserve.ishidahihuka.jp";
+// 送り先（院の LANE RESERVE のアドレス）は拡張機能の画面で入れる。Chrome の同期で院のパソコンに配る
+const LEGACY_SERVER = "https://reserve.ishidahihuka.jp"; // 1.0.9 まで送り先が決め打ちだった院（鍵だけ入っていて送り先が空ならここ）
+async function server() {
+  const { server, token } = await chrome.storage.sync.get(["server", "token"]);
+  if (server) return server;
+  if (token) {
+    await chrome.storage.sync.set({ server: LEGACY_SERVER });
+    return LEGACY_SERVER;
+  }
+  return "";
+}
 
 // 1.0.8 までこのパソコンだけに保存していた鍵を、同期の保存場所へ移す（入れ直し不要）
 chrome.storage.local.get(["token"], ({ token }) => {
@@ -53,7 +63,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (!msg || msg.type !== "learn") return;
   // 鍵は Chrome の同期（院の Google アカウント）で全パソコンに配る。1台で保存すれば、ほかのパソコンでは入力不要
   chrome.storage.sync.get(["token"], async ({ token }) => {
-    if (!token) return;
+    const SERVER = await server();
+    if (!token || !SERVER) return;
     let last;
     // アイコンの印で、いまの状態を見せる（…＝読み取り中、✓＝結びつけた、？＝特定できない、鍵＝鍵の問題）
     badge("…", "#888888");

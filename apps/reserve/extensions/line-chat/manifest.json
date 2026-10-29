@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "LANE RESERVE LINE チャット連携",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "LINE 公式アカウントの管理画面で開いたチャットを、LANE RESERVE の患者に結びつけます（予約詳細の「LINEで連絡」から、そのチャットを直接開けるようにするため）。",
   "permissions": ["storage"],
   "host_permissions": ["https://reserve.ishidahihuka.jp/*", "https://profile.line-scdn.net/*", "https://sprofile.line-scdn.net/*"],
+  "optional_host_permissions": ["https://*/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [{ "matches": ["https://chat.line.biz/*"], "js": ["content.js"], "run_at": "document_idle" }],
   "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" },
