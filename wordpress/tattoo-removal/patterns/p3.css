@@ -679,6 +679,9 @@
   .tt-guide .tt-h-en { font-size: 38px; white-space: nowrap; }
   .tt-guide .tt-sec { padding-left: 16px; padding-right: 16px; }
 }
+@media (max-width: 340px) {
+  .tt-guide .tt-h { font-size: 18px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .tt-guide *, .tt-guide *::before, .tt-guide *::after { animation: none !important; transition: none !important; }
 }
