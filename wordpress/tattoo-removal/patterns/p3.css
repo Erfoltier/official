@@ -1,5 +1,5 @@
-/* preview-fonts: manrope:200,300,500,700,800; noto-sans-jp:400,500,700 */
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;500;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap");
+/* preview-fonts: manrope:200,300,500,700,800; noto-sans-jp:400,500,700,900 */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap");
 
 /* ===== タトゥー除去ページ パターン3：クリニカル・フローティング（.tt-guide 内だけに適用） ===== */
 .tt-guide {
@@ -10,6 +10,12 @@
   --ice: #EEF4FB;
   --ice-2: #F6F9FD;
   --line: #D5E0EE;
+  --page: #fff;
+  --r-xl: 40px;
+  --r-lg: 26px;
+  --r-md: 18px;
+  --r-sm: 12px;
+  --cut: 5deg;
   --g: #12B76A;
   --r: #F0384F;
   --v: #7A4DFF;
@@ -51,11 +57,12 @@
 .tt-guide .tt-hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, .6fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, .45fr);
   gap: 16px;
   align-items: center;
-  padding: 72px 56px 170px;
-  border-radius: 36px;
+  padding: 80px 56px 220px;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  overflow: hidden;
   background:
     linear-gradient(90deg, rgba(26, 92, 255, .06) 1px, transparent 1px) 0 0 / 64px 64px,
     linear-gradient(180deg, rgba(26, 92, 255, .06) 1px, transparent 1px) 0 0 / 64px 64px,
@@ -63,10 +70,21 @@
     linear-gradient(160deg, #F9FBFE 0%, var(--ice) 100%);
   isolation: isolate;
 }
+.tt-guide .tt-hero::before {
+  /* 斜めカット：ページ地色の面を傾けて重ね、下端を緩い斜めに切る（幅に関係なく角度一定） */
+  content: "";
+  position: absolute; left: 0; top: 100%;
+  width: 130%; height: 400px;
+  background: var(--page);
+  transform: rotate(calc(var(--cut) * -1));
+  transform-origin: 0 0;
+  z-index: 3;
+}
+.tt-guide .tt-hero > * { position: relative; z-index: 1; }
 .tt-guide .tt-hero::after {
   content: "";
-  position: absolute; right: 8%; top: 12%;
-  width: 360px; height: 360px;
+  position: absolute; right: 1%; top: 70px;
+  width: 300px; height: 300px;
   border-radius: 50%;
   border: 1px solid rgba(26, 92, 255, .18);
   box-shadow: 0 0 0 40px rgba(26, 92, 255, .035), 0 0 0 80px rgba(26, 92, 255, .025);
@@ -90,15 +108,17 @@
 .tt-guide .tt-title::before, .tt-guide .tt-title::after { display: none; }
 .tt-guide .tt-title-main {
   display: block;
-  font-weight: 700;
-  font-size: 46px;
-  line-height: 1.3;
-  letter-spacing: 0;
+  font-weight: 900;
+  font-size: 66px;
+  line-height: 1.16;
+  letter-spacing: -.01em;
   text-wrap: balance;
 }
 .tt-guide .tt-title-sub {
   display: block;
-  margin-top: 14px;
+  margin-top: 20px;
+  padding-left: 16px;
+  border-left: 2px solid var(--blue);
   font-weight: 500;
   font-size: 17px;
   line-height: 1.7;
@@ -186,8 +206,9 @@
 .tt-guide .tt-marquee {
   position: relative;
   z-index: 1;
-  margin: -150px 0 0;
-  padding: 14px 0;
+  margin: -170px 0 0;
+  padding: 12px 0;
+  transform: rotate(calc(var(--cut) * -1));
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   overflow: hidden;
@@ -207,11 +228,14 @@
   width: calc(100% - 96px);
   margin: -150px auto 0;
   padding: 32px 40px 28px;
-  background: #fff;
-  border-radius: 28px;
+  background: rgba(255, 255, 255, .9);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid #fff;
+  border-radius: var(--r-lg);
   box-shadow: var(--sh-3);
 }
-.tt-guide .tt-marquee + .tt-summary { margin-top: 10px; }
+.tt-guide .tt-marquee + .tt-summary { margin-top: 70px; }
 .tt-guide .tt-summary-title {
   display: flex; align-items: center; gap: 14px;
   font-weight: 700; font-size: 17px; letter-spacing: .06em;
@@ -225,11 +249,11 @@
 
 /* ---------- 目次 ---------- */
 .tt-guide .tt-toc {
-  margin: 56px 0 0;
-  display: grid; grid-template-columns: 180px 1fr; gap: 32px;
-  padding: 0 48px;
+  margin: 72px 0 0;
+  display: grid; grid-template-columns: 140px 1fr; gap: 32px;
+  padding: 0 56px;
 }
-.tt-guide .tt-toc-title { font-family: var(--en); font-weight: 200; font-size: 44px; line-height: 1; letter-spacing: .02em; color: var(--blue); }
+.tt-guide .tt-toc-title { padding-top: 14px; border-top: 2px solid var(--ink); font-size: 13px; font-weight: 700; line-height: 1.4; letter-spacing: .2em; color: var(--ink); }
 .tt-guide .tt-toc ol { columns: 2; column-gap: 40px; counter-reset: tt-toc; border-top: 1px solid var(--line); padding-top: 10px; }
 .tt-guide .tt-toc li { counter-increment: tt-toc; break-inside: avoid; font-size: 14px; line-height: 1.6; padding: 7px 0; display: flex; gap: 12px; }
 .tt-guide .tt-toc li::before { content: counter(tt-toc, decimal-leading-zero); flex: none; width: 1.8em; font-family: var(--en); font-weight: 500; color: var(--blue); font-size: 12.5px; padding-top: 1px; }
@@ -238,12 +262,30 @@
 
 /* ---------- セクション共通 ---------- */
 .tt-guide .tt-sec { position: relative; padding: 96px 56px; scroll-margin-top: 100px; }
-.tt-guide .tt-sec-tint {
-  background:
-    linear-gradient(90deg, rgba(26, 92, 255, .045) 1px, transparent 1px) 0 0 / 64px 64px,
-    var(--ice);
-  border-radius: 36px;
+/* 背景の変化でリズムを作る：淡い帯（機器）／白地に要素だけ浮く（症例・流れ）／濃紺の面（料金）／淡い面（経過）／線の囲み（受けられない方） */
+.tt-guide .tt-sec-tint { background: var(--ice); border-radius: var(--r-xl); }
+.tt-guide #tt-device {
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(238, 244, 251, 0) 0%, var(--ice) 12%, var(--ice) 88%, rgba(238, 244, 251, 0) 100%);
 }
+.tt-guide #tt-case, .tt-guide #tt-flow { background: none; }
+.tt-guide #tt-after { border-radius: var(--r-lg); margin: 0 28px; padding-left: 44px; padding-right: 44px; }
+.tt-guide #tt-ng { background: none; border: 1px solid var(--line); border-radius: var(--r-lg); margin: 40px 28px; padding: 64px 44px; }
+.tt-guide #tt-price {
+  color: #fff;
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(70% 60% at 85% 0%, rgba(26, 92, 255, .45), transparent 70%),
+    radial-gradient(50% 50% at 0% 100%, rgba(26, 92, 255, .25), transparent 70%),
+    #0B1B33;
+  box-shadow: var(--sh-3);
+}
+.tt-guide #tt-price .tt-h { color: #fff; }
+.tt-guide #tt-price .tt-h-en { color: #8FB0FF; }
+.tt-guide #tt-price .tt-h-en::after { background: #8FB0FF; }
+.tt-guide #tt-price .tt-text, .tt-guide #tt-price .tt-notes { color: #C9D6EE; }
+.tt-guide #tt-price .tt-notes li::before { color: #8FA3C6; }
+.tt-guide #tt-price .tt-text strong { color: #fff; }
 .tt-guide .tt-h {
   position: relative;
   margin: 0 0 40px; padding: 0;
@@ -281,7 +323,7 @@
   padding: 26px 24px 24px;
   background: #fff;
   border: 1px solid #fff;
-  border-radius: 20px;
+  border-radius: var(--r-md);
   box-shadow: var(--sh-2);
   font-weight: 500;
   font-size: 15px;
@@ -417,12 +459,15 @@
 .tt-guide .tt-c-darkbrown { background: #4A2E22; }
 
 /* ---------- アートメイク：細線の囲み ---------- */
-.tt-guide #tt-artmake .tt-text { max-width: 44em; }
-.tt-guide #tt-artmake { padding-top: 120px; }
+.tt-guide #tt-artmake { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 0 56px; align-items: start; }
+.tt-guide #tt-artmake .tt-h { grid-row: span 2; margin-bottom: 0; }
+.tt-guide #tt-artmake .tt-text { max-width: none; padding-top: 22px; }
+.tt-guide #tt-artmake .tt-text + .tt-text { padding-top: 0; }
+.tt-guide #tt-artmake .tt-text:first-of-type { padding-top: 26px; border-top: 1px solid var(--ink); }
 
 /* ---------- 症例 ---------- */
 .tt-guide .tt-cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin: 0 0 32px; align-items: start; }
-.tt-guide .tt-case { padding: 12px 12px 16px; background: #fff; border-radius: 24px; box-shadow: var(--sh-3); }
+.tt-guide .tt-case { padding: 12px 12px 16px; background: #fff; border-radius: var(--r-lg); box-shadow: var(--sh-3); }
 .tt-guide .tt-case:nth-child(2) { margin-top: 40px; }
 .tt-guide .tt-ba { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; border-radius: 16px; overflow: hidden; }
 .tt-guide .tt-ba figure { position: relative; margin: 0; }
@@ -435,17 +480,17 @@
 }
 .tt-guide .tt-ba figure + figure figcaption { background: var(--blue); }
 .tt-guide .tt-case-cap { margin-top: 12px; padding: 0 6px; font-size: 12px; line-height: 1.6; color: var(--sub); text-wrap: balance; }
-.tt-guide .tt-case-detail { padding: 24px 30px; background: #fff; border-radius: 22px; box-shadow: var(--sh-1); font-size: 13.5px; }
+.tt-guide .tt-case-detail { padding: 24px 30px; background: var(--ice-2); border-radius: var(--r-md); box-shadow: none; border: 1px solid var(--line); font-size: 13.5px; }
 .tt-guide .tt-case-detail > div { display: grid; grid-template-columns: 8em 1fr; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); line-height: 1.8; }
 .tt-guide .tt-case-detail > div:last-child { border-bottom: 0; }
 .tt-guide .tt-case-detail dt { font-weight: 700; color: var(--blue-d); }
 
 /* ---------- 回数・間隔：細い大きな数字 ---------- */
-.tt-guide .tt-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-bottom: 32px; align-items: start; }
-.tt-guide .tt-fact { position: relative; padding: 30px 32px 28px; background: #fff; border-radius: 24px; box-shadow: var(--sh-2); }
-.tt-guide .tt-fact:nth-child(2) { margin-top: 48px; }
+.tt-guide .tt-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; margin-bottom: 36px; align-items: stretch; border-top: 1px solid var(--ink); }
+.tt-guide .tt-fact { position: relative; padding: 28px 40px 8px 0; }
+.tt-guide .tt-fact + .tt-fact { padding: 28px 0 8px 40px; border-left: 1px solid var(--line); }
 .tt-guide .tt-fact-label { font-size: 13px; font-weight: 700; color: var(--sub); letter-spacing: .06em; }
-.tt-guide .tt-fact-value { font-family: var(--en); font-weight: 200; font-size: 76px; line-height: 1.1; letter-spacing: -.03em; color: var(--blue); margin: 6px 0 14px; white-space: nowrap; }
+.tt-guide .tt-fact-value { font-family: var(--en); font-weight: 200; font-size: 104px; line-height: 1.1; letter-spacing: -.03em; color: var(--blue); margin: 6px 0 14px; white-space: nowrap; }
 .tt-guide .tt-fact-value small { font-family: var(--jp); font-size: 16px; font-weight: 700; margin-left: 8px; letter-spacing: .04em; color: var(--ink); }
 .tt-guide .tt-fact-text { font-size: 13.5px; line-height: 1.85; color: #2A3A55; }
 
@@ -455,7 +500,7 @@
   position: relative;
   padding: 26px 18px 24px;
   background: #fff;
-  border-radius: 22px;
+  border-radius: var(--r-md);
   text-align: center;
   box-shadow: var(--sh-2);
   transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s;
@@ -467,7 +512,7 @@
 .tt-guide .tt-plan-size { min-height: 1.6em; font-size: 12px; color: var(--sub); }
 .tt-guide .tt-plan-yen { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); font-family: var(--en); font-weight: 300; font-size: 34px; line-height: 1.2; letter-spacing: -.01em; color: var(--blue-d); white-space: nowrap; }
 .tt-guide .tt-plan-yen span { font-family: var(--jp); font-weight: 500; font-size: 14px; margin-left: 2px; }
-.tt-guide .tt-over { position: relative; padding: 28px 32px; background: #fff; border-radius: 24px; box-shadow: var(--sh-3); }
+.tt-guide .tt-over { position: relative; padding: 28px 32px; background: #fff; color: var(--ink); border-radius: var(--r-lg); box-shadow: var(--sh-3); }
 .tt-guide .tt-over-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 16px; }
 .tt-guide .tt-over-label { padding: 4px 16px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .tt-guide .tt-over-rule { font-size: 15px; font-weight: 500; white-space: nowrap; }
@@ -483,13 +528,13 @@
 .tt-guide .tt-notes li::before { content: "※"; position: absolute; left: 0; color: var(--sub); }
 
 /* ---------- 流れ：細線でつながるステップ ---------- */
-.tt-guide .tt-steps { counter-reset: tt-step; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 22px; position: relative; }
+.tt-guide .tt-steps { counter-reset: tt-step; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 52px 22px; position: relative; margin-top: 64px; }
 .tt-guide .tt-steps li {
   position: relative;
   counter-increment: tt-step;
   padding: 30px 24px 24px;
   background: #fff;
-  border-radius: 22px;
+  border-radius: var(--r-md);
   box-shadow: var(--sh-2);
 }
 .tt-guide .tt-steps li:nth-child(3n+2) { transform: translateY(22px); }
@@ -525,12 +570,13 @@
 .tt-guide .tt-checks li::before { content: ""; position: absolute; left: 2px; top: 25px; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--r); background: rgba(240, 56, 79, .15); }
 
 /* ---------- よくある質問 ---------- */
-.tt-guide .tt-faq { display: grid; gap: 14px; }
-.tt-guide .tt-faq dt { position: relative; margin: 0; padding: 22px 26px 6px 70px; background: #fff; border-radius: 20px 20px 0 0; font-weight: 700; font-size: 15.5px; line-height: 1.7; }
-.tt-guide .tt-faq dd { position: relative; margin: -14px 0 0; padding: 8px 26px 22px 70px; background: #fff; border-radius: 0 0 20px 20px; font-size: 13.5px; line-height: 1.85; color: #2A3A55; box-shadow: 0 24px 34px -24px rgba(11, 27, 51, .28); }
-.tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { position: absolute; left: 24px; font-family: var(--en); font-weight: 200; font-size: 30px; line-height: 1; }
-.tt-guide .tt-faq dt::before { content: "Q"; top: 19px; color: var(--blue); }
-.tt-guide .tt-faq dd::before { content: "A"; top: 6px; color: var(--sub); }
+.tt-guide .tt-faq { display: grid; border-bottom: 1px solid var(--line); }
+.tt-guide .tt-faq dt { position: relative; margin: 0; padding: 26px 8px 6px 64px; border-top: 1px solid var(--line); font-weight: 700; font-size: 16px; line-height: 1.7; }
+.tt-guide .tt-faq dt:first-child { border-top-color: var(--ink); }
+.tt-guide .tt-faq dd { position: relative; margin: 0; padding: 4px 8px 26px 64px; font-size: 14px; line-height: 1.9; color: #2A3A55; }
+.tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { position: absolute; left: 14px; font-family: var(--en); font-weight: 200; font-size: 30px; line-height: 1; }
+.tt-guide .tt-faq dt::before { content: "Q"; top: 23px; color: var(--blue); }
+.tt-guide .tt-faq dd::before { content: "A"; top: 2px; color: var(--sub); }
 
 /* ---------- 締め ---------- */
 .tt-guide .tt-close {
@@ -589,7 +635,7 @@
   .tt-guide .tt-summary dl { grid-template-columns: 1fr; }
 }
 @media (max-width: 1000px) {
-  .tt-guide .tt-title-main { font-size: 40px; }
+  .tt-guide .tt-title-main { font-size: 54px; }
   .tt-guide .tt-points { grid-template-columns: 1fr; }
   .tt-guide .tt-point:nth-child(2) { transform: none; }
   .tt-guide .tt-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -599,17 +645,19 @@
   .tt-guide .tt-wave:nth-child(2) { margin: 0 0 0 40px; }
   .tt-guide .tt-wave:nth-child(3) { margin: 0 0 0 80px; }
   .tt-guide .tt-split { grid-template-columns: 1fr; }
+  .tt-guide #tt-artmake { grid-template-columns: 1fr; }
+  .tt-guide #tt-artmake .tt-h { grid-row: auto; margin-bottom: 8px; }
   .tt-guide .tt-price-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ---------- スマホ ---------- */
 @media (max-width: 767px) {
   .tt-guide { font-size: 14.5px; }
-  .tt-guide .tt-hero { grid-template-columns: 1fr; padding: 40px 22px 160px; border-radius: 28px; gap: 8px; }
+  .tt-guide .tt-hero { grid-template-columns: 1fr; padding: 40px 22px 170px; border-radius: 28px 28px 0 0; gap: 8px; }
   .tt-guide .tt-hero::after { width: 220px; height: 220px; right: -40px; top: 20px; }
   .tt-guide .tt-hero-device { order: -1; }
   .tt-guide .tt-device-stage { max-width: 120px; padding-bottom: 30px; }
-  .tt-guide .tt-title-main { font-size: 30px; }
+  .tt-guide .tt-title-main { font-size: 42px; }
   .tt-guide .tt-title-sub { font-size: 14.5px; }
   .tt-guide .tt-place { font-size: 11.5px; padding: 4px 12px; }
   .tt-guide .tt-lead { font-size: 14px; letter-spacing: .02em; }
@@ -617,12 +665,13 @@
   .tt-guide .tt-btn { display: flex; width: 100%; padding: 17px 16px; letter-spacing: .04em; font-size: 14.5px; }
   .tt-guide .tt-marquee span { font-size: 22px; }
   .tt-guide .tt-summary { width: calc(100% - 24px); padding: 24px 20px 18px; margin-top: -110px; border-radius: 22px; }
-  .tt-guide .tt-marquee + .tt-summary { margin-top: 8px; }
+  .tt-guide .tt-marquee + .tt-summary { margin-top: 36px; }
   .tt-guide .tt-marquee { margin-top: -140px; }
   .tt-guide .tt-summary dl { grid-template-columns: 1fr; }
   .tt-guide .tt-summary dl > div { grid-template-columns: 5.5em 1fr; gap: 10px; }
-  .tt-guide .tt-toc { grid-template-columns: 1fr; gap: 12px; padding: 0 20px; margin-top: 40px; }
-  .tt-guide .tt-toc-title { font-size: 34px; }
+  .tt-guide .tt-toc { grid-template-columns: 1fr; gap: 0; padding: 0 20px; margin-top: 48px; }
+  .tt-guide .tt-toc-title { padding: 12px 0 4px; }
+  .tt-guide .tt-toc ol { border-top: 0; }
   .tt-guide .tt-toc ol { columns: 1; }
   .tt-guide .tt-sec { padding: 64px 20px; }
   .tt-guide .tt-sec-tint, .tt-guide .tt-sec-doctor, .tt-guide .tt-close { border-radius: 26px; }
@@ -655,7 +704,10 @@
   .tt-guide .tt-ink-e { left: 74%; top: 134px; } .tt-guide .tt-ink-f { left: calc(74% + 12px); top: 150px; }
   .tt-guide .tt-ray b { left: 50%; bottom: auto; top: 6px; transform: translateX(-50%); font-size: 10px; padding: 1px 6px; }
   .tt-guide .tt-layer > span { right: 10px; font-size: 11px; }
-  .tt-guide .tt-fact-value { font-size: 60px; }
+  .tt-guide .tt-fact-value { font-size: 72px; }
+  .tt-guide .tt-fact, .tt-guide .tt-fact + .tt-fact { padding: 24px 0 20px; border-left: 0; }
+  .tt-guide .tt-fact + .tt-fact { border-top: 1px solid var(--line); }
+  .tt-guide #tt-after, .tt-guide #tt-ng { margin-left: 0; margin-right: 0; padding-left: 20px; padding-right: 20px; }
   .tt-guide .tt-price-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .tt-guide .tt-plan:nth-child(even) { margin-top: 20px; }
   .tt-guide .tt-plan-yen { font-size: 26px; }
@@ -667,9 +719,12 @@
   .tt-guide .tt-tl { grid-template-columns: 1fr; gap: 6px; padding: 18px 20px; }
   .tt-guide .tt-tl:nth-child(n) { margin-left: 0; }
   .tt-guide .tt-tl:nth-child(n)::before { left: -30px; }
-  .tt-guide .tt-faq dt { padding: 20px 18px 6px 56px; font-size: 15px; }
-  .tt-guide .tt-faq dd { padding: 8px 18px 20px 56px; }
-  .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { left: 18px; font-size: 26px; }
+  .tt-guide .tt-faq dt { padding: 22px 4px 6px 44px; font-size: 15px; }
+  .tt-guide .tt-faq dd { padding: 4px 4px 22px 44px; }
+  .tt-guide .tt-faq dt::before, .tt-guide .tt-faq dd::before { left: 4px; font-size: 26px; }
+  .tt-guide #tt-artmake { display: block; }
+  .tt-guide #tt-artmake .tt-h { margin-bottom: 24px; }
+  .tt-guide .tt-steps { margin-top: 48px; }
   .tt-guide .tt-close { padding: 56px 20px; }
   .tt-guide .tt-close-title { font-size: 22px; }
 }
