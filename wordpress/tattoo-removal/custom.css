@@ -153,7 +153,22 @@
   text-wrap: balance;
 }
 .tt-guide .tt-lead { max-width: 34em; margin-bottom: 30px; color: var(--tx2); }
-.tt-guide .tt-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 34px; }
+.tt-guide .tt-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 22px; }
+/* 診療日（日曜日限定）のお知らせ */
+.tt-guide .tt-day {
+  display: block; width: fit-content; max-width: 100%;
+  margin-bottom: 26px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 77, 106, .55);
+  border-radius: 12px;
+  background: rgba(255, 77, 106, .10);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.6;
+  text-wrap: balance;
+}
+.tt-guide .tt-day strong { color: #FF8597; font-size: 16px; margin: 0 2px; }
+.tt-guide .tt-day span { display: block; font-size: 12px; color: #C9D3EC; }
 .tt-guide .tt-point {
   position: relative;
   padding: 14px 14px;
@@ -780,6 +795,7 @@
   .tt-guide .tt-title-sub { font-size: 14px; }
   .tt-guide .tt-lead, .tt-guide .tt-text { letter-spacing: .03em; }
   .tt-guide .tt-points { grid-template-columns: 1fr; }
+  .tt-guide .tt-day { width: auto; padding: 10px 14px; }
   .tt-guide .tt-cta-left { text-align: center; }
   .tt-guide .tt-btn { display: block; padding: 17px 16px; font-size: 14px; letter-spacing: .04em; }
   .tt-guide .tt-marquee span { font-size: 24px; padding: 0 18px; }
