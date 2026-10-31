@@ -6,12 +6,14 @@ require $argv[1].'/lib/LaneMutationSafety.php';
 $root=realpath($argv[1]);$db=Db::i();$checks=0;
 $m12=($argv[2]??'m11')==='m12';$a36=($argv[2]??'m11')==='a36';
 $a39=($argv[2]??'m11')==='a39';
-$a02=($argv[2]??'m11')==='a02';
+$a02Line=($argv[2]??'m11')==='a02line';
+$a02=$a02Line||($argv[2]??'m11')==='a02';
 $minutes=$a02?15:($a39?30:($a36?20:($m12?15:10)));
 $requestId=$a36?'R20261029LaneA36I0106Main1300':($m12?'R20261029LaneM12R0106Main1300':'R20261028LaneM11R0106Main1300');
 $revision=$a36?'fixed-a36i-jan2027-20261029-v1':($m12?'fixed-m12r-jan2027-20261029-v1':'fixed-m11r-jan2027-20261028-v1');
 if($a39){$requestId='R20261029LaneA39I0106Main1300';$revision='fixed-a39i-jan2027-20261029-v1';}
 if($a02){$requestId='R20261029LaneA02I0106Main1300';$revision='fixed-a02i-jan2027-20261029-v1';}
+if($a02Line){$requestId='R202610310254209F611E39';$revision='fixed-a02line-jan2027-20261031-v1';}
 $originalBookingPolicy=require $root.'/lib/LaneBookingPolicy.php';
 $check=function(bool $ok)use(&$checks):void{if(!$ok)throw new RuntimeException('assertion_failed_'.($checks+1));$checks++;};
 $set=function(string $name,array $p)use($root):void{file_put_contents($root.'/lib/'.$name.'.php','<?php return '.var_export($p,true).';');};
