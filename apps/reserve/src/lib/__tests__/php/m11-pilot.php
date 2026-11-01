@@ -14,6 +14,7 @@ $revision=$a36?'fixed-a36i-jan2027-20261029-v1':($m12?'fixed-m12r-jan2027-202610
 if($a39){$requestId='R20261029LaneA39I0106Main1300';$revision='fixed-a39i-jan2027-20261029-v1';}
 if($a02){$requestId='R20261029LaneA02I0106Main1300';$revision='fixed-a02i-jan2027-20261029-v1';}
 if($a02Line){$requestId='R202610310254209F611E39';$revision='fixed-a02line-jan2027-20261031-v1';}
+if(($argv[2]??'')==='m11line'){$requestId='R20261101LaneM11Line0106Main1300';$revision='fixed-m11line-jan2027-20261101-v1';}
 $originalBookingPolicy=require $root.'/lib/LaneBookingPolicy.php';
 $check=function(bool $ok)use(&$checks):void{if(!$ok)throw new RuntimeException('assertion_failed_'.($checks+1));$checks++;};
 $set=function(string $name,array $p)use($root):void{file_put_contents($root.'/lib/'.$name.'.php','<?php return '.var_export($p,true).';');};

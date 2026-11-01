@@ -25,6 +25,12 @@ final class LaneMutationSafety
                 || !preg_match('/^[0-9]+$/D', $p['m3VisitId']) || !preg_match('/^r-[A-Za-z0-9_-]{5,100}$/D', $p['reservationId'])
                 || $p['date'] !== '2027-01-06' || $p['laneId'] !== 'lane-main' || $p['menuId'] !== 'menu-x021'
                 || $p['menuName'] !== '再診 色素レーザー' || ($p['allowedStarts'] ?? null) !== [840])) self::fail('m11_scope');
+        if ($p['safePilotRevision'] === 'fixed-m11line-jan2027-20261101-v1'
+            && ($p['patientId'] !== 'p-new-muw2osez-7b5626' || $p['patientName'] !== '試験 太郎'
+                || $p['requestId'] !== 'R20261101LaneM11Line0106Main1300' || $p['m3PatientId'] !== '2117349'
+                || !preg_match('/^[0-9]+$/D', $p['m3VisitId']) || !preg_match('/^r-[A-Za-z0-9_-]{5,100}$/D', $p['reservationId'])
+                || $p['date'] !== '2027-01-06' || $p['laneId'] !== 'lane-main' || $p['menuId'] !== 'menu-x021'
+                || $p['menuName'] !== '再診 色素レーザー' || ($p['allowedStarts'] ?? null) !== [840])) self::fail('m11_line_scope');
         if ($p['safePilotRevision'] === 'fixed-m12r-jan2027-20261029-v1'
             && ($p['patientId'] !== 'p-new-muw2osez-7b5626' || $p['patientName'] !== '試験 太郎'
                 || $p['requestId'] !== 'R20261029LaneM12R0106Main1300' || $p['m3PatientId'] !== '2117349'
@@ -57,7 +63,7 @@ final class LaneMutationSafety
                 || $p['menuName'] !== '初診 シミ（4個まで/男性/75歳以上/説明済照射のみ/ゼオ不要）' || ($p['allowedStarts'] ?? null) !== [840])) self::fail('a02_line_scope');
         return $p;
     }
-    private static function minutes(array $p): int { return in_array($p['safePilotRevision'], ['fixed-a02i-jan2027-20261029-v1','fixed-a02line-jan2027-20261031-v1'], true) ? 15 : ($p['safePilotRevision'] === 'fixed-a39i-jan2027-20261029-v1' ? 30 : ($p['safePilotRevision'] === 'fixed-m12r-jan2027-20261029-v1' ? 15 : ($p['safePilotRevision'] === 'fixed-m11r-jan2027-20261028-v1' ? 10 : 20))); }
+    private static function minutes(array $p): int { return in_array($p['safePilotRevision'], ['fixed-a02i-jan2027-20261029-v1','fixed-a02line-jan2027-20261031-v1'], true) ? 15 : ($p['safePilotRevision'] === 'fixed-a39i-jan2027-20261029-v1' ? 30 : ($p['safePilotRevision'] === 'fixed-m12r-jan2027-20261029-v1' ? 15 : (in_array($p['safePilotRevision'], ['fixed-m11r-jan2027-20261028-v1','fixed-m11line-jan2027-20261101-v1'], true) ? 10 : 20))); }
     private static function release(array $p): void {
         if ($p['enabled'] !== true || $p['sourceCompatibilityVerified'] !== true || $p['externalCalendarIsolated'] !== true) self::fail('disabled');
         if (!str_starts_with((string)(config()['db_dsn'] ?? ''), 'sqlite:')) self::fail('sqlite_required');
@@ -162,7 +168,7 @@ final class LaneMutationSafety
                 || ($r['menuIds'] ?? []) !== [$p['menuId']] || substr($r['startAt'] ?? '',0,10) !== $p['date']
                 || substr($r['endAt'] ?? '',0,10) !== $p['date'] || $sourceStart === false || $sourceEnd === false || $sourceStart <= time() || $sourceEnd - $sourceStart !== self::minutes($p) * 60
                 || $m['startAt'] !== $r['startAt'] || $m['endAt'] !== $r['endAt']) self::fail('source_conflict');
-            if (in_array($p['safePilotRevision'], ['fixed-m11r-jan2027-20261028-v1','fixed-m12r-jan2027-20261029-v1','fixed-a36i-jan2027-20261029-v1','fixed-a39i-jan2027-20261029-v1','fixed-a02i-jan2027-20261029-v1','fixed-a02line-jan2027-20261031-v1'], true)) {
+            if (in_array($p['safePilotRevision'], ['fixed-m11line-jan2027-20261101-v1','fixed-m11r-jan2027-20261028-v1','fixed-m12r-jan2027-20261029-v1','fixed-a36i-jan2027-20261029-v1','fixed-a39i-jan2027-20261029-v1','fixed-a02i-jan2027-20261029-v1','fixed-a02line-jan2027-20261031-v1'], true)) {
                 $change = $in['operation'] === 'change';
                 if ($in['operationId'] !== $p['requestId'] . ($change ? 'Change' : 'Cancel')
                     || $in['version'] !== ($change ? 1 : 2)
