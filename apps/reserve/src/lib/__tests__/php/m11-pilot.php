@@ -4,7 +4,7 @@ require $argv[1].'/lib/bootstrap.php';
 require $argv[1].'/lib/LaneBookingSafety.php';
 require $argv[1].'/lib/LaneMutationSafety.php';
 $root=realpath($argv[1]);$db=Db::i();$checks=0;
-$m12=($argv[2]??'m11')==='m12';$a36=($argv[2]??'m11')==='a36';
+$m12=in_array(($argv[2]??'m11'),['m12','m12line'],true);$a36=($argv[2]??'m11')==='a36';
 $a39=($argv[2]??'m11')==='a39';
 $a02Line=($argv[2]??'m11')==='a02line';
 $a02=$a02Line||($argv[2]??'m11')==='a02';
@@ -15,6 +15,7 @@ if($a39){$requestId='R20261029LaneA39I0106Main1300';$revision='fixed-a39i-jan202
 if($a02){$requestId='R20261029LaneA02I0106Main1300';$revision='fixed-a02i-jan2027-20261029-v1';}
 if($a02Line){$requestId='R202610310254209F611E39';$revision='fixed-a02line-jan2027-20261031-v1';}
 if(($argv[2]??'')==='m11line'){$requestId='R20261101LaneM11Line0106Main1300';$revision='fixed-m11line-jan2027-20261101-v1';}
+if(($argv[2]??'')==='m12line'){$requestId='R20261101LaneM12Line0106Main1300';$revision='fixed-m12line-jan2027-20261101-v1';}
 $originalBookingPolicy=require $root.'/lib/LaneBookingPolicy.php';
 $check=function(bool $ok)use(&$checks):void{if(!$ok)throw new RuntimeException('assertion_failed_'.($checks+1));$checks++;};
 $set=function(string $name,array $p)use($root):void{file_put_contents($root.'/lib/'.$name.'.php','<?php return '.var_export($p,true).';');};
@@ -36,6 +37,7 @@ $set('LaneBookingPolicy',$p);$a=LaneBookingSafety::availability($slot);$check($a
 $in=['patientId'=>$patient['id'],'requestId'=>$p['requestId'],'memo'=>'合成試験原文 '.$p['requestId'],'slot'=>$slot,'revision'=>$a['revision'],'observedAt'=>$a['observedAt']];
 $reject=function(callable $fn)use($db,$check):void{$before=$db->all('reservation');$failed=false;try{$fn();}catch(StoreError){$failed=true;}$check($failed);$check($before===$db->all('reservation'));};
 foreach([['enabled'=>false],['externalCalendarIsolated'=>false],['patientId'=>'other'],['patientName'=>'試験 花子'],['date'=>'2026-12-31'],['date'=>'2026-12-30'],['date'=>'2027-01-13'],['requestId'=>'R20261027LaneM11R1230Main1300'],['revision'=>'fixed-m11r-20261027-v1'],['start'=>840,'end'=>850],['minutes'=>$minutes+5],['menuId'=>'menu-s000099B91'],['menuName'=>'wrong'],['requestId'=>'R20261027OtherTrial'],['expiresAt'=>time()-1],['expiresAt'=>time()+300]] as $patch){$set('LaneBookingPolicy',array_merge($p,$patch));$reject(fn()=>LaneBookingSafety::create($in,$by));}
+if(($argv[2]??'')==='m12line'){foreach([['requestId'=>'R20261029LaneM12R0106Main1300'],['revision'=>'fixed-m12r-jan2027-20261029-v1']] as $patch){$set('LaneBookingPolicy',array_merge($p,$patch));$reject(fn()=>LaneBookingSafety::create($in,$by));}}
 $set('LaneBookingPolicy',$p);$reject(fn()=>LaneBookingSafety::create(array_merge($in,['requestId'=>'R20261027OtherRequest']),$by));
 if($m12||$a36||$a39||$a02){
  foreach([['defaultMinutes'=>99],['duration'=>['kind'=>'fixed','minutes'=>99]],['duration'=>['kind'=>'range','min'=>11,'max'=>60,'step'=>5]],['laneIds'=>['lane-main','lane-1']]] as $patch){
