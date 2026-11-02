@@ -28,6 +28,13 @@ if [ ! -d "$REL/app" ]; then
 fi
 for f in "$REL"/app/lib/*.php "$REL"/app/api/index.php "$REL"/app/cron/*.php; do php -l "$f" >/dev/null; done
 echo "lint ok"
+# 画面の部品（/_next/…）が、この置き場所で本当に読めるか（置き場所の指定違い BASE_PATH=/reserve で作ると真っ白になる。11/1 にあった）
+MISS=0
+for a in $(grep -o '"/[^"]*_next/static/[^"]*\.\(js\|css\)"' "$REL/app/index.html" | tr -d '"' | sort -u); do
+  [ -f "$REL/app$a" ] || { echo "画面の部品が見つかりません：$a" >&2; MISS=1; }
+done
+[ "$MISS" = 0 ] || { echo "一式の作り方が違います（BASE_PATH= で作り直してください）。反映しませんでした" >&2; exit 3; }
+echo "assets ok"
 ln -sfn "$REL/app" /srv/reserve/app.new && mv -T /srv/reserve/app.new /srv/reserve/app
 systemctl reload php-fpm 2>/dev/null || true
 echo "$(date -Is) $R ${2:-不明}" >> /srv/reserve/releases/RELEASES.log
