@@ -33,6 +33,12 @@ describe("パソコンに保存する控え", () => {
     // 保存した日時が残り、操作ログにも残る
     expect((await c.get("/admin/local-backup")).dataAt).toBeTruthy();
     expect(JSON.stringify(await c.get("/audit"))).toContain("パソコンに保存");
+    // 手動で作ったバックアップの履歴に出る（サーバー内の「今すぐ作成」も）
+    await c.post("/admin/backup", { confirm: "BACKUP" });
+    const st = await c.get("/admin/backups");
+    expect(st.manual.map((m: { kind: string }) => m.kind)).toEqual(["server", "pc"]);
+    expect(st.manual[1].detail).toContain("予約・患者");
+    expect(st.manual[0].by).toBeTruthy();
   });
 
   it("写真などは tar で保存でき、2回目は前回からの追加分だけ。院長・管理者以外はできない", async () => {

@@ -93,7 +93,7 @@ function StorageCard({ notify, fail }: { notify: (t: string) => void; fail: (e: 
 }
 
 /** 保存データ全体（予約・患者・記録・設定）の控えを、サーバーの中に今すぐ作る（院長・管理者） */
-function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
+function BackupCard({ notify, fail, onDone }: { notify: (t: string) => void; fail: (e: unknown) => void; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<{ file: string; bytes: number; integrity: string; at: string } | null>(null);
   return (
@@ -113,6 +113,7 @@ function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
             try {
               const r = await createBackup();
               setLast({ ...r, at: new Date().toISOString() });
+              onDone();
               notify(`控えを作成しました（${(r.bytes / 1024 / 1024).toFixed(1)}MB・整合性チェック ${r.integrity}）`);
             } catch (e) {
               fail(e);
@@ -136,6 +137,8 @@ function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
 export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promise<void>; notify: (t: string) => void; fail: (e: unknown) => void }) {
   const [data, setData] = useState<RestorePoints | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const bump = useCallback(() => setTick((t) => t + 1), []);
 
   const load = useCallback(() => {
     fetchRestorePoints().then(setData, fail);
@@ -149,9 +152,9 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
 
   return (
     <section>
-      <BackupStatusCard fail={fail} />
-      <BackupCard notify={notify} fail={fail} />
-      <LocalBackupCard notify={notify} fail={fail} />
+      <BackupStatusCard fail={fail} tick={tick} />
+      <BackupCard notify={notify} fail={fail} onDone={bump} />
+      <LocalBackupCard notify={notify} fail={fail} onDone={bump} />
       <OfflineDeviceCard canAllow />
       <DayPdfCard notify={notify} fail={fail} />
       <h3 className={styles.cardTitle}>設定の復元</h3>
@@ -225,7 +228,7 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
 
 
 /** 院のパソコンに控えを保存する（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま */
-function LocalBackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
+function LocalBackupCard({ notify, fail, onDone }: { notify: (t: string) => void; fail: (e: unknown) => void; onDone: () => void }) {
   const [st, setSt] = useState<LocalBackupStatus | null>(null);
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
@@ -272,6 +275,7 @@ function LocalBackupCard({ notify, fail }: { notify: (t: string) => void; fail: 
               setPass2("");
               notify("控えのファイルをダウンロードしました（ブラウザの「ダウンロード」フォルダ）");
               await load();
+              onDone();
             } catch (e) {
               fail(e);
             } finally {
@@ -290,10 +294,10 @@ function LocalBackupCard({ notify, fail }: { notify: (t: string) => void; fail: 
         ファイルはサーバーの鍵で暗号化されたままなので、そのままでは開けません（戻すときに使います）。最初に1回「全部」を保存し、以後は「増えた分だけ」を保存してください。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
-        <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(true)} onClick={() => window.setTimeout(load, 5000)}>
+        <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(true)} onClick={() => window.setTimeout(() => (load(), onDone()), 5000)}>
           増えた分だけ保存
         </a>
-        <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(false)} onClick={() => window.setTimeout(load, 5000)}>
+        <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(false)} onClick={() => window.setTimeout(() => (load(), onDone()), 5000)}>
           全部を保存
         </a>
       </div>
@@ -387,8 +391,8 @@ function DayPdfCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
 
 const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
 
-/** いまの控えの状況：AWS の毎日の控え（東京・大阪）と、サーバー内の控え */
-function BackupStatusCard({ fail }: { fail: (e: unknown) => void }) {
+/** 現在のバックアップ状況：AWS の毎日の控え（東京・大阪）と、サーバー内の控え */
+function BackupStatusCard({ fail, tick }: { fail: (e: unknown) => void; tick: number }) {
   const [st, setSt] = useState<BackupStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const load = useCallback(
@@ -403,10 +407,10 @@ function BackupStatusCard({ fail }: { fail: (e: unknown) => void }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [load, tick]);
   return (
     <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
-      <h3 className={styles.cardTitle}>いまの控えの状況</h3>
+      <h3 className={styles.cardTitle}>現在のバックアップ状況</h3>
       <p className={styles.hint}>
         サーバー丸ごとの控えを<b>毎日午前3時ごろ</b>に東京で取り、大阪にも写します（どちらも30日分。期限までは誰も消せない設定）。
       </p>
@@ -454,6 +458,33 @@ function BackupStatusCard({ fail }: { fail: (e: unknown) => void }) {
           </tbody>
         </table>
       </div>
+      <h4 className={styles.subTitle}>手動で作ったバックアップの履歴</h4>
+      {st && st.manual.length === 0 ? (
+        <p className={styles.hint}>まだありません（下の「今すぐ控えを作成」「院のパソコンに控えを保存」で作ると、ここに出ます）</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>保存先</th>
+                <th>内容</th>
+                <th>作った人</th>
+              </tr>
+            </thead>
+            <tbody>
+              {st?.manual.slice(0, 10).map((m) => (
+                <tr key={m.at + m.detail}>
+                  <td>{stamp(m.at)}</td>
+                  <td>{m.kind === "server" ? "サーバー内" : "院のパソコン"}</td>
+                  <td>{m.detail}</td>
+                  <td>{m.by}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div className={styles.actions}>
         <button type="button" className={styles.btn} disabled={busy} onClick={() => load(true)}>
           {busy ? "確かめています…" : "最新の状況を確かめる"}

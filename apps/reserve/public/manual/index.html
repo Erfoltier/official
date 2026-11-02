@@ -45,7 +45,8 @@ main h2:first-child { margin-top: 8px; }
 main h3 { font-family: var(--display); font-size: 19px; margin: 36px 0 8px; color: var(--accent-ink); scroll-margin-top: 16px; }
 main h4 { font-family: var(--display); font-size: 16px; margin: 24px 0 6px; scroll-margin-top: 72px; }
 main p, main li { max-width: none; }
-main figure img, main .fig img { max-width: min(100%, 960px); }
+main figure .zoom, main .fig .zoom { max-width: min(100%, 960px); }
+main figure img, main .fig img { max-width: 100%; }
 main ol, main ul { padding-left: 1.5em; }
 main li + li { margin-top: 4px; }
 main a { color: var(--accent-ink); }
@@ -61,12 +62,12 @@ table { border-collapse: collapse; font-size: 14px; min-width: 100%; background:
 th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
 th { background: var(--code-bg); font-weight: 700; white-space: nowrap; }
 figure { margin: 18px 0 26px; }
-figure .zoom { display: block; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--paper); cursor: zoom-in; max-width: 100%; }
+figure .zoom { display: inline-block; vertical-align: top; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--paper); cursor: zoom-in; max-width: 100%; }
 figure .zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 figure img { display: block; max-width: 100%; height: auto; }
 figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
 .fig { display: block; margin: 10px 0 18px; }
-.fig .zoom { display: block; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--paper); cursor: zoom-in; max-width: 100%; }
+.fig .zoom { display: inline-block; vertical-align: top; padding: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--paper); cursor: zoom-in; max-width: 100%; }
 .fig .zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fig img { display: block; max-width: 100%; height: auto; }
 img[src^="img/8"] { width: 320px; max-width: 100%; }
@@ -213,14 +214,14 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p>院の入口でパスワード（Basic認証）を聞かれる場合は、院で決めたものを入れます（設定されていなければ聞かれません）。そのあと、スタッフごとにログインします。</p>
 <p>ログイン画面の上には <strong>LANE RESERVE のロゴ</strong>（赤枠）が出て、ブラウザのタブの題名は「ログイン｜LANE RESERVE」になります。</p>
 <ol>
-<li>一覧から <strong>自分の名前</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/01-login-staff.webp" aria-label="拡大：スタッフを選ぶ"><img src="img/01-login-staff.webp" alt="スタッフを選ぶ" width="1440" height="468" loading="lazy"></button></span></li>
+<li>一覧から <strong>自分の名前</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/01-login-staff.webp" aria-label="拡大：スタッフを選ぶ"><img src="img/01-login-staff.webp" alt="スタッフを選ぶ" width="1440" height="431" loading="lazy"></button></span></li>
 <li>数字のボタンで <strong>PIN</strong> を入れます（①）。間違えたら「⌫」で1文字消します。</li>
-<li><strong>OK</strong>（②）を押すと予約表が開きます。<span class="fig"><button class="zoom" type="button" data-src="img/02-login-pin.webp" aria-label="拡大：PINを入れる"><img src="img/02-login-pin.webp" alt="PINを入れる" width="1440" height="632" loading="lazy"></button></span></li>
+<li><strong>OK</strong>（②）を押すと予約表が開きます。<span class="fig"><button class="zoom" type="button" data-src="img/02-login-pin.webp" aria-label="拡大：PINを入れる"><img src="img/02-login-pin.webp" alt="PINを入れる" width="1440" height="600" loading="lazy"></button></span></li>
 </ol>
 <ul>
 <li>ログインは <strong>12時間</strong> 有効です。過ぎるともう一度ログインします。</li>
 <li>スタッフを交代するときは、予約表の右上の <strong>「名前 ⇄」</strong> を押し、確認で OK を押すとログイン画面に戻ります。</li>
-<li>PIN を <strong>5回続けて間違えると5分間ログインできません</strong>。さらに間違えると、ロックの時間が倍々に長くなります（最長24時間）。<span class="fig"><button class="zoom" type="button" data-src="img/75-login-locked.webp" aria-label="拡大：ロックされたとき"><img src="img/75-login-locked.webp" alt="ロックされたとき" width="1440" height="678" loading="lazy"></button></span></li>
+<li>PIN を <strong>5回続けて間違えると5分間ログインできません</strong>。さらに間違えると、ロックの時間が倍々に長くなります（最長24時間）。<span class="fig"><button class="zoom" type="button" data-src="img/75-login-locked.webp" aria-label="拡大：ロックされたとき"><img src="img/75-login-locked.webp" alt="ロックされたとき" width="1440" height="646" loading="lazy"></button></span></li>
 <li>デモ環境のPINは全員 <code>1234</code> です。本番では院長が設定画面で各スタッフのPINを決めます（新しく決めるPINは <strong>6〜8桁の数字</strong>）。</li>
 </ul>
 <hr />
@@ -522,8 +523,8 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <h3 id="t23">8-1. 患者を探す</h3>
 <ol>
 <li>予約表の右上の <strong>👤</strong> を押します。</li>
-<li>検索欄（①）に、氏名・フリガナ・ローマ字・診察券／M3番号・電話・予約申請ID のどれかを入れます。何も入れていないときは「最近登録・更新した患者」が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/30-patients-list.webp" aria-label="拡大：患者一覧"><img src="img/30-patients-list.webp" alt="患者一覧" width="1440" height="900" loading="lazy"></button></span></li>
-<li>半角カナでもひらがなでも探せます（例：「ﾔﾏﾀﾞ」で山田さんが出ます）。名前を押すと患者画面が開きます。<span class="fig"><button class="zoom" type="button" data-src="img/31-patients-search.webp" aria-label="拡大：検索"><img src="img/31-patients-search.webp" alt="検索" width="1440" height="900" loading="lazy"></button></span></li>
+<li>検索欄（①）に、氏名・フリガナ・ローマ字・診察券／M3番号・電話・予約申請ID のどれかを入れます。何も入れていないときは「最近登録・更新した患者」が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/30-patients-list.webp" aria-label="拡大：患者一覧"><img src="img/30-patients-list.webp" alt="患者一覧" width="1142" height="900" loading="lazy"></button></span></li>
+<li>半角カナでもひらがなでも探せます（例：「ﾔﾏﾀﾞ」で山田さんが出ます）。名前を押すと患者画面が開きます。<span class="fig"><button class="zoom" type="button" data-src="img/31-patients-search.webp" aria-label="拡大：検索"><img src="img/31-patients-search.webp" alt="検索" width="1125" height="552" loading="lazy"></button></span></li>
 </ol>
 <p>予約の詳細の「👤 患者情報の表示/編集」からも、同じ患者画面を開けます。</p>
 <h3 id="t24">8-2. 患者を登録する（予約なしで）</h3>
@@ -531,9 +532,9 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>患者一覧の <strong>「＋新規登録」</strong>（②）を押します。</li>
 <li>氏名（必須）・フリガナ・生年月日・電話番号を入れて <strong>「登録する」</strong> を押すと、その患者の画面が開きます。住所・注意事項などはそこで入れます。</li>
 </ol>
-<figure><button class="zoom" type="button" data-src="img/32-patients-new.webp" aria-label="拡大：新規登録"><img src="img/32-patients-new.webp" alt="新規登録" width="1440" height="900" loading="lazy"></button><figcaption>新規登録</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/32-patients-new.webp" aria-label="拡大：新規登録"><img src="img/32-patients-new.webp" alt="新規登録" width="1112" height="406" loading="lazy"></button><figcaption>新規登録</figcaption></figure>
 <h3 id="t25">8-3. 患者画面の見方</h3>
-<figure><button class="zoom" type="button" data-src="img/34-patient-top.webp" aria-label="拡大：患者画面の上"><img src="img/34-patient-top.webp" alt="患者画面の上" width="1440" height="900" loading="lazy"></button><figcaption>患者画面の上</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/34-patient-top.webp" aria-label="拡大：患者画面の上"><img src="img/34-patient-top.webp" alt="患者画面の上" width="1117" height="900" loading="lazy"></button><figcaption>患者画面の上</figcaption></figure>
 <p>上から順に：</p>
 <ol>
 <li>名前・フリガナ・年齢・診察券番号・電話・LINEの印。名前の横の「＋注意事項」で注意事項を書き足せます。</li>
@@ -549,13 +550,13 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <ol>
 <li>「基本情報の表示/編集」を押して開きます。</li>
 <li>氏名・フリガナ・別の表記・診察券番号・M3カルテ番号・生年月日（年齢が自動で出ます）・性別を直します。<strong>変えた欄は色が付きます</strong>（①）。</li>
-<li><strong>連絡先情報</strong>（②）は、押すと開きます（電話・メール・リマインドの送り先・リマインド不要・郵便番号・住所）。閉じているときも、見出しの横に電話番号と「住所あり」が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/35-patient-basic.webp" aria-label="拡大：基本情報"><img src="img/35-patient-basic.webp" alt="基本情報" width="1440" height="900" loading="lazy"></button></span></li>
+<li><strong>連絡先情報</strong>（②）は、押すと開きます（電話・メール・リマインドの送り先・リマインド不要・郵便番号・住所）。閉じているときも、見出しの横に電話番号と「住所あり」が出ます。<span class="fig"><button class="zoom" type="button" data-src="img/35-patient-basic.webp" aria-label="拡大：基本情報"><img src="img/35-patient-basic.webp" alt="基本情報" width="1113" height="900" loading="lazy"></button></span></li>
 <li>下へ進むと <strong>注意事項・既往歴・メモ</strong> があります。
    - 「注意事項あり」にチェックすると、予約表に「!」が出ます。
    - 重要事項（アルコール綿禁止・薬疹・アレルギー・禁忌など）はカルテの上に目立つように出ます。
    - 既往歴・内服歴・<strong>その他の問診票情報</strong>（問診票が届くたびに日付付きで足されます）・院内メモ。
-   - 問診票の回答があれば、最新の既往歴・内服歴・アレルギーが表示され、「この問診票の回答をすべて見る」で全部の回答を見られます（<a href="#s9">9章</a>）。<span class="fig"><button class="zoom" type="button" data-src="img/36-patient-caution-questionnaire.webp" aria-label="拡大：注意事項・問診票"><img src="img/36-patient-caution-questionnaire.webp" alt="注意事項・問診票" width="1440" height="900" loading="lazy"></button></span></li>
-<li>一番下の「○項目を変更中」を確かめ、<strong>保存</strong>（③）を押します。やめるときは「元に戻す」。<span class="fig"><button class="zoom" type="button" data-src="img/37-patient-save.webp" aria-label="拡大：保存"><img src="img/37-patient-save.webp" alt="保存" width="1440" height="900" loading="lazy"></button></span></li>
+   - 問診票の回答があれば、最新の既往歴・内服歴・アレルギーが表示され、「この問診票の回答をすべて見る」で全部の回答を見られます（<a href="#s9">9章</a>）。<span class="fig"><button class="zoom" type="button" data-src="img/36-patient-caution-questionnaire.webp" aria-label="拡大：注意事項・問診票"><img src="img/36-patient-caution-questionnaire.webp" alt="注意事項・問診票" width="1112" height="900" loading="lazy"></button></span></li>
+<li>一番下の「○項目を変更中」を確かめ、<strong>保存</strong>（③）を押します。やめるときは「元に戻す」。<span class="fig"><button class="zoom" type="button" data-src="img/37-patient-save.webp" aria-label="拡大：保存"><img src="img/37-patient-save.webp" alt="保存" width="1112" height="900" loading="lazy"></button></span></li>
 </ol>
 <p>LINE欄の「紐付けを解除」で、LINEの紐付けを外せます（確認が出ます）。</p>
 <h3 id="t26b">8-4-2. LINE と連携する</h3>
@@ -575,34 +576,34 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </ol>
 <blockquote><p>院が LINE 公式アカウントの管理画面で付け直したチャットの名前（漢字フルネームなど）は、LINE の仕組み上 LANE RESERVE から読み取れないため、検索には使えません。あだなの方は、LINE の表示名か、その方が送ったメッセージの言葉で探してください。メッセージの言葉で探せるのは、2026年10月26日以降に届いたメッセージです。</p></blockquote>
 <h3 id="t27">8-5. 施術歴（簡易カルテ）・今後の予約</h3>
-<figure><button class="zoom" type="button" data-src="img/39-visit-history.webp" aria-label="拡大：施術歴"><img src="img/39-visit-history.webp" alt="施術歴" width="1440" height="900" loading="lazy"></button><figcaption>施術歴</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/39-visit-history.webp" aria-label="拡大：施術歴"><img src="img/39-visit-history.webp" alt="施術歴" width="1113" height="900" loading="lazy"></button><figcaption>施術歴</figcaption></figure>
 <ul>
 <li><strong>本日の予約</strong>：今日の予約（なければ次回の予約日）。</li>
 <li><strong>過去の履歴</strong>：日付ごとに、施術内容（〈○回目〉付き）・メモ・スキンケア＆内服が並びます。各行の「📝 メモ」「🩺 カルテ」「📷 撮影」「📎 ファイル」で記録を足せます。「＋ 予約のない日の記録を追加」で、予約のない日の記録も作れます。たくさんあるときは「さらに表示」。</li>
-<li><strong>今後の予約</strong>：日付・時間・メニュー・レーン・状態・予約メモ。「変更」でその予約を直せます。<span class="fig"><button class="zoom" type="button" data-src="img/40-future-reservations.webp" aria-label="拡大：今後の予約"><img src="img/40-future-reservations.webp" alt="今後の予約" width="1440" height="900" loading="lazy"></button></span></li>
+<li><strong>今後の予約</strong>：日付・時間・メニュー・レーン・状態・予約メモ。「変更」でその予約を直せます。<span class="fig"><button class="zoom" type="button" data-src="img/40-future-reservations.webp" aria-label="拡大：今後の予約"><img src="img/40-future-reservations.webp" alt="今後の予約" width="1112" height="900" loading="lazy"></button></span></li>
 </ul>
 <h3 id="t28">8-6. 変更履歴</h3>
 <p>画面の一番下に、「いつ・だれが・どの項目を」変えたかが出ます（値そのものは残しません）。問診票から自動で入った分は「問診票（自動取り込み）」と出ます。</p>
-<figure><button class="zoom" type="button" data-src="img/41-history-and-ops.webp" aria-label="拡大：変更履歴とその他の操作"><img src="img/41-history-and-ops.webp" alt="変更履歴とその他の操作" width="1440" height="900" loading="lazy"></button><figcaption>変更履歴とその他の操作</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/41-history-and-ops.webp" aria-label="拡大：変更履歴とその他の操作"><img src="img/41-history-and-ops.webp" alt="変更履歴とその他の操作" width="1112" height="858" loading="lazy"></button><figcaption>変更履歴とその他の操作</figcaption></figure>
 <h3 id="t29">8-7. 重複している患者をまとめる（統合）</h3>
 <p><strong>氏名・フリガナ・電話番号・M3カルテ番号のどれか</strong> が同じ患者がいると、患者画面の上に <strong>「同じ人が重複して登録されているかもしれません」</strong> と出ます（お知らせが出るだけで、まだ統合はされません）。実際に統合できるのは、<strong>姓名・フリガナ（セイメイ）・生年月日がすべて一致する場合だけ</strong> です（院長・管理者と受付）。生年月日が両方とも未入力なら、姓名とフリガナが一致すれば統合できます。どれかが食い違うときは「統合不可」と理由が出ます。</p>
 <ol>
-<li>「確認して統合」（または「その他の操作」→「重複している患者をまとめる」で相手を探す）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/38-duplicate-banner.webp" aria-label="拡大：重複のお知らせ"><img src="img/38-duplicate-banner.webp" alt="重複のお知らせ" width="1440" height="900" loading="lazy"></button></span></li>
+<li>「確認して統合」（または「その他の操作」→「重複している患者をまとめる」で相手を探す）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/38-duplicate-banner.webp" aria-label="拡大：重複のお知らせ"><img src="img/38-duplicate-banner.webp" alt="重複のお知らせ" width="1113" height="900" loading="lazy"></button></span></li>
 <li><strong>残す方</strong> を選びます。もう一方の予約・施術歴・記録は残す方へ移り、空欄は補われ、注意事項・院内メモはつなげられます。</li>
-<li>内容を確かめて <strong>統合する</strong> を押します。<span class="fig"><button class="zoom" type="button" data-src="img/42-merge-dialog.webp" aria-label="拡大：統合の確認"><img src="img/42-merge-dialog.webp" alt="統合の確認" width="1440" height="900" loading="lazy"></button></span></li>
-<li>残した方に「統合しました」と出ます。<span class="fig"><button class="zoom" type="button" data-src="img/43-merged.webp" aria-label="拡大：統合後"><img src="img/43-merged.webp" alt="統合後" width="1440" height="900" loading="lazy"></button></span></li>
-<li>まとめた側は削除扱いで残り、「統合先の患者を開く」リンクと <strong>「統合を取り消す」</strong> ボタンが出ます。<span class="fig"><button class="zoom" type="button" data-src="img/44-merged-source.webp" aria-label="拡大：まとめた側"><img src="img/44-merged-source.webp" alt="まとめた側" width="1440" height="900" loading="lazy"></button></span></li>
+<li>内容を確かめて <strong>統合する</strong> を押します。<span class="fig"><button class="zoom" type="button" data-src="img/42-merge-dialog.webp" aria-label="拡大：統合の確認"><img src="img/42-merge-dialog.webp" alt="統合の確認" width="1113" height="900" loading="lazy"></button></span></li>
+<li>残した方に「統合しました」と出ます。<span class="fig"><button class="zoom" type="button" data-src="img/43-merged.webp" aria-label="拡大：統合後"><img src="img/43-merged.webp" alt="統合後" width="1113" height="900" loading="lazy"></button></span></li>
+<li>まとめた側は削除扱いで残り、「統合先の患者を開く」リンクと <strong>「統合を取り消す」</strong> ボタンが出ます。<span class="fig"><button class="zoom" type="button" data-src="img/44-merged-source.webp" aria-label="拡大：まとめた側"><img src="img/44-merged-source.webp" alt="まとめた側" width="1113" height="900" loading="lazy"></button></span></li>
 </ol>
 <h3 id="t30">8-8. 患者を削除する・元に戻す</h3>
 <p>診療の記録は残す必要があるため、本当には消さず「削除済み」にします（院長・管理者と受付）。<strong>今日以降の予約がある患者は削除できません。</strong></p>
 <ol>
 <li>患者画面の「その他の操作」→ <strong>「この患者を削除」</strong> を押します。</li>
-<li>理由（誤って登録した／重複して登録した／本人の希望／その他）を選び、<strong>削除する</strong> を押します。<span class="fig"><button class="zoom" type="button" data-src="img/45-delete-dialog.webp" aria-label="拡大：削除"><img src="img/45-delete-dialog.webp" alt="削除" width="1440" height="900" loading="lazy"></button></span></li>
-<li>削除した患者は検索・一覧に出なくなります。画面の上に「この患者は削除されています」と出て、<strong>「削除を取り消して復元する」</strong>（①）で元に戻せます。<span class="fig"><button class="zoom" type="button" data-src="img/46-deleted-banner.webp" aria-label="拡大：削除済み"><img src="img/46-deleted-banner.webp" alt="削除済み" width="1440" height="900" loading="lazy"></button></span></li>
+<li>理由（誤って登録した／重複して登録した／本人の希望／その他）を選び、<strong>削除する</strong> を押します。<span class="fig"><button class="zoom" type="button" data-src="img/45-delete-dialog.webp" aria-label="拡大：削除"><img src="img/45-delete-dialog.webp" alt="削除" width="1113" height="900" loading="lazy"></button></span></li>
+<li>削除した患者は検索・一覧に出なくなります。画面の上に「この患者は削除されています」と出て、<strong>「削除を取り消して復元する」</strong>（①）で元に戻せます。<span class="fig"><button class="zoom" type="button" data-src="img/46-deleted-banner.webp" aria-label="拡大：削除済み"><img src="img/46-deleted-banner.webp" alt="削除済み" width="1119" height="900" loading="lazy"></button></span></li>
 </ol>
 <h3 id="t31">8-9. ほかの人が同時に同じ患者を直したとき</h3>
 <p>2台で同じ患者を直し、先にほかの端末が保存していると、後から保存した側に <strong>「他の端末でこの患者の情報が先に更新されました。最新の内容を読み込む（入力中の変更は消えます）」</strong> と出て、上書きされません。入力した内容を控えてから「最新の内容を読み込む」を押し、もう一度直してください。</p>
-<figure><button class="zoom" type="button" data-src="img/47-conflict.webp" aria-label="拡大：同時編集"><img src="img/47-conflict.webp" alt="同時編集" width="1440" height="900" loading="lazy"></button><figcaption>同時編集</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/47-conflict.webp" aria-label="拡大：同時編集"><img src="img/47-conflict.webp" alt="同時編集" width="1115" height="900" loading="lazy"></button><figcaption>同時編集</figcaption></figure>
 <hr />
 <h2 id="s9">9. 問診票</h2>
 <p>Googleフォームの問診票の回答は、自動でこのアプリに送られます（院で送る仕組みの設置が必要です）。</p>
@@ -619,7 +620,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>「診察券番号で結びつける」の欄に <strong>診察券番号</strong>（①）を入れ、<strong>結びつける</strong>（②）を押します。</li>
 <li>いたずらなどで不要な回答は「削除」（管理操作のできる人）。</li>
 </ol>
-<figure><button class="zoom" type="button" data-src="img/50-questionnaire-unmatched.webp" aria-label="拡大：問診票の結びつけ"><img src="img/50-questionnaire-unmatched.webp" alt="問診票の結びつけ" width="1440" height="900" loading="lazy"></button><figcaption>問診票の結びつけ</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/50-questionnaire-unmatched.webp" aria-label="拡大：問診票の結びつけ"><img src="img/50-questionnaire-unmatched.webp" alt="問診票の結びつけ" width="1094" height="344" loading="lazy"></button><figcaption>問診票の結びつけ</figcaption></figure>
 <p>院長・管理者は「問診票を患者の基本情報へ写し直す」で、結びついている問診票の内容を患者の空いている欄へまとめて写し直せます（手で直した欄は変えません。先に控えを取ります）。</p>
 <hr />
 <h2 id="s10">10. カルテ・同意書・見積</h2>
@@ -651,7 +652,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>保存されると番号（例：No.2026-0001）が付き、印刷できます。<span class="fig"><button class="zoom" type="button" data-src="img/57-estimate-saved.webp" aria-label="拡大：見積の保存"><img src="img/57-estimate-saved.webp" alt="見積の保存" width="1440" height="900" loading="lazy"></button></span></li>
 </ol>
 <p>患者画面の下の「同意書」「見積・会計」に控えの一覧があり、印刷・直す・削除（管理操作のできる人）ができます。</p>
-<figure><button class="zoom" type="button" data-src="img/58-patient-consent-estimate.webp" aria-label="拡大：患者画面の同意書・見積"><img src="img/58-patient-consent-estimate.webp" alt="患者画面の同意書・見積" width="1440" height="900" loading="lazy"></button><figcaption>患者画面の同意書・見積</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/58-patient-consent-estimate.webp" aria-label="拡大：患者画面の同意書・見積"><img src="img/58-patient-consent-estimate.webp" alt="患者画面の同意書・見積" width="1112" height="900" loading="lazy"></button><figcaption>患者画面の同意書・見積</figcaption></figure>
 <hr />
 <h2 id="s11">11. 1日の流れ（朝・診療中・終業）</h2>
 <h3 id="t37">朝（診療前）</h3>
@@ -717,27 +718,27 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <hr />
 <h2 id="s13">13. 設定（院長・管理者向け）</h2>
 <p>予約表の右上の <strong>⚙</strong> で開きます。<strong>左に縦に並んだ項目</strong>で切り替えます（スマホなど幅の狭い画面では上に並びます）。右側の本文は画面いっぱいに広がります。<strong>ログイン情報・操作ログ・バックアップ</strong> のタブは院長・管理者にだけ出ます。<strong>リマインド</strong> のタブは院長・管理者と、管理操作のできる人に出ます。いちばん下の <strong>操作マニュアル</strong> は、スタッフ全員に出ます。変更できない人には「このログインでは見るだけです」と出ます。</p>
-<figure><button class="zoom" type="button" data-src="img/74-settings-nurse.webp" aria-label="拡大：見るだけの表示（看護師）"><img src="img/74-settings-nurse.webp" alt="見るだけの表示（看護師）" width="1440" height="900" loading="lazy"></button><figcaption>見るだけの表示（看護師）</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/74-settings-nurse.webp" aria-label="拡大：見るだけの表示（看護師）"><img src="img/74-settings-nurse.webp" alt="見るだけの表示（看護師）" width="1094" height="499" loading="lazy"></button><figcaption>見るだけの表示（看護師）</figcaption></figure>
 <h3 id="t40">レーン</h3>
 <p>名前・短い名前（スマホ用）・並べ替え（▲▼、一番上が左端）・表示の切り替え・追加・削除。表示できるのは1〜30本。今日以降の予約が残るレーンは非表示にできず、予約の記録が一度もないレーンだけ削除できます。</p>
-<figure><button class="zoom" type="button" data-src="img/60-settings-lanes.webp" aria-label="拡大：レーン"><img src="img/60-settings-lanes.webp" alt="レーン" width="1440" height="900" loading="lazy"></button><figcaption>レーン</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/60-settings-lanes.webp" aria-label="拡大：レーン"><img src="img/60-settings-lanes.webp" alt="レーン" width="1093" height="467" loading="lazy"></button><figcaption>レーン</figcaption></figure>
 <h3 id="t41">メニュー</h3>
 <p>予約で選ぶメニューの一覧。「＋ 新しいメニュー」で追加、行を押すと編集画面が開きます。メニュー名・略称（短い枠に出る）・色・<strong>患者に見せる名前</strong>・<strong>来院前の案内</strong>（①、どちらもリマインドに入ります。<a href="#t47">リマインド</a> を参照）・提供時間（固定／最小〜最大と刻み）・予約時の初期値・開始時間の刻み・料金・同時予約数・行えるレーン・予約の選択肢に出すか、を決めます。削除しても過去の予約の表示は残ります。</p>
-<p><span class="fig"><button class="zoom" type="button" data-src="img/61-settings-menus.webp" aria-label="拡大：メニュー一覧"><img src="img/61-settings-menus.webp" alt="メニュー一覧" width="1440" height="900" loading="lazy"></button></span>
-<span class="fig"><button class="zoom" type="button" data-src="img/62-settings-menu-editor.webp" aria-label="拡大：メニューの編集"><img src="img/62-settings-menu-editor.webp" alt="メニューの編集" width="1440" height="900" loading="lazy"></button></span></p>
+<p><span class="fig"><button class="zoom" type="button" data-src="img/61-settings-menus.webp" aria-label="拡大：メニュー一覧"><img src="img/61-settings-menus.webp" alt="メニュー一覧" width="1093" height="900" loading="lazy"></button></span>
+<span class="fig"><button class="zoom" type="button" data-src="img/62-settings-menu-editor.webp" aria-label="拡大：メニューの編集"><img src="img/62-settings-menu-editor.webp" alt="メニューの編集" width="1093" height="900" loading="lazy"></button></span></p>
 <p>「開始時間の刻み」「同時予約数」は保存されるだけで、今の版では予約登録のときの制限には使われていません（コードで確認）。</p>
 <h3 id="t42">患者状態ラベル</h3>
 <p>詳細パネルに並ぶ状態のボタン。名前・色・段階（来院前／来院・待ち／診察・施術中／会計／終了）・自由入力にするか・予約詳細に出すか。段階はリマインドの対象や回数の数え方に使います。</p>
-<figure><button class="zoom" type="button" data-src="img/63-settings-stages.webp" aria-label="拡大：状態"><img src="img/63-settings-stages.webp" alt="状態" width="1440" height="900" loading="lazy"></button><figcaption>状態</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/63-settings-stages.webp" aria-label="拡大：状態"><img src="img/63-settings-stages.webp" alt="状態" width="1092" height="900" loading="lazy"></button><figcaption>状態</figcaption></figure>
 <h3 id="t43">スキンケア・内服／料金表／取り込み</h3>
 <ul>
-<li><strong>スキンケア・内服</strong>：料金表にない商品を1つずつ足します。<span class="fig"><button class="zoom" type="button" data-src="img/64-settings-products.webp" aria-label="拡大：スキンケア・内服"><img src="img/64-settings-products.webp" alt="スキンケア・内服" width="1440" height="900" loading="lazy"></button></span></li>
-<li><strong>料金表</strong>：見積書で選べる料金。ホームページやスプレッドシートから自動で取り込み、足りない分は自由入力で足します。<span class="fig"><button class="zoom" type="button" data-src="img/65-settings-prices.webp" aria-label="拡大：料金表"><img src="img/65-settings-prices.webp" alt="料金表" width="1440" height="900" loading="lazy"></button></span></li>
-<li><strong>取り込み</strong>：メニュー・料金表・自費商品・同意書のひな形を、CSV・Excel・Word・Googleの共有リンクからまとめて取り込みます。中身を表で確かめてから「取り込む」を押します。下には、電子カルテの患者一覧（CSV）と照合して漢字の氏名などを補う機能もあります（院長・管理者）。<span class="fig"><button class="zoom" type="button" data-src="img/67-settings-imports.webp" aria-label="拡大：取り込み"><img src="img/67-settings-imports.webp" alt="取り込み" width="1440" height="900" loading="lazy"></button></span></li>
+<li><strong>スキンケア・内服</strong>：料金表にない商品を1つずつ足します。<span class="fig"><button class="zoom" type="button" data-src="img/64-settings-products.webp" aria-label="拡大：スキンケア・内服"><img src="img/64-settings-products.webp" alt="スキンケア・内服" width="1094" height="572" loading="lazy"></button></span></li>
+<li><strong>料金表</strong>：見積書で選べる料金。ホームページやスプレッドシートから自動で取り込み、足りない分は自由入力で足します。<span class="fig"><button class="zoom" type="button" data-src="img/65-settings-prices.webp" aria-label="拡大：料金表"><img src="img/65-settings-prices.webp" alt="料金表" width="1092" height="900" loading="lazy"></button></span></li>
+<li><strong>取り込み</strong>：メニュー・料金表・自費商品・同意書のひな形を、CSV・Excel・Word・Googleの共有リンクからまとめて取り込みます。中身を表で確かめてから「取り込む」を押します。下には、電子カルテの患者一覧（CSV）と照合して漢字の氏名などを補う機能もあります（院長・管理者）。<span class="fig"><button class="zoom" type="button" data-src="img/67-settings-imports.webp" aria-label="拡大：取り込み"><img src="img/67-settings-imports.webp" alt="取り込み" width="1094" height="900" loading="lazy"></button></span></li>
 </ul>
 <h3 id="t44">同意書／問診票</h3>
 <ul>
-<li><strong>同意書</strong>：Googleドライブの同意書フォルダとつなぐ設定（院長・管理者）と、ひな形とメニューの結びつけ。<span class="fig"><button class="zoom" type="button" data-src="img/66-settings-consents.webp" aria-label="拡大：同意書の設定"><img src="img/66-settings-consents.webp" alt="同意書の設定" width="1440" height="900" loading="lazy"></button></span></li>
+<li><strong>同意書</strong>：Googleドライブの同意書フォルダとつなぐ設定（院長・管理者）と、ひな形とメニューの結びつけ。<span class="fig"><button class="zoom" type="button" data-src="img/66-settings-consents.webp" aria-label="拡大：同意書の設定"><img src="img/66-settings-consents.webp" alt="同意書の設定" width="1090" height="444" loading="lazy"></button></span></li>
 <li><strong>問診票</strong>：結びつかなかった回答の一覧（<a href="#s9">9章</a>）。</li>
 </ul>
 <h3 id="t45">外部機器の連携</h3>
@@ -756,14 +757,14 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </ol>
 <p>Chrome に「デベロッパー モードの拡張機能を無効にしてください」と出ることがあります。そのときは「<strong>キャンセル</strong>」（または ×）で閉じてください。「無効にする」を押すと止まります。ドライブが使えないパソコンでは、この画面の「拡張機能（zip）をダウンロード」で zip を取り、右クリック →「すべて展開」してできたフォルダを手順4で選んでも動きます（この場合、更新のたびに入れ直しが必要です）。Chrome ウェブストアでの公開を審査中で、公開後はストアから入れる形に切り替えます。</p>
 <p>まだ覚えていない患者の「LINEで連絡 ↗」は、チャット一覧が開いて LINE の表示名がコピーされるので、検索欄に貼り付けて探します（そのチャットを開いた時点で覚えます）。</p>
-<figure><button class="zoom" type="button" data-src="img/68-settings-devices.webp" aria-label="拡大：外部機器の連携"><img src="img/68-settings-devices.webp" alt="外部機器の連携" width="1440" height="900" loading="lazy"></button><figcaption>外部機器の連携</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/68-settings-devices.webp" aria-label="拡大：外部機器の連携"><img src="img/68-settings-devices.webp" alt="外部機器の連携" width="1027" height="900" loading="lazy"></button><figcaption>外部機器の連携</figcaption></figure>
 <h3 id="t46">院の情報・診療時間</h3>
 <p>院名・開院／閉院時間・予約の刻み（5／10／15／30分）と、見積書・同意書に載せる院の情報（書類に載せる院名・住所・電話番号・発行者・見積書の有効期限と用紙・見積書の注意書き）。</p>
 <p><strong>患者向けの表示・LINE の予約申請フォーム</strong>：LINE の予約申請フォームと問診票の見出しに出す正式な院名・英語の院名、予約申請を受け付ける診療科、受付日時の案内、プライバシーポリシー・ホームページのアドレスを入れます。<strong>予約申請フォームで選べる曜日</strong>にチェックを入れ、それ以外に選べる日（祝日の特別診療日など）は「特別診療日」に1行に1日ずつ入れます（例：2026-11-03）。保存するとすぐ予約申請フォームに反映されます。</p>
-<figure><button class="zoom" type="button" data-src="img/69-settings-clinic.webp" aria-label="拡大：院の情報"><img src="img/69-settings-clinic.webp" alt="院の情報" width="1440" height="900" loading="lazy"></button><figcaption>院の情報</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/69-settings-clinic.webp" aria-label="拡大：院の情報"><img src="img/69-settings-clinic.webp" alt="院の情報" width="1103" height="900" loading="lazy"></button><figcaption>院の情報</figcaption></figure>
 <h3 id="t47">リマインド</h3>
 <p>予約のお知らせ（リマインド）とAirリザーブの取り込みの設定は、<strong>「リマインド」</strong> のタブにまとめています（以前は「院の情報・診療時間」にありました）。左が「リマインド（予約のお知らせ）」、右が「Airリザーブの取り込み」、その下が「リマインドで見せるメニュー」です。</p>
-<figure><button class="zoom" type="button" data-src="img/69b-settings-reminders.webp" aria-label="拡大：リマインド"><img src="img/69b-settings-reminders.webp" alt="リマインド" width="1440" height="900" loading="lazy"></button><figcaption>リマインド</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/69b-settings-reminders.webp" aria-label="拡大：リマインド"><img src="img/69b-settings-reminders.webp" alt="リマインド" width="1103" height="900" loading="lazy"></button><figcaption>リマインド</figcaption></figure>
 <ul>
 <li><strong>リマインド（予約のお知らせ）</strong>（院長・管理者）：LINE・メールで予約のお知らせを送る設定です。</li>
 <li><strong>状態</strong>：「止めている」／「自動で送る」。「自動で送る」を押すと「自動送信を始めます。…よろしいですか？」と確認が出ます。横に、最後に確認した日時と cron（サーバーの自動実行）の最終実行が出ます。</li>
@@ -774,7 +775,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>文面</strong>（下の写真の②）：<code>{患者名}</code> <code>{院名}</code> <code>{いつ}</code> <code>{日付}</code> <code>{時刻}</code> <code>{メニュー}</code> <code>{来院前のご案内}</code> <code>{院の電話}</code> を入れられます。メニュー名（「患者に見せる名前」）は、文面に <code>{メニュー}</code> を書いたときだけ入ります（標準の文面には <code>{メニュー}</code> がないので、メニュー名は入りません）。「標準の文面に戻す」「保存する」。<span class="fig"><button class="zoom" type="button" data-src="img/69e-reminder-menu-guide.webp" aria-label="拡大：メニューの「来院前の案内」と文面"><img src="img/69e-reminder-menu-guide.webp" alt="メニューの「来院前の案内」と文面" width="546" height="620" loading="lazy"></button></span></li>
 <li><strong>LINE チャネルアクセストークン</strong>（下の写真の①）：「設定済み」か「未設定」が出ます。LINE Developers の Messaging API チャネルにある「チャネルアクセストークン（長期）」を貼り付けて <strong>「保存」</strong> を押します。保存後は画面に表示されません。設定済みのときは <strong>「削除」</strong> も出ます（押すと「LINE チャネルアクセストークンを削除します。…よろしいですか？」と確認が出ます。削除すると LINE ではリマインドを送れなくなります）。</li>
 <li><strong>未送信分を今すぐ送る</strong>（下の写真の②）：送信時刻を過ぎた回のうち、まだリマインドを送っていない予約に送ります。同じ予約に同じ回のリマインドを二度送ることはありません。「自動送信を止める日」までの予約には送りません。予約の詳細の「今すぐ送る」で1件だけ送ることもできます（<a href="#t17">6-1</a>）。<span class="fig"><button class="zoom" type="button" data-src="img/69f-reminder-token-send.webp" aria-label="拡大：LINE チャネルアクセストークンと未送信分を今すぐ送る"><img src="img/69f-reminder-token-send.webp" alt="LINE チャネルアクセストークンと未送信分を今すぐ送る" width="546" height="457" loading="lazy"></button></span></li>
-<li><strong>Airリザーブの取り込み</strong>（院長・管理者）：毎朝、決めた時刻（5:00〜16:59）を過ぎたら翌日分の予約をAirリザーブから取り込む設定です（状態「止めている／毎朝取り込む」、取り込む時刻、Air のログイン ID・パスワード、取り込む日を選んで今すぐ取り込む）。ログイン情報は暗号化して保存し、画面には二度と出しません（入れるまでは「毎朝取り込む」と「今すぐ取り込む」は押せません）。Air予約番号で同じ予約を探して時刻・レーン・メニューをAirに合わせ、Airで取り消された・消えた予約は取り消しにします。リマインドを送る20分前にも、その回の対象日をもう一度取り込みます。既存の患者に結びついた予約で、患者のメールアドレスが空のときは Air のメールアドレスで補います（入っているメールは変えません）。既存の患者と結びつけられず新しく登録した患者は <strong>「要確認」</strong> の一覧に出て、予約の詳細の名前の横にも赤い「要確認」が出ます。同じ人がいれば患者画面で統合し、別の人なら一覧の「確認済み」を押します。<span class="fig"><button class="zoom" type="button" data-src="img/69d-settings-air.webp" aria-label="拡大：Airリザーブの取り込み"><img src="img/69d-settings-air.webp" alt="Airリザーブの取り込み" width="1440" height="900" loading="lazy"></button></span></li>
+<li><strong>Airリザーブの取り込み</strong>（院長・管理者）：毎朝、決めた時刻（5:00〜16:59）を過ぎたら翌日分の予約をAirリザーブから取り込む設定です（状態「止めている／毎朝取り込む」、取り込む時刻、Air のログイン ID・パスワード、取り込む日を選んで今すぐ取り込む）。ログイン情報は暗号化して保存し、画面には二度と出しません（入れるまでは「毎朝取り込む」と「今すぐ取り込む」は押せません）。Air予約番号で同じ予約を探して時刻・レーン・メニューをAirに合わせ、Airで取り消された・消えた予約は取り消しにします。リマインドを送る20分前にも、その回の対象日をもう一度取り込みます。既存の患者に結びついた予約で、患者のメールアドレスが空のときは Air のメールアドレスで補います（入っているメールは変えません）。既存の患者と結びつけられず新しく登録した患者は <strong>「要確認」</strong> の一覧に出て、予約の詳細の名前の横にも赤い「要確認」が出ます。同じ人がいれば患者画面で統合し、別の人なら一覧の「確認済み」を押します。<span class="fig"><button class="zoom" type="button" data-src="img/69d-settings-air.webp" aria-label="拡大：Airリザーブの取り込み"><img src="img/69d-settings-air.webp" alt="Airリザーブの取り込み" width="1098" height="900" loading="lazy"></button></span></li>
 <li><strong>Air と見比べる（読むだけ）</strong>（院長・管理者）：期間（一度に62日まで、過去の日も可）を選んで「見比べる」を押すと、Airの予約とLANE RESERVEの予約（Air予約番号つき）を見比べ、違う人・時刻やレーンのずれ・片方にしかない予約・同じ予約番号の二重を一覧にします。何も書き換えません。</li>
 <li><strong>リマインドで見せるメニュー</strong>（管理操作のできる人）：メニューごとに <strong>「患者に見せる名前」</strong>（文面に <code>{メニュー}</code> を書いたときだけその場所に入る。空欄ならメニュー名。院内の略称【再診】などを患者に見せないため）と <strong>「来院前の案内」</strong>（上の「メニューの『来院前の案内』」を「本文の最後に足す」にしたときだけ入る。文面に <code>{来院前のご案内}</code> を書けばその場所。1回の来院に複数のメニューがあるときはまとめて1回だけ）を入れ、行ごとに「保存」を押します。「まだ入れていないものだけ」で絞り込めます。メニューの編集画面でも同じ欄を直せます。</li>
 <li><strong>予約申請のLINEを患者に紐付ける</strong>：予約申請IDのLINEが見つかり、名前・生年月日が患者と合うとき、詳細パネルの申請IDの横に「LINE（申込者）」と「＋患者に紐付け」が出ます（<a href="#t12">4-4</a>）。家族が代わりに申し込んだ場合は紐付けないでください。</li>
@@ -793,19 +794,19 @@ main h2, main h3 { scroll-margin-top: 72px; }
    - <strong>詳細</strong>：その方法で届かない・使わない理由。「LINE未連携」「LINE チャネルアクセストークン未設定」「LINE の残り通数が少ない」「申請IDの LINE が見つからない」「申請の名前・生年月日が患者と合わない」「メールアドレス未回答」「メールアドレスの形が正しくない」「送信元メールアドレス未設定」「LINE（メール）で送る設定が『送らない』」「リマインド不要の患者」など。</li>
 <li>「未送信」で送信方法が「—」の患者は、患者画面の連絡先情報でメールアドレスや「リマインドの送り先」を確かめるか、LINE を紐付けます（<a href="#t12">4-4</a>）。「送信失敗」の患者は、詳細と予約の詳細の「リマインド」の理由を確かめます。</li>
 </ol>
-<figure><button class="zoom" type="button" data-src="img/69c-reminder-check.webp" aria-label="拡大：リマインド送信状況の確認"><img src="img/69c-reminder-check.webp" alt="リマインド送信状況の確認" width="1000" height="900" loading="lazy"></button><figcaption>リマインド送信状況の確認</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/69c-reminder-check.webp" aria-label="拡大：リマインド送信状況の確認"><img src="img/69c-reminder-check.webp" alt="リマインド送信状況の確認" width="753" height="900" loading="lazy"></button><figcaption>リマインド送信状況の確認</figcaption></figure>
 <p>この写真は、画面の幅を狭くして（横1000px）撮っています。広い画面では左の列に出るので、表が横にはみ出すときは表を横にずらして見ます。写真では LINE チャネルアクセストークンが未設定のため、LINE が連携済の人も詳細が「LINE チャネルアクセストークン未設定」で、送信方法はメールか「—」になっています。送信済・送信失敗の行は、写真のためにデモデータに書き込んだ架空の状態です（実際には送っていません）。</p>
 <h3 id="t48">画面の表示・配色</h3>
 <p>院の配色（すべての端末）と、この端末だけの表示（予約の枠に出す情報、受付一覧を開いておくか、文字の大きさ）。</p>
-<figure><button class="zoom" type="button" data-src="img/70-settings-appearance.webp" aria-label="拡大：画面の表示・配色"><img src="img/70-settings-appearance.webp" alt="画面の表示・配色" width="1440" height="900" loading="lazy"></button><figcaption>画面の表示・配色</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/70-settings-appearance.webp" aria-label="拡大：画面の表示・配色"><img src="img/70-settings-appearance.webp" alt="画面の表示・配色" width="1030" height="900" loading="lazy"></button><figcaption>画面の表示・配色</figcaption></figure>
 <h3 id="t49">ログイン情報（院長・管理者のみ）</h3>
 <p>名前・役割（院長・管理者／医師／看護師／受付）・利用中（外すと利用停止）・<strong>管理操作</strong> の許可・PINの変更・追加。PINの変更・利用停止・役割の変更をすると、その人のログインは切れます。院長・管理者は最低1人必要です。</p>
-<figure><button class="zoom" type="button" data-src="img/71-settings-staff.webp" aria-label="拡大：スタッフ"><img src="img/71-settings-staff.webp" alt="スタッフ" width="1440" height="900" loading="lazy"></button><figcaption>スタッフ</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/71-settings-staff.webp" aria-label="拡大：スタッフ"><img src="img/71-settings-staff.webp" alt="スタッフ" width="1093" height="534" loading="lazy"></button><figcaption>スタッフ</figcaption></figure>
 <h3 id="t50">操作ログ（院長・管理者のみ）</h3>
 <p>ログイン・予約・患者情報・設定の操作を新しい順に直近300件表示します。患者情報の中身は記録しません。</p>
-<figure><button class="zoom" type="button" data-src="img/72-settings-audit.webp" aria-label="拡大：操作ログ"><img src="img/72-settings-audit.webp" alt="操作ログ" width="1440" height="900" loading="lazy"></button><figcaption>操作ログ</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/72-settings-audit.webp" aria-label="拡大：操作ログ"><img src="img/72-settings-audit.webp" alt="操作ログ" width="1093" height="900" loading="lazy"></button><figcaption>操作ログ</figcaption></figure>
 <h3 id="t51">バックアップ（院長・管理者のみ）</h3>
-<p>いちばん上の<strong>「いまの控えの状況」</strong>に、AWS の毎日の控え（東京・大阪、各30日分）と、サーバー内の控え（反映の前・「今すぐ控えを作成」、新しい40件）の件数・いちばん新しい日時が出ます。</p>
+<p>いちばん上の<strong>「現在のバックアップ状況」</strong>に、AWS の毎日の控え（東京・大阪、各30日分）と、サーバー内の控え（反映の前・「今すぐ控えを作成」、新しい40件）の件数・いちばん新しい日時が出ます。その下の<strong>「手動で作ったバックアップの履歴」</strong>には、「今すぐ控えを作成」と「院のパソコンに控えを保存」で作った日時・内容・作った人が、新しい順に出ます。</p>
 <p>以前の「設定の復元」のタブです。上に <strong>データの控え（バックアップ）</strong>、下に <strong>設定の復元</strong> があります。</p>
 <p><strong>院のパソコンに控えを保存</strong>（院長・管理者）：週に1回ほど、決まった1台のパソコンに保存します。①「予約・患者・記録・設定」は、院長が決めた<strong>合言葉</strong>（10文字以上）を2回入れて「暗号化した控えを保存」。.lrbk のファイルがダウンロードされます。合言葉がないと誰も開けず、なくすと院長も戻せないので、紙などに控えて別の場所に保管します。②「写真・同意書などのファイル」は、最初に1回「全部を保存」、以後は「増えた分だけ保存」。どちらも外付けの記憶装置にも写しておくと安心です。サーバーの控え（毎日、東京と大阪）とは別の備えです。</p>
 <p><strong>診療日の予約表 PDF</strong>（院長・管理者）：送り先のメールアドレスと PDF のパスワード（8文字以上）を入れて「送るようにする」。水曜・祝日（と特別診療日）の朝7時ごろ、その日の予約表がパスワード付きの PDF で届きます。サーバーや院のネットが止まったら印刷して使います。「今日の分をテスト送信」で届くか確かめられます。</p>
@@ -814,16 +815,16 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p>予約・患者・記録・設定をまとめた控えを、サーバーの中に今すぐ作ります。取り込み・統合・一括の直しなど、大きな変更の前に押してください。控えは外に送らず、サーバーの中にだけ置きます。</p>
 <ol>
 <li>予約表の ⚙ →「バックアップ」のタブを開きます。</li>
-<li><strong>「今すぐ控えを作成」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/73-settings-restore.webp" aria-label="拡大：バックアップ"><img src="img/73-settings-restore.webp" alt="バックアップ" width="1440" height="900" loading="lazy"></button></span></li>
+<li><strong>「今すぐ控えを作成」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/73-settings-restore.webp" aria-label="拡大：バックアップ"><img src="img/73-settings-restore.webp" alt="バックアップ" width="1098" height="757" loading="lazy"></button></span></li>
 <li>「いまのデータの控えを作ります。少し時間がかかることがあります。よろしいですか？」と出るので <strong>OK</strong> を押します。</li>
-<li>「控えを作りました（○MB・確認 ok）」と出て、カードの下に作った日時・ファイル名・大きさが出ます。<span class="fig"><button class="zoom" type="button" data-src="img/76-settings-backup-done.webp" aria-label="拡大：控えを作った"><img src="img/76-settings-backup-done.webp" alt="控えを作った" width="1440" height="900" loading="lazy"></button></span></li>
+<li>「控えを作りました（○MB・確認 ok）」と出て、カードの下に作った日時・ファイル名・大きさが出ます。<span class="fig"><button class="zoom" type="button" data-src="img/76-settings-backup-done.webp" aria-label="拡大：控えを作った"><img src="img/76-settings-backup-done.webp" alt="控えを作った" width="1100" height="851" loading="lazy"></button></span></li>
 </ol>
 <p><strong>設定の復元</strong></p>
 <p>誤って設定を変えたとき、1日前・1週間前などの状態に戻せます。対象は診療時間・レーン・メニュー・状態・スキンケア＆内服で、予約・患者・施術歴は変わりません。戻したい時点の「この時点に戻す」を押します。</p>
 <h3 id="t52">操作マニュアル（スタッフ全員）</h3>
 <p>このマニュアルを、アプリの中で読めます。予約表の ⚙ → いちばん右の <strong>「操作マニュアル」</strong> のタブ（①）を押すと、画面の高さいっぱいにマニュアルが出ます。上の検索欄で語句を探せます。院長・管理者だけでなく、受付・看護師・医師も開けます。</p>
 <p>別の画面で開いておきたいときは、<strong>「新しいタブで開く ↗」</strong>（②）を押します。</p>
-<figure><button class="zoom" type="button" data-src="img/77-settings-manual.webp" aria-label="拡大：操作マニュアル"><img src="img/77-settings-manual.webp" alt="操作マニュアル" width="1440" height="900" loading="lazy"></button><figcaption>操作マニュアル</figcaption></figure>
+<figure><button class="zoom" type="button" data-src="img/77-settings-manual.webp" aria-label="拡大：操作マニュアル"><img src="img/77-settings-manual.webp" alt="操作マニュアル" width="1093" height="868" loading="lazy"></button><figcaption>操作マニュアル</figcaption></figure>
 <h3 id="t53">バックアップ</h3>
 <ul>
 <li>データの控えは、院長・管理者が上の「今すぐ控えを作成」で取ります。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>

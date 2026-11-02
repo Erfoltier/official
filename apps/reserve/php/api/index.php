@@ -722,6 +722,7 @@ try {
         }
         $r = Db::i()->backup();
         Auth::audit($actor($s), '保存データの控えを作成：' . $r['file']);
+        LocalBackup::record($actor($s), 'server', 'サーバー内に作成（' . round($r['bytes'] / 1048576, 1) . 'MB）');
         Http::json($r);
     }
 
@@ -734,6 +735,7 @@ try {
         usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
         Http::json([
             'aws' => AwsBackupStatus::get($q('refresh') === '1'),
+            'manual' => LocalBackup::history(),
             'server' => ['count' => count($files), 'latest' => $files ? date('c', (int) filemtime($files[0])) : null, 'oldest' => $files ? date('c', (int) filemtime(end($files))) : null],
         ]);
     }
@@ -776,6 +778,7 @@ try {
             $head = LocalBackup::writeData($pass, $tmp);
             Db::i()->setMeta('localBackupDataAt', now_iso());
             Auth::audit($actor($s), '予約・患者などの控えをパソコンに保存（' . round($head['bytes'] / 1048576, 1) . 'MB）');
+            LocalBackup::record($actor($s), 'pc', '予約・患者・記録・設定（' . round($head['bytes'] / 1048576, 1) . 'MB）');
             http_response_code(200);
             header('Content-Type: application/octet-stream');
             header('Content-Length: ' . filesize($tmp));
@@ -808,6 +811,7 @@ try {
         fclose($out);
         if (!connection_aborted()) {
             Db::i()->setMeta('localBackupPhotosAt', $started);
+            LocalBackup::record($actor($s), 'pc', '写真など ' . count($files) . '件（' . ($since ? '増えた分' : '全部') . '）');
         }
         exit;
     }

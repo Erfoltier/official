@@ -76,6 +76,8 @@ export interface DayPdfSettings {
 export interface BackupStatus {
   aws: { label: string; count?: number; latest?: string | null; latestStatus?: string | null; oldest?: string | null; error?: boolean }[] | null;
   server: { count: number; latest: string | null; oldest: string | null };
+  /** 手動で作ったバックアップの履歴（新しい順） */
+  manual: { at: string; kind: "server" | "pc"; by: string; detail: string }[];
 }
 
 /** バックアップの状況：AWS の毎日の控え（東京・大阪）とサーバー内の控え（院長・管理者） */

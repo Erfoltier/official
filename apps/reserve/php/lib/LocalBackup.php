@@ -183,4 +183,17 @@ final class LocalBackup
         fwrite($out, str_repeat("\0", 1024));
         return $n;
     }
+
+    /** 手動で作ったバックアップ（サーバー内の「今すぐ作成」・院のパソコンへの保存）の履歴。新しい順に30件 */
+    public static function record(array $actor, string $kind, string $detail): void
+    {
+        $log = array_values((array) (Db::i()->meta('manualBackups') ?? []));
+        array_unshift($log, ['at' => now_iso(), 'kind' => $kind, 'by' => (string) ($actor['name'] ?? ''), 'detail' => $detail]);
+        Db::i()->setMeta('manualBackups', array_slice($log, 0, 30));
+    }
+
+    public static function history(): array
+    {
+        return array_values((array) (Db::i()->meta('manualBackups') ?? []));
+    }
 }
