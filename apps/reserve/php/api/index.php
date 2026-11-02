@@ -26,7 +26,7 @@ try {
         $path = array_slice($path, 3);
         $head = $path[0] ?? '';
         $two = $head . '/' . ($path[1] ?? '');
-        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage', 'admin/local-backup', 'admin/day-pdf'], true)) {
+        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage', 'admin/local-backup', 'admin/day-pdf', 'admin/backups'], true)) {
             Http::json(['error' => 'forbidden', 'message' => 'この操作は自動予約からは使えません'], 403);
         }
         // 変えられるのは予約の入力・変更・取り消しと、新しい患者の登録だけ（院長の指示 2026-11-02。設定・メニュー・患者の削除などは不可）。見るだけ（GET）は従来どおり
@@ -726,6 +726,18 @@ try {
     }
 
     // ---- 院のパソコンに保存する控え（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま。保存したことは操作ログに残す ----
+    // ---- バックアップの状況（院長・管理者）：AWS の毎日の控え（東京・大阪）と、サーバー内の控え ----
+    if ($route === 'GET admin/backups') {
+        $me(STAFF_ADMIN);
+        $dsn = (string) config()['db_dsn'];
+        $files = str_starts_with($dsn, 'sqlite:') ? (glob(dirname(substr($dsn, 7)) . '/backups/reserve-*.db') ?: []) : [];
+        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
+        Http::json([
+            'aws' => AwsBackupStatus::get($q('refresh') === '1'),
+            'server' => ['count' => count($files), 'latest' => $files ? date('c', (int) filemtime($files[0])) : null, 'oldest' => $files ? date('c', (int) filemtime(end($files))) : null],
+        ]);
+    }
+
     // ---- 診療日の予約表 PDF（院長・管理者） ----
     if ($route === 'GET admin/day-pdf') {
         $me(STAFF_ADMIN);

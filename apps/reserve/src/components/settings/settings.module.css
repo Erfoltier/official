@@ -1207,3 +1207,23 @@ details.fold:not([open]) {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* 院の情報：カードの高さがちがっても空白ができないよう、縦に詰めて2列に流す（広い画面） */
+.clinicMasonry {
+  display: grid;
+  gap: 16px;
+}
+.clinicMasonry .clinicCard {
+  max-width: none;
+}
+@media (min-width: 1300px) {
+  .clinicMasonry {
+    display: block;
+    column-count: 2;
+    column-gap: 16px;
+  }
+  .clinicMasonry > .clinicCard {
+    break-inside: avoid;
+    margin-bottom: 16px;
+  }
+}

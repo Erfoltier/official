@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { compactStorage, createBackup, downloadLocalBackup, fetchDayPdf, saveDayPdf, testDayPdf, type DayPdfSettings, fetchLocalBackup, localPhotosUrl, type LocalBackupStatus, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
+import { compactStorage, createBackup, fetchBackupStatus, type BackupStatus, downloadLocalBackup, fetchDayPdf, saveDayPdf, testDayPdf, type DayPdfSettings, fetchLocalBackup, localPhotosUrl, type LocalBackupStatus, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
+import { OfflineDeviceCard } from "./DisplayPrefsCard";
 import styles from "./settings.module.css";
 
 function stamp(iso: string): string {
@@ -97,9 +98,9 @@ function BackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
   const [last, setLast] = useState<{ file: string; bytes: number; integrity: string; at: string } | null>(null);
   return (
     <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
-      <h3 className={styles.cardTitle}>データの控え（バックアップ）</h3>
+      <h3 className={styles.cardTitle}>サーバー内の控えを今すぐ作成</h3>
       <p className={styles.hint}>
-        予約・患者・記録・設定をまとめた控えを、サーバー内に作成します。取り込み・統合・一括修正などの大きな変更の前に作成してください。控えは外部に送信しません。
+        予約・患者・記録・設定をまとめた控えを、サーバー内に作成します。取り込み・統合・一括修正などの大きな変更の前に作成してください。新しい版の反映の前にも自動で同じ控えを作ります（あわせて新しい40件を残します）。控えは外部に送信しません。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <button
@@ -148,8 +149,10 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
 
   return (
     <section>
+      <BackupStatusCard fail={fail} />
       <BackupCard notify={notify} fail={fail} />
       <LocalBackupCard notify={notify} fail={fail} />
+      <OfflineDeviceCard canAllow />
       <DayPdfCard notify={notify} fail={fail} />
       <h3 className={styles.cardTitle}>設定の復元</h3>
       <p className={styles.lead}>
@@ -376,6 +379,84 @@ function DayPdfCard({ notify, fail }: { notify: (t: string) => void; fail: (e: u
           onClick={() => save({ enabled: !st?.enabled, to, ...(pw && { password: pw }) }, st?.enabled ? "送るのをやめました" : "水曜・祝日の朝に送ります")}
         >
           {st?.enabled ? "送るのをやめる" : "送るようにする"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const day = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
+
+/** いまの控えの状況：AWS の毎日の控え（東京・大阪）と、サーバー内の控え */
+function BackupStatusCard({ fail }: { fail: (e: unknown) => void }) {
+  const [st, setSt] = useState<BackupStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(
+    (refresh = false) => {
+      setBusy(true);
+      fetchBackupStatus(refresh)
+        .then(setSt, fail)
+        .finally(() => setBusy(false));
+    },
+    [fail],
+  );
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+  return (
+    <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
+      <h3 className={styles.cardTitle}>いまの控えの状況</h3>
+      <p className={styles.hint}>
+        サーバー丸ごとの控えを<b>毎日午前3時ごろ</b>に東京で取り、大阪にも写します（どちらも30日分。期限までは誰も消せない設定）。
+      </p>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>場所</th>
+              <th>件数</th>
+              <th>いちばん新しい控え</th>
+              <th>いちばん古い控え</th>
+            </tr>
+          </thead>
+          <tbody>
+            {st?.aws === null && (
+              <tr>
+                <td colSpan={4}>AWS の控えの状況を読めませんでした（AWS の外で動いているか、読む権限がありません）</td>
+              </tr>
+            )}
+            {st?.aws?.map((v) => (
+              <tr key={v.label}>
+                <td>AWS {v.label}（毎日）</td>
+                {v.error ? (
+                  <td colSpan={3}>読めませんでした</td>
+                ) : (
+                  <>
+                    <td>{v.count}件</td>
+                    <td>
+                      {day(v.latest)}
+                      {v.latestStatus && v.latestStatus !== "COMPLETED" ? `（${v.latestStatus === "PARTIAL" ? "一部" : "作成中"}）` : ""}
+                    </td>
+                    <td>{day(v.oldest)}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+            {st && (
+              <tr>
+                <td>サーバー内（反映の前・下の「今すぐ作成」）</td>
+                <td>{st.server.count}件</td>
+                <td>{day(st.server.latest)}</td>
+                <td>{day(st.server.oldest)}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.actions}>
+        <button type="button" className={styles.btn} disabled={busy} onClick={() => load(true)}>
+          {busy ? "確かめています…" : "最新の状況を確かめる"}
         </button>
       </div>
     </div>

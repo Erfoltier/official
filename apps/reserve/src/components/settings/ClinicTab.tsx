@@ -57,7 +57,7 @@ export function ClinicTab({
       <p className={styles.lead}>
         院名と、カレンダーに表示する時間帯・予約の刻みを設定します。診療時間外の予約もカレンダーに表示されます。
       </p>
-      <div className={styles.clinicWide}>
+      <div className={styles.clinicMasonry}>
       <div className={styles.clinicCard}>
         <h3 className={styles.cardTitle}>院名・診療時間</h3>
         <label className={styles.field}>
@@ -338,20 +338,18 @@ function PublicCard({
           <input className={styles.input} value={department} maxLength={30} onChange={(ev) => setDepartment(ev.target.value)} disabled={!canEdit} placeholder="例：美容皮膚科" />
         </label>
         <label className={styles.field}>
-          <span>受付日時の案内（予約申請フォームの見出しに出す）</span>
-          <textarea className={styles.input} value={hours} rows={2} maxLength={120} onChange={(ev) => setHours(ev.target.value)} disabled={!canEdit} placeholder={"例：水曜日・祝日特別診療日\n10:00〜18:30"} />
-        </label>
-      </div>
-      <div className={styles.timeRow}>
-        <label className={styles.field}>
-          <span>プライバシーポリシーのアドレス</span>
-          <input className={styles.input} value={privacyUrl} maxLength={300} onChange={(ev) => setPrivacyUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
-        </label>
-        <label className={styles.field}>
           <span>ホームページのアドレス</span>
           <input className={styles.input} value={homepageUrl} maxLength={300} onChange={(ev) => setHomepageUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
         </label>
       </div>
+      <label className={styles.field}>
+        <span>プライバシーポリシーのアドレス</span>
+        <input className={styles.input} value={privacyUrl} maxLength={300} onChange={(ev) => setPrivacyUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
+      </label>
+      <label className={styles.field}>
+        <span>受付日時の案内（予約申請フォームの見出しに出す。改行できます）</span>
+        <textarea className={styles.input} value={hours} rows={2} maxLength={120} onChange={(ev) => setHours(ev.target.value)} disabled={!canEdit} placeholder={"例：水曜日・祝日特別診療日\n10:00〜18:30"} />
+      </label>
       <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: 0 }}>
         <span>予約申請フォームで選べる曜日</span>
         <div className={styles.actions} style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>

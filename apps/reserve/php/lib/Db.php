@@ -54,7 +54,8 @@ final class Db
      * 整った控えを作る（使用中でも壊れない VACUUM INTO。中身は暗号化されたまま）。
      * 保存先は DB と同じフォルダの backups/（外から見えない data/ の中）。直近 $keep 個を残す
      */
-    public function backup(int $keep = 10): array
+    // 反映前の控え（ops/backup.sh、新しい40件）と同じ置き場所・同じ名前なので、残す数もそろえる（10 だと反映前の控えまで消していた）
+    public function backup(int $keep = 40): array
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {

@@ -8,7 +8,7 @@ import { ApiError, deleteLane, deleteMenu, fetchMe, fetchSettings, reorder, save
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab, ThemeCard } from "./ClinicTab";
-import { DisplayPrefsCard, OfflineDeviceCard } from "./DisplayPrefsCard";
+import { DisplayPrefsCard } from "./DisplayPrefsCard";
 import { DevicesTab } from "./DevicesTab";
 import { PricesTab } from "./PricesTab";
 import { ConsentsTab } from "./ConsentsTab";
@@ -120,13 +120,13 @@ export function SettingsApp() {
           {isAdmin && (
             <>
               <button role="tab" aria-selected={tab === "staff"} onClick={() => setTab("staff")}>
-                スタッフ
+                ログイン情報
               </button>
               <button role="tab" aria-selected={tab === "audit"} onClick={() => setTab("audit")}>
                 操作ログ
               </button>
               <button role="tab" aria-selected={tab === "restore"} onClick={() => setTab("restore")}>
-                控え・復元
+                バックアップ
               </button>
             </>
           )}
@@ -193,7 +193,6 @@ export function SettingsApp() {
           <p className={styles.lead}>配色は院で共通（すべての端末に反映）です。その下の表示設定は端末ごとに保存されます。</p>
           <ThemeCard key={data.clinic.theme ?? "default"} clinic={data.clinic} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
           <DisplayPrefsCard />
-          <OfflineDeviceCard canAllow={isAdmin} />
         </section>
       ) : tab === "lanes" ? (
         <LanesTab lanes={data.lanes} onChanged={load} notify={notify} fail={fail} />

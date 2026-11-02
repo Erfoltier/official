@@ -29,7 +29,7 @@
   --accent: #b9a77a; --accent-ink: #cfc09a; --flag-bg: #3a2a17; --flag-fg: #f0c48e; --code-bg: #222a33; --hit: #5a4a1c; --hit-cur: #8a6d1e; color-scheme: dark }
 * { box-sizing: border-box }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.85; }
-.wrap { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding-inline: 24px; padding-block: 32px 80px; }
+.wrap { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; margin: 0; padding-inline: 12px; padding-block: 16px 80px; }
 header.mast { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .brand { display: block; flex-basis: 100%; } .brand img { height: 52px; width: auto; display: block; }
 header.mast h1 { font-family: var(--display); font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: .02em; text-wrap: balance; }
@@ -39,12 +39,13 @@ nav.toc .label { font-size: 12px; letter-spacing: .12em; color: var(--muted); ma
 nav.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
 nav.toc a { display: block; padding: 5px 12px; color: var(--ink); text-decoration: none; border-left: 2px solid transparent; margin-left: -1px; line-height: 1.5; }
 nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent-ink); border-left-color: var(--accent); outline: none; }
-main { min-width: 0; max-width: 780px; }
+main { min-width: 0; }
 main h2 { font-family: var(--display); font-size: 26px; margin: 64px 0 16px; padding-top: 8px; border-top: 2px solid var(--ink); text-wrap: balance; scroll-margin-top: 16px; }
 main h2:first-child { margin-top: 8px; }
 main h3 { font-family: var(--display); font-size: 19px; margin: 36px 0 8px; color: var(--accent-ink); scroll-margin-top: 16px; }
 main h4 { font-family: var(--display); font-size: 16px; margin: 24px 0 6px; scroll-margin-top: 72px; }
-main p, main li { max-width: 68ch; }
+main p, main li { max-width: none; }
+main figure img, main .fig img { max-width: min(100%, 960px); }
 main ol, main ul { padding-left: 1.5em; }
 main li + li { margin-top: 4px; }
 main a { color: var(--accent-ink); }
@@ -76,7 +77,7 @@ dialog img { display: block; max-width: 96vw; max-height: 90vh; border-radius: 6
 dialog button { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 16px; font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 0; background: var(--paper); color: var(--ink); cursor: pointer; }
 
 .findbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
-.findbar .inner { max-width: 1180px; margin: 0 auto; padding-inline: 24px; padding-block: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.findbar .inner { margin: 0; padding-inline: 12px; padding-block: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .findbar input { flex: 1 1 220px; min-width: 0; max-width: 420px; font: inherit; font-size: 15px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
 .findbar input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .findbar button { font: inherit; font-size: 14px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); cursor: pointer; }
@@ -137,7 +138,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><a href="#s10">10. カルテ・同意書・見積</a><ol class="sub"><li><a href="#t34">10-1. カルテ（施術の記録）</a></li><li><a href="#t35">10-2. 同意書</a></li><li><a href="#t36">10-3. 見積・会計</a></li></ol></li>
 <li><a href="#s11">11. 1日の流れ（朝・診療中・終業）</a><ol class="sub"><li><a href="#t37">朝（診療前）</a></li><li><a href="#t38">診療中</a></li><li><a href="#t39">終業</a></li></ol></li>
 <li><a href="#s12">12. スマホでの使い方</a></li>
-<li><a href="#s13">13. 設定（院長・管理者向け）</a><ol class="sub"><li><a href="#t40">レーン</a></li><li><a href="#t41">メニュー</a></li><li><a href="#t42">患者状態ラベル</a></li><li><a href="#t43">スキンケア・内服／料金表／取り込み</a></li><li><a href="#t44">同意書／問診票</a></li><li><a href="#t45">外部機器の連携</a></li><li><a href="#t46">院の情報・診療時間</a></li><li><a href="#t47">リマインド</a></li><li><a href="#t48">画面の表示・配色</a></li><li><a href="#t49">スタッフ（院長・管理者のみ）</a></li><li><a href="#t50">操作ログ（院長・管理者のみ）</a></li><li><a href="#t51">控え・復元（院長・管理者のみ）</a></li><li><a href="#t52">操作マニュアル（スタッフ全員）</a></li><li><a href="#t53">バックアップ</a></li></ol></li>
+<li><a href="#s13">13. 設定（院長・管理者向け）</a><ol class="sub"><li><a href="#t40">レーン</a></li><li><a href="#t41">メニュー</a></li><li><a href="#t42">患者状態ラベル</a></li><li><a href="#t43">スキンケア・内服／料金表／取り込み</a></li><li><a href="#t44">同意書／問診票</a></li><li><a href="#t45">外部機器の連携</a></li><li><a href="#t46">院の情報・診療時間</a></li><li><a href="#t47">リマインド</a></li><li><a href="#t48">画面の表示・配色</a></li><li><a href="#t49">ログイン情報（院長・管理者のみ）</a></li><li><a href="#t50">操作ログ（院長・管理者のみ）</a></li><li><a href="#t51">バックアップ（院長・管理者のみ）</a></li><li><a href="#t52">操作マニュアル（スタッフ全員）</a></li><li><a href="#t53">バックアップ</a></li></ol></li>
 <li><a href="#s14">14. 困ったとき（FAQ）</a></li>
 <li><a href="#s15">15. 役割ごとにできること</a></li>
 <li><a href="#s16">16. 開発者向けメモ</a></li>
@@ -676,7 +677,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>今日の予約が全部「帰宅」かキャンセル系になっているか、受付一覧で確かめます。</li>
 <li>翌日の予約表を開き、注意事項・重なりを確かめます。</li>
 <li>共用の端末では「名前 ⇄」でログアウトします。</li>
-<li>バックアップ・リマインドは院のサーバーの設定で動きます。大きな変更をした日は、院長・管理者が 設定 →「控え・復元」の <strong>「今すぐ控えを取る」</strong> で控えを取っておくと安心です（<a href="#t51">13章</a>）。</li>
+<li>バックアップ・リマインドは院のサーバーの設定で動きます。大きな変更をした日は、院長・管理者が 設定 →「バックアップ」の <strong>「今すぐ控えを作成」</strong> で控えを取っておくと安心です（<a href="#t51">13章</a>）。</li>
 </ol>
 <hr />
 <h2 id="s12">12. スマホでの使い方</h2>
@@ -715,7 +716,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 </ol>
 <hr />
 <h2 id="s13">13. 設定（院長・管理者向け）</h2>
-<p>予約表の右上の <strong>⚙</strong> で開きます。<strong>左に縦に並んだ項目</strong>で切り替えます（スマホなど幅の狭い画面では上に並びます）。右側の本文は画面いっぱいに広がります。<strong>スタッフ・操作ログ・控え・復元</strong> のタブは院長・管理者にだけ出ます。<strong>リマインド</strong> のタブは院長・管理者と、管理操作のできる人に出ます。いちばん下の <strong>操作マニュアル</strong> は、スタッフ全員に出ます。変更できない人には「このログインでは見るだけです」と出ます。</p>
+<p>予約表の右上の <strong>⚙</strong> で開きます。<strong>左に縦に並んだ項目</strong>で切り替えます（スマホなど幅の狭い画面では上に並びます）。右側の本文は画面いっぱいに広がります。<strong>ログイン情報・操作ログ・バックアップ</strong> のタブは院長・管理者にだけ出ます。<strong>リマインド</strong> のタブは院長・管理者と、管理操作のできる人に出ます。いちばん下の <strong>操作マニュアル</strong> は、スタッフ全員に出ます。変更できない人には「このログインでは見るだけです」と出ます。</p>
 <figure><button class="zoom" type="button" data-src="img/74-settings-nurse.webp" aria-label="拡大：見るだけの表示（看護師）"><img src="img/74-settings-nurse.webp" alt="見るだけの表示（看護師）" width="1440" height="900" loading="lazy"></button><figcaption>見るだけの表示（看護師）</figcaption></figure>
 <h3 id="t40">レーン</h3>
 <p>名前・短い名前（スマホ用）・並べ替え（▲▼、一番上が左端）・表示の切り替え・追加・削除。表示できるのは1〜30本。今日以降の予約が残るレーンは非表示にできず、予約の記録が一度もないレーンだけ削除できます。</p>
@@ -797,22 +798,23 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <h3 id="t48">画面の表示・配色</h3>
 <p>院の配色（すべての端末）と、この端末だけの表示（予約の枠に出す情報、受付一覧を開いておくか、文字の大きさ）。</p>
 <figure><button class="zoom" type="button" data-src="img/70-settings-appearance.webp" aria-label="拡大：画面の表示・配色"><img src="img/70-settings-appearance.webp" alt="画面の表示・配色" width="1440" height="900" loading="lazy"></button><figcaption>画面の表示・配色</figcaption></figure>
-<h3 id="t49">スタッフ（院長・管理者のみ）</h3>
+<h3 id="t49">ログイン情報（院長・管理者のみ）</h3>
 <p>名前・役割（院長・管理者／医師／看護師／受付）・利用中（外すと利用停止）・<strong>管理操作</strong> の許可・PINの変更・追加。PINの変更・利用停止・役割の変更をすると、その人のログインは切れます。院長・管理者は最低1人必要です。</p>
 <figure><button class="zoom" type="button" data-src="img/71-settings-staff.webp" aria-label="拡大：スタッフ"><img src="img/71-settings-staff.webp" alt="スタッフ" width="1440" height="900" loading="lazy"></button><figcaption>スタッフ</figcaption></figure>
 <h3 id="t50">操作ログ（院長・管理者のみ）</h3>
 <p>ログイン・予約・患者情報・設定の操作を新しい順に直近300件表示します。患者情報の中身は記録しません。</p>
 <figure><button class="zoom" type="button" data-src="img/72-settings-audit.webp" aria-label="拡大：操作ログ"><img src="img/72-settings-audit.webp" alt="操作ログ" width="1440" height="900" loading="lazy"></button><figcaption>操作ログ</figcaption></figure>
-<h3 id="t51">控え・復元（院長・管理者のみ）</h3>
+<h3 id="t51">バックアップ（院長・管理者のみ）</h3>
+<p>いちばん上の<strong>「いまの控えの状況」</strong>に、AWS の毎日の控え（東京・大阪、各30日分）と、サーバー内の控え（反映の前・「今すぐ控えを作成」、新しい40件）の件数・いちばん新しい日時が出ます。</p>
 <p>以前の「設定の復元」のタブです。上に <strong>データの控え（バックアップ）</strong>、下に <strong>設定の復元</strong> があります。</p>
 <p><strong>院のパソコンに控えを保存</strong>（院長・管理者）：週に1回ほど、決まった1台のパソコンに保存します。①「予約・患者・記録・設定」は、院長が決めた<strong>合言葉</strong>（10文字以上）を2回入れて「暗号化した控えを保存」。.lrbk のファイルがダウンロードされます。合言葉がないと誰も開けず、なくすと院長も戻せないので、紙などに控えて別の場所に保管します。②「写真・同意書などのファイル」は、最初に1回「全部を保存」、以後は「増えた分だけ保存」。どちらも外付けの記憶装置にも写しておくと安心です。サーバーの控え（毎日、東京と大阪）とは別の備えです。</p>
 <p><strong>診療日の予約表 PDF</strong>（院長・管理者）：送り先のメールアドレスと PDF のパスワード（8文字以上）を入れて「送るようにする」。水曜・祝日（と特別診療日）の朝7時ごろ、その日の予約表がパスワード付きの PDF で届きます。サーバーや院のネットが止まったら印刷して使います。「今日の分をテスト送信」で届くか確かめられます。</p>
-<p><strong>停止に備えて、この端末に予約表を置く</strong>（設定 → 画面の表示・配色）：院長・管理者が院内のパソコン・タブレットで「この端末に置く」を押すと、予約表を開いているあいだ今日〜7日先の予約表が5分ごとに端末に保存されます。サーバーや院のネットが止まると、予約表の上に黄色の帯が出て、保存した予約表を<strong>見るだけ</strong>で表示します（変更はできません。新しい予約・変更は紙に書き、つながってから入れます）。スマホや院外の端末では使いません。</p>
+<p><strong>この端末に予約表をダウンロード</strong>（設定 → バックアップ）：院長・管理者が院内のパソコン・タブレットで「この端末に予約表をダウンロード」を押すと、その場で今日〜7日先の8日分をダウンロードし、そのあとは予約表を開いているあいだ5分ごとに新しくします。サーバーや院のネットが止まると、予約表の上に黄色の帯が出て、保存した予約表を<strong>見るだけ</strong>で表示します（変更はできません。新しい予約・変更は紙に書き、つながってから入れます）。スマホや院外の端末では使いません。</p>
 <p><strong>データの控えを取る</strong></p>
 <p>予約・患者・記録・設定をまとめた控えを、サーバーの中に今すぐ作ります。取り込み・統合・一括の直しなど、大きな変更の前に押してください。控えは外に送らず、サーバーの中にだけ置きます。</p>
 <ol>
-<li>予約表の ⚙ →「控え・復元」のタブを開きます。</li>
-<li><strong>「今すぐ控えを取る」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/73-settings-restore.webp" aria-label="拡大：控え・復元"><img src="img/73-settings-restore.webp" alt="控え・復元" width="1440" height="900" loading="lazy"></button></span></li>
+<li>予約表の ⚙ →「バックアップ」のタブを開きます。</li>
+<li><strong>「今すぐ控えを作成」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/73-settings-restore.webp" aria-label="拡大：バックアップ"><img src="img/73-settings-restore.webp" alt="バックアップ" width="1440" height="900" loading="lazy"></button></span></li>
 <li>「いまのデータの控えを作ります。少し時間がかかることがあります。よろしいですか？」と出るので <strong>OK</strong> を押します。</li>
 <li>「控えを作りました（○MB・確認 ok）」と出て、カードの下に作った日時・ファイル名・大きさが出ます。<span class="fig"><button class="zoom" type="button" data-src="img/76-settings-backup-done.webp" aria-label="拡大：控えを作った"><img src="img/76-settings-backup-done.webp" alt="控えを作った" width="1440" height="900" loading="lazy"></button></span></li>
 </ol>
@@ -824,11 +826,11 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <figure><button class="zoom" type="button" data-src="img/77-settings-manual.webp" aria-label="拡大：操作マニュアル"><img src="img/77-settings-manual.webp" alt="操作マニュアル" width="1440" height="900" loading="lazy"></button><figcaption>操作マニュアル</figcaption></figure>
 <h3 id="t53">バックアップ</h3>
 <ul>
-<li>データの控えは、院長・管理者が上の「今すぐ控えを取る」で取ります。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
-<li>写真などのファイルは、データとは別の置き場所に保存されます。前からある分は「控え・復元」の <strong>「写真などの置き場所」</strong> で移せます。</li>
+<li>データの控えは、院長・管理者が上の「今すぐ控えを作成」で取ります。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
+<li>写真などのファイルは、データとは別の置き場所に保存されます。前からある分は「バックアップ」の <strong>「写真などの置き場所」</strong> で移せます。</li>
 <li>PHP版（本番）のバックアップの手順は <code>apps/reserve/php/README.md</code> を見てください。</li>
 </ul>
-<p>「今すぐ控えを取る」で作った控えから元に戻す（復元する）操作は画面にありません。控えから戻すときはサーバーでの作業になります（<code>apps/reserve/php/README.md</code>）。</p>
+<p>「今すぐ控えを作成」で作った控えから元に戻す（復元する）操作は画面にありません。控えから戻すときはサーバーでの作業になります（<code>apps/reserve/php/README.md</code>）。</p>
 <hr />
 <h2 id="s14">14. 困ったとき（FAQ）</h2>
 <p><strong>Q. 保存できない／「保存できませんでした」と出る</strong>
@@ -853,7 +855,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p><strong>Q. 間違えてキャンセル（無断キャンセル）にしてしまった</strong>
 - 「キャンセル表示」を押し、その予約の枠を押して詳細を開き、<strong>「予約に戻す」</strong> →確認で <strong>OK</strong> を押します（<a href="#t22">7-3</a>）。入れ直す必要はありません。</p>
 <p><strong>Q. バックアップ（控え）を取りたい</strong>
-- 院長・管理者が 設定 →「控え・復元」の <strong>「今すぐ控えを取る」</strong> を押します（<a href="#t51">13章</a>）。取り込み・統合などの大きな変更の前に押しておくと安心です。院長・管理者以外のログインでは、このタブは出ません。</p>
+- 院長・管理者が 設定 →「バックアップ」の <strong>「今すぐ控えを作成」</strong> を押します（<a href="#t51">13章</a>）。取り込み・統合などの大きな変更の前に押しておくと安心です。院長・管理者以外のログインでは、このタブは出ません。</p>
 <p><strong>Q. リマインドが届かない患者がいる</strong>
 - 予約の詳細の「リマインド」に、状態（未送信／LINE送信済／メール送信済／送信失敗）と、送らなかった・送れなかった理由が出ます（例：「未送信（送り先なし）」）（<a href="#t17">6-1</a>）。
 - 院長・管理者は、設定 →「リマインド」の <strong>リマインド送信状況の確認</strong> で、日付を選んで「確かめる」を押すと、来院ごとの送信状況・送信方法・詳細（届かない理由）を確かめられます。この画面からは送りません（<a href="#u1">13章</a>）。
@@ -964,7 +966,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <td style="text-align: center;">許可時</td>
 </tr>
 <tr>
-<td>スタッフ・操作ログ・控え・復元（今すぐ控えを取る・設定の復元）</td>
+<td>ログイン情報・操作ログ・バックアップ（今すぐ控えを作成・設定の復元など）</td>
 <td style="text-align: center;">○</td>
 <td style="text-align: center;">×</td>
 <td style="text-align: center;">×</td>
@@ -1001,7 +1003,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>APIの入口</strong>：本番では <code>/reserve/api/v1</code>（例：<code>/reserve/api/v1/day?date=YYYY-MM-DD</code>）。開発では <code>npm run dev</code>（<code>scripts/dev.sh</code>）で PHP の API（<code>php -S</code>）と画面（<code>next dev</code>）をいっしょに起動し、<code>/api/v1</code> で使います。開発のデータは <code>.data/php/</code>（設定 <code>config.php</code>・データ <code>reserve.db</code>・写真などの <code>blobs/</code>・PHP のログ <code>php.log</code>）で、初回にデモデータを入れます。作り直すときはこのフォルダを消します。</li>
 <li><strong>名前とロゴ</strong>：サービス名は LANE RESERVE（レーンリザーブ）。ロゴ・アイコンは <code>public/brand/</code>（ログイン画面は <code>lane-reserve-logo.svg</code>、上のバーは英字だけの <code>lane-reserve-logo-wordmark.svg</code> で横1280px以上のときだけ表示）、ホーム画面用は <code>public/manifest.webmanifest</code>、タブの題名は <code>src/app/layout.tsx</code>（「○○｜LANE RESERVE」）。</li>
 <li><strong>操作マニュアル</strong>：設定の「操作マニュアル」のタブは <code>public/manual/index.html</code> を埋め込んで表示します（部品は <code>src/components/settings/ManualTab.tsx</code>）。このフォルダの内容を取り込み直すときは <code>scripts/update-manual.sh</code> を使います。</li>
-<li><strong>控え</strong>：「今すぐ控えを取る」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。写真などのファイルは <code>data/blobs/</code> に保存されます。サーバーでの控えと復元の手順は <code>php/README.md</code> を見てください。</li>
+<li><strong>控え</strong>：「今すぐ控えを作成」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。写真などのファイルは <code>data/blobs/</code> に保存されます。サーバーでの控えと復元の手順は <code>php/README.md</code> を見てください。</li>
 <li><strong>受付箱</strong>：<code>GET /api/v1/intake</code>・<code>POST /api/v1/intake/{申請ID}/mark</code>。申請は、LINE の受け口（line-webhook）が保存した <code>intake-records/R{受付日時（UTC）14桁}{16進の大文字8桁}.json</code> を読むだけです（場所は設定の <code>line_intake_dir</code>、開発では <code>.data/php/intake-records/</code>）。中身は <code>type: "reservation_intake"</code>・<code>requestId</code>・<code>receivedAt</code>・<code>intake</code>（<code>visitType</code>・<code>preferredDate</code>・<code>name</code>・<code>kana</code>・<code>phone</code>・<code>birthDate</code> など）・<code>message.text</code>・<code>source.userId</code>。申込者の LINE の ID は画面に出さず、リマインドの送り先選びと「＋患者に紐付け」（<code>POST /api/v1/reservations/{id}/link-line</code>）でだけ使います。</li>
 <li><strong>リマインド</strong>：設定は <code>GET/PUT /api/v1/admin/reminders</code>（「自動送信を止める日」は <code>pauseUntil</code>、「メニューの『来院前の案内』」は <code>appendNotes</code>。最初は <code>pauseUntil: "2026-10-12"</code>・<code>appendNotes: false</code>）、リマインド送信状況の確認（送らない）は <code>GET /api/v1/admin/reminders/preview?date=YYYY-MM-DD</code>（来院ごとに <code>status</code>＝sent／pending／failed・<code>method</code>・<code>at</code>・<code>line</code>・<code>email</code>・<code>why</code>）、未送信分を今すぐ送るは <code>POST /api/v1/admin/reminders/run</code>、予約1件へ今すぐ送るは <code>POST /api/v1/reservations/{id}/remind</code>（いずれも本当に送るのは run と remind だけ）。自動送信は cron（<code>php/cron/reminders.php</code>）から動き、<code>pauseUntil</code> の日（を含む）までの来院の回は飛ばします。</li>
 <li><strong>同時編集</strong>：予約・患者などは <code>version</code> を持ち、古い版での保存は「他の端末で先に更新されました」で止まります（409）。</li>

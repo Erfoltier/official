@@ -73,6 +73,16 @@ export interface DayPdfSettings {
   lastSent: { date: string; at: string; count: number } | null;
 }
 
+export interface BackupStatus {
+  aws: { label: string; count?: number; latest?: string | null; latestStatus?: string | null; oldest?: string | null; error?: boolean }[] | null;
+  server: { count: number; latest: string | null; oldest: string | null };
+}
+
+/** バックアップの状況：AWS の毎日の控え（東京・大阪）とサーバー内の控え（院長・管理者） */
+export function fetchBackupStatus(refresh = false): Promise<BackupStatus> {
+  return call(`/api/v1/admin/backups${refresh ? "?refresh=1" : ""}`);
+}
+
 /** 診療日の予約表 PDF（院長・管理者） */
 export function fetchDayPdf(): Promise<DayPdfSettings> {
   return call(`/api/v1/admin/day-pdf`);
