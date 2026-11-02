@@ -14,7 +14,7 @@
 | CSS | 編集画面下の「カスタムCSS（この固定ページのみに適用）」に `custom.css`＋下記2行。サイト全体の追加CSSは変更なし |
 | メタ情報 | Yoast SEO と TCD「SEOの設定」の両方にタイトル・ディスクリプションを設定 |
 | 構造化データ | WPCode スニペット ID 2482「タトゥー除去 構造化データjson（FAQ・医療機関）」（`schema-jsonld.html`）。URLに /service/tattoo-removal/ を含むページのheadにだけ出力。公開後に有効になる |
-| 画像 | メディアID 2473〜2479（/wp-content/uploads/2026/11/） |
+| 画像 | メディアID 2473〜2479・面積図 tattoo-measure.webp（/wp-content/uploads/2026/11/） |
 
 ## このページ専用CSSに追加した2行
 

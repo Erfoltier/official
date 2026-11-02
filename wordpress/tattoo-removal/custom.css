@@ -650,24 +650,7 @@
   border-radius: 16px;
   background: rgba(255, 255, 255, .04);
 }
-.tt-guide .tt-measure-fig {
-  position: relative; flex: none;
-  width: 150px; height: 96px;
-  margin: 0 18px 22px 0;
-  border: 1.5px dashed #5BD8FF;
-  border-radius: 4px;
-}
-.tt-guide .tt-measure-ink {
-  position: absolute; inset: 3px;
-  background: radial-gradient(ellipse 30% 42% at 30% 42%, #2a2f45 98%, transparent 100%),
-              radial-gradient(ellipse 34% 46% at 64% 54%, #2a2f45 98%, transparent 100%),
-              radial-gradient(ellipse 13% 20% at 87% 22%, #FF4D6A 98%, transparent 100%),
-              radial-gradient(ellipse 10% 16% at 10% 82%, #2EE89A 98%, transparent 100%);
-  opacity: .95;
-}
-.tt-guide .tt-measure-w, .tt-guide .tt-measure-h { position: absolute; font-size: 11px; color: #5BD8FF; white-space: nowrap; }
-.tt-guide .tt-measure-w { left: 50%; bottom: -22px; transform: translateX(-50%); }
-.tt-guide .tt-measure-h { right: -34px; top: 50%; transform: translateY(-50%); }
+.tt-guide .tt-measure-img { flex: none; width: 280px; max-width: 100%; height: auto; }
 .tt-guide .tt-measure-title { font-weight: 700; color: #fff; margin-bottom: 4px; }
 .tt-guide .tt-measure-text p:nth-child(2) { font-size: 14px; color: #C9D3EC; }
 .tt-guide .tt-measure-text strong { color: #5BD8FF; }

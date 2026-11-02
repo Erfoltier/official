@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="file:///tmp/claude-0/-home-user-official/75e97029-ee88-5ffe-8fda-032bc892a4e4/scratchpad/fonts/node_modules/@fontsource/zen-kaku-gothic-new/700.css">
+<style>html,body{margin:0;background:transparent} #wrap{display:inline-block;padding:0}</style></head><body>
+<div id="wrap"><svg id="svg" xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+<defs>
+ <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F3CDB6"/><stop offset=".55" stop-color="#E8B394"/><stop offset="1" stop-color="#DCA083"/></linearGradient>
+ <radialGradient id="sheen" cx=".3" cy=".25" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <filter id="ink" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation=".35"/></filter>
+</defs>
+<rect x="6" y="6" width="318" height="200" rx="22" fill="url(#skin)"/>
+<rect x="6" y="6" width="318" height="200" rx="22" fill="url(#sheen)"/>
+<g id="bf" transform="translate(166 106) rotate(-8)" filter="url(#ink)">
+ <g id="half">
+  <path d="M2 -6 C 20 -52, 70 -78, 92 -60 C 110 -44, 96 -14, 62 -2 C 40 6, 18 4, 2 0 Z" fill="#26283A"/>
+  <path d="M2 2 C 22 6, 56 10, 70 30 C 82 48, 66 66, 46 58 C 28 50, 12 30, 2 10 Z" fill="#26283A"/>
+  <path d="M30 -24 C 44 -44, 70 -58, 82 -50 C 90 -42, 80 -26, 60 -16 C 48 -11, 38 -14, 30 -24 Z" fill="#E8B394" opacity=".9"/>
+  <circle cx="72" cy="-46" r="5" fill="#26283A"/>
+  <path d="M22 18 C 34 22, 52 28, 56 40 C 58 48, 50 52, 42 47 C 32 40, 26 30, 22 18 Z" fill="#C8324A"/>
+  <circle cx="86" cy="-56" r="2.4" fill="#E8B394"/><circle cx="96" cy="-40" r="2" fill="#E8B394"/><circle cx="58" cy="54" r="2.2" fill="#E8B394"/>
+ </g>
+ <use href="#half" transform="scale(-1 1)"/>
+ <ellipse cx="0" cy="0" rx="4.2" ry="30" fill="#1C1D2B"/>
+ <circle cx="0" cy="-32" r="5" fill="#1C1D2B"/>
+ <path d="M-1 -35 C -6 -50, -12 -58, -20 -62" stroke="#1C1D2B" stroke-width="2" fill="none" stroke-linecap="round"/>
+ <path d="M1 -35 C 6 -50, 12 -58, 20 -62" stroke="#1C1D2B" stroke-width="2" fill="none" stroke-linecap="round"/>
+ <circle cx="-20" cy="-62" r="2.6" fill="#1C1D2B"/><circle cx="20" cy="-62" r="2.6" fill="#1C1D2B"/>
+</g>
+<rect id="box" fill="none" stroke="#2A6BFF" stroke-width="2" stroke-dasharray="7 5"/>
+<g id="dims" font-family="Zen Kaku Gothic New" font-weight="700" font-size="15" fill="#5BD8FF"></g>
+</svg></div>
+<script>
+const svg=document.getElementById('svg'); const bf=document.getElementById('bf');
+// bounding box of the butterfly in SVG user space (accounts for rotation)
+const q=new URLSearchParams(location.search); 
+if(q.get('only')){ document.querySelectorAll('#svg > rect, #box, #dims').forEach(e=>e.style.display='none'); }
+let x=+q.get('x')||0, y=+q.get('y')||0, w=+q.get('w')||0, h=+q.get('h')||0;
+const box=document.getElementById('box'); box.setAttribute('x',x-1.5); box.setAttribute('y',y-1.5); box.setAttribute('width',w+3); box.setAttribute('height',h+3);
+const d=document.getElementById('dims'); const ns='http://www.w3.org/2000/svg';
+function line(x1,y1,x2,y2){const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke','#5BD8FF');l.setAttribute('stroke-width','1.5');d.appendChild(l);}
+function text(t,x,y,anchor){const e=document.createElementNS(ns,'text');e.textContent=t;e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('text-anchor',anchor);d.appendChild(e);}
+const L=x-1.5, R=x+w+1.5, T=y-1.5, B=y+h+1.5;
+// 長辺 (bottom, outside the skin panel)
+const yb=222; line(L,B+3,L,yb+4); line(R,B+3,R,yb+4); line(L,yb,R,yb); line(L,yb,L+7,yb-4); line(L,yb,L+7,yb+4); line(R,yb,R-7,yb-4); line(R,yb,R-7,yb+4);
+text('長辺',(L+R)/2,yb+20,'middle');
+// 短辺 (right, outside the skin panel)
+const xr=342; line(R+3,T,xr+4,T); line(R+3,B,xr+4,B); line(xr,T,xr,B); line(xr,T,xr-4,T+7); line(xr,T,xr+4,T+7); line(xr,B,xr-4,B-7); line(xr,B,xr+4,B-7);
+text('短辺',xr+8,(T+B)/2+5,'start');
+document.title=[x,y,w,h].map(Math.round).join(',');
+</script></body></html>
