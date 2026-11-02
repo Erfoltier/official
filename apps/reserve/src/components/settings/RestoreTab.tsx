@@ -169,7 +169,7 @@ function BackupCard({
   } | null>(null);
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>サーバー内の控えを今すぐ作成</h3>
+      <h3 className={styles.cardTitle}>バックアップを今すぐ作成</h3>
       <p className={styles.hint}>
         予約・患者・記録・設定をまとめた控えを、サーバー内に作成します。取り込み・統合・一括修正などの大きな変更の前に作成してください。新しい版の反映の前にも自動で同じ控えを作ります（あわせて新しい40件を残します）。控えは外部に送信しません。
       </p>
@@ -200,7 +200,7 @@ function BackupCard({
             }
           }}
         >
-          {busy ? "作成中…" : "今すぐ控えを作成"}
+          {busy ? "作成中…" : "今すぐバックアップを作成"}
         </button>
       </div>
       {last && (
@@ -675,7 +675,7 @@ function BackupStatusCard({
             ))}
             {st && (
               <tr>
-                <td>サーバー内（反映の前・下の「今すぐ作成」）</td>
+                <td>サーバー内（反映の前・下の「今すぐバックアップを作成」）</td>
                 <td>{st.server.count}件</td>
                 <td>{day(st.server.latest)}</td>
                 <td>{day(st.server.oldest)}</td>
@@ -687,7 +687,7 @@ function BackupStatusCard({
       <h4 className={styles.subTitle}>手動で作ったバックアップの履歴</h4>
       {st && st.manual.length === 0 ? (
         <p className={styles.hint}>
-          まだありません（下の「今すぐ控えを作成」「院のパソコンに控えを保存」で作ると、ここに出ます）
+          まだありません（下の「今すぐバックアップを作成」「院のパソコンに控えを保存」で作ると、ここに出ます）
         </p>
       ) : (
         <div className={styles.tableWrap}>

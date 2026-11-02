@@ -678,7 +678,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>今日の予約が全部「帰宅」かキャンセル系になっているか、受付一覧で確かめます。</li>
 <li>翌日の予約表を開き、注意事項・重なりを確かめます。</li>
 <li>共用の端末では「名前 ⇄」でログアウトします。</li>
-<li>バックアップ・リマインドは院のサーバーの設定で動きます。大きな変更をした日は、院長・管理者が 設定 →「バックアップ」の <strong>「今すぐ控えを作成」</strong> で控えを取っておくと安心です（<a href="#t51">13章</a>）。</li>
+<li>バックアップ・リマインドは院のサーバーの設定で動きます。大きな変更をした日は、院長・管理者が 設定 →「バックアップ」の <strong>「今すぐバックアップを作成」</strong> で控えを取っておくと安心です（<a href="#t51">13章</a>）。</li>
 </ol>
 <hr />
 <h2 id="s12">12. スマホでの使い方</h2>
@@ -806,7 +806,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p>ログイン・予約・患者情報・設定の操作を新しい順に直近300件表示します。患者情報の中身は記録しません。</p>
 <figure><button class="zoom" type="button" data-src="img/72-settings-audit.webp" aria-label="拡大：操作ログ"><img src="img/72-settings-audit.webp" alt="操作ログ" width="1093" height="900" loading="lazy"></button><figcaption>操作ログ</figcaption></figure>
 <h3 id="t51">バックアップ（院長・管理者のみ）</h3>
-<p>いちばん上の<strong>「現在のバックアップ状況」</strong>に、AWS の毎日の控え（東京・大阪、各30日分）と、サーバー内の控え（反映の前・「今すぐ控えを作成」、新しい40件）の件数・いちばん新しい日時が出ます。その下の<strong>「手動で作ったバックアップの履歴」</strong>には、「今すぐ控えを作成」と「院のパソコンに控えを保存」で作った日時・内容・作った人が、新しい順に出ます。</p>
+<p>いちばん上の<strong>「現在のバックアップ状況」</strong>に、AWS の毎日の控え（東京・大阪、各30日分）と、サーバー内の控え（反映の前・「今すぐバックアップを作成」、新しい40件）の件数・いちばん新しい日時が出ます。その下の<strong>「手動で作ったバックアップの履歴」</strong>には、「今すぐバックアップを作成」と「院のパソコンに控えを保存」で作った日時・内容・作った人が、新しい順に出ます。</p>
 <p>以前の「設定の復元」のタブです。上に <strong>データの控え（バックアップ）</strong>、下に <strong>設定の復元</strong> があります。</p>
 <p><strong>院のパソコンに控えを保存</strong>（院長・管理者）：週に1回ほど、決まった1台のパソコンに保存します。①「予約・患者・記録・設定」は、院長が決めた<strong>合言葉</strong>（10文字以上）を2回入れて「暗号化した控えを保存」。.lrbk のファイルがダウンロードされます。合言葉がないと誰も開けず、なくすと院長も戻せないので、紙などに控えて別の場所に保管します。②「写真・同意書などのファイル」は、最初に1回「全部を保存」、以後は「増えた分だけ保存」。どちらも外付けの記憶装置にも写しておくと安心です。サーバーの控え（毎日、東京と大阪）とは別の備えです。</p>
 <p><strong>診療日の予約表 PDF</strong>（院長・管理者）：送り先のメールアドレスと PDF のパスワード（8文字以上）を入れて「送るようにする」。水曜・祝日（と特別診療日）の朝7時ごろ、その日の予約表がパスワード付きの PDF で届きます。サーバーや院のネットが止まったら印刷して使います。「今日の分をテスト送信」で届くか確かめられます。</p>
@@ -815,7 +815,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p>予約・患者・記録・設定をまとめた控えを、サーバーの中に今すぐ作ります。取り込み・統合・一括の直しなど、大きな変更の前に押してください。控えは外に送らず、サーバーの中にだけ置きます。</p>
 <ol>
 <li>予約表の ⚙ →「バックアップ」のタブを開きます。</li>
-<li><strong>「今すぐ控えを作成」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/73-settings-restore.webp" aria-label="拡大：バックアップ"><img src="img/73-settings-restore.webp" alt="バックアップ" width="1098" height="757" loading="lazy"></button></span></li>
+<li><strong>「今すぐバックアップを作成」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/73-settings-restore.webp" aria-label="拡大：バックアップ"><img src="img/73-settings-restore.webp" alt="バックアップ" width="1098" height="757" loading="lazy"></button></span></li>
 <li>「いまのデータの控えを作ります。少し時間がかかることがあります。よろしいですか？」と出るので <strong>OK</strong> を押します。</li>
 <li>「控えを作りました（○MB・確認 ok）」と出て、カードの下に作った日時・ファイル名・大きさが出ます。<span class="fig"><button class="zoom" type="button" data-src="img/76-settings-backup-done.webp" aria-label="拡大：控えを作った"><img src="img/76-settings-backup-done.webp" alt="控えを作った" width="1100" height="851" loading="lazy"></button></span></li>
 </ol>
@@ -827,11 +827,11 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <figure><button class="zoom" type="button" data-src="img/77-settings-manual.webp" aria-label="拡大：操作マニュアル"><img src="img/77-settings-manual.webp" alt="操作マニュアル" width="1093" height="868" loading="lazy"></button><figcaption>操作マニュアル</figcaption></figure>
 <h3 id="t53">バックアップ</h3>
 <ul>
-<li>データの控えは、院長・管理者が上の「今すぐ控えを作成」で取ります。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
+<li>データの控えは、院長・管理者が上の「今すぐバックアップを作成」で取ります。院長・管理者が画面から行う機能（電子カルテ照合の反映など）では、書き換える前に自動で控えを取ります。</li>
 <li>写真などのファイルは、データとは別の置き場所に保存されます。前からある分は「バックアップ」の <strong>「写真などの置き場所」</strong> で移せます。</li>
 <li>PHP版（本番）のバックアップの手順は <code>apps/reserve/php/README.md</code> を見てください。</li>
 </ul>
-<p>「今すぐ控えを作成」で作った控えから元に戻す（復元する）操作は画面にありません。控えから戻すときはサーバーでの作業になります（<code>apps/reserve/php/README.md</code>）。</p>
+<p>「今すぐバックアップを作成」で作った控えから元に戻す（復元する）操作は画面にありません。控えから戻すときはサーバーでの作業になります（<code>apps/reserve/php/README.md</code>）。</p>
 <hr />
 <h2 id="s14">14. 困ったとき（FAQ）</h2>
 <p><strong>Q. 保存できない／「保存できませんでした」と出る</strong>
@@ -856,7 +856,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p><strong>Q. 間違えてキャンセル（無断キャンセル）にしてしまった</strong>
 - 「キャンセル表示」を押し、その予約の枠を押して詳細を開き、<strong>「予約に戻す」</strong> →確認で <strong>OK</strong> を押します（<a href="#t22">7-3</a>）。入れ直す必要はありません。</p>
 <p><strong>Q. バックアップ（控え）を取りたい</strong>
-- 院長・管理者が 設定 →「バックアップ」の <strong>「今すぐ控えを作成」</strong> を押します（<a href="#t51">13章</a>）。取り込み・統合などの大きな変更の前に押しておくと安心です。院長・管理者以外のログインでは、このタブは出ません。</p>
+- 院長・管理者が 設定 →「バックアップ」の <strong>「今すぐバックアップを作成」</strong> を押します（<a href="#t51">13章</a>）。取り込み・統合などの大きな変更の前に押しておくと安心です。院長・管理者以外のログインでは、このタブは出ません。</p>
 <p><strong>Q. リマインドが届かない患者がいる</strong>
 - 予約の詳細の「リマインド」に、状態（未送信／LINE送信済／メール送信済／送信失敗）と、送らなかった・送れなかった理由が出ます（例：「未送信（送り先なし）」）（<a href="#t17">6-1</a>）。
 - 院長・管理者は、設定 →「リマインド」の <strong>リマインド送信状況の確認</strong> で、日付を選んで「確かめる」を押すと、来院ごとの送信状況・送信方法・詳細（届かない理由）を確かめられます。この画面からは送りません（<a href="#u1">13章</a>）。
@@ -967,7 +967,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <td style="text-align: center;">許可時</td>
 </tr>
 <tr>
-<td>ログイン情報・操作ログ・バックアップ（今すぐ控えを作成・設定の復元など）</td>
+<td>ログイン情報・操作ログ・バックアップ（今すぐバックアップを作成・設定の復元など）</td>
 <td style="text-align: center;">○</td>
 <td style="text-align: center;">×</td>
 <td style="text-align: center;">×</td>
@@ -1004,7 +1004,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>APIの入口</strong>：本番では <code>/reserve/api/v1</code>（例：<code>/reserve/api/v1/day?date=YYYY-MM-DD</code>）。開発では <code>npm run dev</code>（<code>scripts/dev.sh</code>）で PHP の API（<code>php -S</code>）と画面（<code>next dev</code>）をいっしょに起動し、<code>/api/v1</code> で使います。開発のデータは <code>.data/php/</code>（設定 <code>config.php</code>・データ <code>reserve.db</code>・写真などの <code>blobs/</code>・PHP のログ <code>php.log</code>）で、初回にデモデータを入れます。作り直すときはこのフォルダを消します。</li>
 <li><strong>名前とロゴ</strong>：サービス名は LANE RESERVE（レーンリザーブ）。ロゴ・アイコンは <code>public/brand/</code>（ログイン画面は <code>lane-reserve-logo.svg</code>、上のバーは英字だけの <code>lane-reserve-logo-wordmark.svg</code> で横1280px以上のときだけ表示）、ホーム画面用は <code>public/manifest.webmanifest</code>、タブの題名は <code>src/app/layout.tsx</code>（「○○｜LANE RESERVE」）。</li>
 <li><strong>操作マニュアル</strong>：設定の「操作マニュアル」のタブは <code>public/manual/index.html</code> を埋め込んで表示します（部品は <code>src/components/settings/ManualTab.tsx</code>）。このフォルダの内容を取り込み直すときは <code>scripts/update-manual.sh</code> を使います。</li>
-<li><strong>控え</strong>：「今すぐ控えを作成」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。写真などのファイルは <code>data/blobs/</code> に保存されます。サーバーでの控えと復元の手順は <code>php/README.md</code> を見てください。</li>
+<li><strong>控え</strong>：「今すぐバックアップを作成」は <code>POST /api/v1/admin/backup</code>（<code>{"confirm":"BACKUP"}</code>、院長・管理者のみ）。写真などのファイルは <code>data/blobs/</code> に保存されます。サーバーでの控えと復元の手順は <code>php/README.md</code> を見てください。</li>
 <li><strong>受付箱</strong>：<code>GET /api/v1/intake</code>・<code>POST /api/v1/intake/{申請ID}/mark</code>。申請は、LINE の受け口（line-webhook）が保存した <code>intake-records/R{受付日時（UTC）14桁}{16進の大文字8桁}.json</code> を読むだけです（場所は設定の <code>line_intake_dir</code>、開発では <code>.data/php/intake-records/</code>）。中身は <code>type: "reservation_intake"</code>・<code>requestId</code>・<code>receivedAt</code>・<code>intake</code>（<code>visitType</code>・<code>preferredDate</code>・<code>name</code>・<code>kana</code>・<code>phone</code>・<code>birthDate</code> など）・<code>message.text</code>・<code>source.userId</code>。申込者の LINE の ID は画面に出さず、リマインドの送り先選びと「＋患者に紐付け」（<code>POST /api/v1/reservations/{id}/link-line</code>）でだけ使います。</li>
 <li><strong>リマインド</strong>：設定は <code>GET/PUT /api/v1/admin/reminders</code>（「自動送信を止める日」は <code>pauseUntil</code>、「メニューの『来院前の案内』」は <code>appendNotes</code>。最初は <code>pauseUntil: "2026-10-12"</code>・<code>appendNotes: false</code>）、リマインド送信状況の確認（送らない）は <code>GET /api/v1/admin/reminders/preview?date=YYYY-MM-DD</code>（来院ごとに <code>status</code>＝sent／pending／failed・<code>method</code>・<code>at</code>・<code>line</code>・<code>email</code>・<code>why</code>）、未送信分を今すぐ送るは <code>POST /api/v1/admin/reminders/run</code>、予約1件へ今すぐ送るは <code>POST /api/v1/reservations/{id}/remind</code>（いずれも本当に送るのは run と remind だけ）。自動送信は cron（<code>php/cron/reminders.php</code>）から動き、<code>pauseUntil</code> の日（を含む）までの来院の回は飛ばします。</li>
 <li><strong>同時編集</strong>：予約・患者などは <code>version</code> を持ち、古い版での保存は「他の端末で先に更新されました」で止まります（409）。</li>
