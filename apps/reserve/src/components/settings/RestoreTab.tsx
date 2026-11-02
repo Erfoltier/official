@@ -495,7 +495,7 @@ function DayPdfCard({
   return (
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>
-        診療日の予約表 PDF（止まったときの紙の控え）
+        診療日の予約表 PDF（障害時の印刷用）
       </h3>
       <p className={styles.hint}>
         <b>水曜・祝日（と予約申請フォームの特別診療日）</b>

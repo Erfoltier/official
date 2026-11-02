@@ -103,7 +103,7 @@ export function OfflineDeviceCard({ canAllow }: { canAllow: boolean }) {
               setBusy(false);
             }}
           >
-            この端末の予約表を消してやめる
+            ダウンロードを解除（端末内の予約表を削除）
           </button>
         ) : (
           <button
