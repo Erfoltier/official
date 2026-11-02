@@ -535,6 +535,7 @@
 
 .priceGroup table {
   table-layout: fixed;
+  min-width: 640px;
   width: 100%;
   max-width: 900px;
 }
@@ -1226,4 +1227,24 @@ details.fold:not([open]) {
     break-inside: avoid;
     margin-bottom: 16px;
   }
+}
+
+/* バックアップなど：カードを同じ間隔で縦に並べる */
+.cardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cardStack > * {
+  margin: 0 !important;
+}
+/* 列の幅を colgroup のとおりにそろえる */
+.evenTable {
+  table-layout: fixed;
+  min-width: 640px;
+  width: 100%;
+}
+.evenTable td,
+.evenTable th {
+  overflow-wrap: anywhere;
 }
