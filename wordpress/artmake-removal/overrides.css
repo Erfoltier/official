@@ -1,0 +1,30 @@
+/* ===== 筆記体（タトゥーのレタリング風）：装飾の英数字のみ。料金などの数字は読みやすい欧文セリフのまま ===== */
+.tt-guide { --script: "Pinyon Script", "Cormorant Garamond", serif; }
+.tt-guide .tt-marquee span {
+  font-family: var(--script); font-weight: 400; font-size: 46px; letter-spacing: 0; padding: 0 30px;
+  color: rgba(253, 185, 217, .62); -webkit-text-stroke: 0; text-shadow: 0 0 16px rgba(251, 109, 197, .35);
+}
+.tt-guide .tt-marquee span:nth-child(6n+1), .tt-guide .tt-marquee span:nth-child(6n+2), .tt-guide .tt-marquee span:nth-child(6n) {
+  color: rgba(253, 185, 217, .62); -webkit-text-stroke: 0; text-shadow: 0 0 16px rgba(251, 109, 197, .35);
+}
+.tt-guide .tt-h-en { font-family: var(--script); font-size: 30px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.tt-guide .tt-wave-nm { font-family: var(--script); font-weight: 400; font-size: 64px; letter-spacing: 0; }
+.tt-guide .tt-wave-nm span { font-size: 28px; }
+.tt-guide .tt-fact-value { font-family: var(--script); font-weight: 400; font-size: 64px; letter-spacing: 0; }
+.tt-guide .tt-steps li::before { font-family: var(--script); font-weight: 400; font-size: 44px; color: var(--cyan); -webkit-text-stroke: 0; text-shadow: 0 0 14px rgba(251, 109, 197, .45); }
+.tt-guide .tt-device-cap { font-family: var(--script); font-size: 30px; font-weight: 400; letter-spacing: 0; }
+.tt-guide .tt-device-cap span { font-family: var(--en); font-size: 13px; letter-spacing: .06em; }
+.tt-guide { font-variant-numeric: lining-nums; }
+.tt-guide .tt-point span { font-family: var(--jp); }
+.tt-guide .tt-device-cap { font-family: var(--en); font-style: italic; font-weight: 600; font-size: 20px; letter-spacing: .04em; }
+.tt-guide .tt-device-cap span { font-style: normal; }
+.tt-guide .tt-fact:nth-child(2) .tt-fact-value { font-family: var(--jp); font-weight: 700; font-size: 40px; }
+/* 明るい背景に合わせて補助テキストのコントラストを確保 */
+.tt-guide { --tx2: #FBEFF5; --tx3: #F1D6E3; }
+.tt-guide .tt-point span, .tt-guide .tt-note, .tt-guide .tt-plan-size, .tt-guide .tt-wave-name, .tt-guide .tt-fact-label { color: #F1D6E3; }
+.tt-guide .tt-day { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .45); }
+.tt-guide .tt-day strong { color: #FFE3EC; text-shadow: 0 0 10px rgba(255, 77, 106, .6); }
+.tt-guide .tt-day span { color: #FBEFF5; }
+.tt-guide .tt-measure-text p:nth-child(2) { color: #FBEFF5; }
+.tt-guide .tt-brows { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .10); font-size: 13.5px; color: #fff; }
+.tt-guide .tt-measure-text strong, .tt-guide .tt-measure-note strong, .tt-guide .tt-brows strong { color: #fff; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .55); text-underline-offset: 4px; }
