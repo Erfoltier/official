@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { compactStorage, createBackup, downloadLocalBackup, fetchLocalBackup, localPhotosUrl, type LocalBackupStatus, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
+import { compactStorage, createBackup, downloadLocalBackup, fetchDayPdf, saveDayPdf, testDayPdf, type DayPdfSettings, fetchLocalBackup, localPhotosUrl, type LocalBackupStatus, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 function stamp(iso: string): string {
@@ -150,6 +150,7 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
     <section>
       <BackupCard notify={notify} fail={fail} />
       <LocalBackupCard notify={notify} fail={fail} />
+      <DayPdfCard notify={notify} fail={fail} />
       <h3 className={styles.cardTitle}>設定の復元</h3>
       <p className={styles.lead}>
         誤って設定を変更した場合に、以前の状態へ戻せます。設定は変更のたびに自動で記録されます。
@@ -292,6 +293,90 @@ function LocalBackupCard({ notify, fail }: { notify: (t: string) => void; fail: 
         <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(false)} onClick={() => window.setTimeout(load, 5000)}>
           全部を保存
         </a>
+      </div>
+    </div>
+  );
+}
+
+/** 診療日（水曜・祝日・特別診療日）の朝、その日の予約表をパスワード付き PDF でメールに送る（止まったときの紙の控え） */
+function DayPdfCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
+  const [st, setSt] = useState<DayPdfSettings | null>(null);
+  const [to, setTo] = useState("");
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    fetchDayPdf()
+      .then((s) => {
+        setSt(s);
+        setTo(s.to);
+      })
+      .catch(fail);
+  }, [fail]);
+  const save = async (body: { enabled?: boolean; to?: string; password?: string }, msg: string) => {
+    setBusy(true);
+    try {
+      const s = await saveDayPdf(body);
+      setSt(s);
+      setPw("");
+      notify(msg);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
+      <h3 className={styles.cardTitle}>診療日の予約表 PDF（止まったときの紙の控え）</h3>
+      <p className={styles.hint}>
+        <b>水曜・祝日（と予約申請フォームの特別診療日）</b>の朝7時ごろ、その日の予約表を<b>パスワード付きの PDF</b> にして、下のアドレスへメールで送ります（リマインドと同じ院のメールサーバーから）。サーバーや院のネットが止まったら、印刷して使ってください。パスワードは PDF を開くときに要ります。
+      </p>
+      {st && !st.qpdf && <p className={styles.hint} data-invalid>サーバーに PDF のパスワードを掛ける部品（qpdf）がありません。</p>}
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>送り先のメールアドレス（院長）</span>
+          <input className={styles.input} type="email" value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <label className={styles.field}>
+          <span>PDF のパスワード（8文字以上。{st?.passwordSet ? "設定済み・変えるときだけ入力" : "未設定"}）</span>
+          <input className={styles.input} type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
+        </label>
+      </div>
+      <p className={styles.hint}>
+        今の状態：{st ? (st.enabled ? "送る" : "送らない") : "…"}
+        {st?.lastSent && `　最後に送った日：${st.lastSent.date}（${st.lastSent.count}件）`}
+      </p>
+      <div className={styles.actions} style={{ marginTop: 0 }}>
+        <button type="button" className={styles.btn} disabled={busy} onClick={() => save({ to, ...(pw && { password: pw }) }, "保存しました")}>
+          保存
+        </button>
+        <button
+          type="button"
+          className={styles.btn}
+          disabled={busy || !st?.passwordSet || !to}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const r = await testDayPdf();
+              if (r.sent) notify(`今日の予約表（${r.count}件）を送りました。メールを確かめてください`);
+              else fail(new Error(`送れませんでした（${r.reason ?? "不明"}）`));
+            } catch (e) {
+              fail(e);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          今日の分をテスト送信
+        </button>
+        <button
+          type="button"
+          className={styles.primary}
+          disabled={busy || !st}
+          onClick={() => save({ enabled: !st?.enabled, to, ...(pw && { password: pw }) }, st?.enabled ? "送るのをやめました" : "水曜・祝日の朝に送ります")}
+        >
+          {st?.enabled ? "送るのをやめる" : "送るようにする"}
+        </button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { DeviceLink, DeviceLinksStatus, DeviceOptions, PhotoInboxItem, AuditEntry, ChartEntry, Questionnaire, ConsentRecord, ConsentTemplate, ConsentTemplateWithHtml, ConsentView, DayBundle, Estimate, EstimateLine, EstimateView, Lane, PriceItem, PriceList, MergePreview, Menu, Patient, PatientDetail, PatientFile, Product, Reservation, Stage, StaffPublic, StaffRole } from "@/lib/domain/types";
 import { METHOD_OVERRIDE, apiUrl, withBase } from "@/lib/paths";
 import { applyTheme } from "@/lib/theme";
+import { loadDay, saveDay, type OfflineBundle } from "@/lib/offline";
 
 export class ApiError extends Error {
   constructor(
@@ -60,6 +61,29 @@ export interface LocalBackupStatus {
   dataDays: number | null;
   photosAt: string | null;
   photos: { count: number; bytes: number; newCount: number; newBytes: number };
+}
+
+export interface DayPdfSettings {
+  enabled: boolean;
+  to: string;
+  weekdays: number[];
+  holidays: boolean;
+  passwordSet: boolean;
+  qpdf: boolean;
+  lastSent: { date: string; at: string; count: number } | null;
+}
+
+/** 診療日の予約表 PDF（院長・管理者） */
+export function fetchDayPdf(): Promise<DayPdfSettings> {
+  return call(`/api/v1/admin/day-pdf`);
+}
+
+export function saveDayPdf(body: { enabled?: boolean; to?: string; password?: string }): Promise<DayPdfSettings> {
+  return call(`/api/v1/admin/day-pdf`, { method: "PUT", body: JSON.stringify(body) });
+}
+
+export function testDayPdf(): Promise<{ sent: boolean; reason: string | null; count?: number }> {
+  return call(`/api/v1/admin/day-pdf/test`, { method: "POST", body: "{}" });
 }
 
 /** 院のパソコンに保存した控えの状況（院長・管理者） */
@@ -194,11 +218,28 @@ export function relinkQuestionnaires(): Promise<{ checked: number; linked: numbe
   return call(`/api/v1/questionnaires/relink`, { method: "POST", body: "{}" });
 }
 
-export function fetchDay(date: string, signal?: AbortSignal): Promise<DayBundle> {
-  return fetchDayRaw(date, signal).then((d) => {
+/**
+ * 1日の予約表。つながらないとき（ネット・サーバーの停止）は、許可された端末に置いた控えを返す（offlineSavedAt 付き。見るだけ）
+ */
+export async function fetchDay(date: string, signal?: AbortSignal): Promise<OfflineBundle> {
+  try {
+    const d = await fetchDayRaw(date, signal);
     applyTheme(d.clinic.theme);
+    void saveDay(d).catch(() => {});
     return d;
-  });
+  } catch (err) {
+    const down = err instanceof TypeError || (err instanceof ApiError && (err.status >= 500 || err.status === 0));
+    if (down) {
+      const cached = await loadDay(date).catch(() => null);
+      if (cached) return cached;
+    }
+    throw err;
+  }
+}
+
+/** 控えを使わず、サーバーから読む（端末に置く控えの読み直し用） */
+export function fetchDayOnline(date: string): Promise<DayBundle> {
+  return fetchDayRaw(date);
 }
 
 function fetchDayRaw(date: string, signal?: AbortSignal): Promise<DayBundle> {

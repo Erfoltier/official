@@ -3018,3 +3018,15 @@ button.stagePill[data-clickable]:disabled {
   color: var(--danger, #c0392b);
   border-color: color-mix(in srgb, var(--danger, #c0392b) 45%, transparent);
 }
+
+/* サーバーにつながらず、端末の控えを見るだけで出しているとき */
+.offlineBar {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 8px 14px;
+  background: #fff4d6;
+  border-bottom: 2px solid #d97706;
+  color: #7a3e00;
+  font-size: 13px;
+  line-height: 1.6;
+}

@@ -26,7 +26,7 @@ try {
         $path = array_slice($path, 3);
         $head = $path[0] ?? '';
         $two = $head . '/' . ($path[1] ?? '');
-        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage', 'admin/local-backup'], true)) {
+        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage', 'admin/local-backup', 'admin/day-pdf'], true)) {
             Http::json(['error' => 'forbidden', 'message' => 'この操作は自動予約からは使えません'], 403);
         }
         // 変えられるのは予約の入力・変更・取り消しと、新しい患者の登録だけ（院長の指示 2026-11-02。設定・メニュー・患者の削除などは不可）。見るだけ（GET）は従来どおり
@@ -726,6 +726,22 @@ try {
     }
 
     // ---- 院のパソコンに保存する控え（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま。保存したことは操作ログに残す ----
+    // ---- 診療日の予約表 PDF（院長・管理者） ----
+    if ($route === 'GET admin/day-pdf') {
+        $me(STAFF_ADMIN);
+        Http::json(DayPdfSender::view());
+    }
+    if ($route === 'PUT admin/day-pdf') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        Http::json(DayPdfSender::update(is_array($in) ? $in : [], $actor($s)));
+    }
+    if ($route === 'POST admin/day-pdf/test') {
+        $s = $me(STAFF_ADMIN);
+        $r = DayPdfSender::send((new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d'), true);
+        Auth::audit($actor($s), '予約表 PDF のテスト送信（' . ($r['sent'] ? '送信' : '失敗') . '）');
+        Http::json($r);
+    }
     if ($route === 'GET admin/local-backup') {
         $me(STAFF_ADMIN);
         $photosAt = (int) (Db::i()->meta('localBackupPhotosAt') ?? 0);

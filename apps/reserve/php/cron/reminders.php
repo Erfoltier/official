@@ -21,4 +21,10 @@ try {
 } catch (Throwable $e) {
     $air = ['ok' => false];
 }
-echo json_encode(['air' => $air === null ? null : array_intersect_key($air, array_flip(['ok', 'date', 'count', 'created', 'updated', 'cancelled'])), 'reminders' => Reminder::tick(true)], JSON_UNESCAPED_UNICODE), "\n";
+// 診療日（水曜・祝日）の朝、その日の予約表をパスワード付き PDF で院長に送る（止まったときの紙の控え）
+try {
+    $pdf = DayPdfSender::tick();
+} catch (Throwable $e) {
+    $pdf = ['sent' => false, 'reason' => get_class($e)];
+}
+echo json_encode(['dayPdf' => $pdf, 'air' => $air === null ? null : array_intersect_key($air, array_flip(['ok', 'date', 'count', 'created', 'updated', 'cancelled'])), 'reminders' => Reminder::tick(true)], JSON_UNESCAPED_UNICODE), "\n";

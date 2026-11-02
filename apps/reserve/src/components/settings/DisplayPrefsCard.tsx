@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePref } from "@/components/calendar/usePref";
+import { disableOffline, enableOffline, offlineEnabled } from "@/lib/offline";
+import { withBase } from "@/lib/paths";
 import { BLOCK_INFO, RECEPTION_START, UI_SIZES, applyUiSize, isBlockInfo, isUiSize, type BlockInfo, type UiSize } from "@/lib/displayPrefs";
 import styles from "./settings.module.css";
 
@@ -56,6 +59,63 @@ export function DisplayPrefsCard() {
           <small>{r.hint}</small>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * この端末に予約表を置くか（サーバー・ネットが止まったとき、見るだけで出すため）。許可は院長・管理者だけ、外すのは誰でも。
+ * 院内のパソコン・タブレットだけにする（患者名が端末に残るため。中身は暗号化）
+ */
+export function OfflineDeviceCard({ canAllow }: { canAllow: boolean }) {
+  const [on, setOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOn(offlineEnabled());
+  }, []);
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>停止に備えて、この端末に予約表を置く</h3>
+      <p className={styles.hint}>
+        サーバーや院のネットが止まったときも、この端末で<b>今日〜7日先の予約表を見るだけで</b>開けるようにします。予約表を開いているあいだ、5分ごとに自動で読み直して端末に置きます（暗号化して保存）。
+        <b>院内のパソコン・タブレットだけ</b>で使ってください（スマホや院外の端末では使わない）。
+      </p>
+      <p className={styles.hint}>この端末：{on ? "置いています" : "置いていません"}</p>
+      <div className={styles.actions} style={{ marginTop: 0 }}>
+        {on ? (
+          <button
+            type="button"
+            className={styles.btn}
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await disableOffline();
+              setOn(false);
+              setBusy(false);
+            }}
+          >
+            この端末の予約表を消してやめる
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.primary}
+            disabled={busy || !canAllow}
+            title={canAllow ? undefined : "院長・管理者が許可します"}
+            onClick={async () => {
+              if (!window.confirm("この端末に予約表（患者名を含む）を置きます。院内の端末ですか？")) return;
+              setBusy(true);
+              await enableOffline(withBase(""));
+              setOn(true);
+              setBusy(false);
+            }}
+          >
+            この端末に置く
+          </button>
+        )}
+      </div>
+      {!canAllow && !on && <p className={styles.hint}>許可できるのは院長・管理者です。</p>}
     </div>
   );
 }

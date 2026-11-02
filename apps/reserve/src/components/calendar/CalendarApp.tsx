@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import type { DayBundle, Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
+import type { Patient, Reservation, ReservationStatus, StaffPublic } from "@/lib/domain/types";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
+import { offlineEnabled, refreshAhead, registerOfflineWorker, type OfflineBundle } from "@/lib/offline";
 import { addDays, clinicDateOf, formatDateJa, formatHm, minutesOfDay, nowInClinic, toIso } from "@/lib/domain/time";
 import { DEFAULT_PX_PER_MIN, MAX_PX_PER_MIN, MIN_PX_PER_MIN, clampScale } from "@/lib/calendar/scale";
-import { ApiError, fetchDay, fetchIntake, fetchMe, logout, patchReservation, putDayNote, putReceptionNote, updatePatient } from "./api";
+import { ApiError, fetchDay, fetchDayOnline, fetchIntake, fetchMe, logout, patchReservation, putDayNote, putReceptionNote, updatePatient } from "./api";
 import { DayGrid, type DayGridHandle, type MoveTarget } from "./DayGrid";
 import { DetailPanel } from "./DetailPanel";
 import { CreateDialog } from "./CreateDialog";
@@ -28,7 +29,7 @@ const ALL_LANES = "all";
 
 export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [date, setDate] = useState(initialDate);
-  const [bundle, setBundle] = useState<DayBundle | null>(null);
+  const [bundle, setBundle] = useState<OfflineBundle | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; kind: "info" | "error" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -135,6 +136,16 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     load(date, ac.signal);
     return () => ac.abort();
   }, [date, load]);
+
+  // 許可された院内の端末：今日〜7日先の予約表を数分ごとに端末へ置き、画面の部品も持たせる（サーバー・ネットが止まったとき見るだけで出すため）
+  useEffect(() => {
+    if (!offlineEnabled()) return;
+    void registerOfflineWorker(withBase(""));
+    const run = () => void refreshAhead(nowInClinic().date, fetchDayOnline);
+    run();
+    const id = window.setInterval(run, 5 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // 他の端末での変更を取り込む（ドラッグ中・保存中は止める）
   useEffect(() => {
@@ -521,6 +532,11 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             ⚙<span className={styles.cap}>設定</span>
           </Link>
         </div>
+        {bundle?.offlineSavedAt && (
+          <div className={styles.offlineBar} role="alert">
+            サーバーにつながりません。この端末に保存した {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）を表示しています。<b>見るだけで、変更はできません。</b>新しい予約・変更は紙に書き、つながってから入れてください。
+          </div>
+        )}
       </header>
 
       <main className={styles.main}>

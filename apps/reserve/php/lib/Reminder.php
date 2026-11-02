@@ -621,7 +621,13 @@ final class Reminder
         return max(0, (int) ($q['value'] ?? 0) - (int) ($u['totalUsage'] ?? 0));
     }
 
-    private static function sendMail(string $to, string $subject, string $text): array
+    /** 添付つきで1通送る（予約表の PDF など。添付はパスワード付きにしてから渡す） */
+    public static function sendAttachment(string $to, string $subject, string $text, string $filename, string $bytes, string $type): array
+    {
+        return self::sendMail($to, $subject, $text, ['name' => $filename, 'bytes' => $bytes, 'type' => $type]);
+    }
+
+    private static function sendMail(string $to, string $subject, string $text, ?array $attach = null): array
     {
         $s = self::settings();
         $from = $s['fromEmail'];
@@ -635,7 +641,10 @@ final class Reminder
             return $code === 200 ? [true, null] : [false, 'mail_failed'];
         }
         if ($s['smtpHost'] !== '') {
-            return self::smtpSend($s, $from, $to, $headers, $subject, $text);
+            return self::smtpSend($s, $from, $to, $headers, $subject, $text, $attach);
+        }
+        if ($attach !== null) {
+            return [false, 'smtp_required'];
         }
         mb_language('uni');
         $ok = @mb_send_mail($to, $subject, $text, implode("\r\n", $headers), '-f' . $from);
@@ -643,7 +652,7 @@ final class Reminder
     }
 
     /** SMTP で1通送る（465 は最初から TLS、587 は STARTTLS。証明書は必ず確かめる）。患者情報はログに残さない */
-    private static function smtpSend(array $s, string $from, string $to, array $headers, string $subject, string $text): array
+    private static function smtpSend(array $s, string $from, string $to, array $headers, string $subject, string $text, ?array $attach = null): array
     {
         $host = (string) $s['smtpHost'];
         $port = (int) $s['smtpPort'];
@@ -704,10 +713,30 @@ final class Reminder
                 'Date: ' . date(DATE_RFC2822),
                 'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . $domain . '>',
                 'MIME-Version: 1.0',
-                'Content-Type: text/plain; charset=UTF-8',
-                'Content-Transfer-Encoding: base64',
-                '',
-                rtrim(chunk_split(base64_encode(str_replace("\n", "\r\n", $text)), 76, "\r\n")),
+                ...($attach === null ? [
+                    'Content-Type: text/plain; charset=UTF-8',
+                    'Content-Transfer-Encoding: base64',
+                    '',
+                    rtrim(chunk_split(base64_encode(str_replace("\n", "\r\n", $text)), 76, "\r\n")),
+                ] : (function () use ($attach, $text) {
+                    $b = 'b' . bin2hex(random_bytes(12));
+                    return [
+                        "Content-Type: multipart/mixed; boundary=\"{$b}\"",
+                        '',
+                        "--{$b}",
+                        'Content-Type: text/plain; charset=UTF-8',
+                        'Content-Transfer-Encoding: base64',
+                        '',
+                        rtrim(chunk_split(base64_encode(str_replace("\n", "\r\n", $text)), 76, "\r\n")),
+                        "--{$b}",
+                        "Content-Type: {$attach['type']}; name=\"{$attach['name']}\"",
+                        'Content-Transfer-Encoding: base64',
+                        "Content-Disposition: attachment; filename=\"{$attach['name']}\"",
+                        '',
+                        rtrim(chunk_split(base64_encode($attach['bytes']), 76, "\r\n")),
+                        "--{$b}--",
+                    ];
+                })()),
             ]);
             fwrite($fp, $msg . "\r\n.\r\n");
             if ($read()[0] !== 250) {
