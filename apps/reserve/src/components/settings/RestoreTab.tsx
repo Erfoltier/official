@@ -334,7 +334,7 @@ export function RestoreTab({
   );
 }
 
-/** 院のパソコンに控えを保存する（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま */
+/** ローカルPCにバックアップを保存する（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま */
 function LocalBackupCard({
   notify,
   fail,
@@ -359,7 +359,7 @@ function LocalBackupCard({
   const ok = pass.length >= 10 && pass === pass2;
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>院のパソコンに控えを保存</h3>
+      <h3 className={styles.cardTitle}>ローカルPCにバックアップを保存</h3>
       <p className={styles.hint}>
         サーバーの控え（毎日・東京と大阪）とは別に、院内のパソコンにも控えを残せます。週に1回ほど、院長のパソコンなど決まった1台に保存し、外付けの記憶装置にも写しておくと安心です。
       </p>
@@ -687,7 +687,7 @@ function BackupStatusCard({
       <h4 className={styles.subTitle}>手動で作ったバックアップの履歴</h4>
       {st && st.manual.length === 0 ? (
         <p className={styles.hint}>
-          まだありません（下の「今すぐバックアップを作成」「院のパソコンに控えを保存」で作ると、ここに出ます）
+          まだありません（下の「今すぐバックアップを作成」「ローカルPCにバックアップを保存」で作ると、ここに出ます）
         </p>
       ) : (
         <div className={styles.tableWrap}>
@@ -710,7 +710,7 @@ function BackupStatusCard({
               {st?.manual.slice(0, 10).map((m) => (
                 <tr key={m.at + m.detail}>
                   <td>{stamp(m.at)}</td>
-                  <td>{m.kind === "server" ? "サーバー内" : "院のパソコン"}</td>
+                  <td>{m.kind === "server" ? "サーバー内" : "ローカルPC"}</td>
                   <td>{m.detail}</td>
                   <td>{m.by}</td>
                 </tr>
