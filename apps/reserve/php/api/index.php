@@ -29,6 +29,16 @@ try {
         if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage'], true)) {
             Http::json(['error' => 'forbidden', 'message' => 'この操作は自動予約からは使えません'], 403);
         }
+        // 変えられるのは予約の入力・変更・取り消しと、新しい患者の登録だけ（院長の指示 2026-11-02。設定・メニュー・患者の削除などは不可）。見るだけ（GET）は従来どおり
+        $m = Http::method();
+        if (!in_array($m, ['GET', 'HEAD'], true)) {
+            $c = count($path);
+            $okWrite = ($head === 'reservations' && (($m === 'POST' && $c === 1) || ($m === 'PATCH' && $c === 2)))
+                || ($head === 'patients' && $m === 'POST' && $c === 1);
+            if (!$okWrite) {
+                Http::json(['error' => 'forbidden', 'message' => '自動予約からは、予約の入力・変更・取り消しと新しい患者の登録だけできます'], 403);
+            }
+        }
         Auth::actAsBot($link);
         $bot = true;
     }
@@ -261,8 +271,9 @@ try {
         if ($method === 'POST' && $n === 3 && $sub === 'patients') {
             Http::json(Store::bookingEnsurePatient(Schema::bookingPatient(Http::readJson()), $by));
         }
+        // メニューの追加は設定の変更なので、自動予約からはできない（院長の指示 2026-11-02）
         if ($method === 'POST' && $n === 3 && $sub === 'menus') {
-            Http::json(Store::bookingCreateMenu(Schema::menu(Http::readJson()), $by), 201);
+            Http::json(['error' => 'forbidden', 'message' => '自動予約からは、メニューを追加できません。設定 → メニューで追加してください'], 403);
         }
         if ($sub === 'reservations') {
             if ($method === 'POST' && $n === 3) {

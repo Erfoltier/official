@@ -95,13 +95,12 @@ describe("自動予約プログラムの連携", () => {
     // DELETE でも取り消せる
     expect((await call("DELETE", `/reservations/${made.data.id}`, { version: 4 })).data.status).toBe("cancelled");
 
-    // 付けたいメニューがなければ作れる。作ったメニューを予約に足す
-    const menu2 = await call("POST", "/menus", { name: "自動予約テスト施術", duration: { kind: "fixed", minutes: 30 } });
-    expect(menu2.status).toBe(201);
-    expect((await call("GET", "/options")).data.menus.map((m: { id: string }) => m.id)).toContain(menu2.data.id);
-    const two = await call("POST", "/reservations", { patientId: p1.data.patient.id, laneId: lane, menuIds: [menu, menu2.data.id], startAt: tomorrow("15:00").at, endAt: tomorrow("15:30").at });
+    // メニューの追加は設定の変更なので、自動予約からはできない（院長の指示 2026-11-02）
+    expect((await call("POST", "/menus", { name: "自動予約テスト施術", duration: { kind: "fixed", minutes: 30 } })).status).toBe(403);
+    const menu2 = await c.post("/menus", { name: "自動予約テスト施術", duration: { kind: "fixed", minutes: 30 }, laneIds: [lane] });
+    const two = await call("POST", "/reservations", { patientId: p1.data.patient.id, laneId: lane, menuIds: [menu, menu2.id], startAt: tomorrow("15:00").at, endAt: tomorrow("15:30").at });
     expect(two.status).toBe(201);
-    expect(two.data.menuIds).toEqual([menu, menu2.data.id]);
+    expect(two.data.menuIds).toEqual([menu, menu2.id]);
 
     // 変更履歴には自動予約がしたことが残る
     const audit = await c.get("/audit");
@@ -123,7 +122,7 @@ describe("自動予約プログラムの連携", () => {
 });
 
 describe("自動予約プログラムから、スタッフの画面と同じ API を使う", () => {
-  it("患者・カルテ・設定を見て変えられる。スタッフ・鍵・ログインの操作はできない", async () => {
+  it("患者・カルテ・設定は見られるが、変えられるのは予約と新しい患者の登録だけ。スタッフ・鍵・ログインの操作はできない", async () => {
     const c = await h.srv.as("staff-admin");
     const call = await bot(c);
     const api = (method: string, p: string, body?: unknown) => call(method, `/api${p}`, body);
@@ -131,9 +130,18 @@ describe("自動予約プログラムから、スタッフの画面と同じ API
     const got = await api("GET", `/patients/${pt.id}`);
     expect(got.status).toBe(200);
     expect(JSON.stringify(got.data)).toContain("カルテ 花子");
-    const edited = await api("PATCH", `/patients/${pt.id}`, { version: pt.version, memo: "自動予約から" });
-    expect(edited.status).toBe(200);
-    expect((await c.get(`/patients/${pt.id}`)).patient?.memo ?? edited.data.memo).toBe("自動予約から");
+    // 患者・設定・メニューの変更はできない（院長の指示 2026-11-02：予約の入力・取り消しだけ）
+    expect((await api("PATCH", `/patients/${pt.id}`, { version: pt.version, memo: "自動予約から" })).status).toBe(403);
+    expect((await api("PATCH", "/clinic", { name: "変更" })).status).toBe(403);
+    expect((await api("POST", "/menus", { name: "x", duration: { kind: "fixed", minutes: 30 } })).status).toBe(403);
+    // 予約は入れて、変えて、取り消せる
+    const opt = (await call("GET", "/options")).data;
+    const tmr = new Date(Date.now() + 9 * 3600_000 + 86_400_000).toISOString().slice(0, 10);
+    const r = await api("POST", "/reservations", { patientId: pt.id, laneId: opt.lanes[0].id, menuIds: [opt.menus[0].id], startAt: `${tmr}T16:00:00+09:00`, endAt: `${tmr}T16:30:00+09:00` });
+    expect(r.status).toBe(201);
+    const cx = await api("PATCH", `/reservations/${r.data.id}`, { version: r.data.version, status: "cancelled" });
+    expect(cx.status).toBe(200);
+    expect((await api("POST", "/patients", { name: "新規 次郎", kana: "シンキ ジロウ" })).status).toBe(201);
     expect((await api("GET", "/settings")).status).toBe(200);
     // 閲覧の記録は「自動予約（キーの名前）」で残る
     const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
