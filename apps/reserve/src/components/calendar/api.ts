@@ -117,7 +117,7 @@ export async function downloadLocalBackup(passphrase: string): Promise<void> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.error ?? "error", body.message ?? "控えを作れませんでした");
+    throw new ApiError(res.status, body.error ?? "error", body.message ?? "バックアップを作成できませんでした");
   }
   const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "lane-reserve.lrbk";
   const url = URL.createObjectURL(await res.blob());

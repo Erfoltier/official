@@ -15,11 +15,11 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
 
   /** 控えを取ってから、結びついている問診票を患者の空いている欄へ写し直す */
   const refill = async () => {
-    if (!window.confirm("紐付け済みの問診票を、患者の基本情報の空欄へ反映します。先にデータの控えを作成します。よろしいですか？")) return;
+    if (!window.confirm("紐付け済みの問診票を、患者の基本情報の空欄へ反映します。先にデータのバックアップを作成します。よろしいですか？")) return;
     setRefilling(true);
     try {
       const b = await createBackup();
-      if (b.integrity !== "ok") throw new Error("控えの検査で問題が見つかったため、反映を中止しました");
+      if (b.integrity !== "ok") throw new Error("バックアップの検査で問題が見つかったため、反映を中止しました");
       const r = await refillQuestionnaires();
       notify(`反映しました（問診票${r.questionnaires}件を確認、患者${r.patients}名を更新）`);
     } catch (err) {
@@ -45,11 +45,11 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
 
   /** 控えを取ってから、未確認の問診票を今の患者の情報で照合し直す（登録より前に届いた初診の方の分など） */
   const relink = async () => {
-    if (!window.confirm("未確認の問診票を、今の患者の情報（氏名・フリガナ・生年月日・電話）で照合し直して結びつけます。先にデータの控えを作成します。よろしいですか？")) return;
+    if (!window.confirm("未確認の問診票を、今の患者の情報（氏名・フリガナ・生年月日・電話）で照合し直して結びつけます。先にデータのバックアップを作成します。よろしいですか？")) return;
     setRefilling(true);
     try {
       const b = await createBackup();
-      if (b.integrity !== "ok") throw new Error("控えの検査で問題が見つかったため、照合を中止しました");
+      if (b.integrity !== "ok") throw new Error("バックアップの検査で問題が見つかったため、照合を中止しました");
       const r = await relinkQuestionnaires();
       notify(`照合しました（未確認${r.checked}件のうち${r.linked}件を患者${r.patients}名に結びつけました）`);
       await load();

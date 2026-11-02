@@ -32,7 +32,7 @@ describe("パソコンに保存する控え", () => {
     expect(key).toBe(await h.srv.php("return config()['encryption_key'];"));
     // 保存した日時が残り、操作ログにも残る
     expect((await c.get("/admin/local-backup")).dataAt).toBeTruthy();
-    expect(JSON.stringify(await c.get("/audit"))).toContain("パソコンに保存");
+    expect(JSON.stringify(await c.get("/audit"))).toContain("ローカルPCに保存");
     // 手動で作ったバックアップの履歴に出る（サーバー内の「今すぐ作成」も）
     await c.post("/admin/backup", { confirm: "BACKUP" });
     const st = await c.get("/admin/backups");

@@ -34,7 +34,7 @@ final class LocalBackup
     {
         $pass = is_string($pass) ? $pass : '';
         if (mb_strlen($pass) < 10 || mb_strlen($pass) > 200) {
-            throw new StoreError('invalid', '合言葉は10文字以上にしてください（戻すときに必要です。紙などに控えて、院内の安全な場所に保管してください）');
+            throw new StoreError('invalid', '合言葉は10文字以上にしてください（復元時に必要です。紙などに記録し、院内の安全な場所に保管してください）');
         }
         return $pass;
     }
@@ -44,7 +44,7 @@ final class LocalBackup
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:')) {
-            throw new StoreError('invalid', 'この保存方式ではパソコンへの控えに対応していません（SQLite のみ）');
+            throw new StoreError('invalid', 'この保存方式ではローカルPCへのバックアップに対応していません（SQLite のみ）');
         }
         $tmp = tempnam(sys_get_temp_dir(), 'lrbk');
         @unlink($tmp);
@@ -94,11 +94,11 @@ final class LocalBackup
     {
         $fh = fopen($file, 'rb');
         if (!$fh || fread($fh, strlen(self::MAGIC)) !== self::MAGIC) {
-            throw new RuntimeException('LANE RESERVE の控えのファイルではありません');
+            throw new RuntimeException('LANE RESERVE のバックアップファイルではありません');
         }
         $head = json_decode((string) fgets($fh), true);
         if (!is_array($head) || ($head['kind'] ?? '') !== 'data') {
-            throw new RuntimeException('控えの見出しが読めません');
+            throw new RuntimeException('バックアップの見出しを読み取れません');
         }
         $key = self::derive($pass, base64_decode($head['salt']));
         $encKey = sodium_crypto_secretbox_open(base64_decode($head['wrappedKey']), base64_decode($head['wrapNonce']), $key);
@@ -112,11 +112,11 @@ final class LocalBackup
         while (!$done) {
             $c = (string) fread($fh, (int) $head['chunk'] + $abytes);
             if ($c === '') {
-                throw new RuntimeException('控えのファイルが途中で切れています');
+                throw new RuntimeException('バックアップファイルが途中で切れています');
             }
             $r = sodium_crypto_secretstream_xchacha20poly1305_pull($state, $c);
             if ($r === false) {
-                throw new RuntimeException('控えのファイルが壊れています');
+                throw new RuntimeException('バックアップファイルが破損しています');
             }
             [$plain, $tag] = $r;
             fwrite($out, $plain);

@@ -115,7 +115,7 @@ function StorageCard({
       <h3 className={styles.cardTitle}>写真などの保存場所</h3>
       <p className={styles.hint}>
         写真・PDF
-        などはデータベースの外（サーバー内の別の場所）に暗号化して保存し、控えを軽くしています。上の「データの控え」には写真などは含まれません（写真は削除しない限り残ります）。
+        などはデータベースの外（サーバー内の別の場所）に暗号化して保存し、バックアップの容量を抑えています。上の「バックアップを今すぐ作成」のバックアップには写真などは含まれません（写真は削除しない限り保持されます）。
       </p>
       <p className={styles.hint}>
         データベース外：{st.files}件（{mb(st.fileBytes)}）／ データベース内：
@@ -171,7 +171,7 @@ function BackupCard({
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>バックアップを今すぐ作成</h3>
       <p className={styles.hint}>
-        予約・患者・記録・設定をまとめた控えを、サーバー内に作成します。取り込み・統合・一括修正などの大きな変更の前に作成してください。新しい版の反映の前にも自動で同じ控えを作ります（あわせて新しい40件を残します）。控えは外部に送信しません。
+        予約・患者・記録・設定を一括したバックアップを、サーバー内に作成します。取り込み・統合・一括修正などの大きな変更の前に作成してください。システム更新の前にも自動で同じバックアップを作成します（合わせて最新40件を保持）。外部には送信しません。
       </p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
         <button
@@ -181,7 +181,7 @@ function BackupCard({
           onClick={async () => {
             if (
               !window.confirm(
-                "現在のデータの控えを作成します。少し時間がかかることがあります。よろしいですか？",
+                "現在のデータのバックアップを作成します。少し時間がかかることがあります。よろしいですか？",
               )
             )
               return;
@@ -191,7 +191,7 @@ function BackupCard({
               setLast({ ...r, at: new Date().toISOString() });
               onDone();
               notify(
-                `控えを作成しました（${(r.bytes / 1024 / 1024).toFixed(1)}MB・整合性チェック ${r.integrity}）`,
+                `バックアップを作成しました（${(r.bytes / 1024 / 1024).toFixed(1)}MB・整合性チェック ${r.integrity}）`,
               );
             } catch (e) {
               fail(e);
@@ -361,7 +361,7 @@ function LocalBackupCard({
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>ローカルPCにバックアップを保存</h3>
       <p className={styles.hint}>
-        サーバーの控え（毎日・東京と大阪）とは別に、院内のパソコンにも控えを残せます。週に1回ほど、院長のパソコンなど決まった1台に保存し、外付けの記憶装置にも写しておくと安心です。
+        サーバーのバックアップ（毎日・東京と大阪）とは別に、院内のパソコンにもバックアップを保存できます。週1回程度、院長のパソコンなど決まった1台に保存し、外付けの記憶装置にも複製することを推奨します。
       </p>
       <p
         className={styles.hint}
@@ -377,7 +377,7 @@ function LocalBackupCard({
       </h4>
       <p className={styles.hint}>
         院長が決めた<b>合言葉</b>
-        で暗号化した1つのファイル（.lrbk）になります。合言葉がないと誰も開けません（なくすと院長も戻せません）。合言葉は紙などに控え、パソコンとは別の安全な場所に保管してください。
+        で暗号化した1つのファイル（.lrbk）になります。合言葉がないと誰も開けません（なくすと院長も戻せません）。合言葉は紙などに記録し、パソコンとは別の安全な場所に保管してください。
       </p>
       <div className={styles.timeRow}>
         <label className={styles.field}>
@@ -413,7 +413,7 @@ function LocalBackupCard({
               setPass("");
               setPass2("");
               notify(
-                "控えのファイルをダウンロードしました（ブラウザの「ダウンロード」フォルダ）",
+                "バックアップのファイルをダウンロードしました（ブラウザの「ダウンロード」フォルダ）",
               );
               await load();
               onDone();
@@ -424,7 +424,7 @@ function LocalBackupCard({
             }
           }}
         >
-          {busy ? "作成中…" : "暗号化した控えを保存"}
+          {busy ? "作成中…" : "暗号化したバックアップを保存"}
         </button>
       </div>
       <h4 className={styles.subTitle}>2. 写真・同意書などのファイル</h4>
@@ -494,13 +494,11 @@ function DayPdfCard({
   };
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>
-        診療日の予約表 PDF（障害時の印刷用）
-      </h3>
+      <h3 className={styles.cardTitle}>診療日の予約表 PDF（障害時の印刷用）</h3>
       <p className={styles.hint}>
         <b>水曜・祝日（と予約申請フォームの特別診療日）</b>
         の朝7時ごろ、その日の予約表を<b>パスワード付きの PDF</b>{" "}
-        にして、下のアドレスへメールで送ります（リマインドと同じ院のメールサーバーから）。サーバーや院のネットが止まったら、印刷して使ってください。パスワードは
+        にして、下のアドレスへメールで送ります（リマインドと同じ院のメールサーバーから）。サーバーまたは院内ネットワークの障害時に、印刷してご利用ください。パスワードは
         PDF を開くときに要ります。
       </p>
       {st && !st.qpdf && (
@@ -626,8 +624,8 @@ function BackupStatusCard({
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>現在のバックアップ状況</h3>
       <p className={styles.hint}>
-        サーバー丸ごとの控えを<b>毎日午前3時ごろ</b>
-        に東京で取り、大阪にも写します（どちらも30日分。期限までは誰も消せない設定）。
+        サーバー全体のバックアップを<b>毎日午前3時ごろ</b>
+        に東京で取得し、大阪にも複製します（いずれも30日分を保持。保持期間中は削除できない設定）。
       </p>
       <div className={styles.tableWrap}>
         <table className={`${styles.table} ${styles.evenTable}`}>
@@ -641,15 +639,15 @@ function BackupStatusCard({
             <tr>
               <th>場所</th>
               <th>件数</th>
-              <th>いちばん新しい控え</th>
-              <th>いちばん古い控え</th>
+              <th>最新</th>
+              <th>最古</th>
             </tr>
           </thead>
           <tbody>
             {st?.aws === null && (
               <tr>
                 <td colSpan={4}>
-                  AWS の控えの状況を読めませんでした（AWS
+                  AWS のバックアップ状況を取得できませんでした（AWS
                   の外で動いているか、読む権限がありません）
                 </td>
               </tr>
@@ -675,7 +673,9 @@ function BackupStatusCard({
             ))}
             {st && (
               <tr>
-                <td>サーバー内（反映の前・下の「今すぐバックアップを作成」）</td>
+                <td>
+                  サーバー内（反映の前・下の「今すぐバックアップを作成」）
+                </td>
                 <td>{st.server.count}件</td>
                 <td>{day(st.server.latest)}</td>
                 <td>{day(st.server.oldest)}</td>

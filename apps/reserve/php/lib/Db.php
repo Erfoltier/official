@@ -59,7 +59,7 @@ final class Db
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
-            throw new RuntimeException('この保存方式では控えを作成できません（SQLite のみ対応）');
+            throw new RuntimeException('この保存方式ではバックアップを作成できません（SQLite のみ対応）');
         }
         $dir = dirname(substr($dsn, 7)) . '/backups';
         if (!is_dir($dir)) {
@@ -91,7 +91,7 @@ final class Db
     {
         $dsn = (string) config()['db_dsn'];
         if (!str_starts_with($dsn, 'sqlite:') || substr($dsn, 7) === ':memory:') {
-            throw new RuntimeException('この保存方式では控えを作成できません（SQLite のみ対応）');
+            throw new RuntimeException('この保存方式ではバックアップを作成できません（SQLite のみ対応）');
         }
         $dir = dirname(substr($dsn, 7)) . '/backups';
         if (!is_dir($dir)) {
@@ -120,7 +120,7 @@ final class Db
         $chk = null;
         $live = (int) $this->pdo->query('SELECT COUNT(*) FROM docs')->fetchColumn();
         if ($docs !== $live) {
-            throw new RuntimeException('控えの件数が合いません');
+            throw new RuntimeException('バックアップの件数が一致しません');
         }
         return ['file' => "backups/{$name}", 'bytes' => (int) filesize($out), 'docs' => $docs];
     }

@@ -2,7 +2,7 @@
 /**
  * 院のパソコンに保存した控え（.lrbk）から、予約データベースを取り出す（サーバーが無くなったときなど。新しいサーバーで root が流す）。
  *
- *   php restore-local-backup.php <控え.lrbk> <出力先フォルダ>
+ *   php restore-local-backup.php <バックアップ.lrbk> <出力先フォルダ>
  *   合言葉は聞かれたときに入れる（画面には出ない）。
  *
  * 出力先に reserve.db ができ、データベースの鍵（encryption_key）が画面に出る。
@@ -16,7 +16,7 @@ if (PHP_SAPI !== 'cli') {
 }
 [$_, $file, $dir] = $argv + [null, null, null];
 if (!$file || !$dir || !is_file($file) || !is_dir($dir)) {
-    fwrite(STDERR, "使い方：php restore-local-backup.php <控え.lrbk> <出力先フォルダ>\n");
+    fwrite(STDERR, "使い方：php restore-local-backup.php <バックアップ.lrbk> <出力先フォルダ>\n");
     exit(2);
 }
 // 合言葉を、画面に出さずに読む

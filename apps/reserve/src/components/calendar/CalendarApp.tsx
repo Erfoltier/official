@@ -535,13 +535,13 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
         </div>
         {bundle?.offlinePreview && bundle.offlineSavedAt && (
           <div className={styles.offlineBar} role="status">
-            <b>確認用の表示</b>：この端末にダウンロードした {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）です。サーバーが止まったときは、これと同じ画面が出ます。見るだけで、変更はできません。日付は今日〜7日先を切り替えられます。{" "}
+            <b>確認用の表示</b>：この端末にダウンロードした {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）です。障害時はこれと同じ画面が表示されます。閲覧のみで、変更はできません。日付は今日〜7日先を切り替えられます。{" "}
             <a href={withBase("/")}>通常の予約表に戻る</a>
           </div>
         )}
         {bundle?.offlineSavedAt && !bundle.offlinePreview && (
           <div className={styles.offlineBar} role="alert">
-            サーバーにつながりません。この端末に保存した {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）を表示しています。<b>見るだけで、変更はできません。</b>新しい予約・変更は紙に書き、つながってから入れてください。
+            サーバーに接続できません。この端末に保存した {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）を表示しています。<b>閲覧のみで、変更はできません。</b>新規予約・変更は紙に記録し、接続の回復後に入力してください。
           </div>
         )}
       </header>

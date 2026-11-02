@@ -61,7 +61,7 @@ export function M3QuestionnaireCard(props: { notify: (m: string) => void; fail: 
     setBusy(true);
     try {
       for (let i = 0; i < items.length; i += BATCH) {
-        setProgress(`${i === 0 ? "控えを作成して" : ""}反映中… ${i} / ${items.length}件`);
+        setProgress(`${i === 0 ? "バックアップを作成して" : ""}反映中… ${i} / ${items.length}件`);
         const r = await applyM3Questionnaires(items.slice(i, i + BATCH), i === 0);
         sum.linked += r.linked;
         sum.created += r.created;

@@ -673,7 +673,7 @@ try {
         $b = null;
         if (($in['backup'] ?? true) !== false) {
             $b = Db::i()->backupDocs();
-            Auth::audit($actor($s), 'M3照合の前に保存データの控えを作成：' . $b['file']);
+            Auth::audit($actor($s), 'M3照合の前に保存データのバックアップを作成：' . $b['file']);
         }
         Http::json(Store::applyM3Fill($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
     }
@@ -708,7 +708,7 @@ try {
         $b = null;
         if (($in['backup'] ?? true) !== false) {
             $b = Db::i()->backupDocs();
-            Auth::audit($actor($s), 'M3で問診票を照合する前に保存データの控えを作成：' . $b['file']);
+            Auth::audit($actor($s), 'M3で問診票を照合する前に保存データのバックアップを作成：' . $b['file']);
         }
         Http::json(Store::applyM3Questionnaires($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
     }
@@ -721,7 +721,7 @@ try {
             Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"BACKUP"} を送ってください'], 400);
         }
         $r = Db::i()->backup();
-        Auth::audit($actor($s), '保存データの控えを作成：' . $r['file']);
+        Auth::audit($actor($s), '保存データのバックアップを作成：' . $r['file']);
         LocalBackup::record($actor($s), 'server', 'サーバー内に作成（' . round($r['bytes'] / 1048576, 1) . 'MB）');
         Http::json($r);
     }
@@ -777,7 +777,7 @@ try {
         try {
             $head = LocalBackup::writeData($pass, $tmp);
             Db::i()->setMeta('localBackupDataAt', now_iso());
-            Auth::audit($actor($s), '予約・患者などの控えをパソコンに保存（' . round($head['bytes'] / 1048576, 1) . 'MB）');
+            Auth::audit($actor($s), '予約・患者などのバックアップをローカルPCに保存（' . round($head['bytes'] / 1048576, 1) . 'MB）');
             LocalBackup::record($actor($s), 'pc', '予約・患者・記録・設定（' . round($head['bytes'] / 1048576, 1) . 'MB）');
             http_response_code(200);
             header('Content-Type: application/octet-stream');
@@ -796,7 +796,7 @@ try {
         $since = $q('new') === '1' ? (int) (Db::i()->meta('localBackupPhotosAt') ?? 0) : 0;
         $started = time();
         $files = LocalBackup::blobFiles($since);
-        Auth::audit($actor($s), '写真などの控えをパソコンに保存（' . count($files) . '件' . ($since ? '・前回からの追加分' : '・全部') . '）');
+        Auth::audit($actor($s), '写真などのバックアップをローカルPCに保存（' . count($files) . '件' . ($since ? '・前回からの追加分' : '・全部') . '）');
         @set_time_limit(0);
         while (ob_get_level()) {
             ob_end_clean();

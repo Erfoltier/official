@@ -125,9 +125,9 @@ final class DayPdfSender
         $count = count(array_filter($day['reservations'], fn($r) => ($r['status'] ?? '') !== 'cancelled'));
         [$ok, $err] = Reminder::sendAttachment(
             $s['to'],
-            "【LANE RESERVE】{$date} の予約表（停止に備えた控え）",
+            "【LANE RESERVE】{$date} の予約表（障害時の印刷用）",
             "{$date} の予約表（{$count}件）を、パスワード付きの PDF でお送りします。\n"
-            . "サーバーや院のネットが止まったときに、印刷してお使いください。パスワードは院長が設定したものです。\n"
+            . "サーバーまたは院内ネットワークの障害時に、印刷してご利用ください。パスワードは院長が設定したものです。\n"
             . "このメールと添付は院外に転送しないでください。\n\nLANE RESERVE",
             "yoyaku-{$date}.pdf",
             $pdf,

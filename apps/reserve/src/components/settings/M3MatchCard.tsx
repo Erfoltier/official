@@ -59,7 +59,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
 
   const apply = async () => {
     if (!result?.fills.length) return;
-    if (!window.confirm(`${result.fills.length}名の氏名に漢字を反映します。書き換えの前に、サーバーで控え（バックアップ）を作成します。よろしいですか？`)) return;
+    if (!window.confirm(`${result.fills.length}名の氏名に漢字を反映します。書き換えの前に、サーバーでバックアップを作成します。よろしいですか？`)) return;
     const items = result.fills.map(({ before: _before, ...x }) => x);
     const p = { done: 0, total: items.length, updated: 0, skipped: 0, finished: false };
     setBusy(true);
@@ -155,7 +155,7 @@ export function M3MatchCard(props: { notify: (m: string) => void; fail: (e: unkn
             </span>
           ) : (
             <span>
-              {progress.done === 0 ? "サーバーで控え（バックアップ）を作成中…" : "反映中…"} {progress.done.toLocaleString()} / {progress.total.toLocaleString()}名
+              {progress.done === 0 ? "サーバーでバックアップを作成中…" : "反映中…"} {progress.done.toLocaleString()} / {progress.total.toLocaleString()}名
               <progress max={progress.total} value={progress.done} />
             </span>
           )}

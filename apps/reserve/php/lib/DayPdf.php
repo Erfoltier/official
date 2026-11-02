@@ -97,7 +97,7 @@ final class DayPdf
             if (!$rows) {
                 $c .= self::text(self::M, $y - 20, 11, 'この日の予約はありません');
             }
-            $c .= self::text(self::M, self::M - 12, 7, '作成 ' . date('Y/m/d H:i') . '　LANE RESERVE　サーバーが止まったときの控え（院外に持ち出さない）');
+            $c .= self::text(self::M, self::M - 12, 7, '作成 ' . date('Y/m/d H:i') . '　LANE RESERVE　障害時の印刷用（院外持ち出し禁止）');
             $pages[] = $c;
         }
         return self::assemble($pages);
