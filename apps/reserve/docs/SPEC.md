@@ -53,6 +53,7 @@
 | 設定 | `/srv/reserve/private/config.php`（暗号鍵・連携トークンなど。リポジトリに入れない） |
 | データ | `/srv/reserve/private/data/reserve.db`、バックアップは同じ場所の `backups/` |
 | 定期実行 | systemd `reserve-reminders.timer`（10分ごと）→ `php/cron/reminders.php`（apache ユーザー）。リマインド（Air の取り込みは 10/22 に終了） |
+| 控え | ①AWS Backup「ishida-daily」：毎日 3:00（JST）サーバー丸ごと、東京 ishida-vault（ロック）30日＋大阪 ishida-vault-osaka（ロック）30日 ②反映・データ操作の直前：`/srv/reserve/bin/backup`、予約DB、新しい40件 ③設定の控え・復元（画面、設定だけ） ④院のパソコン：設定 → 控え・復元 →「院のパソコンに控えを保存」。データは合言葉（Argon2id）で暗号化した `.lrbk`（中に DB と encryption_key を包んで入れる）、写真は `data/blobs` の暗号化ファイルの tar。戻し方：`php php/tools/restore-local-backup.php <控え.lrbk> <フォルダ>` → 出た encryption_key を config.php に、reserve.db を db_dsn の場所に、写真の tar は data フォルダで `tar xf` |
 | 運用者の権限 | Claude：AWS の claude-ops（管理者）。Codex：chatgpt-ops は参照のみ（11/2〜。Session Manager は codex-ro で入る。sudo なし・予約データと設定は読めない・S3 への書き込みなし）。予約の入力・変更・取り消しと新しい患者の登録は、自動予約の接続キー（`/api/v1/integration/booking/…`）からだけできる。接続キーでの変更はそれ以外 403（メニューの追加・設定・患者情報の変更も不可） |
 | 入口 | Apache（`/etc/httpd/conf.d/20-ishida-https.conf`）。Basic認証 `/etc/httpd/ishida.htpasswd`。Basic認証を省くのは、連携API（合言葉の見出しつき）・自動予約の入口・`GET /integrations/line-chat-privacy.html`（Chrome ウェブストアの審査用。10/27 追加）だけ。証明書は certbot（自動更新） |
 | 控え | 反映・データ操作ごと：`/srv/reserve/private/data/backups/`（新しい40件）。毎日：AWS Backup `ishida-daily`（3時ごろ、サーバー丸ごとのスナップショット） |

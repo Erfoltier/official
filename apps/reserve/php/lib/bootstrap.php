@@ -21,6 +21,7 @@ require_once __DIR__ . '/Devices.php';
 require_once __DIR__ . '/PriceParse.php';
 require_once __DIR__ . '/Store.php';
 require_once __DIR__ . '/Reminder.php';
+require_once __DIR__ . '/LocalBackup.php';
 require_once __DIR__ . '/Holidays.php';
 require_once __DIR__ . '/AirSync.php';
 require_once __DIR__ . '/Intake.php';

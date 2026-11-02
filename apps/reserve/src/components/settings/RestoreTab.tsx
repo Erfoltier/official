@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { compactStorage, createBackup, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
+import { compactStorage, createBackup, downloadLocalBackup, fetchLocalBackup, localPhotosUrl, type LocalBackupStatus, fetchRestorePoints, fetchStorage, moveStorage, type StorageStats, restoreSettings, type RestorePoints, type RestoreSummary } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 function stamp(iso: string): string {
@@ -149,6 +149,7 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
   return (
     <section>
       <BackupCard notify={notify} fail={fail} />
+      <LocalBackupCard notify={notify} fail={fail} />
       <h3 className={styles.cardTitle}>設定の復元</h3>
       <p className={styles.lead}>
         誤って設定を変更した場合に、以前の状態へ戻せます。設定は変更のたびに自動で記録されます。
@@ -215,5 +216,83 @@ export function RestoreTab({ onChanged, notify, fail }: { onChanged: () => Promi
         <StorageCard notify={notify} fail={fail} />
       </div>
     </section>
+  );
+}
+
+
+/** 院のパソコンに控えを保存する（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま */
+function LocalBackupCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
+  const [st, setSt] = useState<LocalBackupStatus | null>(null);
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => fetchLocalBackup().then(setSt).catch(fail), [fail]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const days = st?.dataDays ?? null;
+  const ok = pass.length >= 10 && pass === pass2;
+  return (
+    <div className={styles.clinicCard} style={{ marginBottom: 16 }}>
+      <h3 className={styles.cardTitle}>院のパソコンに控えを保存</h3>
+      <p className={styles.hint}>
+        サーバーの控え（毎日・東京と大阪）とは別に、院内のパソコンにも控えを残せます。週に1回ほど、院長のパソコンなど決まった1台に保存し、外付けの記憶装置にも写しておくと安心です。
+      </p>
+      <p className={styles.hint} data-invalid={days !== null && days >= 7 ? true : undefined}>
+        最後に保存：{st?.dataAt ? `${stamp(st.dataAt)}（${days}日前）` : "まだ保存していません"}
+      </p>
+      <h4 className={styles.subTitle}>1. 予約・患者・記録・設定（{st ? "データベース丸ごと" : "…"}）</h4>
+      <p className={styles.hint}>
+        院長が決めた<b>合言葉</b>で暗号化した1つのファイル（.lrbk）になります。合言葉がないと誰も開けません（なくすと院長も戻せません）。合言葉は紙などに控え、パソコンとは別の安全な場所に保管してください。
+      </p>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>合言葉（10文字以上）</span>
+          <input className={styles.input} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" />
+        </label>
+        <label className={styles.field}>
+          <span>合言葉（確認のためもう一度）</span>
+          <input className={styles.input} type="password" value={pass2} onChange={(e) => setPass2(e.target.value)} autoComplete="new-password" />
+        </label>
+      </div>
+      <div className={styles.actions} style={{ marginTop: 0 }}>
+        <button
+          type="button"
+          className={styles.primary}
+          disabled={!ok || busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await downloadLocalBackup(pass);
+              setPass("");
+              setPass2("");
+              notify("控えのファイルをダウンロードしました（ブラウザの「ダウンロード」フォルダ）");
+              await load();
+            } catch (e) {
+              fail(e);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "作成中…" : "暗号化した控えを保存"}
+        </button>
+      </div>
+      <h4 className={styles.subTitle}>2. 写真・同意書などのファイル</h4>
+      <p className={styles.hint}>
+        {st
+          ? `全部で ${st.photos.count}件（${mb(st.photos.bytes)}）。前回の保存（${st.photosAt ? stamp(st.photosAt) : "まだ"}）から増えたのは ${st.photos.newCount}件（${mb(st.photos.newBytes)}）。`
+          : "読み込み中…"}
+        ファイルはサーバーの鍵で暗号化されたままなので、そのままでは開けません（戻すときに使います）。最初に1回「全部」を保存し、以後は「増えた分だけ」を保存してください。
+      </p>
+      <div className={styles.actions} style={{ marginTop: 0 }}>
+        <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(true)} onClick={() => window.setTimeout(load, 5000)}>
+          増えた分だけ保存
+        </a>
+        <a className={styles.btn} style={{ textDecoration: "none" }} href={localPhotosUrl(false)} onClick={() => window.setTimeout(load, 5000)}>
+          全部を保存
+        </a>
+      </div>
+    </div>
   );
 }

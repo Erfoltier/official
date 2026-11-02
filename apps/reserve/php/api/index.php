@@ -26,7 +26,7 @@ try {
         $path = array_slice($path, 3);
         $head = $path[0] ?? '';
         $two = $head . '/' . ($path[1] ?? '');
-        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage'], true)) {
+        if ($path === [] || in_array($head, ['auth', 'security', 'devices', 'device-links', 'staff', 'integration'], true) || in_array($two, ['settings/restore', 'admin/backup', 'admin/storage', 'admin/local-backup'], true)) {
             Http::json(['error' => 'forbidden', 'message' => 'この操作は自動予約からは使えません'], 403);
         }
         // 変えられるのは予約の入力・変更・取り消しと、新しい患者の登録だけ（院長の指示 2026-11-02。設定・メニュー・患者の削除などは不可）。見るだけ（GET）は従来どおり
@@ -723,6 +723,65 @@ try {
         $r = Db::i()->backup();
         Auth::audit($actor($s), '保存データの控えを作成：' . $r['file']);
         Http::json($r);
+    }
+
+    // ---- 院のパソコンに保存する控え（院長・管理者）。データは合言葉で暗号化、写真は鍵で暗号化されたまま。保存したことは操作ログに残す ----
+    if ($route === 'GET admin/local-backup') {
+        $me(STAFF_ADMIN);
+        $photosAt = (int) (Db::i()->meta('localBackupPhotosAt') ?? 0);
+        $all = LocalBackup::blobFiles();
+        $new = $photosAt ? LocalBackup::blobFiles($photosAt) : $all;
+        $size = fn(array $f) => array_sum(array_map('filesize', $f));
+        Http::json([
+            'dataAt' => Db::i()->meta('localBackupDataAt'),
+            'dataDays' => ($at = Db::i()->meta('localBackupDataAt')) ? intdiv(time() - (int) strtotime((string) $at), 86_400) : null,
+            'photosAt' => $photosAt ? date('c', $photosAt) : null,
+            'photos' => ['count' => count($all), 'bytes' => $size($all), 'newCount' => count($new), 'newBytes' => $size($new)],
+        ]);
+    }
+    if ($route === 'POST admin/local-backup/data') {
+        $s = $me(STAFF_ADMIN);
+        $in = Http::readJson();
+        $pass = LocalBackup::checkPass(is_array($in) ? ($in['passphrase'] ?? null) : null);
+        $tmp = tempnam(sys_get_temp_dir(), 'lrbk-out');
+        try {
+            $head = LocalBackup::writeData($pass, $tmp);
+            Db::i()->setMeta('localBackupDataAt', now_iso());
+            Auth::audit($actor($s), '予約・患者などの控えをパソコンに保存（' . round($head['bytes'] / 1048576, 1) . 'MB）');
+            http_response_code(200);
+            header('Content-Type: application/octet-stream');
+            header('Content-Length: ' . filesize($tmp));
+            header('Content-Disposition: attachment; filename="lane-reserve-' . date('Ymd-Hi') . '.lrbk"');
+            header('Cache-Control: private, no-store');
+            header('X-Content-Type-Options: nosniff');
+            readfile($tmp);
+        } finally {
+            @unlink($tmp);
+        }
+        exit;
+    }
+    if ($route === 'GET admin/local-backup/photos') {
+        $s = $me(STAFF_ADMIN);
+        $since = $q('new') === '1' ? (int) (Db::i()->meta('localBackupPhotosAt') ?? 0) : 0;
+        $started = time();
+        $files = LocalBackup::blobFiles($since);
+        Auth::audit($actor($s), '写真などの控えをパソコンに保存（' . count($files) . '件' . ($since ? '・前回からの追加分' : '・全部') . '）');
+        @set_time_limit(0);
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        http_response_code(200);
+        header('Content-Type: application/x-tar');
+        header('Content-Disposition: attachment; filename="lane-reserve-photos-' . date('Ymd-Hi') . ($since ? '-add' : '-all') . '.tar"');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        $out = fopen('php://output', 'wb');
+        LocalBackup::streamTar($files, $out);
+        fclose($out);
+        if (!connection_aborted()) {
+            Db::i()->setMeta('localBackupPhotosAt', $started);
+        }
+        exit;
     }
 
     // ---- 写真などの置き場所（DB の表 → data/blobs/ のファイル）。移すのも詰めるのも院長・管理者が画面から押したときだけ ----

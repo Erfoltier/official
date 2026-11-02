@@ -54,6 +54,46 @@ export function createBackup(): Promise<{ file: string; bytes: number; integrity
   return call(`/api/v1/admin/backup`, { method: "POST", body: JSON.stringify({ confirm: "BACKUP" }) });
 }
 
+export interface LocalBackupStatus {
+  dataAt: string | null;
+  /** 最後にデータを保存してから何日たったか */
+  dataDays: number | null;
+  photosAt: string | null;
+  photos: { count: number; bytes: number; newCount: number; newBytes: number };
+}
+
+/** 院のパソコンに保存した控えの状況（院長・管理者） */
+export function fetchLocalBackup(): Promise<LocalBackupStatus> {
+  return call(`/api/v1/admin/local-backup`);
+}
+
+/** 予約・患者などの控えを、合言葉で暗号化したファイルとしてパソコンに保存する（ブラウザのダウンロード） */
+export async function downloadLocalBackup(passphrase: string): Promise<void> {
+  const res = await fetch(apiUrl(`/api/v1/admin/local-backup/data`), {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passphrase }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error ?? "error", body.message ?? "控えを作れませんでした");
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "lane-reserve.lrbk";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** 写真などの控え（tar）のダウンロード先。onlyNew で前回の保存から増えた分だけ */
+export function localPhotosUrl(onlyNew: boolean): string {
+  return apiUrl(`/api/v1/admin/local-backup/photos${onlyNew ? "?new=1" : ""}`);
+}
+
 export interface StorageStats {
   external: boolean;
   inDb: number;
