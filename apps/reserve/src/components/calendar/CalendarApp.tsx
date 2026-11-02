@@ -122,6 +122,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
         setLoadError(null);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
+        if (err instanceof ApiError && err.code === "offline_missing") setBundle(null);
         setLoadError(err instanceof ApiError ? err.message : "予約を読み込めませんでした");
       }
     },
@@ -532,7 +533,13 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             ⚙<span className={styles.cap}>設定</span>
           </Link>
         </div>
-        {bundle?.offlineSavedAt && (
+        {bundle?.offlinePreview && bundle.offlineSavedAt && (
+          <div className={styles.offlineBar} role="status">
+            <b>確認用の表示</b>：この端末にダウンロードした {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）です。サーバーが止まったときは、これと同じ画面が出ます。見るだけで、変更はできません。日付は今日〜7日先を切り替えられます。{" "}
+            <a href={withBase("/")}>通常の予約表に戻る</a>
+          </div>
+        )}
+        {bundle?.offlineSavedAt && !bundle.offlinePreview && (
           <div className={styles.offlineBar} role="alert">
             サーバーにつながりません。この端末に保存した {formatDateJa(bundle.date)} の予約表（{new Date(bundle.offlineSavedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点）を表示しています。<b>見るだけで、変更はできません。</b>新しい予約・変更は紙に書き、つながってから入れてください。
           </div>

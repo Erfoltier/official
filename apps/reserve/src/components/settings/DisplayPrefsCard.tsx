@@ -79,13 +79,18 @@ export function OfflineDeviceCard({ canAllow }: { canAllow: boolean }) {
   }, []);
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>この端末に予約表をダウンロード（止まったときに見るため）</h3>
+      <h3 className={styles.cardTitle}>この端末に予約表をダウンロード（障害時の閲覧用）</h3>
       <p className={styles.hint}>
         サーバーや院のネットが止まったときも、この端末で<b>今日〜7日先の予約表を見るだけで</b>開けるよう、端末にダウンロードしておきます。押したときに8日分をダウンロードし、そのあとは予約表を開いているあいだ5分ごとに自動で新しくします（暗号化して保存）。
         <b>院内のパソコン・タブレットだけ</b>で使ってください（スマホや院外の端末では使わない）。
       </p>
       <p className={styles.hint}>この端末：{on ? `ダウンロードしています${got ? `（${got}）` : ""}` : "ダウンロードしていません"}</p>
       <div className={styles.actions} style={{ marginTop: 0 }}>
+        {on && (
+          <a className={styles.primary} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }} href={withBase("/?offline=1")}>
+            ダウンロードした予約表を見る
+          </a>
+        )}
         {on ? (
           <button
             type="button"

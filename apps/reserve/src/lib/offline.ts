@@ -10,7 +10,7 @@ const FLAG = "lr-offline";
 const DB_NAME = "lane-reserve-offline";
 const DAYS_AHEAD = 7;
 
-export type OfflineBundle = DayBundle & { offlineSavedAt?: string };
+export type OfflineBundle = DayBundle & { offlineSavedAt?: string; offlinePreview?: boolean };
 
 export function offlineEnabled(): boolean {
   try {

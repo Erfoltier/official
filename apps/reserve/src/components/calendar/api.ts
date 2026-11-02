@@ -16,6 +16,9 @@ export class ApiError extends Error {
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const override = METHOD_OVERRIDE && ["PUT", "PATCH", "DELETE"].includes(method);
+  if (method !== "GET" && offlinePreview() && !path.startsWith("/api/v1/auth/")) {
+    throw new ApiError(409, "offline_preview", "確認用の表示（ダウンロードした予約表）では変更できません。「通常の予約表に戻る」を押してください");
+  }
   const res = await fetch(apiUrl(path), {
     ...init,
     method: override ? "POST" : method,
@@ -234,6 +237,11 @@ export function relinkQuestionnaires(): Promise<{ checked: number; linked: numbe
  * 1日の予約表。つながらないとき（ネット・サーバーの停止）は、許可された端末に置いた控えを返す（offlineSavedAt 付き。見るだけ）
  */
 export async function fetchDay(date: string, signal?: AbortSignal): Promise<OfflineBundle> {
+  if (offlinePreview()) {
+    const cached = await loadDay(date).catch(() => null);
+    if (!cached) throw new ApiError(404, "offline_missing", `${date.slice(5).replace("-", "/")} の予約表は、この端末にダウンロードしていません（今日〜7日先だけ）`);
+    return { ...cached, offlinePreview: true };
+  }
   try {
     const d = await fetchDayRaw(date, signal);
     applyTheme(d.clinic.theme);
@@ -247,6 +255,11 @@ export async function fetchDay(date: string, signal?: AbortSignal): Promise<Offl
     }
     throw err;
   }
+}
+
+/** 設定 → バックアップ の「ダウンロードした予約表を見る」から開いたとき（?offline=1）：つながっていても端末の予約表だけを見せる */
+export function offlinePreview(): boolean {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("offline") === "1";
 }
 
 /** 控えを使わず、サーバーから読む（端末に置く控えの読み直し用） */
