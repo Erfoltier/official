@@ -916,4 +916,4 @@
 }
 
 /* 改行させない語句 */
-.tt-guide .nw { white-space: nowrap; }
+.tt-guide .nw, .tt-guide abbr.nw { white-space: nowrap; text-decoration: none; border: 0; cursor: inherit; font: inherit; color: inherit; letter-spacing: inherit; }
