@@ -442,6 +442,16 @@
 /* ---------- 機器・モード ---------- */
 /* 最終更新日 */
 .tt-guide .tt-updated { margin-top: 14px; text-align: right; font-size: 12px; color: #8FA0C8; letter-spacing: .04em; }
+/* 入れ墨（広い範囲）の料金例・アートメイク案内 */
+.tt-guide .tt-wide { margin: 26px 0; padding: 22px 26px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 255, 255, .04); }
+.tt-guide .tt-wide-title { font-weight: 700; color: #fff; margin-bottom: 12px; }
+.tt-guide .tt-wide dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tt-guide .tt-wide dl > div { padding: 14px 16px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
+.tt-guide .tt-wide dt { font-family: var(--en); font-weight: 700; font-size: 18px; color: #fff; }
+.tt-guide .tt-wide dt small { display: block; font-family: inherit; font-weight: 500; font-size: 12px; color: #A9B6D6; margin-top: 2px; }
+.tt-guide .tt-wide dd { margin: 6px 0 0; font-family: var(--en); font-weight: 700; font-size: 22px; color: #5BD8FF; }
+.tt-guide .tt-link-box { margin-top: 18px; padding: 14px 18px; border-left: 3px solid #FF8597; border-radius: 0 12px 12px 0; background: rgba(255, 133, 151, .08); font-size: 14px; color: #E7ECF8; }
+.tt-guide .tt-link-box a, .tt-guide .tt-faq a { color: #5BD8FF; text-decoration: underline; text-underline-offset: 3px; }
 /* 国内承認機 */
 .tt-guide .tt-approved {
   display: flex; align-items: flex-start; gap: 22px;
@@ -867,6 +877,8 @@
   .tt-guide .tt-cases, .tt-guide .tt-facts, .tt-guide .tt-steps, .tt-guide .tt-risks,
   .tt-guide .tt-checks, .tt-guide .tt-over dl { grid-template-columns: 1fr; }
   .tt-guide .tt-price-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tt-guide .tt-wide { padding: 18px; }
+  .tt-guide .tt-wide dl { grid-template-columns: 1fr; }
   .tt-guide .tt-approved { flex-direction: column; gap: 14px; padding: 18px; }
   .tt-guide .tt-approved-badge { width: auto; height: auto; padding: 4px 14px; border-radius: 999px; font-size: 13px; }
   .tt-guide .tt-measure { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px; }

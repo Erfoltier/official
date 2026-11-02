@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="file:///tmp/claude-0/-home-user-official/75e97029-ee88-5ffe-8fda-032bc892a4e4/scratchpad/fonts/node_modules/@fontsource/zen-kaku-gothic-new/700.css">
+<style>html,body{margin:0;background:transparent} #wrap{display:inline-block;padding:0}</style></head><body>
+<div id="wrap"><svg id="svg" xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+<defs>
+ <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F3CDB6"/><stop offset=".55" stop-color="#E8B394"/><stop offset="1" stop-color="#DCA083"/></linearGradient>
+ <radialGradient id="sheen" cx=".3" cy=".25" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <filter id="ink" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation=".35"/></filter>
+</defs>
+<rect x="6" y="6" width="318" height="200" rx="22" fill="url(#skin)"/>
+<rect x="6" y="6" width="318" height="200" rx="22" fill="url(#sheen)"/>
+<g id="bf" transform="translate(165 108) rotate(-6)" filter="url(#ink)">
+ <path d="M-92 18 C -70 -6, -36 -24, 6 -28 C 40 -31, 70 -24, 96 -6 C 84 -10, 60 -14, 30 -12 C -6 -10, -40 0, -78 24 Z" fill="#6B4A3E"/>
+ <path d="M-86 16 C -64 -2, -34 -16, 4 -20 C 34 -23, 62 -18, 88 -6" stroke="#4E342B" stroke-width="2" fill="none" opacity=".7"/>
+ <g stroke="#3F2A23" stroke-width="1.6" stroke-linecap="round" opacity=".75">
+  <line x1="-70" y1="14" x2="-62" y2="4"/><line x1="-58" y1="8" x2="-49" y2="-3"/><line x1="-45" y1="2" x2="-35" y2="-9"/><line x1="-31" y1="-3" x2="-20" y2="-14"/>
+  <line x1="-16" y1="-7" x2="-4" y2="-17"/><line x1="0" y1="-10" x2="12" y2="-20"/><line x1="16" y1="-12" x2="28" y2="-21"/><line x1="32" y1="-13" x2="44" y2="-20"/>
+  <line x1="48" y1="-13" x2="60" y2="-18"/><line x1="64" y1="-11" x2="76" y2="-14"/>
+ </g>
+</g>
+<rect id="box" fill="none" stroke="#FB6DC5" stroke-width="2" stroke-dasharray="7 5"/>
+<g id="dims" font-family="Zen Kaku Gothic New" font-weight="700" font-size="15" fill="#FDB9D8"></g>
+</svg></div>
+<script>
+const svg=document.getElementById('svg'); const bf=document.getElementById('bf');
+// bounding box of the butterfly in SVG user space (accounts for rotation)
+const q=new URLSearchParams(location.search); 
+if(q.get('only')){ document.querySelectorAll('#svg > rect, #box, #dims').forEach(e=>e.style.display='none'); }
+let x=+q.get('x')||0, y=+q.get('y')||0, w=+q.get('w')||0, h=+q.get('h')||0;
+const box=document.getElementById('box'); box.setAttribute('x',x-1.5); box.setAttribute('y',y-1.5); box.setAttribute('width',w+3); box.setAttribute('height',h+3);
+const d=document.getElementById('dims'); const ns='http://www.w3.org/2000/svg';
+function line(x1,y1,x2,y2){const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke','#FDB9D8');l.setAttribute('stroke-width','1.5');d.appendChild(l);}
+function text(t,x,y,anchor){const e=document.createElementNS(ns,'text');e.textContent=t;e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('text-anchor',anchor);d.appendChild(e);}
+const L=x-1.5, R=x+w+1.5, T=y-1.5, B=y+h+1.5;
+// 長辺 (bottom, outside the skin panel)
+const yb=222; line(L,B+3,L,yb+4); line(R,B+3,R,yb+4); line(L,yb,R,yb); line(L,yb,L+7,yb-4); line(L,yb,L+7,yb+4); line(R,yb,R-7,yb-4); line(R,yb,R-7,yb+4);
+text('長辺',(L+R)/2,yb+20,'middle');
+// 短辺 (right, outside the skin panel)
+const xr=342; line(R+3,T,xr+4,T); line(R+3,B,xr+4,B); line(xr,T,xr,B); line(xr,T,xr-4,T+7); line(xr,T,xr+4,T+7); line(xr,B,xr-4,B-7); line(xr,B,xr+4,B-7);
+text('短辺',xr+8,(T+B)/2+5,'start');
+document.title=[x,y,w,h].map(Math.round).join(',');
+</script></body></html>
