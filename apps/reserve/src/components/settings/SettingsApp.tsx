@@ -86,7 +86,7 @@ export function SettingsApp() {
             メニュー
           </button>
           <button role="tab" aria-selected={tab === "stages"} onClick={() => setTab("stages")}>
-            状態
+            患者状態ラベル
           </button>
           <button role="tab" aria-selected={tab === "products"} onClick={() => setTab("products")}>
             スキンケア・内服
