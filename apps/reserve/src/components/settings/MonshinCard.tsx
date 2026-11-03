@@ -94,7 +94,7 @@ export function MonshinCard({ notify, fail }: { notify: (t: string) => void; fai
     <>
       <h3 className={styles.subhead}>患者が入力する問診票</h3>
       <p className={styles.muted}>
-        患者はログインなしで入力・送信できます（回答を見ることはできません）。送信された回答は Google フォームの回答と同じように取り込まれ、患者に紐付きます。
+        患者はログインなしで入力・送信できます（回答を見ることはできません）。送信された回答は自動で取り込まれ、患者に紐付きます。
         {pageUrl && (
           <>
             <br />

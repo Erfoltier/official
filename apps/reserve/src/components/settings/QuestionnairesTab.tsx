@@ -63,10 +63,9 @@ export function QuestionnairesTab({ canEdit, isAdmin, notify, fail }: { canEdit:
   return (
     <section>
       <p className={styles.lead}>
-        患者が入力する問診票（下の「患者が入力する問診票」）と Google フォームの問診票の回答は自動で取り込まれ、<b>氏名（またはフリガナ）と、生年月日か電話番号</b>が一致する患者に紐付きます。
+        患者が入力する問診票（下の「患者が入力する問診票」）と LINE の問診票の回答は自動で取り込まれ、<b>氏名（またはフリガナ）と、生年月日か電話番号</b>が一致する患者に紐付きます。
         紐付いた回答は、患者画面とカルテの「既往歴・内服歴」で確認できます。
         該当する患者がいない、または2人以上いる回答は下に表示されます。あとから患者を登録・修正したときは、合う回答が自動で結びつきます。診察券番号を入力して紐付けてください。
-        送信用の Apps Script の設定手順は、questionnaire.gs の先頭を参照してください。
       </p>
       {isAdmin && (
         <div className={styles.actions}>

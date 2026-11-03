@@ -1,8 +1,8 @@
 <?php
 /**
- * 患者が自分で入力する問診票（Googleフォームの代わり）。
+ * 患者が自分で入力する問診票。
  * - 質問の並びは設定（meta: monshinForm）。院長・管理者が設定 → 問診票 で直す
- * - 送られた回答は、Googleフォームからの取り込みと同じ流れ（Store::receiveQuestionnaires）で保存・患者に結びつけ・空欄を埋める
+ * - 送られた回答は、LINE の問診票と同じ流れ（Store::receiveQuestionnaires）で保存・患者に結びつけ・空欄を埋める
  * - 患者は送るだけ。回答を見る口はない
  * - いたずら対策：同じ送り元からの回数制限、ボットよけの隠し欄、開いてすぐ／古すぎるページからの送信を断る（外部サービスは使わない）
  */
@@ -19,7 +19,7 @@ final class Monshin
     private const MIN_FILL_MS = 3000;
     private const MAX_FILL_MS = 86_400_000;
 
-    /** questionnaire.gs の COLUMNS と同じ見分け方（Store 側の取り込みと合わせる） */
+    /** 質問の見出しの見分け方（Store 側の取り込みと合わせる） */
     private const ROLES = [
         'name' => '/^(?!.*(フリガナ|ふりがな|カナ)).*(お名前|氏名|名前)/u',
         'kana' => '/フリガナ|ふりがな|カナ/u',

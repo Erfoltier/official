@@ -2260,248 +2260,9 @@ final class Store
         return ['matched' => $matched, 'remaining' => $db->count('photoInbox')];
     }
 
-    // ---- Airリザーブから移した「今日以降」の予約（入れ直しのために完全に消す） ----
+// ---- 要確認の患者（自動予約などで新しく登録し、似た患者がほかにいる人） ----
 
-    private const AIR_MARK = 'Air予約番号';
-
-    /**
-     * Airリザーブの予約を1日分、カレンダーに合わせる（AirSync から呼ぶ）。
-     * - Air予約番号で同じ予約を探し、あれば時刻・レーン・メニュー・メモを Air に合わせる（メモはスタッフが書き足していなければ）
-     * - なければ作る。患者は「カナと漢字の両方が完全に合う人が1人だけ」なら結びつけ、それ以外は新しい患者（要確認の印）を作る
-     * - その日の Air から消えた予約・Air で取り消された予約は、取り消しにする
-     * $rows：[no, from, to（ISO）, cancelled, memo, menuName, laneName, kana, kanji, email]
-     */
-    public static function airApply(string $date, array $rows): array
-    {
-        self::init();
-        $by = ['id' => 'air', 'name' => 'Airリザーブ取り込み'];
-        $res = ['created' => 0, 'updated' => 0, 'cancelled' => 0, 'unchanged' => 0, 'newPatients' => 0, 'linked' => 0, 'noLane' => 0, 'emailFilled' => 0];
-        $existing = [];
-        foreach (Db::i()->between('reservation', 'k1', now_in_clinic()['date'], '9999-12-31') as $r) {
-            if (preg_match('/' . self::AIR_MARK . '\s*[:：]\s*([0-9A-Za-z]+)/u', strip_tags((string) ($r['memo'] ?? '')), $m)) {
-                $existing[strtoupper($m[1])] = $r;
-            }
-        }
-        $norm = fn($x) => fold_name_variants(search_key((string) $x));
-        $laneOf = function (string $name) use ($norm): ?string {
-            $k = $norm($name);
-            foreach (self::sortedLanes() as $l) {
-                $lk = $norm($l['name']);
-                if ($k !== '' && ($lk === $k || str_starts_with($lk, $k) || str_starts_with($k, $lk))) {
-                    return $l['id'];
-                }
-            }
-            return null;
-        };
-        $menuOf = function (string $name) use ($norm): ?string {
-            $k = $norm($name);
-            foreach (self::sortedMenus() as $m) {
-                if ($k !== '' && empty($m['deleted']) && $norm($m['name']) === $k) {
-                    return $m['id'];
-                }
-            }
-            return null;
-        };
-        $index = null;
-        $findPatient = function (string $kana, string $kanji) use (&$index, $norm): ?string {
-            if ($kana === '' || $kanji === '') {
-                return null;
-            }
-            if ($index === null) {
-                $index = [];
-                foreach (self::patients() as $p) {
-                    if (empty($p['deleted']) && ($p['kana'] ?? '') !== '') {
-                        $index[$norm($p['kana'])][] = $p;
-                    }
-                }
-            }
-            $hits = array_values(array_filter($index[$norm($kana)] ?? [], fn($p) => $norm($p['name']) === $norm($kanji) || ($p['nameAlt'] ?? '') !== '' && $norm($p['nameAlt']) === $norm($kanji)));
-            return count($hits) === 1 ? $hits[0]['id'] : null;
-        };
-        $seen = [];
-        foreach ($rows as $a) {
-            $no = strtoupper((string) $a['no']);
-            $seen[$no] = true;
-            $memo = self::AIR_MARK . ': ' . $no . (trim((string) $a['memo']) !== '' ? "\n" . trim((string) $a['memo']) : '');
-            $laneId = $laneOf((string) $a['laneName']);
-            if ($laneId === null) {
-                $laneId = self::sortedLanes()[0]['id'];
-                $res['noLane']++;
-            }
-            $menuId = $menuOf((string) $a['menuName']);
-            $cur = $existing[$no] ?? null;
-            if ($cur) {
-                if ($a['cancelled']) {
-                    if (!self::inactive($cur)) {
-                        self::updateReservation($cur['id'], ['version' => $cur['version'], 'status' => 'cancelled'], $by);
-                        $res['cancelled']++;
-                    }
-                    continue;
-                }
-                $in = [];
-                if (normalize_iso($a['from']) !== $cur['startAt'] || normalize_iso($a['to']) !== $cur['endAt']) {
-                    $in['startAt'] = $a['from'];
-                    $in['endAt'] = $a['to'];
-                }
-                if ($laneId !== $cur['laneId']) {
-                    $in['laneId'] = $laneId;
-                }
-                if ($menuId !== null && $cur['menuIds'] !== [$menuId] && !in_array($menuId, $cur['menuIds'], true)) {
-                    $in['menuIds'] = [$menuId];
-                }
-                // メモ：前回 Air から入れたままなら Air に合わせる。スタッフが書き足していたら消さずに、Air のメモを書き足す
-                $curMemo = (string) ($cur['memo'] ?? '');
-                $airBody = trim((string) $a['memo']);
-                if ($memo !== $curMemo) {
-                    if (($cur['airMemo'] ?? null) === $curMemo) {
-                        $in['memo'] = $memo;
-                    } elseif ($airBody !== '' && !str_contains(strip_tags($curMemo), $airBody)) {
-                        $in['memo'] = rtrim($curMemo) . "\n（Airのメモ）" . $airBody;
-                    }
-                }
-                if (in_array($cur['status'], self::INACTIVE, true)) {
-                    $in['status'] = 'booked';
-                }
-                if ($in) {
-                    $cur = self::updateReservation($cur['id'], ['version' => $cur['version'], ...$in], $by);
-                    $res['updated']++;
-                } else {
-                    $res['unchanged']++;
-                }
-                if (isset($in['memo']) && $in['memo'] === $memo) {
-                    $cur['airMemo'] = $memo;
-                    self::putReservation($cur);
-                }
-                continue;
-            }
-            if ($a['cancelled']) {
-                continue;
-            }
-            $pid = $findPatient((string) $a['kana'], (string) $a['kanji']);
-            if ($pid === null) {
-                $name = trim((string) $a['kanji']) !== '' ? trim((string) $a['kanji']) : trim((string) $a['kana']);
-                $base = ['name' => $name !== '' ? $name : '（Airリザーブ・名前なし）', 'kana' => trim((string) $a['kana'])];
-                try {
-                    $pt = self::createPatient($base + (filter_var($a['email'] ?? '', FILTER_VALIDATE_EMAIL) ? ['email' => $a['email']] : []), $by);
-                } catch (Throwable) {
-                    $pt = self::createPatient(['name' => $base['name']], $by);
-                }
-                // 初診の方（美容の初診など）はカルテ番号も過去の情報もないのがふつうなので、印は付けない。
-                // 名前かフリガナが同じ・似た患者がほかにいるとき（同じ人の二重登録かもしれない）だけ「要確認」にする
-                if (self::similarPatients($pt)) {
-                    $pt['needsReview'] = 'air';
-                    self::putPatient($pt);
-                }
-                $pid = $pt['id'];
-                $res['newPatients']++;
-            } else {
-                $res['linked']++;
-                // メールが空の患者だけ、Air のメールで補う（LINE の無料通数を使い切ったときのメールのリマインド用。入っているメールは変えない）
-                $pt = self::patients()[$pid] ?? null;
-                if ($pt && empty($pt['deleted']) && empty($pt['email']) && filter_var($a['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
-                    try {
-                        self::updatePatient($pid, ['version' => $pt['version'], 'email' => (string) $a['email']], $by);
-                        $res['emailFilled']++;
-                    } catch (Throwable) {
-                        // 補えなくても予約の取り込みは続ける
-                    }
-                }
-            }
-            $r = self::createReservation(['patientId' => $pid, 'laneId' => $laneId, 'menuIds' => $menuId ? [$menuId] : [], 'startAt' => $a['from'], 'endAt' => $a['to'], 'memo' => $memo], $by);
-            $r['airMemo'] = $memo;
-            self::putReservation($r);
-            $existing[$no] = $r;
-            $res['created']++;
-        }
-        // その日の Air から消えた予約は取り消し（Air から1件も取れなかった日は、念のため何もしない）
-        if ($rows) {
-            foreach ($existing as $no => $r) {
-                if (!isset($seen[$no]) && clinic_date_of($r['startAt']) === $date && !self::inactive($r)) {
-                    $cur = self::reservation($r['id']);
-                    self::updateReservation($cur['id'], ['version' => $cur['version'], 'status' => 'cancelled'], $by);
-                    $res['cancelled']++;
-                }
-            }
-        }
-        return $res;
-    }
-
-    /** AirSync::compare の中身。$rows は fetchRange の形 */
-    public static function airCompare(array $rows, string $from, string $to): array
-    {
-        self::init();
-        $norm = fn($x) => fold_name_variants(search_key((string) $x));
-        $cal = [];
-        // 索引の時刻は UTC のことがあるので、前の日から読んでから日本の日付で絞る
-        $fromKey = (new DateTimeImmutable($from))->modify('-1 day')->format('Y-m-d');
-        foreach (Db::i()->between('reservation', 'k1', $fromKey, $to . "\u{FFFF}") as $r) {
-            $d = clinic_date_of($r['startAt']);
-            if ($d < $from || $d > $to) {
-                continue;
-            }
-            if (preg_match('/' . self::AIR_MARK . '\s*[:：]\s*([0-9A-Za-z]+)/u', strip_tags((string) ($r['memo'] ?? '')), $m)) {
-                $cal[strtoupper($m[1])][] = $r;
-            }
-        }
-        $patients = self::patients();
-        $lanes = self::lanes();
-        $pv = fn($id) => isset($patients[$id]) ? ['id' => $id, 'name' => $patients[$id]['name'], 'kana' => $patients[$id]['kana'] ?? ''] : ['id' => $id, 'name' => '（不明）', 'kana' => ''];
-        $items = [];
-        $seen = [];
-        $ok = 0;
-        foreach ($rows as $a) {
-            $no = strtoupper((string) $a['no']);
-            $seen[$no] = true;
-            $air = ['no' => $no, 'at' => $a['from'], 'kana' => $a['kana'], 'kanji' => $a['kanji'], 'lane' => $a['laneName'], 'menu' => $a['menuName'], 'cancelled' => (bool) $a['cancelled']];
-            $rs = $cal[$no] ?? [];
-            if (!$rs) {
-                if (!$a['cancelled']) {
-                    $items[] = ['kind' => 'missing', 'air' => $air];
-                }
-                continue;
-            }
-            if (count($rs) > 1) {
-                $items[] = ['kind' => 'duplicate', 'air' => $air, 'reservations' => array_map(fn($r) => ['id' => $r['id'], 'at' => $r['startAt'], 'status' => $r['status'], 'patient' => $pv($r['patientId'])], $rs)];
-            }
-            $r = $rs[0];
-            $p = $patients[$r['patientId']] ?? [];
-            $kanaOk = $a['kana'] === '' || $norm($p['kana'] ?? '') === $norm($a['kana']) || $norm($p['name'] ?? '') === $norm($a['kana']);
-            $kanjiOk = $a['kanji'] === '' || $norm($p['name'] ?? '') === $norm($a['kanji']) || ($p['nameAlt'] ?? '') !== '' && $norm($p['nameAlt']) === $norm($a['kanji']);
-            $diff = [];
-            if (!$kanaOk || !$kanjiOk) {
-                $diff[] = 'person';
-            }
-            if (normalize_iso($a['from']) !== $r['startAt']) {
-                $diff[] = 'time';
-            }
-            $ln = $norm($lanes[$r['laneId']]['name'] ?? '');
-            $an = $norm($a['laneName']);
-            if ($an !== '' && !($ln === $an || str_starts_with($ln, $an) || str_starts_with($an, $ln))) {
-                $diff[] = 'lane';
-            }
-            if ($a['cancelled'] !== in_array($r['status'], self::INACTIVE, true)) {
-                $diff[] = 'status';
-            }
-            if ($diff) {
-                $items[] = ['kind' => 'diff', 'diff' => $diff, 'air' => $air, 'reservation' => ['id' => $r['id'], 'at' => $r['startAt'], 'status' => $r['status'], 'lane' => $lanes[$r['laneId']]['shortName'] ?? '', 'patient' => $pv($r['patientId'])]];
-            } else {
-                $ok++;
-            }
-        }
-        foreach ($cal as $no => $rs) {
-            if (!isset($seen[$no])) {
-                foreach ($rs as $r) {
-                    if (!in_array($r['status'], self::INACTIVE, true)) {
-                        $items[] = ['kind' => 'extra', 'reservation' => ['id' => $r['id'], 'no' => $no, 'at' => $r['startAt'], 'status' => $r['status'], 'lane' => $lanes[$r['laneId']]['shortName'] ?? '', 'patient' => $pv($r['patientId'])]];
-                    }
-                }
-            }
-        }
-        usort($items, fn($x, $y) => strcmp($x['air']['at'] ?? $x['reservation']['at'], $y['air']['at'] ?? $y['reservation']['at']));
-        return ['from' => $from, 'to' => $to, 'air' => count($rows), 'ok' => $ok, 'items' => $items];
-    }
-
-    /** Airリザーブの取り込みで作った「要確認」の患者 */
+    /** 「要確認」の印が付いた患者のうち、似た患者がほかにいる人 */
     public static function reviewPatients(): array
     {
         self::init();
@@ -2589,39 +2350,6 @@ final class Store
         self::putPatient($next);
         self::recordChange($id, ['要確認の印を外す'], $now, $by);
         return $next;
-    }
-
-    /** 今日以降の予約のうち、メモに「Air予約番号」があるもの（今日より前の予約と患者には触れない） */
-    private static function airFutureReservations(): array
-    {
-        $today = now_in_clinic()['date'];
-        return array_values(array_filter(
-            Db::i()->between('reservation', 'k1', $today, '9999-12-31'),
-            fn($r) => clinic_date_of($r['startAt']) >= $today && str_contains((string) ($r['memo'] ?? ''), self::AIR_MARK),
-        ));
-    }
-
-    public static function countAirFutureReservations(): array
-    {
-        self::init();
-        return ['count' => count(self::airFutureReservations()), 'from' => now_in_clinic()['date']];
-    }
-
-    public static function deleteAirFutureReservations(array $by): array
-    {
-        self::init();
-        $db = Db::i();
-        $deleted = $db->transaction(function () use ($db) {
-            $n = 0;
-            foreach (self::airFutureReservations() as $r) {
-                $db->delete('reservation', $r['id']);
-                $n++;
-            }
-            return $n;
-        });
-        $from = now_in_clinic()['date'];
-        Auth::audit($by, "Airリザーブから移した{$from}以降の予約{$deleted}件を完全に削除（入れ直しのため）");
-        return ['deleted' => $deleted, 'from' => $from];
     }
 
     // ---- 指定した患者の予約を過去・未来とも完全に消す（スタッフ予定などを誤って予約として移したときの片付け） ----
@@ -4478,7 +4206,7 @@ final class Store
         return $next;
     }
 
-    // ---- 問診票（Googleフォームなどから。患者の情報はこちらからは送らない） ----
+    // ---- 問診票（来院前の問診票ページ・LINE から。患者の情報はこちらからは送らない） ----
 
     private const FORBIDDEN_ALL = '/[\x{0000}-\x{001f}\x{007f}-\x{009f}\x{202a}-\x{202e}\x{2066}-\x{2069}]/u';
     private const FORBIDDEN_EXCEPT_NL = '/[\x{0000}-\x{0009}\x{000b}-\x{001f}\x{007f}-\x{009f}\x{202a}-\x{202e}\x{2066}-\x{2069}]/u';
@@ -5001,7 +4729,7 @@ final class Store
         return ['questionnaires' => count($qs), 'patients' => count($changed)];
     }
 
-    // 問診票の見出しの見分け（questionnaire.gs の COLUMNS と同じ考え方）
+    // 問診票の見出しの見分け
     private const Q_KNOWN = '/性別|タイムスタンプ|timestamp|回答日時|お名前|氏名|名前|フリガナ|ふりがな|カナ|生年月日|電話|既往|病歴|治療中の病気|かかっている病気|内服|服用|飲んでいる薬|お薬|アレルギー|住所|郵便番号|〒|メール|e-?mail/iu';
     private const Q_NONE = '/^(なし|無し|ない|無い|特になし|特に無し|特にない|特にありません|ありません|いいえ|no|none|n\/a|[-ー－―]+)[。．.]?$/iu';
 
@@ -5720,8 +5448,6 @@ final class Store
             'patient' => self::bookingPatientView(self::patients()[$r['patientId']] ?? null),
             'requestId' => $r['requestId'] ?? null,
             'memo' => $memo !== '' ? $memo : null,
-            // Air で入れた予約（Air から取り込むので、ここからは変えられない。Air の利用を終えたあとは付けない）
-            'fromAir' => AirSync::retired() === null && preg_match('/' . self::AIR_MARK . '\s*[:：]/u', $memo) === 1 ? true : null,
         ], fn($v) => $v !== null);
     }
 
@@ -5818,10 +5544,6 @@ final class Store
 
     private static function bookingEditable(array $cur, bool $restoring = false): void
     {
-        // Air の利用を終えたあとは、Air から取り込んだ予約もふつうの予約と同じに扱う
-        if (AirSync::retired() === null && preg_match('/' . self::AIR_MARK . '\s*[:：]/u', strip_tags((string) ($cur['memo'] ?? '')))) {
-            throw new StoreError('invalid', 'Airリザーブで入れた予約です。Airリザーブで変更・取り消ししてください（15分ほどでここに反映されます）');
-        }
         if (self::inactive($cur) && !$restoring) {
             throw new StoreError('invalid', '取り消し済みの予約は変更できません（status を booked にすると予約に戻せます）');
         }

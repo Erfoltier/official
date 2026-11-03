@@ -71,7 +71,6 @@ export function ImportsTab(props: Props) {
           表やフォルダを修正するたびに自動で反映するには、配布物の Apps Script を使います。設定手順は各ファイルの先頭を参照してください。
           <br />・料金表・自費商品：sheet-prices-standard.gs（「書式のひな形」と同じ形のスプレッドシートを、修正のたびに送信）
           <br />・同意書：consent-templates.gs（Google ドライブの文書を、開くたびに最新版で読み込み。読み込み元は「設定 → 同意書」で設定）
-          <br />・問診票：questionnaire.gs（Google フォームの回答を、届くたびに送信）
         </p>
       </div>
     </section>

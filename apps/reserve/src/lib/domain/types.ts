@@ -104,7 +104,7 @@ export interface Patient {
   /** 「リマインド不要」と言われた */
   reminderOptOut?: boolean;
   /** Airリザーブの取り込みで、既存の患者と結びつけられずに新しく作った患者（スタッフが確かめたら外す） */
-  needsReview?: "air";
+  needsReview?: "air" | "booking";
   /** 生年月日（YYYY-MM-DD） */
   birthDate?: string;
   /** 注意事項（アレルギー等）がある患者。予約表に「!」を出す */
@@ -276,7 +276,7 @@ export interface Estimate {
   deleted?: { at: string; by?: Actor };
 }
 
-/** 問診票（Googleフォームなど）の回答。氏名＋生年月日か電話番号で患者に結びつける */
+/** 問診票（来院前の問診票ページ・LINE。過去の Google フォーム分を含む）の回答。氏名＋生年月日か電話番号で患者に結びつける */
 export interface Questionnaire {
   id: string;
   /** 送り元での回答の識別（同じ回答を二重に取り込まないため） */

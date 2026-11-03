@@ -29,9 +29,9 @@ describe("自動予約プログラムの連携", () => {
     expect((await google("GET", "/ping")).status).toBe(401);
     const ok = await bot(c);
     expect((await ok("GET", "/ping")).data).toMatchObject({ ok: true, name: "ChatGPT 自動予約" });
-    // 予約の鍵では、ほかの連携（問診票の受け取りなど）には入れない
+    // 予約の鍵では、ほかの連携（同意書のひな形の受け取りなど）には入れない
     const { token } = await c.post("/device-links", { source: "booking" });
-    const other = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [] }, { "X-Integration-Token": token });
+    const other = await h.srv.client().raw("POST", "/api/v1/integration/consent-templates", { templates: [] }, { "X-Integration-Token": token });
     expect([401, 503]).toContain(other.status);
   });
 
@@ -53,17 +53,17 @@ describe("自動予約プログラムの連携", () => {
     const p2 = await call("POST", "/patients", { name: "予約 花子", kana: "ヨヤクハナコ", birthDate: "1990-04-01" });
     expect(p2.data).toMatchObject({ created: false, patient: { id: p1.data.patient.id } });
     // 似た名前の患者がいない初診の方は「要確認」に出さない
-    expect((await c.get("/admin/air-sync")).review.map((x: { id: string }) => x.id)).not.toContain(p1.data.patient.id);
+    expect((await c.get("/admin/review-patients")).items.map((x: { id: string }) => x.id)).not.toContain(p1.data.patient.id);
     // 同じフリガナの別の人（生年月日がない）がいれば、二重登録かもしれないので「要確認」に出す
     const twin = await c.post("/patients", { name: "予約 太郎", kana: "ヨヤク タロウ" });
     const p3 = await call("POST", "/patients", { name: "予約 たろう", kana: "ヨヤク タロウ", phone: "080-1234-9999" });
     expect(p3.data.created).toBe(true);
-    const review = (await c.get("/admin/air-sync")).review;
+    const review = (await c.get("/admin/review-patients")).items;
     const row = review.find((x: { id: string }) => x.id === p3.data.patient.id);
     expect(row.similar.map((x: { id: string }) => x.id)).toContain(twin.id);
     // 似た患者を消したら（統合したら）一覧から外れ、まとめて見直すと印も外れる
     await c.post(`/patients/${twin.id}/delete`, { version: twin.version, reason: "テスト" });
-    expect((await c.get("/admin/air-sync")).review.map((x: { id: string }) => x.id)).not.toContain(p3.data.patient.id);
+    expect((await c.get("/admin/review-patients")).items.map((x: { id: string }) => x.id)).not.toContain(p3.data.patient.id);
 
     const t = tomorrow("10:00");
     const made = await call("POST", "/reservations", { patientId: p1.data.patient.id, laneId: lane, menuIds: [menu], startAt: t.at, endAt: tomorrow("10:30").at, memo: "ChatGPTから" });
@@ -107,15 +107,11 @@ describe("自動予約プログラムの連携", () => {
     expect(JSON.stringify(audit)).toContain("自動予約（ChatGPT 自動予約）");
   });
 
-  it("Airリザーブで入れた予約は変えられない・過去には入れられない", async () => {
+  it("過去には入れられない", async () => {
     const c = await h.srv.as("staff-admin");
     const call = await bot(c);
     const opt = (await call("GET", "/options")).data;
     const pt = await c.post("/patients", { name: "エア 太郎", kana: "エア タロウ" });
-    const air = await c.post("/reservations", { patientId: pt.id, laneId: opt.lanes[0].id, menuIds: [opt.menus[0].id], startAt: tomorrow("14:00").at, endAt: tomorrow("14:30").at, memo: "Air予約番号：ABC123" });
-    const r = await call("POST", `/reservations/${air.id}/cancel`, { version: 1 });
-    expect(r.status).toBe(400);
-    expect(r.data.message).toContain("Airリザーブ");
     const past = await call("POST", "/reservations", { patientId: pt.id, laneId: opt.lanes[0].id, menuIds: [opt.menus[0].id], startAt: "2020-01-01T10:00:00+09:00", endAt: "2020-01-01T10:30:00+09:00" });
     expect(past.status).toBe(400);
   });
@@ -154,31 +150,9 @@ describe("自動予約プログラムから、スタッフの画面と同じ API
   });
 });
 
-describe("Air 終了（院長の合図）", () => {
-  it("確かめの言葉がないと止めない。終了後は Air から取り込んだ予約も自動予約から変えられ、設定は変えられない", async () => {
+describe("Airリザーブの取り込み（10/22 終了・削除済み）", () => {
+  it("取り込みの API は無い", async () => {
     const c = await h.srv.as("staff-admin");
-    const call = await bot(c);
-    const opt = (await call("GET", "/options")).data;
-    const pt = await c.post("/patients", { name: "エア 花子", kana: "エア ハナコ" });
-    const air = await c.post("/reservations", { patientId: pt.id, laneId: opt.lanes[0].id, menuIds: [opt.menus[0].id], startAt: tomorrow("15:00").at, endAt: tomorrow("15:30").at, memo: "Air予約番号：XYZ789" });
-    expect((await call("GET", `/reservations/${air.id}`)).data.fromAir).toBe(true);
-    expect((await call("POST", `/reservations/${air.id}/cancel`, { version: 1 })).status).toBe(400);
-
-    const bad = await h.srv.client().raw("POST", "/api/v1/admin/air-sync/retire", { confirm: "x" });
-    expect(bad.status).not.toBe(200);
-    expect((await c.get("/admin/air-sync")).retired).toBeNull();
-    const done = await c.post("/admin/air-sync/retire", { confirm: "Air終了" });
-    expect(done.at).toBeTruthy();
-    const st = await c.get("/admin/air-sync");
-    expect(st.retired.at).toBe(done.at);
-    expect(st).toMatchObject({ enabled: false, interval: 0, loginConfigured: false });
-    await expect(c.put("/admin/air-sync", { enabled: true })).rejects.toThrow();
-    // 2回目は何もしない
-    expect((await c.post("/admin/air-sync/retire", { confirm: "Air終了" })).already).toBe(true);
-
-    expect((await call("GET", `/reservations/${air.id}`)).data.fromAir).toBeUndefined();
-    const cancelled = await call("POST", `/reservations/${air.id}/cancel`, { version: 1 });
-    expect(cancelled.status).toBe(200);
-    expect(cancelled.data.status).toBe("cancelled");
+    expect((await c.raw("GET", "/api/v1/admin/air-sync")).status).toBe(404);
   });
 });

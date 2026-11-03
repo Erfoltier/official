@@ -18,8 +18,7 @@ describe("問診票の状況", () => {
     const state = async (id: string) => (await c.get(`/day?date=${day}`)).reservations.find((x: { id: string }) => x.id === id)?.questionnaire;
     expect(await state(r1.id)).toBe("missing");
     expect(await state(r2.id)).toBeUndefined();
-    const res = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [{ key: "k-state", submittedAt: "2026/10/14 10:00:00", name: "初診 さん", birthDate: "1990-01-01", answers: [{ q: "お名前", a: "初診 さん" }] }] }, { Authorization: `Bearer ${h.srv.integrationToken}` });
-    expect(res.status).toBe(200);
+    const res = await h.srv.questionnaires([{ key: "k-state", submittedAt: "2026/10/14 10:00:00", name: "初診 さん", birthDate: "1990-01-01", answers: [{ q: "お名前", a: "初診 さん" }] }]);
     expect(await state(r1.id)).toBe("done");
   });
 });

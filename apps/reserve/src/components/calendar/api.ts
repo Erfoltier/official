@@ -354,75 +354,6 @@ export type PatientUpdate = Partial<
 
 // ---- リマインド ----
 
-export interface AirSyncResult {
-  at: string;
-  date: string;
-  ok: boolean;
-  error?: string;
-  count?: number;
-  created?: number;
-  updated?: number;
-  cancelled?: number;
-  unchanged?: number;
-  newPatients?: number;
-  linked?: number;
-  /** 登録済みの患者のうち、空だったメールを Air のメールで補った数 */
-  emailFilled?: number;
-}
-
-export interface AirSyncSettings {
-  enabled: boolean;
-  /** 毎朝この時刻を過ぎたら、翌日の分を取り込む */
-  time: string;
-  groupId: string;
-  loginConfigured: boolean;
-  loginId: string;
-  lastRun: AirSyncResult | null;
-  /** こまめな取り込み：この分ごとに（0 は止める）、今日から rangeDays 日先までを取り込む */
-  interval: number;
-  rangeDays: number;
-  /** こまめな取り込みで取り込む日：曜日（0=日〜6=土）・祝日・ホームページの特別診療日。すべて空なら毎日 */
-  clinicWeekdays: number[];
-  clinicHolidays: boolean;
-  specialDaysUrl: string;
-  specialDays: { url: string; at?: string; checkedAt?: string; dates: string[]; error?: string } | null;
-  frequentLast: AirSyncResult | null;
-  /** Air の利用を終えた記録（終えていなければ null）。終えたあとは取り込みを止め、Air から取り込んだ予約もふつうに変えられる */
-  retired: { at: string; by?: { id: string; name: string }; final?: AirSyncResult } | null;
-  /** 要確認の患者（名前・フリガナの似た患者がほかにいる人だけ）。similar はその候補 */
-  review: { id: string; name: string; kana: string; similar?: { id: string; name: string; kana?: string; chartNo?: string }[] }[];
-}
-
-export function fetchAirSync(): Promise<AirSyncSettings> {
-  return call("/api/v1/admin/air-sync");
-}
-
-export function saveAirSync(body: { enabled?: boolean; time?: string; groupId?: string; loginId?: string; password?: string; interval?: number; rangeDays?: number; clinicWeekdays?: number[]; clinicHolidays?: boolean; specialDaysUrl?: string }): Promise<AirSyncSettings> {
-  return call("/api/v1/admin/air-sync", { method: "PUT", body: JSON.stringify(body) });
-}
-
-/** Air の利用を終える（院長の合図「Air 終了」） */
-export function retireAir(force = false): Promise<{ at: string; final?: AirSyncResult; already?: boolean }> {
-  return call("/api/v1/admin/air-sync/retire", { method: "POST", body: JSON.stringify({ confirm: "Air終了", force }) });
-}
-
-export function runAirSync(date?: string): Promise<AirSyncResult> {
-  return call("/api/v1/admin/air-sync/run", { method: "POST", body: JSON.stringify(date ? { date } : {}) });
-}
-
-export interface AirCompareItem {
-  kind: "missing" | "extra" | "diff" | "duplicate";
-  diff?: ("person" | "time" | "lane" | "status")[];
-  air?: { no: string; at: string; kana: string; kanji: string; lane: string; menu: string; cancelled: boolean };
-  reservation?: { id: string; no?: string; at: string; status: string; lane?: string; patient: { id: string; name: string; kana: string } };
-  reservations?: { id: string; at: string; status: string; patient: { id: string; name: string; kana: string } }[];
-}
-
-/** 期間の Air の予約とカレンダーを見比べる（読むだけ） */
-export function compareAir(from: string, to: string): Promise<{ from: string; to: string; air: number; ok: number; items: AirCompareItem[] }> {
-  return call("/api/v1/admin/air-sync/compare", { method: "POST", body: JSON.stringify({ from, to }) });
-}
-
 export interface IntakeItem {
   requestId: string;
   receivedAt: string;
@@ -457,7 +388,19 @@ export function markIntake(requestId: string, action: "done" | "skip" | null): P
   return call(`/api/v1/intake/${encodeURIComponent(requestId)}/mark`, { method: "POST", body: JSON.stringify({ action }) });
 }
 
-/** Airリザーブの取り込みで付いた「要確認」の印を外す */
+export interface ReviewPatient {
+  id: string;
+  name: string;
+  kana: string;
+  similar?: { id: string; name: string; kana?: string; chartNo?: string }[];
+}
+
+/** 要確認の患者（自動予約などで新しく登録し、似た患者がほかにいる人） */
+export function fetchReviewPatients(): Promise<{ items: ReviewPatient[] }> {
+  return call("/api/v1/admin/review-patients");
+}
+
+/** 「要確認」の印を外す */
 export function markPatientReviewed(id: string): Promise<Patient> {
   return call(`/api/v1/patients/${encodeURIComponent(id)}/reviewed`, { method: "POST", body: "{}" });
 }
@@ -892,7 +835,7 @@ export interface QuestionnaireRow {
   patientId?: string;
   patientName?: string;
   chartNo?: string;
-  /** line＝LINE の問診票、web＝来院前の問診票ページ、form＝Google フォーム */
+  /** line＝LINE の問診票、web＝来院前の問診票ページ、form＝Google フォーム（2026-11 に廃止。過去の回答のみ） */
   source: "line" | "web" | "form";
 }
 

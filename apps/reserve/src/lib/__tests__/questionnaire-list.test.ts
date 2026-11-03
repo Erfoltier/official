@@ -8,18 +8,10 @@ describe("問診票の一覧", () => {
   it("期間と氏名・電話で絞り込め、開くと全文が見え、閲覧の記録に残る（スタッフ全員が見られる）", async () => {
     const c = await h.srv.as("staff-admin");
     const p = await c.post("/patients", { name: "一覧 太郎", kana: "イチラン タロウ", birthDate: "1980-01-02", phone: "090-1111-2222", chartNo: "4321" });
-    const res = await h.srv.client().raw(
-      "POST",
-      "/api/v1/integration/questionnaires",
-      {
-        responses: [
+    const res = await h.srv.questionnaires([
           { key: "k1", submittedAt: "2026/10/10 10:00:00", name: "一覧 太郎", kana: "イチラン タロウ", birthDate: "1980-01-02", phone: "090-1111-2222", answers: [{ q: "既往歴", a: "なし" }] },
           { key: "k2", submittedAt: "2026/09/01 10:00:00", name: "別 花子", phone: "080-3333-4444", answers: [{ q: "既往歴", a: "喘息" }] },
-        ],
-      },
-      { Authorization: `Bearer ${h.srv.integrationToken}` },
-    );
-    expect(res.status).toBe(200);
+        ]);
     const ns = await c.post("/staff", { name: "看護（問診）", role: "nurse", pin: "246810" });
     const nurse = await h.srv.as(ns.id, "246810");
     const all = await nurse.get("/questionnaires/list?from=2026-08-01&to=2026-10-31&q=");
@@ -42,8 +34,8 @@ describe("問診票の一覧", () => {
 describe("未確認の問診票の結びつけ", () => {
   it("先に届いた問診票は、患者を登録したとき・まとめて照合したときに結びつく", async () => {
     const c = await h.srv.as("staff-admin");
-    const send = (responses: unknown[]) =>
-      h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses }, { Authorization: `Bearer ${h.srv.integrationToken}` });
+    const send = (responses: object[]) =>
+      h.srv.questionnaires(responses);
     await send([
       { key: "r1", submittedAt: "2026/10/15 16:35:00", name: "初診 一子", kana: "ショシン イチコ", birthDate: "1995-05-05", answers: [{ q: "既往歴", a: "なし" }] },
       { key: "r2", submittedAt: "2026/10/15 17:40:00", name: "初診 二郎", phone: "090-5555-6666", answers: [{ q: "既往歴", a: "なし" }] },
@@ -80,13 +72,13 @@ describe("初診でカルテ番号・電話がまだない患者にも、問診�
     writeFileSync(path.join(dir, `${RID}.json`), JSON.stringify({ requestId: RID, type: "reservation_intake", source: { userId: "U" + "a".repeat(32) }, intake: { name: "初診 花子", kana: "ショシン ハナコ", phone: "090-5555-6666" } }));
     // 問診票は漢字の氏名と電話だけ（生年月日なし）
     const send = (key: string, name: string, phone: string) =>
-      h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [{ key, submittedAt: "2026/10/18 10:00:00", name, kana: "ショシン ハナコ", phone, answers: [{ q: "既往歴", a: "なし" }] }] }, { Authorization: `Bearer ${h.srv.integrationToken}` });
-    expect((await send("s1", "初診 花子", "09055556666")).status).toBe(200);
+      h.srv.questionnaires([{ key, submittedAt: "2026/10/18 10:00:00", name, kana: "ショシン ハナコ", phone, answers: [{ q: "既往歴", a: "なし" }] }]);
+    await send("s1", "初診 花子", "09055556666");
     const qs = (await c.get(`/patients/${p.id}/questionnaires`)).items;
     expect(qs).toHaveLength(1);
     // 電話が違えば結びつけない
     await c.post("/patients", { name: "ショシン ジロウ", kana: "ショシン ジロウ" });
-    expect((await send("s2", "初診 次郎", "09000000000")).status).toBe(200);
+    await send("s2", "初診 次郎", "09000000000");
     expect((await c.get("/questionnaires/list?from=2026-10-01&to=2026-10-31&q=")).items.find((x: { name: string }) => x.name === "初診 次郎").patientId).toBeFalsy();
   });
 });
@@ -103,19 +95,11 @@ describe("氏名が1人に決まり、問診票の前後14日に予約があれ�
     const other = await c.post("/patients", { name: "電話 違子", kana: "デンワ チガコ", phone: "090-1111-0000" });
     await c.post("/reservations", { patientId: other.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(addDays(today, 2), 600), endAt: toIso(addDays(today, 2), 630) });
     const at = today.replace(/-/g, "/") + " 10:00:00";
-    const res = await h.srv.client().raw(
-      "POST",
-      "/api/v1/integration/questionnaires",
-      {
-        responses: [
+    const res = await h.srv.questionnaires([
           { key: "a1", submittedAt: at, name: "近藤 予約子", birthDate: "1990-01-01", phone: "090-2222-3333", answers: [] },
           { key: "a2", submittedAt: at, name: "遠藤 予約子", birthDate: "1990-01-01", phone: "090-2222-4444", answers: [] },
           { key: "a3", submittedAt: at, name: "電話 違子", birthDate: "1990-01-01", phone: "090-9999-9999", answers: [] },
-        ],
-      },
-      { Authorization: `Bearer ${h.srv.integrationToken}` },
-    );
-    expect(res.status).toBe(200);
+        ]);
     expect((await c.get(`/patients/${near.id}/questionnaires`)).items).toHaveLength(1);
     expect((await c.get(`/patients/${far.id}/questionnaires`)).items).toHaveLength(0);
     expect((await c.get(`/patients/${other.id}/questionnaires`)).items).toHaveLength(0);

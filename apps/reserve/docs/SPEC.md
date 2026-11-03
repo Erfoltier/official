@@ -52,7 +52,7 @@
 | プログラム | `/srv/reserve/releases/<コミット>/app`、`/srv/reserve/app` がその時の版へのリンク |
 | 設定 | `/srv/reserve/private/config.php`（暗号鍵・連携トークンなど。リポジトリに入れない） |
 | データ | `/srv/reserve/private/data/reserve.db`、バックアップは同じ場所の `backups/` |
-| 定期実行 | systemd `reserve-reminders.timer`（10分ごと）→ `php/cron/reminders.php`（apache ユーザー）。リマインド（Air の取り込みは 10/22 に終了） |
+| 定期実行 | systemd `reserve-reminders.timer`（10分ごと）→ `php/cron/reminders.php`（apache ユーザー）。リマインド・診療日の予約表 PDF |
 | 控え | ①AWS Backup「ishida-daily」：毎日 3:00（JST）サーバー丸ごと、東京 ishida-vault（ロック）30日＋大阪 ishida-vault-osaka（ロック）30日 ②反映・データ操作の直前：`/srv/reserve/bin/backup`、予約DB、新しい40件 ③設定の控え・復元（設定 → バックアップ、設定だけ） ④院のパソコン：設定 → バックアップ →「ローカルPCにバックアップを保存」。データは合言葉（Argon2id）で暗号化した `.lrbk`（中に DB と encryption_key を包んで入れる）、写真は `data/blobs` の暗号化ファイルの tar。戻し方：`php php/tools/restore-local-backup.php <控え.lrbk> <フォルダ>` → 出た encryption_key を config.php に、reserve.db を db_dsn の場所に、写真の tar は data フォルダで `tar xf` |
 | 停止への備え | ①端末の予約表：設定 → バックアップ →「この端末に予約表をダウンロード」（押すと8日分をすぐ取る。「ダウンロードした予約表を見る」＝`/?offline=1` で、つながっていても端末の予約表だけを表示・変更の送信は画面側で止める）（許可は院長・管理者）。`src/lib/offline.ts`（IndexedDB・取り出せない AES-GCM 鍵・今日〜7日先・5分ごと）と `public/sw.js`（画面の部品だけ。API・患者情報は扱わない）。つながらないと `fetchDay` が控えを返し、帯で「見るだけ」と出す ②予約表 PDF：`DayPdf`（標準の日本語フォント・埋め込みなし）＋`DayPdfSender`（qpdf でパスワード、SMTP で添付、cron の 7:00〜9:59 に1日1回、水曜・祝日・特別診療日）。設定 → バックアップ ③見張り：Lambda lane-reserve-watch（東京。EventBridge で1分ごとに https://monshin…/ を開き `name="stamp"` があれば CloudWatch LaneReserve/Up=1）→ アラーム lane-reserve-down（2分続けて 0）→ SNS lane-reserve-down（東京）→ contact@erfoltier.com。Route 53 のヘルスチェックは TLS 1.3 だけのサーバーにつながらないので使わない |
 | 運用者の権限 | Claude：AWS の claude-ops（管理者）。Codex：chatgpt-ops は参照のみ（11/2〜。Session Manager は codex-ro で入る。sudo なし・予約データと設定は読めない・S3 への書き込みなし）。予約の入力・変更・取り消しと新しい患者の登録は、自動予約の接続キー（`/api/v1/integration/booking/…`）からだけできる。接続キーでの変更はそれ以外 403（メニューの追加・設定・患者情報の変更も不可） |
@@ -98,7 +98,7 @@
 | `lineContact` | 公式アカウントの友だち・やりとりした LINE（userId・初回/最終日時・表示名・患者が送った文の新しい30件／各200字）。送った文は手動連携の検索だけに使い、一覧には出さない |
 | intake（申請） | LINE 予約フォームの申請。申請者の LINE ID を含む（画面には出さない） |
 | meta `reminderSettings` / `reminderSecrets` | リマインドの設定／LINE のトークン・SMTP パスワード（画面に出さない） |
-| meta `airSyncSettings` / `airSyncSecrets` / `airRetired` | Air の取り込み設定／ログイン情報／Air 終了の記録 |
+| meta `airSyncSettings` / `airSyncSecrets` / `airRetired` | Air の取り込みの古い記録（2026-11 に処理を削除。中身は使わない） |
 
 ## 3. リマインド（`php/lib/Reminder.php`）
 
@@ -111,7 +111,7 @@
   3. 患者の `lineUserId`（いったん申請から特定できた人は、ここに入れて「連携済」にする）
   4. どれもなければメール（患者にメールがあれば）、それもなければ `no_contact`
 - **申請IDからの LINE 連携は即時・自動**（履歴「LINE紐付け（予約申請から自動）」）。仕組みは `Store::linkLineFromReservation` の1つだけで、呼び口は3つ
-  - 予約の保存（`putReservation`）：入力・変更・Air の取り込み・自動予約・外部連携のすべてがここを通る
+  - 予約の保存（`putReservation`）：入力・変更・自動予約・外部連携のすべてがここを通る
   - 申請が後から届いたとき（`Intake::store` → `Store::linkLineForRequest`）
   - 取りこぼしの拾い直し：リマインドの最初の回の前に `Store::autoLinkLines()`（一括は `tools/link-lines.php`）
 - 「LINE未連携 → 連携する」（手動）は、申請IDがない・申請の LINE と別の LINE を使っているなどのイレギュラーのときだけ使う
@@ -148,18 +148,17 @@
 1. カルテ番号（M3）
 2. 氏名（読み）＋電話、または氏名＋生年月日（患者の電話・生年月日がなくても、申請の電話・生年月日を使う：`patientContacts`）
 3. **案A**：同じ氏名の患者がひとりだけで、回答日の前後14日に予約がある
-- Air から取り込んだ後にも結び直す。一括は `tools/relink-questionnaires.php`
+- 一括の結び直しは `tools/relink-questionnaires.php`
 
 ## 6. 「要確認」の患者
 
-- 似た名前（同じ読みなど）の別の患者がいるときだけ出す（初診というだけでは出さない）。`similarPatients` / `reviewPatients`
+- 自動予約で新しく登録した患者（と、過去に Air から取り込んだ患者）に印が付く。似た名前（同じ読みなど）の別の患者がいるときだけ出す（初診というだけでは出さない）。`similarPatients` / `reviewPatients`。設定 → リマインド「要確認の患者」（`GET admin/review-patients`）
 - 似た患者を統合・削除したら外れる。一括の見直しは `tools/recheck-review.php`
 
-## 7. Airリザーブの取り込み（`php/lib/AirSync.php`）
+## 7. Airリザーブ（終了・削除済み）
 
-- 日中15分ごとに、今日から120日先までの**診療日だけ**を取り込む。診療日＝水曜・祝日・トップページに載る特別診療日
-- 毎朝、翌日分を取り込む（前日18時のリマインドに間に合わせる）
-- **Air 終了**：院長の合図で `POST admin/air-sync/retire`（確かめの言葉「Air終了」）または `tools/air-retire.php`。取り込みを止め、ログイン情報を消し、Air から入った予約も自動予約から変えられるようにする。戻す口はない。**2026-10-22 15:30 に院長の合図で終了済み**（終了前の控え：`backups/reserve-20261022-153009-before-air-retire.db`。最後の取り込みは 10/22〜2027/2/19 の診療日23日・310件で、すべて変更なし）
+- **2026-10-22 15:30 に院長の合図で Air 終了**（終了前の控え：`backups/reserve-20261022-153009-before-air-retire.db`。最後の取り込みは 10/22〜2027/2/19 の診療日23日・310件で、すべて変更なし）
+- 取り込みの処理（`AirSync.php`・`tools/air-retire.php`・設定のカード・API `admin/air-sync*`・`reservations/air-future`）は 2026-11-03 に削除。Air から入った予約・患者・メモの「Air予約番号」はそのまま残る（患者画面では予約番号の行を出さない）
 
 ## 8. 外部からの連携（`/api/v1/integration/...`）
 
@@ -169,13 +168,12 @@
 | `booking/safe-*` | 同上 | Codexの固定試験。既存の予約作成・読取に加え、`safe-mutations` の変更/取消、`safe-patients` の患者登録/読取を含む。追加2系統は標準では無効 |
 | `reservations/{id}/request-id` | 連携トークン | 予約申請IDの書き込み |
 | `patients/{id}/m3-chart-no` | 連携トークン | M3 カルテ番号の書き込み |
-| `questionnaires` / `consent-templates` / `prices` / `photos` | 連携トークン・機器の鍵 | 問診票・同意書のひな形・料金・写真の受け取り |
+| `consent-templates` / `prices` / `photos` | 連携トークン・機器の鍵 | 同意書のひな形・料金・写真の受け取り（Google フォームの問診票の口 `questionnaires` は 2026-11 に削除。問診票は来院前の問診票ページと LINE だけ） |
 
 - 自動予約の操作は監査に「自動予約（鍵の名前）」で残る。試験中のため回数の制限はかけない（院長の方針）
 - 固定試験の追加処理は `LaneMutationSafety` / `LaneMutationReadback` / `LanePatientSafety` に置く。`LaneMutationPolicy` と `LanePatientPolicy` は配布時に無効・承認なし・releaseRootなしとし、通常APIや他患者の処理から使わない。対象本人・操作・版・短い承認期限・新鮮な読取証拠・独立した完了確認が必要。保存ルールの存在やファイルの配布だけを、操作の承認・完了の証拠にしない
 - 患者登録は氏名/カナ/電話の既存候補があれば拒否し、結果不明時は再登録しない。予約変更・取消は元の版/所有者/メモ/m3証拠を照合し、固定試験の通知抑止を保持する。サーバー側処理自体はm3やLINEへ送信しない
 - 院長指定の既存架空患者「試験 花子」の予約試験は、既存 `LaneBookingSafety` の限定分岐を使う。固定患者ID・診察券番号・氏名/カナ、登録済みの場合の生年月日/電話、指定申請・12/30 11:00〜11:20・main・専用20分項目を照合する。新規患者作成や情報補完はしない。書込みは個別policyの有効化と最大120秒期限が必要で、DB待機後にもpolicy一致/期限を再確認する。配布policyは花子へ変更せず、既存の太郎試験動作は保持する。
-- Air で入れた予約は、Air 終了までは自動予約から変えられない
 
 ## 9. 院長の決めたこと（変えるときは院長に確認）
 

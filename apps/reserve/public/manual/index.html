@@ -153,7 +153,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 写真はすべて、開発用の <strong>架空のデモデータ</strong>（デモ皮フ科・架空の患者）で撮ったものです。実在の患者は写っていません。
 撮影日は 2026年10月9日（金）と 10月14日（水）の画面です。院ごとの設定（配色・レーン名・メニュー）によって、見た目は少し変わります。
 受付箱の申請（架空 花子・架空 太郎・見本 さくら）、リマインドの送り先に使ったメールアドレス（example.com）も、マニュアル用に作った架空のものです。</p>
-<p><strong><span class="unverified">未確認</span></strong> と書いてある所は、コードには機能があるものの、デモ環境では画面で動きを確かめられなかった所です（実際に LINE・メールを送る操作、Airリザーブにログインする操作、Googleドライブとつなぐ操作）。本番で使う前に確かめてください。</p>
+<p><strong><span class="unverified">未確認</span></strong> と書いてある所は、コードには機能があるものの、デモ環境では画面で動きを確かめられなかった所です（実際に LINE・メールを送る操作、Googleドライブとつなぐ操作）。本番で使う前に確かめてください。</p>
 </blockquote>
 <hr />
 <h2 id="s1">1. はじめに</h2>
@@ -396,7 +396,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li>申請の <strong>「予約を作る（希望日）」</strong>（①）を押します。<span class="fig"><button class="zoom" type="button" data-src="img/18-inbox-list.webp" aria-label="拡大：受付箱"><img src="img/18-inbox-list.webp" alt="受付箱" width="1440" height="900" loading="lazy"></button></span></li>
 <li>希望日の予約表に切り替わり、申請の文面を読み取った「新しい予約」の画面が開きます。同じ患者が見つからないときは「新しい患者として入力しました。内容を確かめて登録してください」と出て（①）、氏名・フリガナ・電話・生年月日が新規患者の欄に入ります（②）。同じ電話番号で氏名かフリガナも合う患者が1人いれば、その患者が選ばれます。<span class="fig"><button class="zoom" type="button" data-src="img/18b-inbox-book.webp" aria-label="拡大：受付箱から予約を作る"><img src="img/18b-inbox-book.webp" alt="受付箱から予約を作る" width="1440" height="900" loading="lazy"></button></span></li>
 <li>時刻は診療開始の時刻・先頭のレーンで開くので、メニュー・開始・時間・レーンを選び直します。メモには申請の内容（希望日・受診区分・希望・相談など）が、<strong>予約申請ID</strong>（③）には申請IDが入っています。確かめて登録（④）します。<span class="fig"><button class="zoom" type="button" data-src="img/18c-inbox-book-lower.webp" aria-label="拡大：メモと予約申請ID"><img src="img/18c-inbox-book-lower.webp" alt="メモと予約申請ID" width="1440" height="900" loading="lazy"></button></span></li>
-<li>登録した申請は受付箱で「予約済み」になり、未対応の一覧から消えます（Airリザーブから取り込んだ予約のメモに申請IDがある場合も「予約済み」）。メモに申請IDがなくても、カナ（または氏名）と電話（または生年月日）の両方が合う予約が申請日以降にあれば「予約済み（推定）」になります。</li>
+<li>登録した申請は受付箱で「予約済み」になり、未対応の一覧から消えます（予約のメモに申請IDがある場合も「予約済み」）。メモに申請IDがなくても、カナ（または氏名）と電話（または生年月日）の両方が合う予約が申請日以降にあれば「予約済み（推定）」になります。</li>
 <li>電話などで対応した申請は <strong>「済み」</strong>、受けない申請は <strong>「見送り」</strong> にします。「未対応に戻す」で戻せます。「予約済み・済み・見送りも表示」にチェックを入れると、対応済みの申請も見られます。</li>
 </ol>
 <p>写真の申請は、マニュアル用に作った架空の申請です。</p>
@@ -606,7 +606,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <figure><button class="zoom" type="button" data-src="img/47-conflict.webp" aria-label="拡大：同時編集"><img src="img/47-conflict.webp" alt="同時編集" width="1115" height="900" loading="lazy"></button><figcaption>同時編集</figcaption></figure>
 <hr />
 <h2 id="s9">9. 問診票</h2>
-<p>Googleフォームの問診票の回答は、自動でこのアプリに送られます（院で送る仕組みの設置が必要です）。</p>
+<p>来院前の問診票ページと LINE の問診票の回答は、自動でこのアプリに取り込まれます。</p>
 <h3 id="t32">9-1. 回答が患者に結びつく決まり</h3>
 <ul>
 <li><strong>氏名（またはフリガナ）＋生年月日か電話番号</strong> が合う患者が1人いれば、自動で結びつきます。</li>
@@ -742,7 +742,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>問診票</strong>：結びつかなかった回答の一覧（<a href="#s9">9章</a>）。</li>
 </ul>
 <h3 id="t45">外部機器の連携</h3>
-<p>ネオボワール（肌診断機）の写真の取り込み、Googleの問診票・同意書・料金表が送るときの鍵の発行、名前で患者が決まらなかった写真（照合待ちの写真）の結びつけ。鍵の発行は院長・管理者のみです。</p>
+<p>ネオボワール（肌診断機）の写真の取り込み、Googleの同意書・料金表が送るときの鍵の発行、名前で患者が決まらなかった写真（照合待ちの写真）の結びつけ。鍵の発行は院長・管理者のみです。</p>
 <p>ChatGPT などの<strong>自動予約プログラム</strong>に予約の入力・変更・取り消しをさせるときは、この画面の「自動予約プログラムの接続キー」で鍵を発行します。設定と使い方は <a href="../integrations/booking-api.html" target="_blank" rel="noreferrer">自動予約プログラムの接続マニュアル</a> を見てください。</p>
 <p>この画面の各項目は、開いた最初は閉じています。見出し（▸）を押すと開きます。</p>
 <p><strong>LINE チャット連携（院のパソコンの Chrome）</strong>：予約詳細の「LINEで連絡 ↗」で、その患者の LINE チャットを直接開けるようにする連携です。LINE は「メッセージを送る宛先」と「管理画面のチャットの番号」を別々に付けていて、その対応を教えてくれません。そこで、LINE 公式アカウントの管理画面を使うパソコンの Chrome に拡張機能を入れておくと、スタッフがいつものようにチャットを開くたびに、そのチャットがどの患者かを自動で覚えます（トークに出ている予約申請ID・プロフィール画像・LINE の表示名で見分けます。トークの本文は送りません）。新患も、申請に返信するためにチャットを開いた時点で覚えるので、患者ごとの作業はありません。チャットの上に出ている名前（院で付け直した名前）も覚え、「LINEと連携…」の検索に使えます。</p>
@@ -763,7 +763,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <p><strong>患者向けの表示・LINE の予約申請フォーム</strong>：LINE の予約申請フォームと問診票の見出しに出す正式な院名・英語の院名、予約申請を受け付ける診療科、受付日時の案内、プライバシーポリシー・ホームページのアドレスを入れます。<strong>予約申請フォームで選べる曜日</strong>にチェックを入れ、それ以外に選べる日（祝日の特別診療日など）は「特別診療日」に1行に1日ずつ入れます（例：2026-11-03）。保存するとすぐ予約申請フォームに反映されます。</p>
 <figure><button class="zoom" type="button" data-src="img/69-settings-clinic.webp" aria-label="拡大：院の情報"><img src="img/69-settings-clinic.webp" alt="院の情報" width="1103" height="900" loading="lazy"></button><figcaption>院の情報</figcaption></figure>
 <h3 id="t47">リマインド</h3>
-<p>予約のお知らせ（リマインド）とAirリザーブの取り込みの設定は、<strong>「リマインド」</strong> のタブにまとめています（以前は「院の情報・診療時間」にありました）。左が「リマインド（予約のお知らせ）」、右が「Airリザーブの取り込み」、その下が「リマインドで見せるメニュー」です。</p>
+<p>予約のお知らせ（リマインド）の設定と要確認の患者は、<strong>「リマインド」</strong> のタブにまとめています。左が「リマインド（予約のお知らせ）」、右が「要確認の患者」、その下が「リマインドで見せるメニュー」です。（Airリザーブの取り込みは 2026-10-22 の Air 終了に伴い、2026-11 に削除しました。）</p>
 <figure><button class="zoom" type="button" data-src="img/69b-settings-reminders.webp" aria-label="拡大：リマインド"><img src="img/69b-settings-reminders.webp" alt="リマインド" width="1103" height="900" loading="lazy"></button><figcaption>リマインド</figcaption></figure>
 <ul>
 <li><strong>リマインド（予約のお知らせ）</strong>（院長・管理者）：LINE・メールで予約のお知らせを送る設定です。</li>
@@ -775,8 +775,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>文面</strong>（下の写真の②）：<code>{患者名}</code> <code>{院名}</code> <code>{いつ}</code> <code>{日付}</code> <code>{時刻}</code> <code>{メニュー}</code> <code>{来院前のご案内}</code> <code>{院の電話}</code> を入れられます。メニュー名（「患者に見せる名前」）は、文面に <code>{メニュー}</code> を書いたときだけ入ります（標準の文面には <code>{メニュー}</code> がないので、メニュー名は入りません）。「標準の文面に戻す」「保存する」。<span class="fig"><button class="zoom" type="button" data-src="img/69e-reminder-menu-guide.webp" aria-label="拡大：メニューの「来院前の案内」と文面"><img src="img/69e-reminder-menu-guide.webp" alt="メニューの「来院前の案内」と文面" width="546" height="620" loading="lazy"></button></span></li>
 <li><strong>LINE チャネルアクセストークン</strong>（下の写真の①）：「設定済み」か「未設定」が出ます。LINE Developers の Messaging API チャネルにある「チャネルアクセストークン（長期）」を貼り付けて <strong>「保存」</strong> を押します。保存後は画面に表示されません。設定済みのときは <strong>「削除」</strong> も出ます（押すと「LINE チャネルアクセストークンを削除します。…よろしいですか？」と確認が出ます。削除すると LINE ではリマインドを送れなくなります）。</li>
 <li><strong>未送信分を今すぐ送る</strong>（下の写真の②）：送信時刻を過ぎた回のうち、まだリマインドを送っていない予約に送ります。同じ予約に同じ回のリマインドを二度送ることはありません。「自動送信を止める日」までの予約には送りません。予約の詳細の「今すぐ送る」で1件だけ送ることもできます（<a href="#t17">6-1</a>）。<span class="fig"><button class="zoom" type="button" data-src="img/69f-reminder-token-send.webp" aria-label="拡大：LINE チャネルアクセストークンと未送信分を今すぐ送る"><img src="img/69f-reminder-token-send.webp" alt="LINE チャネルアクセストークンと未送信分を今すぐ送る" width="546" height="457" loading="lazy"></button></span></li>
-<li><strong>Airリザーブの取り込み</strong>（院長・管理者）：毎朝、決めた時刻（5:00〜16:59）を過ぎたら翌日分の予約をAirリザーブから取り込む設定です（状態「止めている／毎朝取り込む」、取り込む時刻、Air のログイン ID・パスワード、取り込む日を選んで今すぐ取り込む）。ログイン情報は暗号化して保存し、画面には二度と出しません（入れるまでは「毎朝取り込む」と「今すぐ取り込む」は押せません）。Air予約番号で同じ予約を探して時刻・レーン・メニューをAirに合わせ、Airで取り消された・消えた予約は取り消しにします。リマインドを送る20分前にも、その回の対象日をもう一度取り込みます。既存の患者に結びついた予約で、患者のメールアドレスが空のときは Air のメールアドレスで補います（入っているメールは変えません）。既存の患者と結びつけられず新しく登録した患者は <strong>「要確認」</strong> の一覧に出て、予約の詳細の名前の横にも赤い「要確認」が出ます。同じ人がいれば患者画面で統合し、別の人なら一覧の「確認済み」を押します。<span class="fig"><button class="zoom" type="button" data-src="img/69d-settings-air.webp" aria-label="拡大：Airリザーブの取り込み"><img src="img/69d-settings-air.webp" alt="Airリザーブの取り込み" width="1098" height="900" loading="lazy"></button></span></li>
-<li><strong>Air と見比べる（読むだけ）</strong>（院長・管理者）：期間（一度に62日まで、過去の日も可）を選んで「見比べる」を押すと、Airの予約とLANE RESERVEの予約（Air予約番号つき）を見比べ、違う人・時刻やレーンのずれ・片方にしかない予約・同じ予約番号の二重を一覧にします。何も書き換えません。</li>
+<li><strong>要確認の患者</strong>（院長・管理者）：自動予約などで新しく登録した患者のうち、名前かフリガナの似た患者がほかにいる人が一覧に出ます（予約の詳細の名前の横にも赤い「要確認」が出ます）。同一人物なら患者画面で統合し、別人なら一覧の「確認済み」を押します。</li>
 <li><strong>リマインドで見せるメニュー</strong>（管理操作のできる人）：メニューごとに <strong>「患者に見せる名前」</strong>（文面に <code>{メニュー}</code> を書いたときだけその場所に入る。空欄ならメニュー名。院内の略称【再診】などを患者に見せないため）と <strong>「来院前の案内」</strong>（上の「メニューの『来院前の案内』」を「本文の最後に足す」にしたときだけ入る。文面に <code>{来院前のご案内}</code> を書けばその場所。1回の来院に複数のメニューがあるときはまとめて1回だけ）を入れ、行ごとに「保存」を押します。「まだ入れていないものだけ」で絞り込めます。メニューの編集画面でも同じ欄を直せます。</li>
 <li><strong>予約申請のLINEを患者に紐付ける</strong>：予約申請IDのLINEが見つかり、名前・生年月日が患者と合うとき、詳細パネルの申請IDの横に「LINE（申込者）」と「＋患者に紐付け」が出ます（<a href="#t12">4-4</a>）。家族が代わりに申し込んだ場合は紐付けないでください。</li>
 </ul>
@@ -973,7 +972,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <td style="text-align: center;">×</td>
 </tr>
 <tr>
-<td>リマインド（リマインド送信状況の確認を含む）・Airリザーブの取り込み・Airとの見比べ・同意書の読み込み元・外部連携の鍵・電子カルテ照合</td>
+<td>リマインド（リマインド送信状況の確認を含む）・要確認の患者・同意書の読み込み元・外部連携の鍵・電子カルテ照合</td>
 <td style="text-align: center;">○</td>
 <td style="text-align: center;">×</td>
 <td style="text-align: center;">×</td>
@@ -1009,7 +1008,7 @@ main h2, main h3 { scroll-margin-top: 72px; }
 <li><strong>同時編集</strong>：予約・患者などは <code>version</code> を持ち、古い版での保存は「他の端末で先に更新されました」で止まります（409）。</li>
 <li><strong>デモ</strong>：架空の患者・予約は <code>php/tools/demo-seed.php</code> で入れます。デモのPINは全員 <code>1234</code>。</li>
 <li><strong>運用のルール</strong>：予約・患者などの運用データは院の運用ルールの対象です。<strong>患者の情報（氏名・電話・カルテ内容など）を、ログ・チャット・課題管理・AIへの指示文に書かないでください。</strong> 調べるときは架空のデモデータを使い、本番のデータや本番の画面・APIには触れないでください。</li>
-<li>このマニュアルの写真のうち、予約表・カルテ・同意書・見積・スマホ・受付箱・リマインド・Airリザーブの設定の写真は、PHP 版に一本化した開発版（<code>npm run dev</code>、デモデータ）で撮影しました。患者画面と、リマインド・Air 以外の設定の写真は、それより前の開発版のままです。受付箱の申請と img/19 の申請IDは <code>intake-records/</code> に置いた架空の申請ファイルです。リマインドの状態（「未送信（送り先なし）」、送信状況の確認の送信済・送信失敗の行）は、写真のためにデモデータへ書き込んだ架空の状態です。リマインドの実際の送信と、Airリザーブへのログイン（取り込み・見比べ）は試していません。</li>
+<li>このマニュアルの写真のうち、予約表・カルテ・同意書・見積・スマホ・受付箱・リマインドの設定の写真は、PHP 版に一本化した開発版（<code>npm run dev</code>、デモデータ）で撮影しました。患者画面と、リマインド以外の設定の写真は、それより前の開発版のままです。受付箱の申請と img/19 の申請IDは <code>intake-records/</code> に置いた架空の申請ファイルです。リマインドの状態（「未送信（送り先なし）」、送信状況の確認の送信済・送信失敗の行）は、写真のためにデモデータへ書き込んだ架空の状態です。リマインドの実際の送信は試していません。</li>
 </ul>
   </main>
 </div>

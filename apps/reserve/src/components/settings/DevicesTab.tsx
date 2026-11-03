@@ -414,9 +414,9 @@ function GoogleKeysCard(props: {
   const api = `${serverUrl}/api/v1/integration`;
   return (
     <details className={`${styles.clinicCard} ${styles.fold}`}>
-      <summary className={styles.cardTitle}>Google 連携の接続キー（問診票・同意書・料金表）</summary>
+      <summary className={styles.cardTitle}>Google 連携の接続キー（同意書・料金表）</summary>
       <p className={styles.hint}>
-        問診票（Google フォーム）・同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVE へ送信するときに使う接続キーです。
+        同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVE へ送信するときに使う接続キーです。
         各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に設定してください。
       </p>
       {keys.map((l) => (

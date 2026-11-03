@@ -162,12 +162,6 @@ try {
         Http::checkIntegrationAuth();
         Http::json(Store::receiveConsentTemplates(Schema::integrationConsentTemplates(Http::readJson(20_000_000))));
     }
-    if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'questionnaires') {
-        Http::checkIntegrationAuth();
-        // 過去の回答をまとめて受け取るときは時間がかかるので、許されていれば時間の上限を延ばす
-        @set_time_limit(120);
-        Http::json(Store::receiveQuestionnaires(Schema::integrationQuestionnaires(Http::readJson(2_000_000))['responses']));
-    }
     // 機器の連携（院のパソコンの取り込み係から。鍵は設定 → 外部機器の連携 で発行）
     if ($p[0] === 'integration' && ($p[1] ?? '') === 'photos') {
         $link = Http::deviceLink();
@@ -593,43 +587,10 @@ try {
         Http::json(Reminder::tick(true));
     }
 
-    // ---- Airリザーブの予約の取り込み（院長・管理者） ----
-    if ($route === 'GET admin/air-sync') {
+    // ---- 要確認の患者（自動予約などで新しく登録し、似た患者がほかにいる人。院長・管理者） ----
+    if ($route === 'GET admin/review-patients') {
         $me(STAFF_ADMIN);
-        Http::json(AirSync::publicSettings());
-    }
-    // Air の利用を終える（院長の合図「Air 終了」）。確かめの言葉を入れたときだけ
-    if ($route === 'POST admin/air-sync/retire') {
-        $s = $me(STAFF_ADMIN);
-        $in = Http::readJson();
-        if (!is_array($in) || ($in['confirm'] ?? '') !== 'Air終了') {
-            Http::json(['error' => 'invalid', 'message' => '確かめのため「Air終了」と入力してください'], 400);
-        }
-        Http::json(AirSync::retire($actor($s), ($in['force'] ?? false) === true));
-    }
-    if ($route === 'PUT admin/air-sync') {
-        $s = $me(STAFF_ADMIN);
-        $in = Http::readJson(4_000);
-        if (!is_array($in)) {
-            Http::json(['error' => 'invalid', 'message' => '設定を読み込めませんでした'], 400);
-        }
-        Http::json(AirSync::updateSettings($in, $actor($s)));
-    }
-    if ($route === 'POST admin/air-sync/run') {
-        $s = $me(STAFF_ADMIN);
-        $in = Http::readJson();
-        $date = is_array($in) && is_string($in['date'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $in['date']) ? $in['date'] : (new DateTimeImmutable(now_in_clinic()['date'], jst()))->modify('+1 day')->format('Y-m-d');
-        $r = AirSync::run($date);
-        Auth::audit($actor($s), "Airリザーブの予約を手動で取り込み（{$date}・{$r['count']}件）");
-        Http::json($r);
-    }
-
-    if ($route === 'POST admin/air-sync/compare') {
-        $s = $me(STAFF_ADMIN);
-        $in = Http::readJson();
-        $r = AirSync::compare((string) ($in['from'] ?? ''), (string) ($in['to'] ?? ''));
-        Auth::noteAccess($s, 'Airリザーブとカレンダーの予約を見比べ', 'air-compare:' . $r['from'] . '..' . $r['to']);
-        Http::json($r);
+        Http::json(['items' => Store::reviewPatients()]);
     }
 
     // ---- LINE 予約フォームの申請の受付箱（スタッフ） ----
@@ -669,10 +630,10 @@ try {
             }
             $items[] = ['id' => $id, 'name' => $name, 'kana' => $str($x['kana'] ?? null, 60), 'birthDate' => $str($x['birthDate'] ?? null, 10), 'phone' => $str($x['phone'] ?? null, 20), 'm3ChartNo' => $str($x['m3ChartNo'] ?? null, 20)];
         }
-        // 書き換える前に、必ず控えを取る（分けて送るときは最初の1回だけ。写真は書き換えないので除いて手早く）
+        // 書き換える前に、必ずバックアップを作成する（分けて送るときは最初の1回だけ）
         $b = null;
         if (($in['backup'] ?? true) !== false) {
-            $b = Db::i()->backupDocs();
+            $b = Db::i()->backup();
             Auth::audit($actor($s), 'M3照合の前に保存データのバックアップを作成：' . $b['file']);
         }
         Http::json(Store::applyM3Fill($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
@@ -707,7 +668,7 @@ try {
         }
         $b = null;
         if (($in['backup'] ?? true) !== false) {
-            $b = Db::i()->backupDocs();
+            $b = Db::i()->backup();
             Auth::audit($actor($s), 'M3で問診票を照合する前に保存データのバックアップを作成：' . $b['file']);
         }
         Http::json(Store::applyM3Questionnaires($items, $actor($s)) + ['backup' => $b['file'] ?? null]);
@@ -862,22 +823,6 @@ try {
                 Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"DELETE"} を送ってください'], 400);
             }
             Http::json(Store::deletePatientReservations(V::id($p[2]), $actor($s)));
-        }
-    }
-
-    // ---- Airリザーブから移した今日以降の予約を完全に消す（院長・管理者。入れ直しのため） ----
-    if ($p[0] === 'reservations' && ($p[1] ?? '') === 'air-future') {
-        if ($method === 'GET' && $n === 2) {
-            $me(STAFF_ADMIN);
-            Http::json(Store::countAirFutureReservations());
-        }
-        if ($method === 'POST' && $n === 3 && $p[2] === 'delete') {
-            $s = $me(STAFF_ADMIN);
-            $in = Http::readJson();
-            if (!is_array($in) || ($in['confirm'] ?? null) !== 'DELETE') {
-                Http::json(['error' => 'invalid', 'message' => '確認のため {"confirm":"DELETE"} を送ってください'], 400);
-            }
-            Http::json(Store::deleteAirFutureReservations($actor($s)));
         }
     }
 

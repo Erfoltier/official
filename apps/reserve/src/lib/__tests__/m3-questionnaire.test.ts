@@ -78,16 +78,10 @@ describe("M3 照合の反映（サーバー）", () => {
   it("いる患者に結びつけて M3 番号を補い、いない方は登録して結びつける", async () => {
     const c = await h.srv.as("staff-admin");
     const p = await c.post("/patients", { name: "ヤマダ ハナコ" });
-    const res = await h.srv.client().raw(
-      "POST",
-      "/api/v1/integration/questionnaires",
-      { responses: [
+    const res = await h.srv.questionnaires([
         { key: "m1", submittedAt: "2026/10/01 10:00:00", name: "山田花子", birthDate: "1990-01-02", answers: [{ q: "既往歴", a: "なし" }] },
         { key: "m2", submittedAt: "2026/10/02 10:00:00", name: "佐藤 三郎", birthDate: "1970-07-08", answers: [{ q: "既往歴", a: "なし" }] },
-      ] },
-      { Authorization: `Bearer ${h.srv.integrationToken}` },
-    );
-    expect(res.status).toBe(200);
+      ]);
     const cand = await c.get("/admin/m3-questionnaires");
     expect(cand.questionnaires).toHaveLength(2);
     const q1 = cand.questionnaires.find((q: { name: string }) => q.name === "山田花子").id;

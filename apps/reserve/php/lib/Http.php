@@ -598,40 +598,6 @@ final class Schema
         ]);
     }
 
-    public static function integrationQuestionnaires(mixed $v): array
-    {
-        return V::shape($v, [
-            'responses' => function ($x) {
-                if (!is_array($x) || !array_is_list($x) || count($x) > 200) {
-                    throw new InputError();
-                }
-                return array_map(fn($r) => V::shape($r, [
-                    'key' => function ($y) {
-                        $y = V::str($y, 200);
-                        if ($y === '') {
-                            throw new InputError();
-                        }
-                        return $y;
-                    },
-                    'submittedAt' => fn($y) => V::str($y, 40),
-                    'name' => fn($y) => V::str($y, 120),
-                    'kana?' => fn($y) => V::str($y, 120),
-                    'birthDate?' => fn($y) => V::str($y, 10),
-                    'phone?' => fn($y) => V::str($y, 30),
-                    'history?' => fn($y) => V::str($y, 4000),
-                    'medications?' => fn($y) => V::str($y, 4000),
-                    'allergies?' => fn($y) => V::str($y, 4000),
-                    'answers' => function ($y) {
-                        if (!is_array($y) || !array_is_list($y) || count($y) > 80) {
-                            throw new InputError();
-                        }
-                        return array_map(fn($a) => V::shape($a, ['q' => fn($z) => V::str($z, 300), 'a' => fn($z) => V::str($z, 4000)]), $y);
-                    },
-                ]), $x);
-            },
-        ]);
-    }
-
     public static function importConsentTemplates(mixed $v): array
     {
         $t = V::shape($v, [

@@ -194,7 +194,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
               <span
                 className={styles.subGap}
                 style={{ color: "var(--danger, #c0392b)", fontSize: "0.8em", whiteSpace: "nowrap" }}
-                title="Airリザーブからの取り込み時に、既存の患者と結びつけられず新規登録した患者です。同じ人がいれば患者画面で統合し、別の人なら「設定 → リマインド」の「Airリザーブの取り込み」で確認済みにしてください"
+                title="新しく登録した患者で、似た名前の患者がほかにいます。同一人物なら患者画面で統合し、別人なら「設定 → リマインド」の「要確認の患者」で確認済みにしてください"
               >
                 要確認
               </span>

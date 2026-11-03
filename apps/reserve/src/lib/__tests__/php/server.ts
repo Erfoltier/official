@@ -118,6 +118,8 @@ export interface PhpServer {
   php<T = any>(code: string): Promise<T>;
   /** 保存されたデータ（DB・写真などの置き場所）の中身をそのまま読む（設定と実行したコードは除く） */
   rawData(): Buffer;
+  /** 問診票の回答を受け取る（今の問診票・LINE と同じ Store::receiveQuestionnaires）。照合の結果を返す */
+  questionnaires(responses: object[]): Promise<{ received: number; matched: number; [k: string]: unknown }>;
   /** php -S を止めて起動し直す（同じ設定・同じデータ） */
   restart(): Promise<void>;
   close(): Promise<void>;
@@ -205,6 +207,10 @@ export async function startPhp(opts: { demo?: boolean } = {}): Promise<PhpServer
       const out = JSON.parse(stdout) as { ok?: T; error?: string; message?: string };
       if (out.error) throw new Error(`${out.error}: ${out.message}`);
       return out.ok as T;
+    },
+    questionnaires(this: PhpServer, responses: object[]) {
+      const b64 = Buffer.from(JSON.stringify(responses)).toString("base64");
+      return this.php(`return Store::receiveQuestionnaires(json_decode(base64_decode('${b64}'), true));`);
     },
     rawData() {
       const files = readdirSync(dir, { recursive: true, withFileTypes: true })

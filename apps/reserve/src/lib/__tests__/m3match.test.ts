@@ -55,7 +55,7 @@ describe("照合できた患者へ漢字の氏名を入れる（サーバー）"
     });
     expect(r).toMatchObject({ updated: 1, skipped: 2 });
     // 書き換える前に控えを取る
-    expect(r.backup).toMatch(/^backups\/docs-.*\.db$/);
+    expect(r.backup).toMatch(/^backups\/reserve-.*\.db$/);
     const u = (await c.get(`/patients/${a.id}`)).patient;
     expect(u.name).toBe("照合 花子");
     expect(u.kana).toBe("ショウゴウ ハナコ");

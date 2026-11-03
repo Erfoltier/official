@@ -15,12 +15,8 @@ const answers = [
   { q: "来院のきっかけ", a: "特になし" },
 ];
 
-/** Google フォームの回答を送る係（外部連携のトークンで） */
-async function receive(responses: object[]) {
-  const r = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses }, { Authorization: `Bearer ${h.srv.integrationToken}` });
-  expect(r.status).toBe(200);
-  return r.data as { matched: number };
-}
+/** 問診票の回答を受け取る（今の問診票・LINE と同じ流れ） */
+const receive = (responses: object[]) => h.srv.questionnaires(responses);
 const patientOf = async (c: Client, id: string) => (await c.get(`/patients/${id}`)).patient;
 
 describe("問診票の回答を患者の基本情報へ写す", () => {
@@ -52,9 +48,9 @@ describe("問診票の回答を患者の基本情報へ写す", () => {
     expect(u.questionnaireOther).toBe("【問診票 2026/10/06】\nその他のご相談事項：シミが気になる\n\n【問診票 2026/11/01】\nその他のご相談事項：肝斑も");
   });
 
-  it("トークンがなければ受け付けない", async () => {
-    const r = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [] }, { Authorization: "Bearer wrong" });
-    expect(r.status).toBe(401);
+  it("Google フォームからの受け取り口は無い（2026-11 に廃止）", async () => {
+    const r = await h.srv.client().raw("POST", "/api/v1/integration/questionnaires", { responses: [] }, { Authorization: `Bearer ${h.srv.integrationToken}` });
+    expect(r.status).toBe(404);
   });
 });
 
