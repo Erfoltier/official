@@ -451,24 +451,24 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         />
       )}
 
-      {!maskNames && (
-        <div className={styles.panelSection}>
-          <div className={styles.sectionLabel}>
-            写真・同意書など（{formatDateJa(bundle.date)}）{files && files.length > 0 && ` ${files.length}件`}
-          </div>
-          {files && files.length > 0 && (
-            <div className={styles.panelFiles}>
-              <FileThumbs files={files} size="m" canDelete onDeleted={(id) => setFiles((fs) => fs?.filter((f) => f.id !== id) ?? null)} />
-            </div>
-          )}
-          <FileUploader
-            patientId={r.patientId}
-            date={bundle.date}
-            reservationId={r.id}
-            onUploaded={(f) => setFiles((fs) => [...(fs ?? []), f])}
-          />
+      {/* 撮影・ファイルのボタンは「伏字」のときも出す（写真の一覧だけを隠す） */}
+      <div className={styles.panelSection}>
+        <div className={styles.sectionLabel}>
+          写真・同意書など（{formatDateJa(bundle.date)}）{files && files.length > 0 && ` ${files.length}件`}
+          {maskNames && files && files.length > 0 && "（伏字中のため非表示）"}
         </div>
-      )}
+        {!maskNames && files && files.length > 0 && (
+          <div className={styles.panelFiles}>
+            <FileThumbs files={files} size="m" canDelete onDeleted={(id) => setFiles((fs) => fs?.filter((f) => f.id !== id) ?? null)} />
+          </div>
+        )}
+        <FileUploader
+          patientId={r.patientId}
+          date={bundle.date}
+          reservationId={r.id}
+          onUploaded={(f) => setFiles((fs) => [...(fs ?? []), f])}
+        />
+      </div>
 
       <div className={styles.panelSection}>
         <div className={styles.stageHead}>
