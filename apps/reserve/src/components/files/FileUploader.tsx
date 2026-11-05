@@ -70,7 +70,7 @@ export function FileUploader(props: {
           📷 撮影
         </button>
         <button type="button" className={styles.pickBtn} onClick={() => pickRef.current?.click()} disabled={!!busy}>
-          📎 ファイル
+          ファイル添付
         </button>
       </div>
       {!props.compact && <div className={styles.dropHint}>写真・PDF・Word をここにドラッグしても追加できます（10MBまで）</div>}
