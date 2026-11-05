@@ -9,6 +9,7 @@ import { FileUploader } from "@/components/files/FileUploader";
 import { EstimateDialog } from "@/components/estimates/EstimateDialog";
 import { ChartDialog } from "@/components/charts/ChartDialog";
 import { ConsentDialog } from "@/components/consents/ConsentDialog";
+import { QuestionnaireDialog } from "@/components/questionnaires/QuestionnaireDialog";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { FileThumbs } from "@/components/files/FileThumbs";
@@ -150,6 +151,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   }, []);
   const [chartOpen, setChartOpen] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [questionnaireOpen, setQuestionnaireOpen] = useState(false);
   /** 状態を変えた時刻（空欄なら押した時刻） */
   const [stageTime, setStageTime] = useState("");
   const stageMin = parseHm(stageTime);
@@ -326,9 +328,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
               📝 見積・会計
             </button>
+            <button type="button" className={styles.estimateBtn} onClick={() => setQuestionnaireOpen(true)}>
+              📋 問診票
+            </button>
           </span>
         )}
       </div>
+      {questionnaireOpen && patient && (
+        <QuestionnaireDialog patientId={patient.id} patientName={patient.name} onClose={() => setQuestionnaireOpen(false)} />
+      )}
       {consentOpen && patient && (
         <ConsentDialog
           patient={patient}
