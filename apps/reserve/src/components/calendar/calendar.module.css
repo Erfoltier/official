@@ -603,17 +603,6 @@
   font-weight: 800;
 }
 
-.lineBadge {
-  flex: none;
-  font-size: calc(9px * var(--gt, 1));
-  font-weight: 700;
-  color: #06c755;
-  border: 1px solid #06c755;
-  border-radius: 3px;
-  padding: 0 2px;
-  line-height: 12px;
-}
-
 .statusChip {
   position: absolute;
   right: 4px;

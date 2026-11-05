@@ -105,7 +105,6 @@ export const ReservationBlock = memo(function ReservationBlock(props: Props) {
             {patient?.caution && <span className={styles.caution} aria-label="注意事項あり">!</span>}
             <span className={styles.blockName}>{name}</span>
             {props.step && <span className={styles.stepBadge}>{props.step}</span>}
-            {patient?.lineUserId && <span className={styles.lineBadge}>LINE</span>}
             {h < 44 && pill}
           </div>
           {info !== "name" && (
