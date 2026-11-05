@@ -3045,3 +3045,12 @@ button.stagePill[data-clickable]:disabled {
   flex: 1 0 auto;
   padding: 0 8px;
 }
+
+/* 名前の行の「問診票 記入済／未記入」：注意事項の右（1行目）に小さく */
+.qState {
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--text-muted);
+}

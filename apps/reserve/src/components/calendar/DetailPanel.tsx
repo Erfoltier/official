@@ -195,6 +195,15 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             {!maskNames && patient && (
               <span className={styles.nameSide}>
                 <CautionInline note={patient.cautionNote} onSave={onCaution} />
+                {r.questionnaire && (
+                  <span
+                    className={styles.qState}
+                    title={r.questionnaire === "done" ? "問診票が届いています（患者画面で確認できます）" : "初めての来院で、問診票がまだ届いていません"}
+                    style={r.questionnaire === "missing" ? { color: "var(--danger, #c0392b)" } : undefined}
+                  >
+                    {r.questionnaire === "done" ? "問診票 記入済" : "問診票 未記入"}
+                  </span>
+                )}
                 <span className={styles.idSlot}>
                   {editingRequestId ? (
                     <span className={styles.idEdit}>
@@ -217,15 +226,6 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                     <button type="button" className={styles.idBtn} onClick={() => setEditingRequestId(true)} title="予約申請ID（LINE予約フォーム）を入力・編集">
                       {r.requestId ? `申請 ${r.requestId}` : "＋申請ID"} <span aria-hidden>✎</span>
                     </button>
-                  )}
-                  {r.questionnaire && (
-                    <span
-                      className={styles.subGap}
-                      title={r.questionnaire === "done" ? "問診票が届いています（患者画面で確認できます）" : "初めての来院で、問診票がまだ届いていません"}
-                      style={r.questionnaire === "missing" ? { color: "var(--danger, #c0392b)" } : undefined}
-                    >
-                      {r.questionnaire === "done" ? "問診票 記入済" : "問診票 未記入"}
-                    </span>
                   )}
                   {!editingRequestId && r.requestLine && r.requestLine !== "ok" && (
                     <span
