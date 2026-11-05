@@ -3030,3 +3030,18 @@ button.stagePill[data-clickable]:disabled {
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* 予約の詳細の上のボタン：1行目3つ・2行目4つを、パネルの幅いっぱいに並べる（院長の指示 2026-11-05。文字は省略しない） */
+.panelLinks {
+  align-items: stretch;
+}
+.panelLinks .panelLinkBtns {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: 100%;
+}
+.panelLinks .estimateBtn {
+  flex: 1 0 auto;
+  padding: 0 8px;
+}

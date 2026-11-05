@@ -70,6 +70,16 @@ interface Props {
   canManage?: boolean;
 }
 
+/** 担当記録の日時（例：11/2 14:03） */
+function stampShort(iso: string): string {
+  return new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** 担当記録に出す名前（Airリザーブの取り込みなど、人でない記録は出さない） */
+function staffName(a?: { id: string; name: string }): string {
+  return !a || a.id === "air" || a.id === "system" ? "" : a.name;
+}
+
 export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStatus, onStage, onStageTime, onFreeNote, onMemo, onRequestId, onChanged, onEditPatient, onCaution, canManage }: Props) {
   const patient = bundle.patients.find((p) => p.id === r.patientId);
   const lane = bundle.lanes.find((l) => l.id === r.laneId);
@@ -118,25 +128,6 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
   const [requestId, setRequestId] = useState(r.requestId ?? "");
   const [editingRequestId, setEditingRequestId] = useState(false);
   const sv = stageOf(r, bundle.stages);
-  const [copied, setCopied] = useState(false);
-  /** 予約確定の連絡文（LINE のチャットに貼る）。初めての来院で問診票がまだなら、問診票の入口を足す */
-  const confirmationText = () => {
-    const d = new Date(`${bundle.date}T00:00:00Z`);
-    const week = ["日", "月", "火", "水", "木", "金", "土"][d.getUTCDay()];
-    const menuNames = menus.map((m) => m!.publicName || m!.name).join("・");
-    const lines = [
-      `${patient?.name ?? ""} 様`,
-      "",
-      "ご予約が確定しました。",
-      `日時：${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${week}）${formatHm(start)}`,
-      ...(menuNames ? [`メニュー：${menuNames}`] : []),
-    ];
-    if (r.questionnaire === "missing" && bundle.questionnaireUrl) {
-      lines.push("", "初めてご来院の方は、ご来院前に問診票のご記入をお願いいたします。", bundle.questionnaireUrl);
-    }
-    lines.push("", "ご来院をお待ちしております。", bundle.clinic.docName || bundle.clinic.name);
-    return lines.join("\n");
-  };
   const freeStage = bundle.stages.find((s) => s.free && s.active && !s.deleted);
   const [freeText, setFreeText] = useState<string | null>(null);
   const [estimateOpen, setEstimateOpen] = useState(false);
@@ -236,19 +227,17 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                       {r.questionnaire === "done" ? "問診票 記入済" : "問診票 未記入"}
                     </span>
                   )}
-                  {!editingRequestId && r.requestLine && (
+                  {!editingRequestId && r.requestLine && r.requestLine !== "ok" && (
                     <span
                       className={styles.subGap}
                       title={
-                        r.requestLine === "ok"
-                          ? "リマインドは、この申請を送った LINE に届きます"
-                          : r.requestLine === "mismatch"
-                            ? "申請の氏名・生年月日がこの患者と一致しません。予約申請IDを確認してください（LINE では送信しません）"
-                            : "この予約申請IDの LINE が見つかりません（LINE では送信しません）"
+                        r.requestLine === "mismatch"
+                          ? "申請の氏名・生年月日がこの患者と一致しません。予約申請IDを確認してください（LINE では送信しません）"
+                          : "この予約申請IDの LINE が見つかりません（LINE では送信しません）"
                       }
-                      style={r.requestLine === "ok" ? undefined : { color: "var(--danger, #c0392b)" }}
+                      style={{ color: "var(--danger, #c0392b)" }}
                     >
-                      {r.requestLine === "ok" ? "LINE（申込者）" : r.requestLine === "mismatch" ? "⚠ 申請と患者が不一致" : "LINE 不明"}
+                      {r.requestLine === "mismatch" ? "⚠ 申請と患者が不一致" : "LINE 不明"}
                     </span>
                   )}
                   {!editingRequestId && r.requestLine === "ok" && patient && !patient.lineUserId && !lineLinked && (
@@ -295,11 +284,11 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       <div className={styles.panelLinks}>
         <span className={styles.panelLinkBtns}>
           <button type="button" className={styles.estimateBtn} onClick={() => onEditPatient()}>
-            👤 患者情報の表示・編集
+            患者情報
           </button>
           {!INACTIVE_STATUSES.has(r.status) && (
             <button type="button" className={styles.estimateBtn} onClick={() => setEditOpen(true)}>
-              🗓 予約を変更
+              予約を変更
             </button>
           )}
           {!INACTIVE_STATUSES.has(r.status) && (
@@ -313,23 +302,23 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
                 setConfirmCancel(true);
               }}
             >
-              ✕ 予約キャンセル
+              予約キャンセル
             </button>
           )}
         </span>
         {patient && !patient.deleted && (
           <span className={styles.panelLinkBtns}>
             <button type="button" className={styles.estimateBtn} onClick={() => setChartOpen(true)}>
-              🩺 カルテ
+              カルテ
             </button>
             <button type="button" className={styles.estimateBtn} onClick={() => setConsentOpen(true)}>
-              📄 同意書
+              同意書
             </button>
             <button type="button" className={styles.estimateBtn} onClick={() => setEstimateOpen(true)}>
-              📝 見積・会計
+              見積・会計
             </button>
             <button type="button" className={styles.estimateBtn} onClick={() => setQuestionnaireOpen(true)}>
-              📋 問診票
+              問診票
             </button>
           </span>
         )}
@@ -369,25 +358,6 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         />
       )}
 
-      <div className={styles.copyRow}>
-        <button
-          type="button"
-          className={styles.idBtn}
-          title="LINE のチャットに貼る、予約確定の連絡文をコピーします（日時・メニュー、初めての方には問診票の入口）"
-          onClick={async () => {
-            const text = confirmationText();
-            try {
-              await navigator.clipboard.writeText(text);
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 2000);
-            } catch {
-              window.prompt("コピーできなかったので、下の文を選んでコピーしてください", text);
-            }
-          }}
-        >
-          {copied ? "コピーしました ✓" : "確定連絡文をコピー"}
-        </button>
-      </div>
       <dl className={styles.facts}>
         <dt>日時</dt>
         <dd>
@@ -403,13 +373,13 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
             </span>
           ))}
         </dd>
-        {(r.createdBy || r.updatedBy) && (
+        {(r.createdAt || r.createdBy || r.updatedBy) && (
           <>
             <dt>担当記録</dt>
             <dd>
               {[
-                r.createdBy && `登録：${r.createdBy.name}`,
-                r.updatedBy && r.updatedBy.id !== r.createdBy?.id && `最終更新：${r.updatedBy.name}`,
+                (r.createdAt || r.createdBy) && `登録：${[r.createdAt && stampShort(r.createdAt), staffName(r.createdBy)].filter(Boolean).join(" ")}`,
+                r.updatedBy && r.updatedBy.id !== r.createdBy?.id && staffName(r.updatedBy) && `最終更新：${[r.updatedAt && stampShort(r.updatedAt), staffName(r.updatedBy)].filter(Boolean).join(" ")}`,
               ]
                 .filter(Boolean)
                 .join(" ／ ")}
