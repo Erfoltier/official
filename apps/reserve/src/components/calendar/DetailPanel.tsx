@@ -12,7 +12,7 @@ import { ConsentDialog } from "@/components/consents/ConsentDialog";
 import { ReservationEditDialog } from "@/components/reservations/ReservationEditDialog";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { FileThumbs } from "@/components/files/FileThumbs";
-import { REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
+import { MEMO_MAX, REQUEST_ID_RE } from "@/lib/domain/bookingRequest";
 import { INACTIVE_STATUSES } from "@/lib/domain/types";
 import { stageOf } from "./stages";
 import { StageTimeInput, parseHm } from "./StageTime";
@@ -673,7 +673,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
         <RichTextEditor
           value={memo}
           onChange={setMemo}
-          maxLength={500}
+          maxLength={MEMO_MAX}
           rows={3}
           onBlur={() => memo !== (r.memo ?? "") && onMemo(memo)}
           placeholder="施術の注意点など"

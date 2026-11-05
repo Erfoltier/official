@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DayBundle, Menu, Patient, Reservation } from "@/lib/domain/types";
 import { formatDateJa, formatHm, toIso } from "@/lib/domain/time";
 import { searchKey } from "@/lib/domain/text";
-import { REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/domain/bookingRequest";
+import { MEMO_MAX, REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/domain/bookingRequest";
 import { ApiError, createPatient, postReservation, searchPatients } from "./api";
 import { durationLabel } from "./menuFormat";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
@@ -503,7 +503,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
 
         <div className={styles.field}>
           <span>メモ</span>
-          <RichTextEditor value={memo} onChange={setMemo} rows={memo.includes("\n") ? 4 : 2} maxLength={500} ariaLabel="予約メモ" />
+          <RichTextEditor value={memo} onChange={setMemo} rows={memo.includes("\n") ? 4 : 2} maxLength={MEMO_MAX} ariaLabel="予約メモ" />
         </div>
 
         <div className={styles.field}>

@@ -45,41 +45,70 @@ const MEMO_KEYS: [RegExp, string][] = [
   [/性別/, "性別"],
 ];
 
+/** 予約メモの最大文字数（サーバーの上限 3000 より少し短く。装飾のタグの分を残す） */
+export const MEMO_MAX = 2500;
+
+/** フォームの項目名（この形の「項目名：」で始まる行だけを新しい項目とみなす。それ以外の行は直前の項目の続き） */
+const KNOWN_KEY = /予約申請ID|申請ID|氏名|お名前|カナ|フリガナ|ふりがな|生年月日|電話|希望予約日|希望日|時間帯|希望時間|受診区分|通院歴|当日施術|希望治療|お悩み|メニュー|部位|個数|相談|紹介|性別|今回の内容/;
+
+/** 「項目名：値」に分ける。値が複数行（相談内容など）のときは、次の項目名の行までを1つの値にまとめる */
+function splitItems(text: string): { key: string; value: string }[] {
+  const items: { key: string; value: string }[] = [];
+  let cur: { key: string; lines: string[] } | null = null;
+  const flush = () => {
+    if (cur) items.push({ key: cur.key, value: cur.lines.join("\n").replace(/\n+$/, "").trim() });
+    cur = null;
+  };
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    const m = line.match(/^([^：:]{1,30})[：:]\s*(.*)$/);
+    const key = m ? m[1].replace(/\s/g, "") : "";
+    if (m && (KNOWN_KEY.test(key) || !cur)) {
+      flush();
+      cur = { key, lines: [m[2].trim()] };
+    } else if (cur) {
+      // 続きの行（空行も、値の途中の改行として残す。末尾の空行は flush で落とす）
+      cur.lines.push(line);
+    }
+  }
+  flush();
+  return items;
+}
+
 export function parseBookingRequest(text: string): BookingRequest {
   const out: BookingRequest = { memo: "" };
   const memo: string[] = [];
   let wish = "";
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    const m = line.match(/^([^：:]{1,30})[：:]\s*(.*)$/);
-    if (!m) continue;
-    const key = m[1].replace(/\s/g, "");
-    const value = m[2].trim();
+  for (const { key, value: full } of splitItems(text)) {
+    // 項目のあいだの空行は値に入れない（値の途中の空行は1つにまとめる）
+    const value = full.replace(/\n{2,}/g, "\n");
+    const first = value.split("\n")[0];
     if (/予約申請ID|申請ID/.test(key)) {
-      const id = value.normalize("NFKC").replace(/\s/g, "");
+      const id = first.normalize("NFKC").replace(/\s/g, "");
       if (REQUEST_ID_RE.test(id)) out.requestId = id;
     } else if (/漢字氏名|^氏名$|^お名前$/.test(key)) {
-      if (value) out.name = value;
+      if (first) out.name = first;
     } else if (/カナ|フリガナ|ふりがな/.test(key)) {
-      if (value) out.kana = value;
+      if (first) out.kana = first;
     } else if (/生年月日/.test(key)) {
-      out.birthDate = jpDate(value);
+      out.birthDate = jpDate(first);
     } else if (/電話/.test(key)) {
-      const digits = value.normalize("NFKC").replace(/[^\d]/g, "");
+      const digits = first.normalize("NFKC").replace(/[^\d]/g, "");
       if (digits.length >= 10 && digits.length <= 11) out.phone = digits;
     } else if (/希望予約日|希望日/.test(key)) {
-      out.desiredDate = jpDate(value);
-      wish = value;
+      out.desiredDate = jpDate(first);
+      wish = first;
     } else if (/時間帯|希望時間/.test(key)) {
-      out.desiredTime = value;
+      out.desiredTime = first;
     } else {
-      if (/性別/.test(key) && value) out.gender = value;
-      if (/受診区分/.test(key) && value) out.visitType = value;
+      if (/性別/.test(key) && first) out.gender = first;
+      if (/受診区分/.test(key) && first) out.visitType = first;
       const label = MEMO_KEYS.find(([re]) => re.test(key))?.[1] ?? key;
       if (!EMPTY.has(value)) memo.push(`${label}：${value}`);
     }
   }
   const head = ["LINE予約申請", wish && `希望：${wish}${out.desiredTime ? ` ${out.desiredTime}` : ""}`].filter(Boolean).join("／");
-  out.memo = [head, ...memo].join("\n").slice(0, 500);
+  // 予約メモの上限（サーバー 3000 文字）に収める。フォームの入力欄の合計（最大約2,000文字）は省略せずに入る
+  out.memo = [head, ...memo].join("\n").slice(0, MEMO_MAX);
   return out;
 }
