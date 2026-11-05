@@ -1,0 +1,415 @@
+/*
+ * 配色プリセット。:root が標準（華やか）で、<html data-theme="…"> で切り替える（設定 → 画面の表示・配色）。
+ * 色はここの変数だけで決め、各画面はこの変数を使う。
+ *   --grad        決定・保存など、その画面でいちばん大事なボタンだけに使う
+ *   --accent-soft 何度も押す補助のボタン（撮影・選択中のタブなど）の地の色
+ */
+:root {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f1f5fb;
+  --alt-line: #d9e3f0;
+  /* 華やか（標準）：すみれ色 → 赤紫 → ローズのグラデーション */
+  --bg: #ffffff;
+  /* カード・ボタン・入力欄など「白い面」。白を使わない配色ではここを生成りにする */
+  --surface: #ffffff;
+  /* ボタンと入力欄の地・枠・影（落ち着いた配色ではまわりより一段明るく、枠と影で浮かせる） */
+  --btn-bg: var(--bg);
+  --btn-line: var(--line-strong);
+  --btn-shadow: none;
+  --field-bg: var(--bg);
+  /* 拡大縮小バーのつまみ：真珠（白い玉に柔らかな照り、テーマの色がほんのり映り込む） */
+  --gem: radial-gradient(circle at 35% 30%, #fff 0 10%, rgb(255 255 255 / 0%) 35%),
+    radial-gradient(circle at 70% 75%, color-mix(in srgb, var(--accent) 25%, #fff) 0%, rgb(255 255 255 / 0%) 50%),
+    radial-gradient(circle at 50% 45%, #fdfcfa 0%, #f1ede6 55%, #dcd6cb 100%);
+  --gem-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  --bg-subtle: #f8f6fc;
+  --bg-muted: #f0ecf7;
+  --tint: #fbf9ff;
+  --line: #ebe6f2;
+  --line-strong: #d6cee4;
+  --text: #241f30;
+  --text-muted: #655d77;
+  --text-faint: #968ea7;
+  --accent: #7c3aed;
+  --accent-strong: #6425d0;
+  --accent-deep: #3b1d78;
+  --accent-soft: #f3edff;
+  --accent-line: #cdbfee;
+  --danger: #d43c5a;
+  --now: #ec4899;
+  --grad: linear-gradient(135deg, #7c3aed 0%, #b23ad6 52%, #ec4899 100%);
+  --grad-line: linear-gradient(90deg, #7c3aed 0%, #c026d3 50%, #f472b6 100%);
+  --grad-soft: linear-gradient(135deg, #f6f0ff 0%, #fbf1fa 60%, #fff1f6 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%);
+  --shadow-rgb: 40 20 80;
+  --shadow-accent: 0 4px 14px rgb(124 58 237 / 24%);
+  --shadow-card: 0 6px 24px rgb(64 30 120 / 8%);
+  --radius: 6px;
+  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+/* ピンクベージュ：「たるみ治療」のページの色。ピンクベージュ・ベージュ・アイボリーの濃淡と淡いグラデーション。白は使わない */
+:root[data-theme="blush"] {
+  --alt-bg: #f2ebe2;
+  --alt-line: #e0d3c3;
+  --bg: #fbf5f1;
+  --surface: #fdf8f5;
+  --bg-subtle: #f5e9e3;
+  --bg-muted: #ead3cc;
+  --tint: #f4e4de;
+  --line: #e9d6cf;
+  --line-strong: #d3aea7;
+  --text: #3e2f2c;
+  --text-muted: #765f5a;
+  --text-faint: #a68f8a;
+  --accent: #a7767d;
+  --accent-strong: #8c5e66;
+  --accent-deep: #5d4039;
+  --accent-soft: #f0dcd8;
+  --accent-line: #dcbfc0;
+  --danger: #b2505b;
+  --now: #c06f79;
+  --grad: linear-gradient(135deg, #a7767d 0%, #b98f95 50%, #c9a98a 100%);
+  --grad-line: linear-gradient(90deg, #b98f95 0%, #dcbfc0 50%, #ceb484 100%);
+  --grad-soft: linear-gradient(135deg, #f3e2dd 0%, #f7eae5 55%, #f3e7dc 100%);
+  --grad-head: linear-gradient(180deg, #f8ebe7 0%, #efdcd6 100%);
+  --shadow-rgb: 95 62 56;
+  --shadow-accent: 0 4px 14px rgb(167 118 125 / 24%);
+  --shadow-card: 0 6px 24px rgb(95 62 56 / 9%);
+  --btn-bg: linear-gradient(180deg, #fefbf8 0%, #f7ebe5 100%);
+  --btn-line: #c99f98;
+  --btn-shadow: 0 1px 2px rgb(95 62 56 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  --field-bg: #fefaf7;
+}
+
+/* 爽やか：Re2O（リジュー）のページの色。涼しい水色の濃淡と、くすんだ青・紺 */
+:root[data-theme="calm"] {
+  --alt-bg: #eef2f5;
+  --alt-line: #d5dee5;
+  --bg: #f5fafd;
+  --surface: #fafdfe;
+  --bg-subtle: #e8f3f9;
+  --bg-muted: #d4e8f2;
+  --tint: #e9f4fa;
+  --line: #d6e7f0;
+  --line-strong: #a9cbdd;
+  --text: #15324a;
+  --text-muted: #4b687e;
+  --text-faint: #86a0b2;
+  --accent: #318bb6;
+  --accent-strong: #1f6e96;
+  --accent-deep: #123f5d;
+  --accent-soft: #e1f0f8;
+  --accent-line: #a7d1e6;
+  --danger: #c24a5a;
+  --now: #e0667a;
+  --grad: linear-gradient(135deg, #164f70 0%, #2778a8 50%, #75bddb 100%);
+  --grad-line: linear-gradient(90deg, #7498b4 0%, #75bddb 45%, #b3e0f1 70%, #75bddb 100%);
+  --grad-soft: linear-gradient(135deg, #e5f3fa 0%, #eef8fc 55%, #e2edf4 100%);
+  --grad-head: linear-gradient(180deg, #f2f9fc 0%, #e2f0f7 100%);
+  --shadow-rgb: 18 63 93;
+  --shadow-accent: 0 4px 14px rgb(39 120 168 / 24%);
+  --shadow-card: 0 6px 24px rgb(18 63 93 / 9%);
+  --btn-bg: linear-gradient(180deg, #fbfeff 0%, #e8f3f9 100%);
+  --btn-line: #93bdd3;
+  --btn-shadow: 0 1px 2px rgb(18 63 93 / 16%), inset 0 1px 0 rgb(255 255 255 / 70%);
+  --field-bg: #fbfeff;
+}
+
+/* 青白磁とリネン：生成りのリネンの卓に、青白磁（淡い水色の釉）と白磁の器を並べた配色。遠目に見て生成り・水色・白灰が混ざる */
+:root[data-theme="seiji"] {
+  --alt-bg: #efebe3;
+  --alt-line: #d9d2c5;
+  --bg: #f5f6f4;
+  --surface: #f9faf8;
+  --bg-subtle: #edf1ef;
+  --bg-muted: #dde8e6;
+  --tint: #eef4f3;
+  --line: #dfe3df;
+  --line-strong: #c3ccc8;
+  --text: #2c3534;
+  --text-muted: #5b6766;
+  --text-faint: #929d9b;
+  --accent: #6f9e9b;
+  --accent-strong: #527f7c;
+  --accent-deep: #2f5452;
+  --accent-soft: #e3efed;
+  --accent-line: #b5d1ce;
+  --danger: #b0545a;
+  --now: #c06a5e;
+  --grad: linear-gradient(135deg, #4f7d7a 0%, #7fa9a6 50%, #b9d6d3 100%);
+  --grad-line: linear-gradient(90deg, #c9c2b4 0%, #b9d6d3 40%, #e9f2f0 55%, #b9d6d3 70%, #c9c2b4 100%);
+  --grad-soft: linear-gradient(135deg, #e6f0ee 0%, #f4f7f5 55%, #ece8df 100%);
+  --grad-head: linear-gradient(180deg, #f2f6f5 0%, #dfeae8 100%);
+  --shadow-rgb: 52 66 64;
+  --shadow-accent: 0 4px 14px rgb(82 127 124 / 26%);
+  --shadow-card: 0 6px 24px rgb(52 66 64 / 10%);
+  --btn-bg: radial-gradient(120% 140% at 30% 0%, #ffffff 0%, #f3f5f3 45%, #e4e9e7 100%);
+  --btn-line: #bccbc8;
+  --btn-shadow: 0 1px 2px rgb(52 66 64 / 16%), inset 0 1px 0 rgb(255 255 255 / 90%);
+  --field-bg: #fbfcfb;
+  --zoom-fill-shine: linear-gradient(180deg, rgb(255 255 255 / 55%) 0%, rgb(255 255 255 / 0%) 50%, rgb(0 30 30 / 10%) 100%);
+}
+
+/* 白磁（ブティック）：白一色。つやの強い陶器・さらさらの素焼き・白い石の質感の違いで表情をつける */
+:root[data-theme="hakuji"] {
+  --alt-bg: #f3f2ef;
+  --alt-line: #dedcd7;
+  --bg: #fdfdfc;
+  --surface: #ffffff;
+  --bg-subtle: #f5f5f3;
+  --bg-muted: #e9e8e5;
+  --tint: #f7f7f5;
+  --line: #e8e7e3;
+  --line-strong: #cfcdc8;
+  --text: #2a2927;
+  --text-muted: #63615d;
+  --text-faint: #9e9c97;
+  --accent: #8a8782;
+  --accent-strong: #66635f;
+  --accent-deep: #3b3a37;
+  --accent-soft: #f1f0ed;
+  --accent-line: #d4d2cd;
+  --danger: #b3534c;
+  --now: #b8705a;
+  --grad: linear-gradient(180deg, rgb(255 255 255 / 28%) 0%, rgb(255 255 255 / 0%) 46%), linear-gradient(180deg, #4b4946 0%, #2c2b29 60%, #3a3836 100%);
+  --grad-line: linear-gradient(90deg, #e2e1dd 0%, #ffffff 30%, #cfcdc8 55%, #ffffff 75%, #e2e1dd 100%);
+  --grad-soft: linear-gradient(135deg, #f4f4f2 0%, #ffffff 55%, #efeeeb 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f0efec 100%);
+  --shadow-rgb: 60 58 54;
+  --shadow-accent: 0 3px 10px rgb(30 29 27 / 28%), inset 0 1px 0 rgb(255 255 255 / 22%);
+  --shadow-card: 0 8px 28px rgb(60 58 54 / 9%);
+  --btn-bg: radial-gradient(150% 95% at 50% -28%, #ffffff 0%, #ffffff 52%, rgb(255 255 255 / 0%) 53%), linear-gradient(180deg, #fbfbfa 0%, #f0f0ee 100%);
+  --btn-line: #d6d5d1;
+  --btn-shadow: 0 1px 1px rgb(60 58 54 / 8%), 0 4px 8px -5px rgb(60 58 54 / 30%), inset 0 1px 0 #ffffff, inset 0 -2px 3px rgb(128 138 148 / 10%);
+  --field-bg: #ffffff;
+  --zoom-fill-shine: linear-gradient(180deg, rgb(255 255 255 / 70%) 0%, rgb(255 255 255 / 0%) 50%, rgb(0 0 0 / 8%) 100%);
+}
+
+/* 厳か：濃紺と墨、差し色に控えめな金 */
+:root[data-theme="solemn"] {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f4f2ec;
+  --alt-line: #ddd8cc;
+  --bg-subtle: #f6f6f4;
+  --bg-muted: #ecebe6;
+  --tint: #fafaf8;
+  --line: #e4e2dc;
+  --line-strong: #c9c5bb;
+  --text: #1c1c22;
+  --text-muted: #54535b;
+  --text-faint: #87858d;
+  --accent: #2a3b63;
+  --accent-strong: #1d2c4f;
+  --accent-deep: #111a33;
+  --accent-soft: #eceff5;
+  --accent-line: #bfc7d8;
+  --danger: #a8323e;
+  --now: #a8323e;
+  --grad: linear-gradient(135deg, #18264a 0%, #2f4472 100%);
+  --grad-line: linear-gradient(90deg, #1d2c4f 0%, #3a4f7a 60%, #9c8250 100%);
+  --grad-soft: linear-gradient(135deg, #f2f3f6 0%, #f6f5f1 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f7f7f5 100%);
+  --shadow-rgb: 20 26 45;
+  --shadow-accent: 0 4px 14px rgb(24 38 74 / 22%);
+  --shadow-card: 0 6px 24px rgb(20 26 45 / 8%);
+}
+
+/* 上品（ゴールド）：当院のホームページのような金茶とクリーム */
+:root[data-theme="luxe"] {
+  /* 上品（ゴールド）：ホテルのロビー。アイボリーとグレージュに、マットなシャンパンゴールド（温かみのあるつや消しの金）のグラデーションの線。白は使わない */
+  --alt-bg: #f1ebe0;
+  --alt-line: #dccfb9;
+  --bg: #faf7f1;
+  --surface: #fcfaf6;
+  --bg-subtle: #f3ede2;
+  --bg-muted: #e6dac5;
+  --tint: #f5efe5;
+  --line: #e5dccb;
+  --line-strong: #cdb999;
+  --text: #3a3026;
+  --text-muted: #6c5d4b;
+  --text-faint: #a08f7a;
+  --accent: #ad9468;
+  --accent-strong: #8c7450;
+  --accent-deep: #5b4a33;
+  --accent-soft: #f1e9da;
+  --accent-line: #d6c39f;
+  --danger: #a24b3e;
+  --now: #a8673f;
+  --grad: linear-gradient(135deg, #8c7450 0%, #b9a073 35%, #e6d7b6 55%, #c2aa7e 75%, #957c56 100%);
+  --grad-line: linear-gradient(90deg, #9c8460 0%, #cfb98f 28%, #f0e4c8 50%, #cfb98f 72%, #9c8460 100%);
+  --grad-soft: linear-gradient(135deg, #f2eadc 0%, #faf6ef 60%, #eee3d0 100%);
+  --grad-head: linear-gradient(180deg, #faf6ee 0%, #ece2cf 100%);
+  --shadow-rgb: 80 62 38;
+  --shadow-accent: 0 4px 14px rgb(140 116 80 / 28%);
+  --shadow-card: 0 6px 24px rgb(80 62 38 / 10%);
+  --btn-bg: linear-gradient(180deg, #fefcf8 0%, #f2eadc 100%);
+  --btn-line: #c2ab83;
+  --btn-shadow: 0 1px 2px rgb(80 62 38 / 18%), inset 0 1px 0 rgb(255 255 255 / 75%);
+  --field-bg: #fefcf9;
+  --zoom-fill-shine: linear-gradient(180deg, rgb(255 250 225 / 60%) 0%, rgb(255 250 225 / 0%) 45%, rgb(60 50 25 / 18%) 100%);
+}
+
+/* やさしい：くすんだ緑。ナチュラル */
+:root[data-theme="natural"] {
+  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
+  --alt-bg: #f4f2ee;
+  --alt-line: #e0dad0;
+  --bg-subtle: #f6f8f5;
+  --bg-muted: #ebf0e8;
+  --tint: #fafcf9;
+  --line: #e1e8de;
+  --line-strong: #c8d4c3;
+  --text: #1f2a22;
+  --text-muted: #55634f;
+  --text-faint: #8a9785;
+  --accent: #4d7a58;
+  --accent-strong: #3b6346;
+  --accent-deep: #25402d;
+  --accent-soft: #edf4ee;
+  --accent-line: #bfd3c3;
+  --danger: #bf4848;
+  --now: #d0703a;
+  --grad: linear-gradient(135deg, #3f6a4a 0%, #6a9468 100%);
+  --grad-line: linear-gradient(90deg, #4d7a58 0%, #9cbf8c 100%);
+  --grad-soft: linear-gradient(135deg, #f3f7f2 0%, #f8faf6 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f8faf7 100%);
+  --shadow-rgb: 30 50 35;
+  --shadow-accent: 0 4px 14px rgb(59 99 70 / 20%);
+  --shadow-card: 0 6px 24px rgb(30 50 35 / 7%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/*
+ * 文字の大きさ（端末ごと。設定 → 画面の表示・配色）。
+ * カレンダーの予定表は指やマウスで時刻を動かすため枠ごとは拡大せず（上の＋−で拡大縮小）、中の文字だけを --gt で大きくする。
+ * まわりのバー・受付一覧・予約の詳細・ダイアログ・患者画面・設定などは丸ごと拡大する
+ */
+:root[data-size="l"] {
+  --ui-zoom: 1.12;
+  /* 予定表の中の文字（名前・施術・時刻・レーン名）。枠の位置は変えず、文字だけ大きくする */
+  --gt: 1.15;
+}
+
+:root[data-size="xl"] {
+  --ui-zoom: 1.25;
+  --gt: 1.3;
+}
+
+:root[data-size] dialog,
+:root[data-size] [data-ui-zoom] {
+  zoom: var(--ui-zoom);
+}
+
+/* ===== 配色ごとの「面の表情」：ページ・窓の地に、単方向ではないふんわりしたグラデーション ===== */
+/*
+ * ページ全体の地（スクロールしたときの1画面より下）。body の模様は1画面ぶんの高さにしか描かれないため、
+ * 下まで同じ地の色と布目・粒子（つなぎ目の出ない模様）を html に敷く（設定画面などを縦長の画面でスクロールしたとき白くならないように）
+ */
+:root[data-theme="blush"] {
+  background:
+    #faf3ee;
+}
+
+:root[data-theme="luxe"] {
+  background:
+    #f7f2e9;
+}
+
+:root[data-theme="calm"] {
+  background:
+    #f2f8fb;
+}
+
+:root[data-theme="seiji"] {
+  background:
+    repeating-linear-gradient(0deg, rgb(120 108 90 / 5%) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(120 108 90 / 5%) 0 1px, transparent 1px 3px),
+    #ebe6dc;
+}
+
+:root[data-theme="hakuji"] {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.4 0 0 0 0 0.37 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+    #f7f7f5;
+}
+
+:root[data-theme="blush"] body,
+:root[data-theme="blush"] dialog {
+  background:
+    radial-gradient(1100px 620px at 12% -8%, #f5e3dd 0%, transparent 58%),
+    radial-gradient(900px 700px at 105% 105%, #f6ebe0 0%, transparent 55%),
+    radial-gradient(700px 500px at 70% 30%, #fdf8f4 0%, transparent 60%),
+    #faf3ee;
+}
+
+:root[data-theme="luxe"] body,
+:root[data-theme="luxe"] dialog {
+  background:
+    radial-gradient(1000px 600px at 88% -12%, #e3d3b3 0%, transparent 58%),
+    radial-gradient(900px 640px at -5% 108%, #dccbaa 0%, transparent 58%),
+    radial-gradient(700px 500px at 40% 40%, #fdfaf4 0%, transparent 62%),
+    #f7f2e9;
+}
+
+:root[data-theme="calm"] body,
+:root[data-theme="calm"] dialog {
+  background:
+    radial-gradient(1000px 620px at 10% -10%, #e2f2f9 0%, transparent 58%),
+    radial-gradient(900px 700px at 105% 100%, #e5eef5 0%, transparent 55%),
+    radial-gradient(700px 520px at 65% 35%, #fafdfe 0%, transparent 60%),
+    #f2f8fb;
+}
+
+:root[data-theme="seiji"] body,
+:root[data-theme="seiji"] dialog {
+  background:
+    repeating-linear-gradient(0deg, rgb(120 108 90 / 5%) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(120 108 90 / 5%) 0 1px, transparent 1px 3px),
+    radial-gradient(900px 600px at 15% 0%, #dfecea 0%, transparent 60%),
+    radial-gradient(900px 700px at 100% 100%, #e3ddd1 0%, transparent 60%),
+    #ebe6dc;
+}
+
+:root[data-theme="hakuji"] body,
+:root[data-theme="hakuji"] dialog {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.4 0 0 0 0 0.37 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(1000px 600px at 20% -10%, #ffffff 0%, transparent 60%),
+    radial-gradient(900px 700px at 100% 100%, #eeede9 0%, transparent 60%),
+    #f7f7f5;
+}
