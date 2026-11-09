@@ -739,7 +739,7 @@ export const THEMES = [
   { id: "hakuji", label: "ホワイト", note: "白一色を、つやの陶器・さらさらの素焼き・白い石の質感で見せる", swatch: ["#d9d8d4", "#ffffff"] },
   { id: "solemn", label: "厳か", note: "濃紺と墨に、控えめな金", swatch: ["#18264a", "#9c8250"] },
   { id: "luxe", label: "ゴールド", note: "アイボリーとミルクティーベージュに金の線。ホテルのロビーのような配色", swatch: ["#a88860", "#efdfb9"] },
-  { id: "natural", label: "やさしい", note: "くすんだ緑のナチュラルな配色", swatch: ["#3f6a4a", "#9cbf8c"] },
+  { id: "natural", label: "シェル", note: "白蝶貝の地に、黒蝶貝のピンク・緑の干渉色とつや", swatch: ["#7a6c86", "#cfe6dd"] },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];

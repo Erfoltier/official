@@ -255,31 +255,37 @@
 
 /* やさしい：くすんだ緑。ナチュラル */
 :root[data-theme="natural"] {
-  /* 主役の色と見分けたい一覧（見積の全メニュー一覧など）の地と枠 */
-  --alt-bg: #f4f2ee;
-  --alt-line: #e0dad0;
-  --bg-subtle: #f6f8f5;
-  --bg-muted: #ebf0e8;
-  --tint: #fafcf9;
-  --line: #e1e8de;
-  --line-strong: #c8d4c3;
-  --text: #1f2a22;
-  --text-muted: #55634f;
-  --text-faint: #8a9785;
-  --accent: #4d7a58;
-  --accent-strong: #3b6346;
-  --accent-deep: #25402d;
-  --accent-soft: #edf4ee;
-  --accent-line: #bfd3c3;
-  --danger: #bf4848;
-  --now: #d0703a;
-  --grad: linear-gradient(135deg, #3f6a4a 0%, #6a9468 100%);
-  --grad-line: linear-gradient(90deg, #4d7a58 0%, #9cbf8c 100%);
-  --grad-soft: linear-gradient(135deg, #f3f7f2 0%, #f8faf6 100%);
-  --grad-head: linear-gradient(180deg, #ffffff 0%, #f8faf7 100%);
-  --shadow-rgb: 30 50 35;
-  --shadow-accent: 0 4px 14px rgb(59 99 70 / 20%);
-  --shadow-card: 0 6px 24px rgb(30 50 35 / 7%);
+  /* シェル：白蝶貝の地に、黒蝶貝のピンク・緑・薄紫の干渉色とつや（院長の指示 2026-11-09。旧「やさしい」を作り変え） */
+  --alt-bg: #f6f3f3;
+  --alt-line: #e3dde1;
+  --bg: #f8f6f4;
+  --surface: #ffffff;
+  --bg-subtle: #f7f5f6;
+  --bg-muted: #eeeaee;
+  --tint: #fbfafa;
+  --line: #e8e3e7;
+  --line-strong: #cfc7ce;
+  --text: #2b2830;
+  --text-muted: #625c68;
+  --text-faint: #9a93a0;
+  --accent: #7a6c86;
+  --accent-strong: #5b5068;
+  --accent-deep: #34303d;
+  --accent-soft: #f4f0f5;
+  --accent-line: #d8d0dd;
+  --danger: #b5485a;
+  --now: #c06a7e;
+  --grad: linear-gradient(180deg, rgb(255 255 255 / 22%) 0%, rgb(255 255 255 / 0%) 48%), linear-gradient(120deg, #3c4550 0%, #66566f 38%, #8b6c84 55%, #4d746f 100%);
+  --grad-line: linear-gradient(90deg, #efc6d4 0%, #c8e7db 35%, #d8d0f2 70%, #efc6d4 100%);
+  --grad-soft: linear-gradient(135deg, #fcf3f6 0%, #f3faf7 50%, #f6f3fc 100%);
+  --grad-head: linear-gradient(180deg, #ffffff 0%, #f6f3f5 100%);
+  --shadow-rgb: 60 50 70;
+  --shadow-accent: 0 4px 14px rgb(60 50 70 / 26%), inset 0 1px 0 rgb(255 255 255 / 25%);
+  --shadow-card: 0 6px 24px rgb(60 50 70 / 8%);
+  --btn-bg: linear-gradient(105deg, rgb(255 255 255 / 0%) 58%, rgb(255 255 255 / 92%) 66%, rgb(255 255 255 / 0%) 74%), linear-gradient(135deg, #fdf5f8 0%, #ffffff 38%, #f0f8f4 68%, #f5f1fb 100%);
+  --btn-line: #ddd4dc;
+  --btn-shadow: 0 1px 2px rgb(60 50 70 / 10%), 0 4px 8px -5px rgb(60 50 70 / 25%), inset 0 1px 0 #ffffff, inset 0 -2px 3px rgb(140 120 150 / 12%);
+  --field-bg: #ffffff;
 }
 
 * {
@@ -404,6 +410,20 @@ button {
     radial-gradient(900px 600px at 15% 0%, #dfecea 0%, transparent 60%),
     radial-gradient(900px 700px at 100% 100%, #e3ddd1 0%, transparent 60%),
     #ebe6dc;
+}
+
+:root[data-theme="natural"] {
+  background: #f6f4f1;
+}
+
+:root[data-theme="natural"] body,
+:root[data-theme="natural"] dialog {
+  background:
+    linear-gradient(115deg, rgb(255 255 255 / 0%) 22%, rgb(255 255 255 / 55%) 32%, rgb(255 255 255 / 0%) 42%),
+    radial-gradient(1000px 620px at 88% -8%, #f8e4ec 0%, transparent 60%),
+    radial-gradient(900px 680px at -5% 105%, #dff0e9 0%, transparent 58%),
+    radial-gradient(800px 560px at 45% 45%, #efebf8 0%, transparent 62%),
+    #f6f4f1;
 }
 
 :root[data-theme="hakuji"] body,
