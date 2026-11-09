@@ -434,3 +434,67 @@ button {
     radial-gradient(900px 700px at 100% 100%, #eeede9 0%, transparent 60%),
     #f7f7f5;
 }
+
+/*
+ * 配色ごとの背景テクスチャ（院長の確認 2026-11-09）。ページの地（部品の外側）に敷き、スクロールしても動かない
+ *  華やか＝シルクサテン／ピンクベージュ＝プレストパウダー（どちらも CSS の模様）
+ *  爽やか＝水面の光とすりガラス／ホワイト＝白磁の貫入／厳か＝白い和紙と金砂子／ゴールド＝サテン／シェル＝白蝶貝の真珠層（public/themes の画像）
+ *  青白磁とリネンは今までどおり
+ */
+:root[data-theme="default"] {
+  background: #f3e8f7;
+}
+:root[data-theme="default"] body,
+:root[data-theme="default"] dialog {
+  background: repeating-linear-gradient(135deg, rgb(255 255 255 / 9%) 0 1px, transparent 1px 4px), linear-gradient(115deg, transparent 18%, rgb(255 255 255 / 55%) 30%, transparent 42%, transparent 58%, rgb(255 255 255 / 35%) 68%, transparent 80%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.2 0 0 0 0 0.5 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url%28%23n%29'/%3E%3C/svg%3E"), linear-gradient(135deg, #ede4fb 0%, #f6e3f1 50%, #fbe2ea 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme="blush"] {
+  background: #f2e2dc;
+}
+:root[data-theme="blush"] body,
+:root[data-theme="blush"] dialog {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.38 0 0 0 0 0.36 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url%28%23n%29'/%3E%3C/svg%3E"), repeating-radial-gradient(circle at 70% 30%, rgb(255 255 255 / 0%) 0 18px, rgb(170 120 115 / 6%) 19px, rgb(255 255 255 / 30%) 20px, rgb(255 255 255 / 0%) 22px 40px), radial-gradient(500px 360px at 70% 30%, #fbf1ec 0%, transparent 70%), linear-gradient(160deg, #f6e6e0 0%, #efdcd5 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme="calm"] {
+  background: #cbe8f3;
+}
+:root[data-theme="calm"] body,
+:root[data-theme="calm"] dialog {
+  background: url("./themes/water.webp") center / cover no-repeat fixed, #cbe8f3;
+}
+
+:root[data-theme="hakuji"] {
+  background: #f4f5f5;
+}
+:root[data-theme="hakuji"] body,
+:root[data-theme="hakuji"] dialog {
+  background: url("./themes/hakuji.webp") center / cover no-repeat fixed, #f4f5f5;
+}
+
+:root[data-theme="solemn"] {
+  background: #eeece7;
+}
+:root[data-theme="solemn"] body,
+:root[data-theme="solemn"] dialog {
+  background: url("./themes/solemn.webp") center / cover no-repeat fixed, #eeece7;
+}
+
+:root[data-theme="luxe"] {
+  background: #d2b67c;
+}
+:root[data-theme="luxe"] body,
+:root[data-theme="luxe"] dialog {
+  background: url("./themes/gold.webp") center / cover no-repeat fixed, #d2b67c;
+}
+
+:root[data-theme="natural"] {
+  background: #ece6d6;
+}
+:root[data-theme="natural"] body,
+:root[data-theme="natural"] dialog {
+  background: url("./themes/shell.webp") center / cover no-repeat fixed, #ece6d6;
+}
