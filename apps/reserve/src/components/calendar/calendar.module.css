@@ -2450,9 +2450,9 @@ button.stagePill[data-clickable]:disabled {
 
 /* 上品：マットなシャンパンゴールド。細かな粒子（つや消しの素材感）に、斜めに走る柔らかな光の帯 */
 :global(:root[data-theme="luxe"]) .toolbar {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, rgb(255 252 240 / 45%) 0%, rgb(255 252 240 / 0%) 50%, rgb(90 70 40 / 10%) 100%),
-    linear-gradient(100deg, #c8b088 0%, #dcc8a3 18%, #f2e7cf 32%, #d9c49e 46%, #c3aa80 62%, #e6d6b5 80%, #cdb68e 100%);
+  /* 上の帯もページの地と同じ、真横のサテン（院長の指示 2026-11-09） */
+  background: linear-gradient(180deg, rgb(255 252 240 / 35%) 0%, rgb(255 252 240 / 0%) 45%, rgb(90 70 40 / 8%) 100%),
+    url("../../app/themes/gold.webp") center top / 1600px auto repeat-x, #d2b67c;
 }
 
 :global(:root[data-theme="luxe"]) .header {
