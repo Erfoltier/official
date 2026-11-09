@@ -155,7 +155,6 @@ export function ThemeCard({
             <span className={styles.themeSwatch} style={{ background: `linear-gradient(135deg, ${t.swatch[0]}, ${t.swatch[1]})` }} />
             <span>
               <b>{t.label}</b>
-              <small>{t.note}</small>
             </span>
           </button>
         ))}

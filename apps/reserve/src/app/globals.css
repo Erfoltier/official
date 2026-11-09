@@ -152,7 +152,7 @@
   --zoom-fill-shine: linear-gradient(180deg, rgb(255 255 255 / 55%) 0%, rgb(255 255 255 / 0%) 50%, rgb(0 30 30 / 10%) 100%);
 }
 
-/* 白磁（ブティック）：白一色。つやの強い陶器・さらさらの素焼き・白い石の質感の違いで表情をつける */
+/* ホワイト（白磁）：白一色。つやの強い陶器・さらさらの素焼き・白い石の質感の違いで表情をつける */
 :root[data-theme="hakuji"] {
   --alt-bg: #f3f2ef;
   --alt-line: #dedcd7;
@@ -180,9 +180,10 @@
   --shadow-rgb: 60 58 54;
   --shadow-accent: 0 3px 10px rgb(30 29 27 / 28%), inset 0 1px 0 rgb(255 255 255 / 22%);
   --shadow-card: 0 8px 28px rgb(60 58 54 / 9%);
-  --btn-bg: radial-gradient(150% 95% at 50% -28%, #ffffff 0%, #ffffff 52%, rgb(255 255 255 / 0%) 53%), linear-gradient(180deg, #fbfbfa 0%, #f0f0ee 100%);
-  --btn-line: #d6d5d1;
-  --btn-shadow: 0 1px 1px rgb(60 58 54 / 8%), 0 4px 8px -5px rgb(60 58 54 / 30%), inset 0 1px 0 #ffffff, inset 0 -2px 3px rgb(128 138 148 / 10%);
+  /* 小さな白磁の器：上半分に窓の映り込み（くっきりした境目）、斜めの照り、底に青白い釉だまり */
+  --btn-bg: linear-gradient(105deg, rgb(255 255 255 / 0%) 62%, rgb(255 255 255 / 95%) 68%, rgb(255 255 255 / 0%) 74%), radial-gradient(150% 95% at 50% -30%, #ffffff 0%, #ffffff 50%, rgb(255 255 255 / 0%) 51%), linear-gradient(180deg, #fafbfb 0%, #f1f3f4 60%, #e2e7ea 100%);
+  --btn-line: #cfd3d6;
+  --btn-shadow: 0 1px 1px rgb(60 70 80 / 10%), 0 5px 10px -5px rgb(60 70 80 / 38%), inset 0 1px 0 #ffffff, inset 0 -3px 4px rgb(110 130 150 / 18%);
   --field-bg: #ffffff;
   --zoom-fill-shine: linear-gradient(180deg, rgb(255 255 255 / 70%) 0%, rgb(255 255 255 / 0%) 50%, rgb(0 0 0 / 8%) 100%);
 }
@@ -216,9 +217,9 @@
   --shadow-card: 0 6px 24px rgb(20 26 45 / 8%);
 }
 
-/* 上品（ゴールド）：当院のホームページのような金茶とクリーム */
+/* ゴールド：当院のホームページのような金茶とクリーム */
 :root[data-theme="luxe"] {
-  /* 上品（ゴールド）：ホテルのロビー。アイボリーとグレージュに、マットなシャンパンゴールド（温かみのあるつや消しの金）のグラデーションの線。白は使わない */
+  /* ゴールド：ホテルのロビー。アイボリーとグレージュに、マットなシャンパンゴールド（温かみのあるつや消しの金）のグラデーションの線。白は使わない */
   --alt-bg: #f1ebe0;
   --alt-line: #dccfb9;
   --bg: #faf7f1;
