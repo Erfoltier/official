@@ -3103,7 +3103,7 @@ button.stagePill[data-clickable]:disabled {
 :global(:root[data-theme="natural"]) .reception {
   /* 白蝶貝の真珠層（設定画面の地と同じ絵。院長の指示 2026-11-10） */
   background: linear-gradient(180deg, rgb(255 255 255 / 25%) 0%, rgb(255 255 255 / 0%) 30%),
-    url("../../app/themes/shell.webp") center / cover no-repeat, #ece6d6;
+    url("../../app/themes/shell-light.webp") center / cover no-repeat, #f3eee2;
 }
 
 :global(:root[data-theme="natural"]) .receptionRow {
@@ -3115,6 +3115,6 @@ button.stagePill[data-clickable]:disabled {
 :global(:root[data-theme="natural"]) .panel {
   /* 白蝶貝の真珠層（設定画面の地と同じ絵。院長の指示 2026-11-10） */
   background: linear-gradient(180deg, rgb(255 255 255 / 25%) 0%, rgb(255 255 255 / 0%) 30%),
-    url("../../app/themes/shell.webp") center / cover no-repeat, #ece6d6;
+    url("../../app/themes/shell-light.webp") center / cover no-repeat, #f3eee2;
   box-shadow: inset 1px 0 0 #ffffff, inset 3px 0 6px -3px rgb(60 50 70 / 10%);
 }
