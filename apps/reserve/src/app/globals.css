@@ -512,13 +512,13 @@ button {
 }
 
 :root[data-theme="natural"] {
-  background: url("./themes/shell.webp") center / cover no-repeat fixed, #ece6d6;
-  background-color: #ece6d6;
+  background: url("./themes/shell-light.webp") center / cover no-repeat fixed, #f3eee2;
+  background-color: #f3eee2;
   background-attachment: fixed;
 }
 :root[data-theme="natural"] body {
   background: transparent;
 }
 :root[data-theme="natural"] dialog {
-  background: url("./themes/shell.webp") center / cover no-repeat fixed, #ece6d6;
+  background: url("./themes/shell-light.webp") center / cover no-repeat fixed, #f3eee2;
 }
