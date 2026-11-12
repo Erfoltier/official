@@ -284,7 +284,7 @@ export function DetailPanel({ bundle, reservation: r, maskNames, onClose, onStat
       <div className={styles.panelLinks}>
         <span className={styles.panelLinkBtns}>
           <button type="button" className={styles.estimateBtn} onClick={() => onEditPatient()}>
-            患者情報
+            患者詳細
           </button>
           {!INACTIVE_STATUSES.has(r.status) && (
             <button type="button" className={styles.estimateBtn} onClick={() => setEditOpen(true)}>

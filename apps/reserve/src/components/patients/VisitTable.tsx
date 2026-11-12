@@ -217,7 +217,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
         )}
       </section>
 
-      <details className={styles.histBlock} open>
+      <details className={styles.histBlock}>
         <summary className={styles.histTitle}>
           過去の履歴 <span className={styles.histCount}>{past.length}件</span>
         </summary>
@@ -244,7 +244,7 @@ export function TreatmentHistory({ detail, onSave, onFilesChanged, readOnly, can
         )}
       </details>
 
-      <details className={styles.histBlock} open>
+      <details className={styles.histBlock}>
         <summary className={styles.histTitle}>
           今後の予約 <span className={styles.histCount}>{detail.upcoming.length}件</span>
         </summary>
