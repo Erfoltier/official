@@ -1,0 +1,6 @@
+# 予約申請フォーム：LINE のアプリ内ブラウザが古い画面・見た目を使い続けないよう、毎回サーバーに確かめさせる（変わっていなければ 304 で軽い）
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css|json)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

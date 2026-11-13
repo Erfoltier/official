@@ -1,4 +1,4 @@
-import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261029-1';
+import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261113-1';
 
 const form = document.querySelector('#intake-form');
 const preferredDate = document.querySelector('#preferred-date');
