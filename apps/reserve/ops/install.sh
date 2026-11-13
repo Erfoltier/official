@@ -198,6 +198,10 @@ $AUTH
     AllowOverride None
     Require all granted
   </Directory>
+  # 予約申請フォーム・問診票の画面と見た目は、端末が毎回サーバーに確かめる（LINE のブラウザが古い見た目を使い続けないように）
+  <LocationMatch "^/(intake/|liff/)?([^/]*\\.(html|css|js|json))?$">
+    Header set Cache-Control "no-cache"
+  </LocationMatch>
 </VirtualHost>
 APACHE
 grep -q "RESERVE_CONFIG" /etc/php-fpm.d/www.conf || echo "env[RESERVE_CONFIG] = /srv/reserve/private/config.php" >> /etc/php-fpm.d/www.conf
