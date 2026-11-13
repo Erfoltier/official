@@ -67,7 +67,7 @@ final class DayPdfSender
         $dow = (int) (new DateTimeImmutable($date . 'T00:00:00+09:00'))->format('w');
         return in_array($dow, $s['weekdays'], true)
             || ($s['holidays'] && Holidays::is($date))
-            || in_array($date, Store::publicInfo()['intakeSpecialDates'], true);
+            || in_array($date, HomepageDays::intakeDates(), true);
     }
 
     private static function qpdf(): ?string

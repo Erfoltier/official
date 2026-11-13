@@ -5,7 +5,7 @@ import type { ClinicSettings, PaperSize, ThemeId } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS, THEMES } from "@/lib/domain/types";
 import { applyTheme } from "@/lib/theme";
 import { formatHm } from "@/lib/domain/time";
-import { saveClinic } from "@/components/calendar/api";
+import { saveClinic, type HomepageDays } from "@/components/calendar/api";
 import styles from "./settings.module.css";
 
 const toHm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -17,12 +17,14 @@ const fromHm = (s: string) => {
 /** 院名・診療時間（カレンダーに出す時間帯）・予約の刻み */
 export function ClinicTab({
   clinic,
+  homepageDays,
   canEdit,
   onChanged,
   notify,
   fail,
 }: {
   clinic: ClinicSettings;
+  homepageDays?: HomepageDays;
   canEdit: boolean;
   onChanged: () => Promise<void>;
   notify: (text: string) => void;
@@ -100,7 +102,7 @@ export function ClinicTab({
       </div>
 
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
-      <PublicCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
+      <PublicCard clinic={clinic} homepageDays={homepageDays} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
   );
@@ -267,12 +269,14 @@ const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 /** 患者向けの表示（LINE の予約申請フォーム・問診票の見出し・プライバシーポリシー）と、予約申請フォームで選べる日 */
 function PublicCard({
   clinic,
+  homepageDays,
   canEdit,
   onChanged,
   notify,
   fail,
 }: {
   clinic: ClinicSettings;
+  homepageDays?: HomepageDays;
   canEdit: boolean;
   onChanged: () => Promise<void>;
   notify: (text: string) => void;
@@ -363,6 +367,7 @@ function PublicCard({
         <span>そのほかに選べる特別診療日（1行に1日、例：2026-11-03）</span>
         <textarea className={styles.input} value={special} rows={4} onChange={(ev) => setSpecial(ev.target.value)} disabled={!canEdit} />
       </label>
+      <HomepageDaysView hp={homepageDays} homepageUrl={clinic.homepageUrl ?? ""} />
       <p className={styles.hint} data-invalid={badDate || badUrl || undefined}>
         {badDate ? `日付の形が正しくありません：${badDate}` : badUrl ? "アドレスは https:// で始まる形で入力してください" : "プライバシーポリシーは、予約申請フォームの同意の画面に出ます。"}
       </p>
@@ -372,6 +377,39 @@ function PublicCard({
             保存
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+const md = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00+09:00`);
+  return `${d.getMonth() + 1}/${d.getDate()}（${"日月火水木金土"[d.getDay()]}）`;
+};
+
+/** ホームページの「特別診療日」から読んだ日（1日1回。手で入れた日と合わせて予約申請フォームに出す。祝日は自動では足さない） */
+function HomepageDaysView({ hp, homepageUrl }: { hp?: HomepageDays; homepageUrl: string }) {
+  if (!homepageUrl) return <p className={styles.hint}>ホームページのアドレスを入れると、トップの「特別診療日」を1日1回読み、予約申請フォームで選べる日に自動で足します。</p>;
+  const when = hp?.checkedAt ? new Date(hp.checkedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
+  return (
+    <div className={styles.hint}>
+      <b>ホームページから読んだ特別診療日</b>（1日1回自動。上に手で入れた日と合わせてフォームに出ます。祝日は自動では足しません）
+      <br />
+      {!hp?.checkedAt ? (
+        "まだ読んでいません（次の定期実行で読みます）"
+      ) : (hp.upcoming ?? []).length ? (
+        (hp.upcoming ?? []).map(md).join("・")
+      ) : (
+        "今日以降の日はありません"
+      )}
+      {when && `　（最後に確かめた日時：${when}）`}
+      {hp?.error && (
+        <span style={{ display: "block", color: "var(--danger, #c0392b)" }}>
+          ホームページから読めませんでした：{hp.error}（前回読めた日をそのまま使っています）
+        </span>
+      )}
+      {hp?.skipped && hp.skipped.length > 0 && (
+        <span style={{ display: "block", color: "var(--danger, #c0392b)" }}>曜日が合わないなどで取り込まなかった日：{hp.skipped.join("、")}</span>
       )}
     </div>
   );

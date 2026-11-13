@@ -14,8 +14,8 @@ try {
     echo json_encode([
         'ok' => true,
         'liffId' => $c['liff_id'],
-        // 特別診療日は設定画面のものと、設定ファイル（以前の置き場所）のものを合わせる
-        'specialDates' => array_values(array_unique([...$p['intakeSpecialDates'], ...$c['special_dates']])),
+        // 特別診療日は、設定画面に手で入れた日・ホームページから読んだ日・設定ファイル（以前の置き場所）の日を合わせる（祝日は自動では足さない）
+        'specialDates' => array_values(array_unique([...HomepageDays::intakeDates(), ...$c['special_dates']])),
         'weekdays' => $p['intakeWeekdays'],
         'clinic' => ['name' => $p['name'], 'publicName' => $p['publicName'], 'publicNameEn' => $p['publicNameEn'], 'department' => $p['department'], 'privacyUrl' => $p['privacyUrl'], 'intakeHours' => $p['intakeHours']],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

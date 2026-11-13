@@ -320,6 +320,18 @@ export interface SettingsData {
   menus: Menu[];
   products: Product[];
   stages: Stage[];
+  /** ホームページの「特別診療日」から読んだ日（1日1回、サーバーが読む） */
+  homepageDays?: HomepageDays;
+}
+
+export interface HomepageDays {
+  url?: string;
+  at?: string;
+  checkedAt?: string;
+  dates?: string[];
+  upcoming?: string[];
+  skipped?: string[];
+  error?: string;
 }
 
 export function fetchSettings(): Promise<SettingsData> {

@@ -189,3 +189,8 @@
 # 2026-11-01 追加候補：固定M11-RのLINE試験
 
 `fixed-m11line-jan2027-20261101-v1` は固定試験本人の `R20261101LaneM11Line0106Main1300`、2027-01-06 lane-main/menu-x021の13:00〜13:10、変更後14:00〜14:10、version1/2/3に限定する。旧操作者申請やA02のID/revisionと交換できない。既存期限・本人・現在の了承・占有再検証・通知抑止・冪等性・復元条件を維持し、配布policyの有効化はしない。
+
+## 特別診療日（ホームページから）
+
+- `HomepageDays`：設定の homepageUrl のトップを1日1回（cron/reminders.php）読み、「特別診療日」の欄の「M月D日（曜）」を拾う。meta `homepageSpecialDays`（url・checkedAt・dates・skipped・error）
+- 予約申請フォームで選べる日＝設定の曜日 ＋ intakeSpecialDates（手入力）＋ HomepageDays の今日以降の日（`HomepageDays::intakeDates()`、intake-config.php・DayPdfSender が使う）。祝日は自動では足さない

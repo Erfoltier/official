@@ -25,6 +25,7 @@ require_once __DIR__ . '/LocalBackup.php';
 require_once __DIR__ . '/DayPdf.php';
 require_once __DIR__ . '/DayPdfSender.php';
 require_once __DIR__ . '/AwsBackupStatus.php';
+require_once __DIR__ . '/HomepageDays.php';
 require_once __DIR__ . '/Holidays.php';
 require_once __DIR__ . '/Intake.php';
 require_once __DIR__ . '/Monshin.php';
