@@ -1,0 +1,625 @@
+/* 写真比較：写真の色を正しく見るため、配色テーマに関係なく墨色のギャラリーにする */
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #141413;
+  color: #ecebe7;
+}
+
+.dialog::backdrop {
+  background: #0c0c0b;
+}
+
+.shell {
+  height: 100%;
+  background: #141413;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #2a2927;
+  background: linear-gradient(180deg, #1c1b1a, #161615);
+}
+
+.titleBox {
+  margin-right: 6px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.sub {
+  font-size: 12px;
+  color: #8f8c86;
+}
+
+.chip {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  background: transparent;
+  color: #b9b6b0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.chip:hover {
+  border-color: #6a6863;
+  color: #ecebe7;
+}
+
+.chip[data-on] {
+  border-color: #c9b48a;
+  color: #e9dcc0;
+}
+
+.hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: #77746e;
+}
+
+.seg {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.seg button {
+  min-width: 38px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #b9b6b0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 枚数の単位：数字の列の右端に小さく、区切り線のあとに添える */
+.segUnit {
+  display: grid;
+  place-items: center;
+  padding: 0 12px 0 10px;
+  border-left: 1px solid #3a3936;
+  color: #8f8c86;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.seg button[data-on] {
+  background: #ecebe7;
+  color: #141413;
+  font-weight: 600;
+}
+
+.close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #3a3936;
+  background: transparent;
+  color: #b9b6b0;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: #fff;
+  border-color: #6a6863;
+}
+
+/* 枠の大きさは写真の縦横比から計算して入れる（余白なく、真ん中に寄せる） */
+.stage {
+  /* 2本指の拡大縮小は写真の拡大に使い、ブラウザの画面ごとの拡大にはしない */
+  touch-action: none;
+  display: grid;
+  gap: 12px;
+  justify-content: center;
+  align-content: center;
+  padding: 14px 18px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.message {
+  grid-column: 1 / -1;
+  align-self: center;
+  justify-self: center;
+  color: #8f8c86;
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+  outline: 1px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color 0.15s;
+}
+
+.slot[data-active] {
+  outline-color: #3d3c39;
+}
+
+.slot[data-over] {
+  outline: 2px solid #c9b48a;
+}
+
+.photo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #1d1d1c;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 45%);
+  touch-action: none;
+  cursor: zoom-in;
+}
+
+.photo[data-zoomed] {
+  cursor: grab;
+}
+
+.photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+}
+
+.badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(20 20 19 / 62%);
+  backdrop-filter: blur(6px);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.badge[data-before] {
+  background: rgb(201 180 138 / 88%);
+  color: #1b1a18;
+  font-weight: 600;
+}
+
+.tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.photo:hover .tools {
+  opacity: 1;
+}
+
+.tools button,
+.grip {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(20 20 19 / 62%);
+  color: #e5e3de;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.grip {
+  cursor: grab;
+  touch-action: none;
+}
+
+/* 指でつかんでいる写真（指の少し上に出す） */
+.ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 68px;
+  height: 86px;
+  object-fit: cover;
+  border-radius: 4px;
+  outline: 2px solid #ecebe7;
+  box-shadow: 0 14px 28px rgb(0 0 0 / 60%);
+  opacity: 0.92;
+  pointer-events: none;
+  z-index: 10;
+  rotate: -3deg;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 2px 0;
+  font-size: 12px;
+  color: #8f8c86;
+  font-variant-numeric: tabular-nums;
+}
+
+.date {
+  color: #ecebe7;
+  letter-spacing: 0.06em;
+}
+
+.tag {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  text-align: center;
+  border: 1.5px dashed #45443f;
+  border-radius: 6px;
+  background: repeating-linear-gradient(45deg, #1a1a19 0 10px, #1d1d1c 10px 20px);
+  color: #8a8781;
+  font-size: 13px;
+}
+
+.empty small {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #67645f;
+  padding: 0 10px;
+}
+
+/* 1 文ずつ改行し、枠が狭くて折り返すときも行の長さをそろえる */
+.empty small span {
+  display: block;
+  text-wrap: balance;
+}
+
+.stripWrap {
+  border-top: 1px solid #2a2927;
+  background: #191918;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 18px 0;
+}
+
+.filters button {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  background: transparent;
+  color: #a9a6a0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filters button[data-on] {
+  border-color: #c9b48a;
+  color: #e9dcc0;
+}
+
+.strip {
+  display: flex;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
+  gap: 18px;
+  padding: 8px 18px 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3936 transparent;
+}
+
+.group {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8f8c86;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.thumbs {
+  display: flex;
+  gap: 6px;
+}
+
+.thumb {
+  position: relative;
+  /* 横の動きは帯のスクロール、縦（上へ引き上げ）は写真をつかむ */
+  touch-action: pan-x;
+  width: 68px;
+  height: 86px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #232321;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  cursor: grab;
+  transition: transform 0.12s, outline-color 0.12s;
+}
+
+.thumb:hover {
+  transform: translateY(-2px);
+}
+
+.thumb[data-used] {
+  outline-color: #c9b48a;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbLabel {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 80%);
+}
+
+@media (max-width: 1080px) {
+  .hint {
+    display: none;
+  }
+  .top {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .stage {
+    padding: 10px;
+  }
+  .thumb {
+    width: 56px;
+    height: 72px;
+  }
+}
+
+/* 文字の大きさの設定（ダイアログを拡大）は、画面いっぱいの写真比較には効かせない */
+:global(:root[data-size]) .dialog {
+  zoom: 1;
+}
+
+/* 1枚のとき：枠は画面いっぱい。等倍では枠を見せず写真だけが浮かぶように */
+.stage[data-single] .photo {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.stage[data-single] .slot {
+  outline: 0;
+}
+
+/* ---- 横長の画面：上のバーを左の列、下の写真一覧を右の列にして、写真の高さを広く取る ---- */
+.shell[data-side] {
+  grid-template-columns: 196px minmax(0, 1fr) 232px;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.shell[data-side] .top {
+  flex-wrap: nowrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 14px 12px;
+  border-bottom: 0;
+  border-right: 1px solid #2a2927;
+  background: linear-gradient(90deg, #1c1b1a, #171716);
+  overflow-y: auto;
+}
+
+.shell[data-side] .close {
+  order: -1;
+  align-self: flex-end;
+  margin-bottom: -40px;
+}
+
+.shell[data-side] .titleBox {
+  margin: 0 40px 6px 0;
+}
+
+.shell[data-side] .hint {
+  display: block;
+  flex: none;
+  order: 10;
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.shell[data-side] .seg {
+  margin: 4px 0 0;
+  align-self: stretch;
+}
+
+.shell[data-side] .seg button {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell[data-side] .stripWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 0;
+  border-left: 1px solid #2a2927;
+}
+
+.shell[data-side] .filters {
+  flex-wrap: wrap;
+  padding: 10px 10px 0;
+}
+
+.shell[data-side] .strip {
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+/* 右の列の写真一覧は3列 */
+.shell[data-side] .thumbs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.shell[data-side] .thumb {
+  width: auto;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  touch-action: pan-y;
+}
+
+/* ---- 全画面：バーと写真一覧を隠し、写真を画面の上から下までいっぱいに ---- */
+.shell[data-fs] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.shell[data-fs] .top,
+.shell[data-fs] .stripWrap {
+  display: none;
+}
+
+.shell[data-fs] .stage {
+  padding: 8px;
+}
+
+/* 全画面のときの小さなボタン（右上に縦に並べ、写真の邪魔をしない） */
+.fsBar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.fsBar:hover {
+  opacity: 1;
+}
+
+.fsBar button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  background: rgb(20 20 19 / 60%);
+  backdrop-filter: blur(6px);
+  color: #ecebe7;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* 拡大のスライドバー */
+.zoomBar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #3a3936;
+  border-radius: 999px;
+  color: #8f8c86;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.zoomBar input {
+  width: 110px;
+  accent-color: #c9b48a;
+}
+
+.zoomBar b {
+  min-width: 38px;
+  text-align: right;
+  color: #ecebe7;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.shell[data-side] .zoomBar input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
