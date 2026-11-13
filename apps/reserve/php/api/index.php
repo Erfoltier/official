@@ -18,7 +18,7 @@ try {
     $path = array_map('rawurldecode', explode('/', trim(substr($uri, $pos + 8), '/')));
     $method = Http::method();
     // 自動予約プログラム（ChatGPT など）が、スタッフの画面と同じ API を使う入口：
-    // /api/v1/integration/booking/api/（ふだんのパス）。「自動予約」の接続キーで、院長と同じ権限で動く。
+    // /api/v1/integration/booking/api/（ふだんのパス）。「自動予約」の接続キーで動く。見るだけ（GET）は院長と同じ範囲、変えられるのは予約と新しい患者の登録だけ（下の okWrite）。
     // ログイン・スタッフ・二要素認証・端末・接続キー・控えの復元・保存先の操作だけは使えない
     $bot = false;
     if (($path[0] ?? '') === 'integration' && ($path[1] ?? '') === 'booking' && ($path[2] ?? '') === 'api') {
