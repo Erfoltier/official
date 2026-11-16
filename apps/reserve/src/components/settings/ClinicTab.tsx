@@ -383,8 +383,8 @@ function PublicCard({
         <textarea className={styles.input} value={special} rows={4} onChange={(ev) => setSpecial(ev.target.value)} disabled={!canEdit} />
       </label>
       <HomepageDaysView hp={homepageDays} homepageUrl={clinic.homepageUrl ?? ""} />
-      <label className={styles.field} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <input type="checkbox" checked={counseling} onChange={(ev) => setCounseling(ev.target.checked)} disabled={!canEdit} />
+      <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 8 }}>
+        <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={counseling} onChange={(ev) => setCounseling(ev.target.checked)} disabled={!canEdit} />
         <span>受診区分に「カウンセリング（ゼオスキン）」を出す（シミクレール運営会社との個人情報の共同利用への同意つき。文言の確認が済んでから有効にしてください）</span>
       </label>
       <div className={styles.timeRow}>
