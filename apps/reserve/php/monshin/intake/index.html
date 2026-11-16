@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f5ef">
   <title>予約申請</title>
-  <link rel="stylesheet" href="./styles.css?v=20261116-1">
+  <link rel="stylesheet" href="./styles.css?v=20261116-2">
 </head>
 <body>
   <main class="shell">
@@ -40,7 +40,7 @@
       <section class="card" id="date-section">
         <div class="section-heading">
           <span class="step">2</span>
-          <div><h2>希望日時</h2><p>選択できる日だけが診療日です　特別診療日は約2か月先まで表示されます。</p></div>
+          <div><h2>希望日時</h2><p id="date-note">選択できる日だけが診療日です　特別診療日は約2か月先まで表示されます。</p></div>
         </div>
         <input type="hidden" name="preferredDate" id="preferred-date" required>
         <div class="calendar-toolbar">
@@ -52,14 +52,15 @@
         <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="希望予約日"></div>
         <p class="selected-date" id="selected-date">希望日を選択してください</p>
         <fieldset>
-          <legend>希望時間帯</legend>
-          <div class="choice-grid four">
+          <legend id="time-legend">希望時間帯</legend>
+          <div class="choice-grid four" id="counseling-times" hidden></div>
+          <div class="choice-grid four" id="time-pills">
             <label class="pill"><input type="radio" name="timePreference" value="午前" required><span>午前</span></label>
             <label class="pill"><input type="radio" name="timePreference" value="午後" required><span>午後</span></label>
             <label class="pill"><input type="radio" name="timePreference" value="夕方" required><span>夕方</span></label>
             <label class="pill"><input type="radio" name="timePreference" value="何時でもよい" required><span>何時でもよい</span></label>
           </div>
-          <label class="field compact"><span>時間の希望（任意）</span><input name="timeNote" maxlength="50" placeholder="例：16時以降、なるべく遅め"></label>
+          <label class="field compact" id="time-note-field"><span>時間の希望（任意）</span><input name="timeNote" maxlength="50" placeholder="例：16時以降、なるべく遅め"></label>
         </fieldset>
       </section>
 
@@ -202,6 +203,6 @@
   </dialog>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="./app.js?v=20261116-1"></script>
+  <script type="module" src="./app.js?v=20261116-2"></script>
 </body>
 </html>

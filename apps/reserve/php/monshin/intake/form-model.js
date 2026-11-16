@@ -27,15 +27,20 @@ export function formatJapaneseDate(value) {
   return `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月${date.getUTCDate()}日（${WEEKDAYS[date.getUTCDay()]}）`;
 }
 
-export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3, 4, 5, 6], today = new Date() } = {}) {
+export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3, 4, 5, 6], today = new Date(), counselingSlots = {} } = {}) {
   const errors = [];
   const todayIso = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())).toISOString().slice(0, 10);
   if (data.privacyConsent !== 'agreed') errors.push('個人情報の取扱いへの同意が必要です');
   if (!['initial', 'returning', 'counseling'].includes(data.visitType)) errors.push('受診区分を選択してください');
   if (!data.preferredDate) errors.push('希望予約日を選択してください');
   else if (data.preferredDate < todayIso) errors.push('本日以降の希望予約日を選択してください');
-  else if (!isAllowedClinicDate(data.preferredDate, specialDates, weekdays)) errors.push(weekdays.length && weekdays.length < 7 ? `${weekdayLabel(weekdays)}または特別診療日を選択してください` : '受付日を選択してください');
-  if (!data.timePreference) errors.push('希望時間帯を選択してください');
+  else if (data.visitType === 'counseling') {
+    // カウンセリングは、開けた受付枠の空いている日時だけ
+    const slots = counselingSlots[data.preferredDate] || [];
+    if (!slots.length) errors.push('ご予約いただける日を選択してください');
+    else if (!slots.includes(data.timePreference)) errors.push('希望時間を選択してください');
+  } else if (!isAllowedClinicDate(data.preferredDate, specialDates, weekdays)) errors.push(weekdays.length && weekdays.length < 7 ? `${weekdayLabel(weekdays)}または特別診療日を選択してください` : '受付日を選択してください');
+  if (!data.timePreference && data.visitType !== 'counseling') errors.push('希望時間帯を選択してください');
   if (!clean(data.name)) errors.push('漢字氏名を入力してください');
   if (!clean(data.kana)) errors.push('カナ氏名を入力してください');
   if (!parseIsoDate(data.birthDate) || data.birthDate >= todayIso) errors.push('正しい生年月日を入力してください');
@@ -60,8 +65,10 @@ export function buildLineMessage(data, clinic = {}) {
   const lines = [
     `【${dept ? `${dept}・` : ''}${counseling ? 'カウンセリング' : initial ? '初診' : '再診'}予約申請】`, '',
     `受診区分：${counseling ? '③カウンセリング（ゼオスキン）' : initial ? '①初診' : '②再診'}`,
-    `希望予約日時：${formatJapaneseDate(data.preferredDate)}`,
-    `希望時間帯：${clean(data.timePreference)}${clean(data.timeNote) ? `（${clean(data.timeNote)}）` : ''}`, '',
+    ...(counseling
+      ? [`希望予約日時：${formatJapaneseDate(data.preferredDate)} ${clean(data.timePreference)}〜（15分）`, '']
+      : [`希望予約日時：${formatJapaneseDate(data.preferredDate)}`,
+        `希望時間帯：${clean(data.timePreference)}${clean(data.timeNote) ? `（${clean(data.timeNote)}）` : ''}`, '']),
     `漢字氏名：${clean(data.name)}`, `カナ氏名：${clean(data.kana)}`,
     `生年月日：${formatJapaneseDate(data.birthDate).replace(/（.）$/, '')}`,
   ];

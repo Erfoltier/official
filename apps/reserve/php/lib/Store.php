@@ -287,8 +287,72 @@ final class Store
             'intakeWeekdays' => array_values(array_map('intval', (array) ($c['intakeWeekdays'] ?? [0, 1, 2, 3, 4, 5, 6]))),
             // 予約申請フォームに「カウンセリング（ゼオスキン）」の区分を出すか（共同利用の文言を院長・オーナーが確かめてから有効にする）
             'intakeCounseling' => (bool) ($c['intakeCounseling'] ?? false),
+            // カウンセリングの受付枠（「2026-11-20 14:00-16:00」の形）と、空きを見るレーン
+            'counselingLaneId' => (string) ($c['counselingLaneId'] ?? ''),
+            'counselingSlots' => array_values(array_filter((array) ($c['counselingSlots'] ?? []), 'is_string')),
             'intakeSpecialDates' => array_values(array_filter((array) ($c['intakeSpecialDates'] ?? []), fn($d) => is_string($d) && is_date_string($d))),
         ];
+    }
+
+    public const COUNSELING_MINUTES = 15;
+
+    /** 「2026-11-20 14:00-16:00」→ ['date'=>..., 'start'=>840, 'end'=>960]（分）。形が違えば null */
+    private static function parseCounselingWindow(string $line): ?array
+    {
+        $line = trim(str_replace(['/', '〜', '～', '－', '−'], ['-', '-', '-', '-', '-'], mb_convert_kana($line, 'as')));
+        if (!preg_match('/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/', $line, $m) || !is_date_string($m[1])) {
+            return null;
+        }
+        $s = (int) $m[2] * 60 + (int) $m[3];
+        $e = (int) $m[4] * 60 + (int) $m[5];
+        if ((int) $m[3] >= 60 || (int) $m[5] >= 60 || $e > 24 * 60 || $e - $s < self::COUNSELING_MINUTES) {
+            return null;
+        }
+        return ['date' => $m[1], 'start' => $s, 'end' => $e];
+    }
+
+    /**
+     * 予約申請フォームに出すカウンセリングの空き枠（今日以降・15分ごと）。日付 => ["14:00", "14:15", ...]
+     * 受付枠の中から、カウンセリングのレーンに入っている予約（キャンセルを除く）と重なる時間と、過ぎた時間を除く
+     * @return array<string, list<string>>
+     */
+    public static function counselingOpenSlots(): array
+    {
+        $p = self::publicInfo();
+        $now = now_in_clinic();
+        $out = [];
+        foreach ($p['counselingSlots'] as $line) {
+            $w = self::parseCounselingWindow($line);
+            if (!$w || $w['date'] < $now['date']) {
+                continue;
+            }
+            $busy = [];
+            if ($p['counselingLaneId'] !== '') {
+                foreach (self::reservationsOn($w['date']) as $r) {
+                    if ($r['laneId'] === $p['counselingLaneId'] && !in_array($r['status'], self::INACTIVE, true)) {
+                        $busy[] = [minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $w['date'] ? 24 * 60 : minutes_of_day($r['endAt'])];
+                    }
+                }
+            }
+            for ($t = $w['start']; $t + self::COUNSELING_MINUTES <= $w['end']; $t += self::COUNSELING_MINUTES) {
+                if ($w['date'] === $now['date'] && $t <= $now['minutes']) {
+                    continue;
+                }
+                foreach ($busy as [$bs, $be]) {
+                    if ($t < $be && $bs < $t + self::COUNSELING_MINUTES) {
+                        continue 2;
+                    }
+                }
+                $out[$w['date']][] = sprintf('%02d:%02d', intdiv($t, 60), $t % 60);
+            }
+        }
+        foreach ($out as &$times) {
+            $times = array_values(array_unique($times));
+            sort($times);
+        }
+        unset($times);
+        ksort($out);
+        return $out;
     }
 
     public static function updateClinic(array $input, ?array $by = null): array
@@ -352,6 +416,26 @@ final class Store
         }
         if (array_key_exists('intakeCounseling', $input)) {
             $next['intakeCounseling'] = (bool) $input['intakeCounseling'];
+        }
+        if (array_key_exists('counselingLaneId', $input)) {
+            $lane = (string) $input['counselingLaneId'];
+            if ($lane !== '' && !isset(self::lanes()[$lane])) {
+                throw new StoreError('invalid', 'カウンセリングのレーンが見つかりません');
+            }
+            $next['counselingLaneId'] = $lane;
+        }
+        if (isset($input['counselingSlots'])) {
+            $slots = [];
+            foreach ($input['counselingSlots'] as $line) {
+                $w = self::parseCounselingWindow((string) $line);
+                if (!$w) {
+                    throw new StoreError('invalid', "カウンセリングの受付枠の形が正しくありません：{$line}（例：2026-11-20 14:00-16:00）");
+                }
+                $slots[] = sprintf('%s %02d:%02d-%02d:%02d', $w['date'], intdiv($w['start'], 60), $w['start'] % 60, intdiv($w['end'], 60), $w['end'] % 60);
+            }
+            $slots = array_values(array_unique($slots));
+            sort($slots);
+            $next['counselingSlots'] = $slots;
         }
         if (isset($input['intakeSpecialDates'])) {
             $dates = array_values(array_unique($input['intakeSpecialDates']));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ClinicSettings, PaperSize, ThemeId } from "@/lib/domain/types";
+import type { ClinicSettings, Lane, PaperSize, ThemeId } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS, THEMES } from "@/lib/domain/types";
 import { applyTheme } from "@/lib/theme";
 import { formatHm } from "@/lib/domain/time";
@@ -17,6 +17,7 @@ const fromHm = (s: string) => {
 /** 院名・診療時間（カレンダーに出す時間帯）・予約の刻み */
 export function ClinicTab({
   clinic,
+  lanes,
   homepageDays,
   canEdit,
   onChanged,
@@ -24,6 +25,7 @@ export function ClinicTab({
   fail,
 }: {
   clinic: ClinicSettings;
+  lanes: Lane[];
   homepageDays?: HomepageDays;
   canEdit: boolean;
   onChanged: () => Promise<void>;
@@ -102,7 +104,7 @@ export function ClinicTab({
       </div>
 
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
-      <PublicCard clinic={clinic} homepageDays={homepageDays} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
+      <PublicCard clinic={clinic} lanes={lanes} homepageDays={homepageDays} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
   );
@@ -269,6 +271,7 @@ const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 /** 患者向けの表示（LINE の予約申請フォーム・問診票の見出し・プライバシーポリシー）と、予約申請フォームで選べる日 */
 function PublicCard({
   clinic,
+  lanes,
   homepageDays,
   canEdit,
   onChanged,
@@ -276,6 +279,7 @@ function PublicCard({
   fail,
 }: {
   clinic: ClinicSettings;
+  lanes: Lane[];
   homepageDays?: HomepageDays;
   canEdit: boolean;
   onChanged: () => Promise<void>;
@@ -291,6 +295,13 @@ function PublicCard({
   const [weekdays, setWeekdays] = useState<number[]>(clinic.intakeWeekdays ?? [0, 1, 2, 3, 4, 5, 6]);
   const [special, setSpecial] = useState((clinic.intakeSpecialDates ?? []).join("\n"));
   const [counseling, setCounseling] = useState(!!clinic.intakeCounseling);
+  const [counselingLane, setCounselingLane] = useState(clinic.counselingLaneId ?? "");
+  const [counselingText, setCounselingText] = useState((clinic.counselingSlots ?? []).join("\n"));
+  const counselingLines = counselingText
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const badCounseling = counselingLines.find((l) => !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}\s*[-〜～]\s*\d{1,2}:\d{2}$/.test(l));
   const [busy, setBusy] = useState(false);
   const dates = special
     .split(/[\s,、]+/)
@@ -313,6 +324,8 @@ function PublicCard({
         intakeWeekdays: weekdays,
         intakeSpecialDates: dates,
         intakeCounseling: counseling,
+        counselingLaneId: counselingLane,
+        counselingSlots: counselingLines.map((l) => l.replace(/\//g, "-").replace(/(\d{4})-(\d{1,2})-(\d{1,2})/, (_, y, m, d) => `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`)),
       });
       await onChanged();
       notify("患者向けの表示を保存しました");
@@ -374,12 +387,31 @@ function PublicCard({
         <input type="checkbox" checked={counseling} onChange={(ev) => setCounseling(ev.target.checked)} disabled={!canEdit} />
         <span>受診区分に「カウンセリング（ゼオスキン）」を出す（シミクレール運営会社との個人情報の共同利用への同意つき。文言の確認が済んでから有効にしてください）</span>
       </label>
-      <p className={styles.hint} data-invalid={badDate || badUrl || undefined}>
-        {badDate ? `日付の形が正しくありません：${badDate}` : badUrl ? "アドレスは https:// で始まる形で入力してください" : "プライバシーポリシーは、予約申請フォームの同意の画面に出ます。"}
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>カウンセリングのレーン（ここに入っている予約の時間は、フォームで選べなくなります）</span>
+          <select className={styles.input} value={counselingLane} onChange={(ev) => setCounselingLane(ev.target.value)} disabled={!canEdit}>
+            <option value="">（選ばない）</option>
+            {lanes
+              .filter((l) => l.active || l.id === counselingLane)
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+      <label className={styles.field}>
+        <span>カウンセリングの受付枠（1行に1つ、例：2026-11-20 14:00-16:00）。フォームでは、この中の空いている15分枠だけを選べます</span>
+        <textarea className={styles.input} value={counselingText} rows={4} onChange={(ev) => setCounselingText(ev.target.value)} disabled={!canEdit} />
+      </label>
+      <p className={styles.hint} data-invalid={badDate || badCounseling || badUrl || undefined}>
+        {badDate ? `日付の形が正しくありません：${badDate}` : badCounseling ? `受付枠の形が正しくありません：${badCounseling}` : badUrl ? "アドレスは https:// で始まる形で入力してください" : "プライバシーポリシーは、予約申請フォームの同意の画面に出ます。"}
       </p>
       {canEdit && (
         <div className={styles.actions}>
-          <button className={styles.primary} onClick={save} disabled={!!badDate || badUrl || busy}>
+          <button className={styles.primary} onClick={save} disabled={!!badDate || !!badCounseling || badUrl || busy}>
             保存
           </button>
         </div>

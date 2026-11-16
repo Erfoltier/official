@@ -82,6 +82,13 @@ try {
     if ($visitType === 'counseling' && (string)($form['jointUseConsent'] ?? '') !== 'agreed') {
         intake_response(422, ['ok' => false, 'error' => 'joint_use_consent_required']);
     }
+    // カウンセリングは、開けた受付枠のうち今も空いている時間だけ受け付ける
+    if ($visitType === 'counseling') {
+        $open = Store::counselingOpenSlots()[(string)($form['preferredDate'] ?? '')] ?? [];
+        if (!in_array((string)($form['timePreference'] ?? ''), $open, true)) {
+            intake_response(409, ['ok' => false, 'error' => 'counseling_slot_unavailable']);
+        }
+    }
     if ((string)($form['privacyConsent'] ?? '') !== 'agreed') {
         intake_response(422, ['ok' => false, 'error' => 'privacy_consent_required']);
     }

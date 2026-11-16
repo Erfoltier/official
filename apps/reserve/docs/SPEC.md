@@ -200,4 +200,5 @@
 - 予約申請フォームの受診区分 `counseling`。設定 `intakeCounseling`（既定 false）が true のときだけ出し、サーバーも受け付ける
 - 入力：電話（必須）・注文番号 `orderNo`（任意）・ご相談内容 `counselingNotes`（任意）・共同利用の同意 `jointUseConsent=agreed`（必須）。申請に `jointUseConsent`（版・相手・日時）を残す
 - 文面は「【美容皮膚科・カウンセリング予約申請】／受診区分：③カウンセリング（ゼオスキン）／注文番号：…」。受付箱は visitType=counseling・orderNo
+- 日時：設定 `counselingSlots`（「YYYY-MM-DD HH:MM-HH:MM」の行）の中の15分枠から、`counselingLaneId` のレーンの予約（キャンセル・無断キャンセルを除く）と重なる時間・過ぎた時間を除いたものだけを選べる（`Store::counselingOpenSlots`、intake-config の `counselingSlots`）。送信時にも確かめ、埋まっていれば 409 counseling_slot_unavailable（フォームは空きを読み直す）。希望時間は timePreference に「14:15」の形で入る
 - 対面の案内 URL：`https://liff.line.me/{LIFF ID}?type=counseling`

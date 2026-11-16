@@ -730,6 +730,10 @@ export interface ClinicSettings {
   intakeSpecialDates?: string[];
   /** 予約申請フォームに「カウンセリング（ゼオスキン）」の区分を出す */
   intakeCounseling?: boolean;
+  /** カウンセリングの空きを見るレーン */
+  counselingLaneId?: string;
+  /** カウンセリングの受付枠（1つずつ「2026-11-20 14:00-16:00」）。予約申請フォームはこの中の空いている15分枠だけを出す */
+  counselingSlots?: string[];
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

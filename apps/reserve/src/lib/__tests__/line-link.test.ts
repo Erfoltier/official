@@ -149,11 +149,19 @@ describe("予約申請を DB に保存する（monshin/intake-submit-v1.php）",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken: `test:${USER}`, message: "【美容皮膚科・カウンセリング予約申請】\n受診区分：③カウンセリング（ゼオスキン）\n注文番号：#1001", form }),
       });
-    const base = { visitType: "counseling", privacyConsent: "agreed", name: "相談 花子", kana: "ソウダン ハナコ", birthDate: "1990-01-01", phone: "09011112222", preferredDate: day, orderNo: "#1001", counselingNotes: "赤み" };
+    const base = { visitType: "counseling", privacyConsent: "agreed", name: "相談 花子", kana: "ソウダン ハナコ", birthDate: "1990-01-01", phone: "09011112222", preferredDate: day, timePreference: "14:00", orderNo: "#1001", counselingNotes: "赤み" };
     expect((await send({ ...base, jointUseConsent: "agreed" })).status).toBe(422);
     expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).counseling).toBe(false);
-    await c.patch("/clinic", { intakeCounseling: true });
-    expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).counseling).toBe(true);
+    // 受付枠 14:00-15:00 のうち、レーンに入った 14:15-14:30 の予約と重なる時間は出さない
+    await c.patch("/clinic", { intakeCounseling: true, counselingLaneId: "lane-main", counselingSlots: [`${day} 14:00-15:00`] });
+    const p = await c.post("/patients", { name: "枠 太郎", kana: "ワク タロウ", birthDate: "1980-01-01" });
+    await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 855), endAt: toIso(day, 870) });
+    const cfg = await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json();
+    expect(cfg.counseling).toBe(true);
+    expect(cfg.counselingSlots).toEqual({ [day]: ["14:00", "14:30", "14:45"] });
+    expect((await send({ ...base, jointUseConsent: "agreed", timePreference: "14:15" })).status).toBe(409);
+    expect((await send({ ...base, jointUseConsent: "agreed", preferredDate: addDays(day, 1), timePreference: "14:00" })).status).toBe(409);
+    await expect(c.patch("/clinic", { counselingSlots: ["2026-11-20 14時から"] })).rejects.toThrow();
     const no = await send(base);
     expect(no.status).toBe(422);
     expect(((await no.json()) as { error: string }).error).toBe("joint_use_consent_required");

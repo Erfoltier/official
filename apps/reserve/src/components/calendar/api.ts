@@ -688,6 +688,8 @@ export function saveClinic(
       | "intakeWeekdays"
       | "intakeSpecialDates"
       | "intakeCounseling"
+      | "counselingLaneId"
+      | "counselingSlots"
     >
   >,
 ): Promise<DayBundle["clinic"]> {
