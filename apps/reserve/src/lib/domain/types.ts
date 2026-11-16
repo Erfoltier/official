@@ -728,6 +728,8 @@ export interface ClinicSettings {
   /** 予約申請フォームで選べる曜日（0=日〜6=土。なければ毎日）と、それ以外に選べる特別診療日 */
   intakeWeekdays?: number[];
   intakeSpecialDates?: string[];
+  /** 予約申請フォームに「カウンセリング（ゼオスキン）」の区分を出す */
+  intakeCounseling?: boolean;
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

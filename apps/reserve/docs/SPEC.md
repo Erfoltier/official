@@ -194,3 +194,10 @@
 
 - `HomepageDays`：設定の homepageUrl のトップを1日1回（cron/reminders.php）読み、「特別診療日」の欄の「M月D日（曜）」を拾う。meta `homepageSpecialDays`（url・checkedAt・dates・skipped・error）
 - 予約申請フォームで選べる日＝設定の曜日 ＋ intakeSpecialDates（手入力）＋ HomepageDays の今日以降の日（`HomepageDays::intakeDates()`、intake-config.php・DayPdfSender が使う）。祝日は自動では足さない
+
+## カウンセリング（ゼオスキン）
+
+- 予約申請フォームの受診区分 `counseling`。設定 `intakeCounseling`（既定 false）が true のときだけ出し、サーバーも受け付ける
+- 入力：電話（必須）・注文番号 `orderNo`（任意）・ご相談内容 `counselingNotes`（任意）・共同利用の同意 `jointUseConsent=agreed`（必須）。申請に `jointUseConsent`（版・相手・日時）を残す
+- 文面は「【美容皮膚科・カウンセリング予約申請】／受診区分：③カウンセリング（ゼオスキン）／注文番号：…」。受付箱は visitType=counseling・orderNo
+- 対面の案内 URL：`https://liff.line.me/{LIFF ID}?type=counseling`

@@ -1,4 +1,4 @@
-import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261113-1';
+import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261116-1';
 
 const form = document.querySelector('#intake-form');
 const preferredDate = document.querySelector('#preferred-date');
@@ -159,16 +159,37 @@ function addMonths(amount) {
   renderCalendar();
 }
 
+/** カウンセリング（ゼオスキン）の区分：設定で有効なときだけ出す。?type=counseling（LIFF の liff.state 経由も）で最初から選ぶ */
+function applyCounseling(enabled) {
+  const choice = document.querySelector('#visit-counseling');
+  const radio = choice.querySelector('input');
+  choice.hidden = !enabled;
+  radio.disabled = !enabled;
+  if (!enabled) return;
+  const params = new URLSearchParams(location.search);
+  const state = params.get('liff.state');
+  const type = params.get('type') || (state ? new URLSearchParams(state.replace(/^[^?]*\?/, '')).get('type') : null);
+  if (type === 'counseling') {
+    radio.checked = true;
+    applyVisitType();
+  }
+}
+
 function applyVisitType() {
   const visitType = form.elements.visitType.value;
   const initialSection = document.querySelector('#initial-details');
   const returningSection = document.querySelector('#returning-details');
+  const counselingSection = document.querySelector('#counseling-details');
   const setSection = (section, active) => {
     section.hidden = !active;
     section.querySelectorAll('input,textarea').forEach(control => { control.disabled = !active; });
   };
   setSection(initialSection, visitType === 'initial');
   setSection(returningSection, visitType === 'returning');
+  setSection(counselingSection, visitType === 'counseling');
+  // カウンセリングのお客様向けには「患者」「診察」を使わない
+  document.querySelector('#person-title').textContent = visitType === 'counseling' ? 'お客さま情報' : '患者さま情報';
+  document.querySelector('#person-note').textContent = visitType === 'counseling' ? 'お名前と生年月日をご入力ください' : '診察券と同じ内容をご入力ください';
   refreshSubmitState();
 }
 
@@ -244,6 +265,7 @@ async function initialize() {
       if (Array.isArray(config.weekdays)) weekdays = config.weekdays;
       clinic = config.clinic || {};
       applyClinic(clinic);
+      applyCounseling(config.counseling === true);
     }
   } catch (_) {
     // Static fallback is loaded below.

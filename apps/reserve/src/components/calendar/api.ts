@@ -369,7 +369,9 @@ export type PatientUpdate = Partial<
 export interface IntakeItem {
   requestId: string;
   receivedAt: string;
-  visitType: "initial" | "returning";
+  visitType: "initial" | "returning" | "counseling";
+  /** カウンセリング（ゼオスキン）のときのシミクレールの注文番号 */
+  orderNo?: string;
   preferredDate: string;
   timePreference: string;
   timeNote: string;
@@ -685,6 +687,7 @@ export function saveClinic(
       | "intakeHours"
       | "intakeWeekdays"
       | "intakeSpecialDates"
+      | "intakeCounseling"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

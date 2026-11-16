@@ -285,6 +285,8 @@ final class Store
             'homepageUrl' => (string) ($c['homepageUrl'] ?? ''),
             'intakeHours' => (string) ($c['intakeHours'] ?? ''),
             'intakeWeekdays' => array_values(array_map('intval', (array) ($c['intakeWeekdays'] ?? [0, 1, 2, 3, 4, 5, 6]))),
+            // 予約申請フォームに「カウンセリング（ゼオスキン）」の区分を出すか（共同利用の文言を院長・オーナーが確かめてから有効にする）
+            'intakeCounseling' => (bool) ($c['intakeCounseling'] ?? false),
             'intakeSpecialDates' => array_values(array_filter((array) ($c['intakeSpecialDates'] ?? []), fn($d) => is_string($d) && is_date_string($d))),
         ];
     }
@@ -347,6 +349,9 @@ final class Store
             $days = array_values(array_unique($input['intakeWeekdays']));
             sort($days);
             $next['intakeWeekdays'] = $days;
+        }
+        if (array_key_exists('intakeCounseling', $input)) {
+            $next['intakeCounseling'] = (bool) $input['intakeCounseling'];
         }
         if (isset($input['intakeSpecialDates'])) {
             $dates = array_values(array_unique($input['intakeSpecialDates']));

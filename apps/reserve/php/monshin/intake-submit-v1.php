@@ -6,6 +6,7 @@ require __DIR__ . '/intake-common.php';
 
 // 同意の記録に残す、フォームの同意文の版（文面を変えたら日付を進める）
 const INTAKE_PRIVACY_CONSENT_VERSION = '2026-10-11';
+const INTAKE_JOINT_USE_CONSENT_VERSION = '2026-11-16-draft';
 
 function intake_response(int $status, array $body): never
 {
@@ -72,8 +73,14 @@ try {
     $body = json_decode((string)file_get_contents('php://input'), true, 32, JSON_THROW_ON_ERROR);
     $message = trim((string)($body['message'] ?? ''));
     $form = is_array($body['form'] ?? null) ? $body['form'] : [];
-    if ($message === '' || mb_strlen($message) > 5000 || !in_array((string)($form['visitType'] ?? ''), ['initial', 'returning'], true)) {
+    $visitType = (string)($form['visitType'] ?? '');
+    $allowed = ['initial', 'returning', ...(Store::publicInfo()['intakeCounseling'] ? ['counseling'] : [])];
+    if ($message === '' || mb_strlen($message) > 5000 || !in_array($visitType, $allowed, true)) {
         intake_response(422, ['ok' => false, 'error' => 'invalid_intake']);
+    }
+    // カウンセリング（ゼオスキン）は、シミクレール運営会社との個人情報の共同利用への同意が要る
+    if ($visitType === 'counseling' && (string)($form['jointUseConsent'] ?? '') !== 'agreed') {
+        intake_response(422, ['ok' => false, 'error' => 'joint_use_consent_required']);
     }
     if ((string)($form['privacyConsent'] ?? '') !== 'agreed') {
         intake_response(422, ['ok' => false, 'error' => 'privacy_consent_required']);
@@ -95,6 +102,12 @@ try {
             'agreedAt' => gmdate('c'),
             'method' => 'required_checkbox_before_form_entry',
         ],
+        ...($visitType === 'counseling' ? ['jointUseConsent' => [
+            'version' => INTAKE_JOINT_USE_CONSENT_VERSION,
+            'parties' => ['いしだ皮フ科・美容皮膚科', '株式会社エアフォルティアコンサルティング（シミクレール運営）'],
+            'agreedAt' => gmdate('c'),
+            'method' => 'required_checkbox_in_counseling_form',
+        ]] : []),
         'status' => 'submitted',
     ];
     intake_store($config, $record);

@@ -290,6 +290,7 @@ function PublicCard({
   const [hours, setHours] = useState(clinic.intakeHours ?? "");
   const [weekdays, setWeekdays] = useState<number[]>(clinic.intakeWeekdays ?? [0, 1, 2, 3, 4, 5, 6]);
   const [special, setSpecial] = useState((clinic.intakeSpecialDates ?? []).join("\n"));
+  const [counseling, setCounseling] = useState(!!clinic.intakeCounseling);
   const [busy, setBusy] = useState(false);
   const dates = special
     .split(/[\s,、]+/)
@@ -311,6 +312,7 @@ function PublicCard({
         intakeHours: hours,
         intakeWeekdays: weekdays,
         intakeSpecialDates: dates,
+        intakeCounseling: counseling,
       });
       await onChanged();
       notify("患者向けの表示を保存しました");
@@ -368,6 +370,10 @@ function PublicCard({
         <textarea className={styles.input} value={special} rows={4} onChange={(ev) => setSpecial(ev.target.value)} disabled={!canEdit} />
       </label>
       <HomepageDaysView hp={homepageDays} homepageUrl={clinic.homepageUrl ?? ""} />
+      <label className={styles.field} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <input type="checkbox" checked={counseling} onChange={(ev) => setCounseling(ev.target.checked)} disabled={!canEdit} />
+        <span>受診区分に「カウンセリング（ゼオスキン）」を出す（シミクレール運営会社との個人情報の共同利用への同意つき。文言の確認が済んでから有効にしてください）</span>
+      </label>
       <p className={styles.hint} data-invalid={badDate || badUrl || undefined}>
         {badDate ? `日付の形が正しくありません：${badDate}` : badUrl ? "アドレスは https:// で始まる形で入力してください" : "プライバシーポリシーは、予約申請フォームの同意の画面に出ます。"}
       </p>

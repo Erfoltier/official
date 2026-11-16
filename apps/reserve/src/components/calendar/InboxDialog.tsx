@@ -81,7 +81,7 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
               <b style={{ fontSize: 16 }}>{it.name || "（氏名なし）"}</b>
               <span className={styles.pickedSub}>{it.kana}</span>
-              <span className={styles.pickedSub}>{it.visitType === "initial" ? "初診" : "再診"}</span>
+              <span className={styles.pickedSub}>{it.visitType === "initial" ? "初診" : it.visitType === "counseling" ? "カウンセリング" : "再診"}</span>
               <span style={{ marginLeft: "auto", fontSize: 12 }} className={styles.pickedSub}>
                 {STATE_LABEL[it.state]}
                 {it.guessed && "（推定）"}

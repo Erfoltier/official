@@ -139,6 +139,30 @@ describe("予約申請を DB に保存する（monshin/intake-submit-v1.php）",
     mkdirSync(path.join(h.srv.dir, "intakeq"), { recursive: true });
     expect((await webhook([text(`受診区分：①初診\n\n予約申請ID：${requestId}`)])).data.replied).toBe(0);
   });
+
+  it("カウンセリング（ゼオスキン）は設定で有効なときだけ受け付け、共同利用の同意がないと断る", async () => {
+    const c = await setup();
+    const day = addDays(nowInClinic().date, 3);
+    const send = (form: object) =>
+      fetch(`${h.srv.base}/monshin/intake-submit-v1.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: `test:${USER}`, message: "【美容皮膚科・カウンセリング予約申請】\n受診区分：③カウンセリング（ゼオスキン）\n注文番号：#1001", form }),
+      });
+    const base = { visitType: "counseling", privacyConsent: "agreed", name: "相談 花子", kana: "ソウダン ハナコ", birthDate: "1990-01-01", phone: "09011112222", preferredDate: day, orderNo: "#1001", counselingNotes: "赤み" };
+    expect((await send({ ...base, jointUseConsent: "agreed" })).status).toBe(422);
+    expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).counseling).toBe(false);
+    await c.patch("/clinic", { intakeCounseling: true });
+    expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).counseling).toBe(true);
+    const no = await send(base);
+    expect(no.status).toBe(422);
+    expect(((await no.json()) as { error: string }).error).toBe("joint_use_consent_required");
+    const ok = await send({ ...base, jointUseConsent: "agreed" });
+    expect(ok.status).toBe(201);
+    const { requestId } = (await ok.json()) as { requestId: string };
+    const item = (await c.get("/intake")).items.find((i: any) => i.requestId === requestId);
+    expect(item).toMatchObject({ visitType: "counseling", orderNo: "#1001", notes: "赤み" });
+  });
 });
 
 describe("予約申請から LINE を一度特定したら、患者に紐付ける", () => {

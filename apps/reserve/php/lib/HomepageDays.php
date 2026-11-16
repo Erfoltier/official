@@ -44,7 +44,8 @@ final class HomepageDays
         }
         $prev = self::status();
         $today = now_in_clinic()['date'];
-        if (!$force && ($prev['url'] ?? '') === $url && substr((string) ($prev['checkedAt'] ?? ''), 0, 10) === $today) {
+        // 「その日」は院の日付（日本時間）で比べる（checkedAt は UTC なので使わない）
+        if (!$force && ($prev['url'] ?? '') === $url && ($prev['checkedDay'] ?? '') === $today) {
             return null;
         }
         $now = now_iso();
@@ -57,9 +58,9 @@ final class HomepageDays
             if (!$r['found']) {
                 throw new RuntimeException('ホームページに「特別診療日」の欄が見つかりませんでした');
             }
-            $next = ['url' => $url, 'at' => $now, 'checkedAt' => $now, 'dates' => $r['dates'], 'skipped' => $r['skipped']];
+            $next = ['url' => $url, 'at' => $now, 'checkedAt' => $now, 'checkedDay' => $today, 'dates' => $r['dates'], 'skipped' => $r['skipped']];
         } catch (Throwable $e) {
-            $next = [...$prev, 'url' => $url, 'checkedAt' => $now, 'error' => $e instanceof RuntimeException ? $e->getMessage() : 'ホームページを読めませんでした'];
+            $next = [...$prev, 'url' => $url, 'checkedAt' => $now, 'checkedDay' => $today, 'error' => $e instanceof RuntimeException ? $e->getMessage() : 'ホームページを読めませんでした'];
             if (($prev['url'] ?? '') !== $url) {
                 $next['dates'] = [];
                 $next['skipped'] = [];

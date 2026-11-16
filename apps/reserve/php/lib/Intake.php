@@ -128,12 +128,14 @@ final class Intake
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $pref) && $pref < $today) {
                 continue;
             }
-            $initial = ($f['visitType'] ?? '') === 'initial';
+            $vt = (string) ($f['visitType'] ?? '');
+            $initial = $vt === 'initial';
+            $counsel = $vt === 'counseling';
             $state = isset($booked[$rid]) ? 'booked' : ($handled[$rid]['action'] ?? 'new');
             $items[] = [
                 'requestId' => $rid,
                 'receivedAt' => (string) ($rec['receivedAt'] ?? ''),
-                'visitType' => $initial ? 'initial' : 'returning',
+                'visitType' => $counsel ? 'counseling' : ($initial ? 'initial' : 'returning'),
                 'preferredDate' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $s('preferredDate')) ? $s('preferredDate') : '',
                 'timePreference' => $s('timePreference'),
                 'timeNote' => $s('timeNote'),
@@ -142,9 +144,10 @@ final class Intake
                 'birthDate' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $s('birthDate')) ? $s('birthDate') : '',
                 'gender' => $s('gender'),
                 'phone' => $s('phone'),
-                'wish' => $initial ? $s('initialTreatment') : $s('returningTreatment'),
-                'area' => $initial ? $s('initialBodyArea') : $s('returningBodyArea'),
-                'notes' => $initial ? $s('initialNotes') : $s('returningNotes'),
+                'wish' => $counsel ? 'カウンセリング（ゼオスキン）' : ($initial ? $s('initialTreatment') : $s('returningTreatment')),
+                'area' => $counsel ? '' : ($initial ? $s('initialBodyArea') : $s('returningBodyArea')),
+                'notes' => $counsel ? $s('counselingNotes') : ($initial ? $s('initialNotes') : $s('returningNotes')),
+                'orderNo' => $counsel ? $s('orderNo') : '',
                 // 予約登録の画面に流し込む文面（LINE に届く文面と同じ形）。申請IDを足しておく
                 'message' => js_slice(trim((string) ($rec['message']['text'] ?? '')), 5000) . "\n予約申請ID：{$rid}",
                 'state' => $state,

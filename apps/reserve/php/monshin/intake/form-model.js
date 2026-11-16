@@ -31,7 +31,7 @@ export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3
   const errors = [];
   const todayIso = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())).toISOString().slice(0, 10);
   if (data.privacyConsent !== 'agreed') errors.push('個人情報の取扱いへの同意が必要です');
-  if (!['initial', 'returning'].includes(data.visitType)) errors.push('受診区分を選択してください');
+  if (!['initial', 'returning', 'counseling'].includes(data.visitType)) errors.push('受診区分を選択してください');
   if (!data.preferredDate) errors.push('希望予約日を選択してください');
   else if (data.preferredDate < todayIso) errors.push('本日以降の希望予約日を選択してください');
   else if (!isAllowedClinicDate(data.preferredDate, specialDates, weekdays)) errors.push(weekdays.length && weekdays.length < 7 ? `${weekdayLabel(weekdays)}または特別診療日を選択してください` : '受付日を選択してください');
@@ -39,6 +39,8 @@ export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3
   if (!clean(data.name)) errors.push('漢字氏名を入力してください');
   if (!clean(data.kana)) errors.push('カナ氏名を入力してください');
   if (!parseIsoDate(data.birthDate) || data.birthDate >= todayIso) errors.push('正しい生年月日を入力してください');
+  if (data.visitType === 'counseling' && !/^0\d{9,10}$/.test(clean(data.phone).replace(/[-ー\s]/g, ''))) errors.push('電話番号を半角数字で入力してください');
+  if (data.visitType === 'counseling' && data.jointUseConsent !== 'agreed') errors.push('個人情報の共同利用への同意が必要です');
   if (data.visitType === 'initial' && !/^0\d{9,10}$/.test(clean(data.phone).replace(/[-ー\s]/g, ''))) errors.push('電話番号を半角数字で入力してください');
   if (data.visitType === 'initial' && !data.insuranceHistory) errors.push('保険通院歴を選択してください');
   if (data.visitType === 'initial' && !data.sameDayTreatment) errors.push('当日施術の希望を選択してください');
@@ -53,17 +55,23 @@ export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3
 // clinic は 設定 → 院の情報 から（department：診療科の名前、name：院名）
 export function buildLineMessage(data, clinic = {}) {
   const initial = data.visitType === 'initial';
+  const counseling = data.visitType === 'counseling';
   const dept = clean(clinic.department);
   const lines = [
-    `【${dept ? `${dept}・` : ''}${initial ? '初診' : '再診'}予約申請】`, '',
-    `受診区分：${initial ? '①初診' : '②再診'}`,
+    `【${dept ? `${dept}・` : ''}${counseling ? 'カウンセリング' : initial ? '初診' : '再診'}予約申請】`, '',
+    `受診区分：${counseling ? '③カウンセリング（ゼオスキン）' : initial ? '①初診' : '②再診'}`,
     `希望予約日時：${formatJapaneseDate(data.preferredDate)}`,
     `希望時間帯：${clean(data.timePreference)}${clean(data.timeNote) ? `（${clean(data.timeNote)}）` : ''}`, '',
     `漢字氏名：${clean(data.name)}`, `カナ氏名：${clean(data.kana)}`,
     `生年月日：${formatJapaneseDate(data.birthDate).replace(/（.）$/, '')}`,
   ];
   if (clean(data.gender)) lines.push(`性別：${clean(data.gender)}`);
-  if (initial) {
+  if (counseling) {
+    lines.push(`電話番号：${clean(data.phone)}`, '',
+      `注文番号：${clean(data.orderNo) || 'なし'}`,
+      `ご相談内容：${clean(data.counselingNotes) || 'なし'}`,
+      `個人情報の共同利用：同意`);
+  } else if (initial) {
     lines.push(`電話番号：${clean(data.phone)}`, `${clean(clinic.name) || '当院'}保険通院歴：${clean(data.insuranceHistory)}`, '',
       `当日施術希望：${clean(data.sameDayTreatment)}`,
       `希望治療メニューまたはお悩み：${clean(data.initialTreatment)}`,

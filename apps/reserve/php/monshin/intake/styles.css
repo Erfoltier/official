@@ -67,3 +67,4 @@ body::after{position:fixed;inset:0;z-index:0;background:linear-gradient(135deg,r
 
 /* The calendar opens from its mode button; do not make patients hunt for a native icon. */
 .calendar-picker-wrap{height:0;margin:0;overflow:hidden}.calendar-picker-wrap input{position:absolute;inline-size:1px;block-size:1px;opacity:0;pointer-events:none}.calendar-picker-wrap input::-webkit-calendar-picker-indicator{display:none}
+.joint-use{margin:14px 0 8px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.5);font-size:.78rem;line-height:1.65;color:#5f564f}.joint-use p{margin:0 0 6px}.joint-use ul{margin:0;padding-left:18px}.choice-grid.two>.choice:nth-child(3){grid-column:1/-1}

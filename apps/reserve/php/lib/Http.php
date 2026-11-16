@@ -508,6 +508,7 @@ final class Schema
                 }
                 return array_map(fn($d) => V::int($d, 0, 6), $x);
             },
+            'intakeCounseling?' => fn($x) => V::bool($x),
             'intakeSpecialDates?' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
                     throw new InputError();
