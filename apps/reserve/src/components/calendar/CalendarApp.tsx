@@ -471,11 +471,11 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             data-active={maskNames || undefined}
             onClick={() => setMaskNames((v) => !v)}
             aria-pressed={maskNames}
-            title="患者から画面が見える場所で使います"
+            title={maskNames ? "伏せている氏名を表示に戻します" : "患者から画面が見える場所で使います"}
           >
-            <span className={styles.long}>氏名を伏せる</span>
+            <span className={styles.long}>{maskNames ? "氏名を表示" : "氏名を伏せる"}</span>
             <span className={styles.short}>●●</span>
-            <span className={styles.cap}>伏字</span>
+            <span className={styles.cap}>{maskNames ? "表示" : "伏字"}</span>
           </button>
           <button
             className={styles.btn}
