@@ -458,7 +458,7 @@
 .tt-guide .tt-wide dt small { display: block; font-family: inherit; font-weight: 500; font-size: 12px; color: #A9B6D6; margin-top: 2px; }
 .tt-guide .tt-wide dd { margin: 6px 0 0; font-family: var(--en); font-weight: 700; font-size: 22px; color: #5BD8FF; }
 .tt-guide .tt-link-box { margin-top: 18px; padding: 14px 18px; border-left: 3px solid #FF8597; border-radius: 0 12px 12px 0; background: rgba(255, 133, 151, .08); font-size: 14px; color: #E7ECF8; }
-.tt-guide .tt-link-box a, .tt-guide .tt-faq a, .tt-guide .tt-text a { color: #5BD8FF; text-decoration: underline; text-underline-offset: 3px; }
+.tt-guide .tt-link-box a, .tt-guide .tt-faq a { color: #5BD8FF; text-decoration: underline; text-underline-offset: 3px; }
 /* 国内承認機 */
 .tt-guide .tt-approved {
   display: flex; align-items: flex-start; gap: 22px;
@@ -685,7 +685,7 @@
 .tt-guide .tt-plan:hover { transform: translateY(-6px); box-shadow: 0 0 0 1px #fff, 0 0 60px -10px rgba(91, 216, 255, .85), 0 36px 60px -26px rgba(0, 0, 0, .95); }
 .tt-guide .tt-plan-area { font-family: var(--en); font-weight: 700; font-size: 24px; letter-spacing: -.01em; }
 .tt-guide .tt-plan-area span { font-size: 14px; margin-left: 2px; }
-.tt-guide .tt-plan-size { min-height: 1.6em; font-size: 13px; color: #3E4A72; }
+.tt-guide .tt-plan-size { min-height: 1.6em; font-size: 12px; color: #5B6890; }
 .tt-guide .tt-plan-yen { margin-top: 14px; padding-top: 14px; border-top: 1px solid #D6DFF3; font-family: var(--en); font-weight: 700; font-size: 31px; line-height: 1.2; color: #1A3FD6; letter-spacing: -.01em; white-space: nowrap; }
 .tt-guide .tt-plan-yen span { margin-left: 2px; font-family: var(--jp); font-size: 14px; }
 .tt-guide .tt-over {
