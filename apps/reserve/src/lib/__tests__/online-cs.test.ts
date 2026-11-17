@@ -87,6 +87,7 @@ describe("オンラインカウンセリングの Web 予約", () => {
     expect(out.r).toMatchObject({ ok: true, mailed: true });
     expect(out.sent[0][0]).toBe("hanako@example.jp");
     expect(out.sent[0][1]).toContain("14:30〜14:45");
+    expect(out.sent[0][1]).toContain("通話リクエスト");
     expect(out.sent[0][1]).not.toMatch(/医師|診察|患者/);
   });
 });
