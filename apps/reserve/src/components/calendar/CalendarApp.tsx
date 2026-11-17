@@ -485,8 +485,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
 
         <div className={`${styles.group} ${styles.tbTools}`}>
           <button
-            className={styles.btn}
-            data-active={maskNames || undefined}
+            className={`${styles.btn} ${styles.toggleOn}`}
             onClick={() => setMaskNames((v) => !v)}
             aria-pressed={maskNames}
             title={maskNames ? "伏せている氏名を表示に戻します" : "患者から画面が見える場所で使います"}
