@@ -107,6 +107,15 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(await mainOn(c, day)).toContainEqual([toIso(day, 700), toIso(day, 715)]);
   });
 
+  it("初診は2か月先まで。再診は開けた日すべて", async () => {
+    const near = addDays(nowInClinic().date, 6);
+    const far = addDays(nowInClinic().date, 70);
+    await open(near, { tattooSlots: [`${near} 10:00-12:00`, `${far} 10:00-12:00`] });
+    expect(Object.keys((await slots(5, "first")).slots)).toEqual([near]);
+    expect(Object.keys((await slots(5, "repeat")).slots)).toEqual([near, far]);
+    expect((await book(person(far, "10:00", { visit: "first" }))).data.error).toBe("slot_taken");
+  });
+
   it("受け付けないときは時刻を出さず、送っても断る。画面と文面に仕組みの言葉を出さない", async () => {
     const day = addDays(nowInClinic().date, 5);
     const c = await open(day, { tattooEnabled: false });
