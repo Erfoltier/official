@@ -495,8 +495,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             <span className={styles.cap}>{maskNames ? "表示" : "伏字"}</span>
           </button>
           <button
-            className={styles.btn}
-            data-active={showCancelled || undefined}
+            className={`${styles.btn} ${styles.toggleOn}`}
             onClick={() => setShowCancelled((v) => !v)}
             aria-pressed={showCancelled}
           >
