@@ -21,10 +21,12 @@
 .tt-guide .tt-fact:nth-child(2) .tt-fact-value { font-family: var(--jp); font-weight: 700; font-size: 40px; }
 /* 明るい背景に合わせて補助テキストのコントラストを確保 */
 .tt-guide { --tx2: #FBEFF5; --tx3: #F1D6E3; }
-.tt-guide .tt-point span, .tt-guide .tt-note, .tt-guide .tt-plan-size, .tt-guide .tt-wave-name, .tt-guide .tt-fact-label { color: #F1D6E3; }
+.tt-guide .tt-point span, .tt-guide .tt-note, .tt-guide .tt-wave-name, .tt-guide .tt-fact-label { color: #F1D6E3; }
 .tt-guide .tt-day { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .45); }
 .tt-guide .tt-day strong { color: #FFE3EC; text-shadow: 0 0 10px rgba(255, 77, 106, .6); }
 .tt-guide .tt-day span { color: #FBEFF5; }
 .tt-guide .tt-measure-text p:nth-child(2) { color: #FBEFF5; }
 .tt-guide .tt-brows { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .10); font-size: 13.5px; color: #fff; }
 .tt-guide .tt-measure-text strong, .tt-guide .tt-measure-note strong, .tt-guide .tt-brows strong { color: #fff; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .55); text-underline-offset: 4px; }
+/* 料金カード（白地）の寸法例は濃い色で読みやすく */
+.tt-guide .tt-plan-size { color: #6B3A54; font-size: 13px; font-weight: 500; }

@@ -464,7 +464,7 @@
 .tt-guide .tt-wide dt small { display: block; font-family: inherit; font-weight: 500; font-size: 12px; color: #DAB4C7; margin-top: 2px; }
 .tt-guide .tt-wide dd { margin: 6px 0 0; font-family: var(--en); font-weight: 700; font-size: 22px; color: #FB6DCA; }
 .tt-guide .tt-link-box { margin-top: 18px; padding: 14px 18px; border-left: 3px solid #FF8597; border-radius: 0 12px 12px 0; background: rgba(255, 133, 151, .08); font-size: 14px; color: #EEC9DB; }
-.tt-guide .tt-link-box a, .tt-guide .tt-faq a { color: #FB6DCA; text-decoration: underline; text-underline-offset: 3px; }
+.tt-guide .tt-link-box a, .tt-guide .tt-faq a, .tt-guide .tt-text a { color: #FB6DCA; text-decoration: underline; text-underline-offset: 3px; }
 /* 国内承認機 */
 .tt-guide .tt-approved {
   display: flex; align-items: flex-start; gap: 22px;
@@ -691,7 +691,7 @@
 .tt-guide .tt-plan:hover { transform: translateY(-6px); box-shadow: 0 0 0 1px #fff, 0 0 60px -10px rgba(251, 109, 202, .85), 0 36px 60px -26px rgba(0, 0, 0, .95); }
 .tt-guide .tt-plan-area { font-family: var(--en); font-weight: 700; font-size: 24px; letter-spacing: -.01em; }
 .tt-guide .tt-plan-area span { font-size: 14px; margin-left: 2px; }
-.tt-guide .tt-plan-size { min-height: 1.6em; font-size: 12px; color: #946079; }
+.tt-guide .tt-plan-size { min-height: 1.6em; font-size: 13px; color: #925973; }
 .tt-guide .tt-plan-yen { margin-top: 14px; padding-top: 14px; border-top: 1px solid #EEC9DB; font-family: var(--en); font-weight: 700; font-size: 31px; line-height: 1.2; color: #DA2075; letter-spacing: -.01em; white-space: nowrap; }
 .tt-guide .tt-plan-yen span { margin-left: 2px; font-family: var(--jp); font-size: 14px; }
 .tt-guide .tt-over {
@@ -949,10 +949,12 @@
 .tt-guide .tt-fact:nth-child(2) .tt-fact-value { font-family: var(--jp); font-weight: 700; font-size: 40px; }
 /* 明るい背景に合わせて補助テキストのコントラストを確保 */
 .tt-guide { --tx2: #FBEFF5; --tx3: #F1D6E3; }
-.tt-guide .tt-point span, .tt-guide .tt-note, .tt-guide .tt-plan-size, .tt-guide .tt-wave-name, .tt-guide .tt-fact-label { color: #F1D6E3; }
+.tt-guide .tt-point span, .tt-guide .tt-note, .tt-guide .tt-wave-name, .tt-guide .tt-fact-label { color: #F1D6E3; }
 .tt-guide .tt-day { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .45); }
 .tt-guide .tt-day strong { color: #FFE3EC; text-shadow: 0 0 10px rgba(255, 77, 106, .6); }
 .tt-guide .tt-day span { color: #FBEFF5; }
 .tt-guide .tt-measure-text p:nth-child(2) { color: #FBEFF5; }
 .tt-guide .tt-brows { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .10); font-size: 13.5px; color: #fff; }
 .tt-guide .tt-measure-text strong, .tt-guide .tt-measure-note strong, .tt-guide .tt-brows strong { color: #fff; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .55); text-underline-offset: 4px; }
+/* 料金カード（白地）の寸法例は濃い色で読みやすく */
+.tt-guide .tt-plan-size { color: #6B3A54; font-size: 13px; font-weight: 500; }
