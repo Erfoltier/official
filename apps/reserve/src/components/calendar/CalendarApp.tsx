@@ -59,6 +59,9 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [now, setNow] = useState(() => nowInClinic());
 
   const [scale, setScale] = usePref("scale", DEFAULT_PX_PER_MIN, isNumber);
+  // 「全体表示」：押すと1日全体を収め、もう一度押すと前の拡大率に戻す。拡大・縮小すると解ける
+  const [fit, setFit] = useState<{ scale: number; before: number } | null>(null);
+  const fitted = fit !== null && Math.abs(fit.scale - scale) < 1e-6;
   const [maskNames, setMaskNames] = usePref("maskNames", false, isBoolean);
   const [blockInfo] = usePref<BlockInfo>("blockInfo", "all", isBlockInfo);
   // 文字の大きさ（この端末だけ。設定 → この端末の表示 と同じもの）
@@ -456,7 +459,21 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1.25)} aria-label="拡大">
             ＋<span className={styles.cap}>拡大</span>
           </button>
-          <button className={styles.btn} onClick={() => gridRef.current?.fitAll()} title="1日全体を画面に収める">
+          <button
+            className={`${styles.btn} ${styles.toggleOn}`}
+            aria-pressed={fitted}
+            onClick={() => {
+              if (fitted && fit) {
+                setScale(fit.before);
+                setFit(null);
+                return;
+              }
+              const before = scale;
+              const next = gridRef.current?.fitAll() ?? null;
+              setFit(next === null ? null : { scale: next, before });
+            }}
+            title={fitted ? "前の拡大率に戻す" : "1日全体を画面に収める"}
+          >
             全体表示
           </button>
           <button
@@ -539,8 +556,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             📥<span className={styles.cap}>受付箱</span>
             {inboxCount > 0 && <span className={styles.countBadge}>{inboxCount > 99 ? "99+" : inboxCount}</span>}
           </button>
-          <Link href="/patients" className={styles.iconBtn} aria-label="患者" title="患者の検索・編集">
-            👤<span className={styles.cap}>患者</span>
+          <Link href="/patients" className={styles.btn} title="患者の検索・編集">
+            患者検索
           </Link>
           <Link href="/questionnaires" className={styles.iconBtn} aria-label="問診票" title="問診票の一覧">
             📋<span className={styles.cap}>問診票</span>

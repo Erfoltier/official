@@ -3128,3 +3128,10 @@ button.stagePill[data-clickable]:disabled {
   font-weight: 600;
   box-shadow: var(--shadow-accent, none);
 }
+
+/* リンクの形のボタン（患者検索）も、ほかのボタンと同じ文字色に */
+a.btn,
+a.btn:visited {
+  color: var(--text);
+  text-decoration: none;
+}

@@ -36,7 +36,8 @@ export interface MoveTarget {
 
 export interface DayGridHandle {
   /** 表示時間帯全体を画面の高さに収める */
-  fitAll(): void;
+  /** 1日全体を画面に収める。収めたあとの拡大率を返す */
+  fitAll(): number | null;
   /** 指定時刻が上から1/4あたりに来るようにスクロール */
   scrollToMinute(min: number): void;
   /** 現在の表示の中心を保ったまま拡大率を変える */
@@ -158,13 +159,14 @@ export const DayGrid = forwardRef<DayGridHandle, Props>(function DayGrid(props, 
     () => ({
       fitAll() {
         const el = scrollerRef.current;
-        if (!el) return;
+        if (!el) return null;
         const avail = el.clientHeight - headerHeight() - 8;
         pendingScrollTop.current = 0;
         const next = fitScale(avail, totalMin);
         if (next === scaleRef.current) el.scrollTop = 0;
         scaleRef.current = next;
         onScaleChange(next);
+        return next;
       },
       scrollToMinute(min: number) {
         const el = scrollerRef.current;
