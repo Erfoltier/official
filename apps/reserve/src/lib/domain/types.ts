@@ -736,6 +736,16 @@ export interface ClinicSettings {
   onlineCsLaneId?: string;
   /** オンラインカウンセリングの受付日時（1つずつ「2026-11-20 14:00-16:00」）。この中のレーンの空き15分枠を Web 予約で選べる */
   onlineCsSlots?: string[];
+  /** タトゥー・アートメイク除去（日曜）の Web 予約を受け付けるか */
+  tattooEnabled?: boolean;
+  /** 照射のレーン（ふつうはメイン）とメニュー */
+  tattooLaneId?: string;
+  tattooMenuId?: string;
+  /** 初診の説明10分を取るレーン（看護師など）とメニュー。空なら説明も照射のレーンに続けて取る */
+  tattooExplainLaneId?: string;
+  tattooExplainMenuId?: string;
+  /** 受付日時（1つずつ「2026-12-06 10:00-13:00」） */
+  tattooSlots?: string[];
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

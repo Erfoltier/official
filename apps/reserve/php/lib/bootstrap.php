@@ -29,6 +29,7 @@ require_once __DIR__ . '/HomepageDays.php';
 require_once __DIR__ . '/Holidays.php';
 require_once __DIR__ . '/Intake.php';
 require_once __DIR__ . '/OnlineCs.php';
+require_once __DIR__ . '/TattooBooking.php';
 require_once __DIR__ . '/Monshin.php';
 require_once __DIR__ . '/LineLink.php';
 require_once __DIR__ . '/Http.php';

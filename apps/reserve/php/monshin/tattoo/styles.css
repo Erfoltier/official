@@ -1,0 +1,18 @@
+.tt-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.tt-empty{text-align:center;font-size:.86rem;color:var(--muted);margin:10px 0 0}
+#times .pill span{cursor:pointer}
+#done h2{margin:0 0 10px}
+#done p{margin:6px 0;font-size:.9rem}
+.field-note{display:block;margin-top:4px;font-size:12px;color:#7a6f68}
+.field-note a{color:inherit}
+.clinic-header h1{white-space:normal!important;max-width:none}
+fieldset.field{border:0;padding:0;margin:0 0 14px}
+fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
+.tt-area{margin:4px 0 16px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
+.tt-area-title{margin:0;font-size:.9rem;font-weight:600}
+.tt-rect{display:flex;flex-wrap:nowrap;align-items:center;gap:6px 10px;margin-top:10px}
+.tt-rect-label{min-width:3.5em;font-size:.86rem;font-weight:600}
+.tt-rect label{display:flex;align-items:center;gap:4px}
+.tt-rect input{width:4.6em;min-width:0;padding:8px 10px;font-size:16px;border:1px solid #d9cfc8;border-radius:8px}
+.tt-area-result{margin:10px 0 0;font-size:.9rem;font-weight:600}
+.tt-area-result:empty{display:none}

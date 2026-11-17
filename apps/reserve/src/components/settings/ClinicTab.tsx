@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ClinicSettings, Lane, PaperSize, ThemeId } from "@/lib/domain/types";
+import type { ClinicSettings, Lane, Menu, PaperSize, ThemeId } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS, THEMES } from "@/lib/domain/types";
 import { applyTheme } from "@/lib/theme";
 import { formatHm } from "@/lib/domain/time";
@@ -20,6 +20,8 @@ export function ClinicTab({
   lanes,
   homepageDays,
   onlineCs,
+  tattoo,
+  menus = [],
   canEdit,
   onChanged,
   notify,
@@ -29,6 +31,8 @@ export function ClinicTab({
   lanes: Lane[];
   homepageDays?: HomepageDays;
   onlineCs?: { url: string; mail: boolean };
+  tattoo?: { url: string };
+  menus?: Menu[];
   canEdit: boolean;
   onChanged: () => Promise<void>;
   notify: (text: string) => void;
@@ -108,6 +112,7 @@ export function ClinicTab({
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <PublicCard clinic={clinic} homepageDays={homepageDays} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <OnlineCsCard clinic={clinic} lanes={lanes} info={onlineCs} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
+      <TattooCard clinic={clinic} lanes={lanes} menus={menus} info={tattoo} mail={onlineCs?.mail} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
   );
@@ -500,6 +505,139 @@ function OnlineCsCard({
             : info?.url
               ? `予約ページ：${info.url}`
               : "予約ページは、問診票のアドレスと同じサイトの /cs/ です。"}
+      </p>
+      {canEdit && (
+        <div className={styles.actions}>
+          <button className={styles.primary} onClick={save} disabled={!!bad || busy}>
+            保存
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** タトゥー・アートメイク除去（日曜）の Web 予約：受け付けるか・照射と初診説明のレーンとメニュー・開ける日時（行を消せば閉じる） */
+function TattooCard({
+  clinic,
+  lanes,
+  menus,
+  info,
+  mail,
+  canEdit,
+  onChanged,
+  notify,
+  fail,
+}: {
+  clinic: ClinicSettings;
+  lanes: Lane[];
+  menus: Menu[];
+  info?: { url: string };
+  mail?: boolean;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  notify: (text: string) => void;
+  fail: (err: unknown) => void;
+}) {
+  const [enabled, setEnabled] = useState(!!clinic.tattooEnabled);
+  const [laneId, setLaneId] = useState(clinic.tattooLaneId ?? "");
+  const [menuId, setMenuId] = useState(clinic.tattooMenuId ?? "");
+  const [explainLaneId, setExplainLaneId] = useState(clinic.tattooExplainLaneId ?? "");
+  const [explainMenuId, setExplainMenuId] = useState(clinic.tattooExplainMenuId ?? "");
+  const [text, setText] = useState((clinic.tattooSlots ?? []).join("\n"));
+  const [busy, setBusy] = useState(false);
+  const lines = text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const bad = lines.find((l) => !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}\s*[-〜～]\s*\d{1,2}:\d{2}$/.test(l));
+  const activeLanes = (id: string) => lanes.filter((l) => l.active || l.id === id);
+  const laneMenus = (lane: string, id: string) => menus.filter((m) => (m.active && (m.laneIds ?? []).includes(lane)) || m.id === id);
+  const missing = enabled && (!laneId || !menuId);
+  const save = async () => {
+    setBusy(true);
+    try {
+      await saveClinic({ tattooEnabled: enabled, tattooLaneId: laneId, tattooMenuId: menuId, tattooExplainLaneId: explainLaneId, tattooExplainMenuId: explainMenuId, tattooSlots: lines });
+      await onChanged();
+      notify("タトゥー・アートメイク除去（日曜）の設定を保存しました");
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>タトゥー・アートメイク除去（日曜・Web予約）</h3>
+      <p className={styles.hint}>
+        開ける日時を1行に1つ入れると、患者が予約ページで面積と初診・再診を入れて、その場で予約できます（予約表に入り、確定のメールを送ります）。照射の時間は面積で決まり（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）、初診は説明10分を足します。選べる時刻は、受付日時の中の空きの最初と最後だけです（予約の間に半端な空きが残らないように）。閉じるときは行を消して保存します。
+      </p>
+      <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={enabled} onChange={(ev) => setEnabled(ev.target.checked)} disabled={!canEdit} />
+        <span>予約ページで受け付ける</span>
+      </label>
+      <label className={styles.field}>
+        <span>照射のレーン</span>
+        <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
+          <option value="">（選ばない）</option>
+          {activeLanes(laneId).map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.field}>
+        <span>照射のメニュー（予約に付ける。照射のレーンで使えるメニュー）</span>
+        <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
+          <option value="">（選ばない）</option>
+          {laneMenus(laneId, menuId).map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.field}>
+        <span>初診説明のレーン（照射の直前の10分。空いていなければ照射のレーンに続けて取ります）</span>
+        <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
+          <option value="">（使わない：説明も照射のレーンで取る）</option>
+          {activeLanes(explainLaneId)
+            .filter((l) => l.id !== laneId)
+            .map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+        </select>
+      </label>
+      {explainLaneId && (
+        <label className={styles.field}>
+          <span>初診説明のメニュー（選ばなければ照射のメニューを付けます）</span>
+          <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit}>
+            <option value="">（選ばない）</option>
+            {laneMenus(explainLaneId, explainMenuId).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className={styles.field}>
+        <span>受付日時（1行に1つ、例：2026-12-06 10:00-13:00）</span>
+        <textarea className={styles.input} value={text} rows={4} onChange={(ev) => setText(ev.target.value)} disabled={!canEdit} />
+      </label>
+      <p className={styles.hint} data-invalid={bad || missing || (enabled && mail === false) || undefined}>
+        {bad
+          ? `受付日時の形が正しくありません：${bad}`
+          : missing
+            ? "受け付けるには、照射のレーンとメニューを選んでください。"
+            : enabled && mail === false
+              ? "メールの送信元が未設定のため、確定のメールを送れません（設定 → リマインド）。"
+              : info?.url
+                ? `予約ページ：${info.url}（院の LINE のメニューなどから開けるようにします）`
+                : "予約ページは、問診票のアドレスと同じサイトの /tattoo/ です。"}
       </p>
       {canEdit && (
         <div className={styles.actions}>

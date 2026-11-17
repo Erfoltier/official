@@ -368,6 +368,31 @@ final class Store
         if (isset($input['onlineCsSlots'])) {
             $next['onlineCsSlots'] = OnlineCs::normalizeWindows($input['onlineCsSlots']);
         }
+        // タトゥー・アートメイク除去（日曜）の Web 予約（受け付けるか・照射と説明のレーンとメニュー・開ける日時）
+        if (array_key_exists('tattooEnabled', $input)) {
+            $next['tattooEnabled'] = (bool) $input['tattooEnabled'];
+        }
+        foreach (['tattooLaneId' => '照射', 'tattooExplainLaneId' => '初診説明'] as $k => $label) {
+            if (array_key_exists($k, $input)) {
+                $lane = (string) $input[$k];
+                if ($lane !== '' && !isset(self::lanes()[$lane])) {
+                    throw new StoreError('invalid', "タトゥー除去の{$label}のレーンが見つかりません");
+                }
+                $next[$k] = $lane;
+            }
+        }
+        foreach (['tattooMenuId' => '照射', 'tattooExplainMenuId' => '初診説明'] as $k => $label) {
+            if (array_key_exists($k, $input)) {
+                $menu = (string) $input[$k];
+                if ($menu !== '' && !in_array($menu, array_column(self::sortedMenus(), 'id'), true)) {
+                    throw new StoreError('invalid', "タトゥー除去の{$label}のメニューが見つかりません");
+                }
+                $next[$k] = $menu;
+            }
+        }
+        if (isset($input['tattooSlots'])) {
+            $next['tattooSlots'] = TattooBooking::normalizeWindows($input['tattooSlots']);
+        }
         // 以前の受付枠の項目（11/17 に取りやめ）は残さない
         unset($next['counselingLaneId'], $next['counselingSlots']);
         if (isset($input['intakeSpecialDates'])) {
@@ -1153,7 +1178,7 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
+        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
