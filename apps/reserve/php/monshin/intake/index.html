@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f5ef">
   <title>予約申請</title>
-  <link rel="stylesheet" href="./styles.css?v=20261116-2">
+  <link rel="stylesheet" href="./styles.css?v=20261117-1">
 </head>
 <body>
   <main class="shell">
@@ -33,14 +33,14 @@
         <div class="choice-grid two" id="visit-type-group">
           <label class="choice"><input type="radio" name="visitType" value="initial" required><span><b>初診</b><small><span data-clinic="department" data-fallback="当院"></span>が初めて</small></span></label>
           <label class="choice"><input type="radio" name="visitType" value="returning" required><span><b>再診</b><small><span data-clinic="department" data-fallback="当院"></span>の受診歴あり</small></span></label>
-          <label class="choice" id="visit-counseling" hidden><input type="radio" name="visitType" value="counseling" disabled><span><b>カウンセリング（ゼオスキン）</b><small>ゼオスキンのご購入前後のご相談</small></span></label>
+          <label class="choice" id="visit-counseling" hidden><input type="radio" name="visitType" value="counseling" disabled><span><b>カウンセリング（ゼオスキン）・ご来院</b><small>ご来院でのゼオスキンのご相談</small></span></label>
         </div>
       </section>
 
       <section class="card" id="date-section">
         <div class="section-heading">
           <span class="step">2</span>
-          <div><h2>希望日時</h2><p id="date-note">選択できる日だけが診療日です　特別診療日は約2か月先まで表示されます。</p></div>
+          <div><h2>希望日時</h2><p>選択できる日だけが診療日です　特別診療日は約2か月先まで表示されます。</p></div>
         </div>
         <input type="hidden" name="preferredDate" id="preferred-date" required>
         <div class="calendar-toolbar">
@@ -52,15 +52,14 @@
         <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="希望予約日"></div>
         <p class="selected-date" id="selected-date">希望日を選択してください</p>
         <fieldset>
-          <legend id="time-legend">希望時間帯</legend>
-          <div class="choice-grid four" id="counseling-times" hidden></div>
-          <div class="choice-grid four" id="time-pills">
+          <legend>希望時間帯</legend>
+          <div class="choice-grid four">
             <label class="pill"><input type="radio" name="timePreference" value="午前" required><span>午前</span></label>
             <label class="pill"><input type="radio" name="timePreference" value="午後" required><span>午後</span></label>
             <label class="pill"><input type="radio" name="timePreference" value="夕方" required><span>夕方</span></label>
             <label class="pill"><input type="radio" name="timePreference" value="何時でもよい" required><span>何時でもよい</span></label>
           </div>
-          <label class="field compact" id="time-note-field"><span>時間の希望（任意）</span><input name="timeNote" maxlength="50" placeholder="例：16時以降、なるべく遅め"></label>
+          <label class="field compact"><span>時間の希望（任意）</span><input name="timeNote" maxlength="50" placeholder="例：16時以降、なるべく遅め"></label>
         </fieldset>
       </section>
 
@@ -146,10 +145,15 @@
       <section class="card counseling-form" id="counseling-details" hidden>
         <div class="section-heading">
           <span class="step">4</span>
-          <div><h2>カウンセリングのご相談内容</h2><p>ゼオスキンについてのご相談です</p></div>
+          <div><h2>カウンセリングのご相談内容</h2><p>ご来院いただき、ゼオスキンのご購入前後のご相談をお受けします</p></div>
+        </div>
+        <p class="counseling-place" id="counseling-place" hidden></p>
+        <div class="counseling-fee">
+          <p><b>カウンセリング料：3,300円（税込）</b></p>
+          <p>当日施術を受けられた方、シミクレールでご購入済みの方（ゼオスキンの『カウンセリング前に購入』、またはオンラインカウンセリングのご購入）は無料です。商品のご購入のみの場合はカウンセリング料がかかります。</p>
         </div>
         <label class="field"><span>電話番号 <em>必須</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="例：09012345678"></label>
-        <label class="field"><span>シミクレールの注文番号（任意）</span><input name="orderNo" maxlength="40" placeholder="ご購入済みの方のみ"></label>
+        <label class="field"><span>シミクレールの注文番号（任意）</span><input name="orderNo" maxlength="40" placeholder="例：#1001"><small class="field-note">シミクレールでご購入済みの方は注文番号をご入力ください</small></label>
         <label class="field"><span>ご相談内容（任意）</span><textarea name="counselingNotes" maxlength="1000" placeholder="例：使い始めて赤みが出た、次に何を使えばよいか知りたい"></textarea></label>
         <div class="joint-use" id="joint-use-text">
           <p><b>個人情報の共同利用について</b></p>
@@ -203,6 +207,6 @@
   </dialog>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="./app.js?v=20261116-2"></script>
+  <script type="module" src="./app.js?v=20261117-1"></script>
 </body>
 </html>

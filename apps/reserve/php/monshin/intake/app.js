@@ -1,4 +1,4 @@
-import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261116-2';
+import { buildLineMessage, formatJapaneseDate, isAllowedClinicDate, validateIntake } from './form-model.js?v=20261117-1';
 
 const form = document.querySelector('#intake-form');
 const preferredDate = document.querySelector('#preferred-date');
@@ -24,11 +24,6 @@ const officialAccountId = '@609lberb';
 let monthCursor = new Date(today.getFullYear(), today.getMonth(), 1);
 let specialDates = [];
 let weekdays = [0, 1, 2, 3, 4, 5, 6];
-/** カウンセリングで選べる枠（日付 => 開始時刻）。intake-config.php が、開けた受付枠のうち空いている時間だけを返す */
-let counselingSlots = {};
-const isCounseling = () => form.elements.visitType.value === 'counseling';
-const validationOptions = () => ({ specialDates, weekdays, today, counselingSlots });
-const dateAllowed = iso => (isCounseling() ? (counselingSlots[iso] || []).length > 0 : isAllowedClinicDate(iso, specialDates, weekdays));
 let clinic = {};
 let liffReady = false;
 let liffInitError = null;
@@ -127,7 +122,7 @@ async function sendAsLineUser(text, followupToken, requestId) {
   await reportDiagnostic('send_timeout', {result:'timeout', elapsedMs:performance.now()-startedAt}, requestId);
   throw Object.assign(new Error('LINE send result timed out'), {code:'LIFF_SEND_TIMEOUT'});
 }
-const refreshSubmitState = () => { submitButton.disabled = validateIntake(formData(), validationOptions()).length > 0; };
+const refreshSubmitState = () => { submitButton.disabled = validateIntake(formData(), { specialDates, weekdays, today }).length > 0; };
 
 function renderCalendar() {
   title.textContent = `${monthCursor.getFullYear()}年 ${monthCursor.getMonth() + 1}月`;
@@ -139,18 +134,17 @@ function renderCalendar() {
     const date = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day);
     const iso = isoLocal(date);
     const button = document.createElement('button');
-    const allowed = date >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && dateAllowed(iso);
+    const allowed = date >= new Date(today.getFullYear(), today.getMonth(), today.getDate()) && isAllowedClinicDate(iso, specialDates, weekdays);
     button.type = 'button';
     button.textContent = String(day);
     button.disabled = !allowed;
     button.className = preferredDate.value === iso ? 'selected' : '';
     button.setAttribute('aria-label', `${formatJapaneseDate(iso)}${allowed ? '' : ' 選択不可'}`);
-    if (specialDates.includes(iso) && !isCounseling()) button.dataset.special = 'true';
+    if (specialDates.includes(iso)) button.dataset.special = 'true';
     button.addEventListener('click', () => {
       preferredDate.value = iso;
-      selectedLabel.textContent = `希望日：${formatJapaneseDate(iso)}${specialDates.includes(iso) && !isCounseling() ? ' 特別診療日' : ''}`;
+      selectedLabel.textContent = `希望日：${formatJapaneseDate(iso)}${specialDates.includes(iso) ? ' 特別診療日' : ''}`;
       renderCalendar();
-      renderTimes();
       refreshSubmitState();
     });
     grid.append(button);
@@ -158,60 +152,6 @@ function renderCalendar() {
   const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   document.querySelector('#prev-month').disabled = monthCursor <= currentMonth;
   document.querySelector('#next-month').disabled = monthCursor >= new Date(today.getFullYear(), today.getMonth() + 5, 1);
-}
-
-/** 希望時間：カウンセリングは選んだ日の空いている時間（15分ごと）、それ以外は午前・午後などの時間帯 */
-function renderTimes() {
-  const counseling = isCounseling();
-  const pills = document.querySelector('#time-pills');
-  const noteField = document.querySelector('#time-note-field');
-  const times = document.querySelector('#counseling-times');
-  pills.hidden = counseling;
-  noteField.hidden = counseling;
-  pills.querySelectorAll('input').forEach(control => { control.disabled = counseling; });
-  noteField.querySelector('input').disabled = counseling;
-  times.hidden = !counseling;
-  document.querySelector('#time-legend').textContent = counseling ? '希望時間（1枠15分）' : '希望時間帯';
-  const current = counseling ? form.querySelector('#counseling-times input:checked')?.value : '';
-  times.replaceChildren();
-  if (!counseling) return;
-  const slots = counselingSlots[preferredDate.value] || [];
-  if (!slots.length) {
-    const hint = document.createElement('p');
-    hint.className = 'selected-date';
-    hint.textContent = '日付を選ぶと、空いている時間が表示されます';
-    times.append(hint);
-    return;
-  }
-  for (const time of slots) {
-    const label = document.createElement('label');
-    label.className = 'pill';
-    const input = document.createElement('input');
-    Object.assign(input, { type: 'radio', name: 'timePreference', value: time, required: true, checked: time === current });
-    const span = document.createElement('span');
-    span.textContent = time;
-    label.append(input, span);
-    times.append(label);
-  }
-}
-
-/** 区分を変えたときに、選べない日になった希望日を外す。カウンセリングは最初の枠の月を出す */
-function refreshDateMode() {
-  const counseling = isCounseling();
-  document.querySelector('#date-note').textContent = counseling
-    ? '選択できる日時だけがご予約いただける枠です（1枠15分）。'
-    : '選択できる日だけが診療日です　特別診療日は約2か月先まで表示されます。';
-  if (preferredDate.value && !dateAllowed(preferredDate.value)) {
-    preferredDate.value = '';
-    selectedLabel.textContent = '希望日を選択してください';
-  }
-  const first = Object.keys(counselingSlots).sort()[0];
-  if (counseling && first && !preferredDate.value) {
-    const [y, m] = first.split('-').map(Number);
-    monthCursor = new Date(y, m - 1, 1);
-  }
-  renderCalendar();
-  renderTimes();
 }
 
 function addMonths(amount) {
@@ -226,6 +166,9 @@ function applyCounseling(enabled) {
   choice.hidden = !enabled;
   radio.disabled = !enabled;
   if (!enabled) return;
+  const place = document.querySelector('#counseling-place');
+  place.textContent = clinic.address ? `場所：${clinic.publicName || clinic.name || ''}（${clinic.address}）` : '';
+  place.hidden = !clinic.address;
   const params = new URLSearchParams(location.search);
   const state = params.get('liff.state');
   const type = params.get('type') || (state ? new URLSearchParams(state.replace(/^[^?]*\?/, '')).get('type') : null);
@@ -250,7 +193,6 @@ function applyVisitType() {
   // カウンセリングのお客様向けには「患者」「診察」を使わない
   document.querySelector('#person-title').textContent = visitType === 'counseling' ? 'お客さま情報' : '患者さま情報';
   document.querySelector('#person-note').textContent = visitType === 'counseling' ? 'お名前と生年月日をご入力ください' : '診察券と同じ内容をご入力ください';
-  refreshDateMode();
   refreshSubmitState();
 }
 
@@ -316,16 +258,6 @@ function applyClinic(c) {
   document.title = `${dept ? `${dept} ` : ''}予約申請`;
 }
 
-async function reloadCounselingSlots() {
-  try {
-    const response = await fetch('../intake-config.php', { cache: 'no-store' });
-    const config = response.ok ? await response.json() : {};
-    counselingSlots = config.counselingSlots && typeof config.counselingSlots === 'object' ? config.counselingSlots : {};
-  } catch (_) { /* keep the slots we have */ }
-  refreshDateMode();
-  refreshSubmitState();
-}
-
 async function initialize() {
   let config = {};
   try {
@@ -335,7 +267,6 @@ async function initialize() {
       specialDates = Array.isArray(config.specialDates) ? config.specialDates : [];
       if (Array.isArray(config.weekdays)) weekdays = config.weekdays;
       clinic = config.clinic || {};
-      counselingSlots = config.counselingSlots && typeof config.counselingSlots === 'object' ? config.counselingSlots : {};
       applyClinic(clinic);
       applyCounseling(config.counseling === true);
     }
@@ -389,7 +320,7 @@ privacyContinueButton.addEventListener('click', () => {
 form.addEventListener('submit', event => {
   event.preventDefault();
   const data = formData();
-  const errors = validateIntake(data, validationOptions());
+  const errors = validateIntake(data, { specialDates, weekdays, today });
   if (errors.length) {
     refreshSubmitState();
     errorSummary.hidden = false;
@@ -431,7 +362,7 @@ birthPicker.addEventListener('change', () => setBirthDate(birthPicker.value, 'ca
 document.querySelector('#back-button').addEventListener('click', () => confirmDialog.close());
 document.querySelector('#send-button').addEventListener('click', async event => {
   const button = event.currentTarget;
-  const errors = validateIntake(formData(), validationOptions());
+  const errors = validateIntake(formData(), { specialDates, weekdays, today });
   if (errors.length) { confirmDialog.close(); refreshSubmitState(); return; }
   button.disabled = true;
   button.textContent = '送信中…';
@@ -461,15 +392,6 @@ document.querySelector('#send-button').addEventListener('click', async event => 
       completeDialog.showModal();
     }
   } catch (error) {
-    if (error?.message === 'counseling_slot_unavailable') {
-      // 送るあいだに枠が埋まった：空きを読み直して、時間を選び直してもらう
-      confirmDialog.close();
-      await reloadCounselingSlots();
-      errorSummary.hidden = false;
-      errorSummary.innerHTML = '<strong>選んだ時間はご予約できなくなりました</strong><ul><li>お手数ですが、別の日時をお選びください</li></ul>';
-      errorSummary.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
     const code = error?.code || liffInitError?.code || 'UNKNOWN';
     const context = !window.liff
       ? 'LINE SDKを読み込めませんでした'

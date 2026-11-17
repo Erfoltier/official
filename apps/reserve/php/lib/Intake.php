@@ -144,7 +144,7 @@ final class Intake
                 'birthDate' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $s('birthDate')) ? $s('birthDate') : '',
                 'gender' => $s('gender'),
                 'phone' => $s('phone'),
-                'wish' => $counsel ? 'カウンセリング（ゼオスキン）' : ($initial ? $s('initialTreatment') : $s('returningTreatment')),
+                'wish' => $counsel ? 'カウンセリング（ゼオスキン）・ご来院' : ($initial ? $s('initialTreatment') : $s('returningTreatment')),
                 'area' => $counsel ? '' : ($initial ? $s('initialBodyArea') : $s('returningBodyArea')),
                 'notes' => $counsel ? $s('counselingNotes') : ($initial ? $s('initialNotes') : $s('returningNotes')),
                 'orderNo' => $counsel ? $s('orderNo') : '',

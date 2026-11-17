@@ -195,10 +195,11 @@
 - `HomepageDays`：設定の homepageUrl のトップを1日1回（cron/reminders.php）読み、「特別診療日」の欄の「M月D日（曜）」を拾う。meta `homepageSpecialDays`（url・checkedAt・dates・skipped・error）
 - 予約申請フォームで選べる日＝設定の曜日 ＋ intakeSpecialDates（手入力）＋ HomepageDays の今日以降の日（`HomepageDays::intakeDates()`、intake-config.php・DayPdfSender が使う）。祝日は自動では足さない
 
-## カウンセリング（ゼオスキン）
+## カウンセリング（ゼオスキン）・ご来院
 
-- 予約申請フォームの受診区分 `counseling`。設定 `intakeCounseling`（既定 false）が true のときだけ出し、サーバーも受け付ける
+- 予約申請フォームの受診区分 `counseling`（対面専用）。設定 `intakeCounseling`（既定 false）が true のときだけ出し、サーバーも受け付ける
+- 日付・時間はほかの区分と同じ（通常の受付日、午前・午後などの希望）。予約は事務がメインレーンに入れる。オンラインカウンセリングはフォームを使わず「オンラインカウンセリング」レーンに手入力
 - 入力：電話（必須）・注文番号 `orderNo`（任意）・ご相談内容 `counselingNotes`（任意）・共同利用の同意 `jointUseConsent=agreed`（必須）。申請に `jointUseConsent`（版・相手・日時）を残す
-- 文面は「【美容皮膚科・カウンセリング予約申請】／受診区分：③カウンセリング（ゼオスキン）／注文番号：…」。受付箱は visitType=counseling・orderNo
-- 日時：設定 `counselingSlots`（「YYYY-MM-DD HH:MM-HH:MM」の行）の中の15分枠から、`counselingLaneId` のレーンの予約（キャンセル・無断キャンセルを除く）と重なる時間・過ぎた時間を除いたものだけを選べる（`Store::counselingOpenSlots`、intake-config の `counselingSlots`）。送信時にも確かめ、埋まっていれば 409 counseling_slot_unavailable（フォームは空きを読み直す）。希望時間は timePreference に「14:15」の形で入る
-- 対面の案内 URL：`https://liff.line.me/{LIFF ID}?type=counseling`
+- フォームに院の住所（設定の書類の住所）と料金（3,300円税込、当日施術・シミクレール購入済みは無料）を出す
+- 文面は「【美容皮膚科・カウンセリング（ご来院）予約申請】／受診区分：③カウンセリング（ゼオスキン）・ご来院／注文番号：…」。受付箱は visitType=counseling・orderNo
+- 案内 URL：`https://liff.line.me/{LIFF ID}?type=counseling`

@@ -18,9 +18,7 @@ try {
         'specialDates' => array_values(array_unique([...HomepageDays::intakeDates(), ...$c['special_dates']])),
         'weekdays' => $p['intakeWeekdays'],
         'counseling' => $p['intakeCounseling'],
-        // カウンセリングは、設定で開けた受付枠の空きだけを選べる（日付 => 開始時刻）
-        'counselingSlots' => $p['intakeCounseling'] ? (object) Store::counselingOpenSlots() : (object) [],
-        'clinic' => ['name' => $p['name'], 'publicName' => $p['publicName'], 'publicNameEn' => $p['publicNameEn'], 'department' => $p['department'], 'privacyUrl' => $p['privacyUrl'], 'intakeHours' => $p['intakeHours']],
+        'clinic' => ['name' => $p['name'], 'publicName' => $p['publicName'], 'publicNameEn' => $p['publicNameEn'], 'department' => $p['department'], 'privacyUrl' => $p['privacyUrl'], 'intakeHours' => $p['intakeHours'], 'address' => $p['address']],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(503);
