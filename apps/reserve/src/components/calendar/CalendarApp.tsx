@@ -66,6 +66,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
   const [showCancelled, setShowCancelled] = usePref("showCancelled", false, isBoolean);
   const [laneFilter, setLaneFilter] = usePref("laneFilter", ALL_LANES, isString);
   const [receptionLane, setReceptionLane] = usePref("receptionLane", ALL_LANES, isString);
+  // オンラインカウンセリングのレーンは、ふだん畳んでおく（端末ごとに覚える）
+  const [csOpen, setCsOpen] = usePref("onlineCsLaneOpen", false, isBoolean);
   /** 受付一覧：自分で開閉するまでは端末に合わせる（パソコンは開く・スマホ/タブレットはたたむ） */
   const [receptionPref, setReceptionPref] = usePref("reception", "auto", isString);
   const [wideScreen, setWideScreen] = useState(false);
@@ -173,13 +175,19 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
     requestAnimationFrame(() => gridRef.current?.scrollToMinute(target));
   }, [bundle, now]);
 
+  const csLaneId = bundle?.clinic.onlineCsLaneId && bundle.lanes.some((l) => l.id === bundle.clinic.onlineCsLaneId) ? bundle.clinic.onlineCsLaneId : "";
+  const csCount = bundle && csLaneId ? bundle.reservations.filter((r) => r.laneId === csLaneId && r.status !== "cancelled" && r.status !== "no_show").length : 0;
+
   const lanes = useMemo(() => {
     if (!bundle) return [];
     const sorted = [...bundle.lanes].sort((a, b) => a.order - b.order);
-    if (laneFilter === ALL_LANES) return sorted;
+    if (laneFilter === ALL_LANES) {
+      const shown = csOpen || !csLaneId ? sorted : sorted.filter((l) => l.id !== csLaneId);
+      return shown.length ? shown : sorted;
+    }
     const one = sorted.filter((l) => l.id === laneFilter);
     return one.length ? one : sorted;
-  }, [bundle, laneFilter]);
+  }, [bundle, laneFilter, csOpen, csLaneId]);
 
   const applyLocal = (next: Reservation) =>
     setBundle((b) => (b ? { ...b, reservations: b.reservations.map((r) => (r.id === next.id ? next : r)) } : b));
@@ -420,6 +428,17 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
                 </option>
               ))}
             </select>
+          )}
+          {csLaneId && laneFilter === ALL_LANES && (
+            <button
+              className={styles.btn}
+              data-active={csOpen || undefined}
+              aria-pressed={csOpen}
+              onClick={() => setCsOpen((v) => !v)}
+              title={csOpen ? "オンラインカウンセリングの列を畳む" : "オンラインカウンセリングの列を開く"}
+            >
+              オンライン{csCount > 0 ? `（${csCount}）` : ""}
+            </button>
           )}
           <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1 / 1.25)} aria-label="縮小">
             −<span className={styles.cap}>縮小</span>

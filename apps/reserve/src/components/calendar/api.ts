@@ -322,6 +322,8 @@ export interface SettingsData {
   stages: Stage[];
   /** ホームページの「特別診療日」から読んだ日（1日1回、サーバーが読む） */
   homepageDays?: HomepageDays;
+  /** オンラインカウンセリングの Web 予約ページのアドレス・メールを送れるか */
+  onlineCs?: { url: string; mail: boolean };
 }
 
 export interface HomepageDays {
@@ -688,6 +690,9 @@ export function saveClinic(
       | "intakeWeekdays"
       | "intakeSpecialDates"
       | "intakeCounseling"
+      | "onlineCsEnabled"
+      | "onlineCsLaneId"
+      | "onlineCsSlots"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

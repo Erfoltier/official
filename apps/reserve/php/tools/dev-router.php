@@ -20,6 +20,17 @@ if ($uri === '/monshin' || str_starts_with($uri, '/monshin/')) {
         readfile($f);
         return true;
     }
+    // オンラインカウンセリングの Web 予約ページ（画面・受け口は PHP、ほかは静的ファイル）
+    if (preg_match('#^/monshin/cs/(index\.php|api\.php|app\.js|styles\.css)?$#', $uri, $m)) {
+        $name = ($m[1] ?? '') !== '' ? $m[1] : 'index.php';
+        if (str_ends_with($name, '.php')) {
+            require __DIR__ . '/../monshin/cs/' . $name;
+            return true;
+        }
+        header('Content-Type: ' . (str_ends_with($name, '.js') ? 'text/javascript' : 'text/css'));
+        readfile(__DIR__ . '/../monshin/cs/' . $name);
+        return true;
+    }
     if (preg_match('#^/monshin/(intake-[a-z0-9-]+|liff-diagnostic-v1)\.php$#', $uri, $m)) {
         require __DIR__ . '/../monshin/' . $m[1] . '.php';
         return true;

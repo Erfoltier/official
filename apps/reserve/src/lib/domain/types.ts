@@ -730,6 +730,12 @@ export interface ClinicSettings {
   intakeSpecialDates?: string[];
   /** 予約申請フォームに「カウンセリング（ゼオスキン）」の区分を出す */
   intakeCounseling?: boolean;
+  /** オンラインカウンセリングの Web 予約を受け付けるか */
+  onlineCsEnabled?: boolean;
+  /** オンラインカウンセリングのレーン（予約表ではふだん畳んでおく） */
+  onlineCsLaneId?: string;
+  /** オンラインカウンセリングの受付日時（1つずつ「2026-11-20 14:00-16:00」）。この中のレーンの空き15分枠を Web 予約で選べる */
+  onlineCsSlots?: string[];
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

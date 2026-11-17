@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ClinicSettings, PaperSize, ThemeId } from "@/lib/domain/types";
+import type { ClinicSettings, Lane, PaperSize, ThemeId } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS, THEMES } from "@/lib/domain/types";
 import { applyTheme } from "@/lib/theme";
 import { formatHm } from "@/lib/domain/time";
@@ -17,14 +17,18 @@ const fromHm = (s: string) => {
 /** 院名・診療時間（カレンダーに出す時間帯）・予約の刻み */
 export function ClinicTab({
   clinic,
+  lanes,
   homepageDays,
+  onlineCs,
   canEdit,
   onChanged,
   notify,
   fail,
 }: {
   clinic: ClinicSettings;
+  lanes: Lane[];
   homepageDays?: HomepageDays;
+  onlineCs?: { url: string; mail: boolean };
   canEdit: boolean;
   onChanged: () => Promise<void>;
   notify: (text: string) => void;
@@ -103,6 +107,7 @@ export function ClinicTab({
 
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <PublicCard clinic={clinic} homepageDays={homepageDays} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
+      <OnlineCsCard clinic={clinic} lanes={lanes} info={onlineCs} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
   );
@@ -416,6 +421,92 @@ function HomepageDaysView({ hp, homepageUrl }: { hp?: HomepageDays; homepageUrl:
       )}
       {hp?.skipped && hp.skipped.length > 0 && (
         <span style={{ display: "block", color: "var(--danger, #c0392b)" }}>曜日が合わないなどで取り込まなかった日：{hp.skipped.join("、")}</span>
+      )}
+    </div>
+  );
+}
+
+/** オンラインカウンセリングの Web 予約：受け付けるか・レーン・開ける日時（行を消せば閉じる） */
+function OnlineCsCard({
+  clinic,
+  lanes,
+  info,
+  canEdit,
+  onChanged,
+  notify,
+  fail,
+}: {
+  clinic: ClinicSettings;
+  lanes: Lane[];
+  info?: { url: string; mail: boolean };
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  notify: (text: string) => void;
+  fail: (err: unknown) => void;
+}) {
+  const [enabled, setEnabled] = useState(!!clinic.onlineCsEnabled);
+  const [laneId, setLaneId] = useState(clinic.onlineCsLaneId ?? "");
+  const [text, setText] = useState((clinic.onlineCsSlots ?? []).join("\n"));
+  const [busy, setBusy] = useState(false);
+  const lines = text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const bad = lines.find((l) => !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}\s*[-〜～]\s*\d{1,2}:\d{2}$/.test(l));
+  const save = async () => {
+    setBusy(true);
+    try {
+      await saveClinic({ onlineCsEnabled: enabled, onlineCsLaneId: laneId, onlineCsSlots: lines });
+      await onChanged();
+      notify("オンラインカウンセリングの設定を保存しました");
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={styles.clinicCard}>
+      <h3 className={styles.cardTitle}>オンラインカウンセリング（Web予約）</h3>
+      <p className={styles.hint}>
+        開ける日時を1行に1つ入れると、その中のレーンの空いている15分枠を、お客様が予約ページで選んで予約できます（その場で予約表に入り、確定のメールを送ります）。閉じるときは行を消して保存します。
+      </p>
+      <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={enabled} onChange={(ev) => setEnabled(ev.target.checked)} disabled={!canEdit} />
+        <span>予約ページで受け付ける（共同利用の同意文の確認が済んでから有効にしてください）</span>
+      </label>
+      <label className={styles.field}>
+        <span>レーン（予約表ではふだん畳んで、ボタンで開きます）</span>
+        <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
+          <option value="">（選ばない）</option>
+          {lanes
+            .filter((l) => l.active || l.id === laneId)
+            .map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label className={styles.field}>
+        <span>受付日時（1行に1つ、例：2026-11-20 14:00-16:00）</span>
+        <textarea className={styles.input} value={text} rows={4} onChange={(ev) => setText(ev.target.value)} disabled={!canEdit} />
+      </label>
+      <p className={styles.hint} data-invalid={bad || (enabled && info && !info.mail) || undefined}>
+        {bad
+          ? `受付日時の形が正しくありません：${bad}`
+          : info && !info.mail
+            ? "メールの送信元が未設定のため、確定のメールを送れません（設定 → リマインド）。"
+            : info?.url
+              ? `予約ページ：${info.url}`
+              : "予約ページは、問診票のアドレスと同じサイトの /cs/ です。"}
+      </p>
+      {canEdit && (
+        <div className={styles.actions}>
+          <button className={styles.primary} onClick={save} disabled={!!bad || busy}>
+            保存
+          </button>
+        </div>
       )}
     </div>
   );

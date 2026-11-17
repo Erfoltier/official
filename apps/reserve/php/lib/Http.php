@@ -509,6 +509,14 @@ final class Schema
                 return array_map(fn($d) => V::int($d, 0, 6), $x);
             },
             'intakeCounseling?' => fn($x) => V::bool($x),
+            'onlineCsEnabled?' => fn($x) => V::bool($x),
+            'onlineCsLaneId?' => fn($x) => V::str($x, 80),
+            'onlineCsSlots?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
+                    throw new InputError();
+                }
+                return array_map(fn($s) => V::str($s, 40), $x);
+            },
             'intakeSpecialDates?' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
                     throw new InputError();

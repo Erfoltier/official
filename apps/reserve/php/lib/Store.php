@@ -354,6 +354,22 @@ final class Store
         if (array_key_exists('intakeCounseling', $input)) {
             $next['intakeCounseling'] = (bool) $input['intakeCounseling'];
         }
+        // オンラインカウンセリングの Web 予約（受け付けるか・レーン・開ける日時）
+        if (array_key_exists('onlineCsEnabled', $input)) {
+            $next['onlineCsEnabled'] = (bool) $input['onlineCsEnabled'];
+        }
+        if (array_key_exists('onlineCsLaneId', $input)) {
+            $lane = (string) $input['onlineCsLaneId'];
+            if ($lane !== '' && !isset(self::lanes()[$lane])) {
+                throw new StoreError('invalid', 'オンラインカウンセリングのレーンが見つかりません');
+            }
+            $next['onlineCsLaneId'] = $lane;
+        }
+        if (isset($input['onlineCsSlots'])) {
+            $next['onlineCsSlots'] = OnlineCs::normalizeWindows($input['onlineCsSlots']);
+        }
+        // 以前の受付枠の項目（11/17 に取りやめ）は残さない
+        unset($next['counselingLaneId'], $next['counselingSlots']);
         if (isset($input['intakeSpecialDates'])) {
             $dates = array_values(array_unique($input['intakeSpecialDates']));
             sort($dates);
@@ -933,6 +949,18 @@ final class Store
         return $rs;
     }
 
+    /** その日・そのレーンの予約（取り消し・来院なしを除く）の [開始分, 終了分]。日をまたぐ終わりは 24:00 */
+    public static function busyMinutes(string $date, string $laneId): array
+    {
+        $out = [];
+        foreach (self::reservationsOn($date) as $r) {
+            if ($r['laneId'] === $laneId && !self::inactive($r)) {
+                $out[] = [minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt'])];
+            }
+        }
+        return $out;
+    }
+
     private static function reservationsOn(string $date): array
     {
         return array_filter(Db::i()->where('reservation', 'k1', $date), fn($r) => clinic_date_of($r['startAt']) === $date);
@@ -1125,7 +1153,7 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
+        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
@@ -5600,6 +5628,31 @@ final class Store
         self::bookingEditable($cur);
         return self::bookingView(self::updateReservation($id, ['version' => $version, 'status' => 'cancelled'], $by));
     }
+}
+
+/**
+ * 回数制限（問診票・オンラインカウンセリングの予約で使う）。$checks = [[種類, 鍵, [[期間ms, 上限], ...]], ...]。
+ * どれか1つでも上限に達していれば何も数えずに false。達していなければ全部に今回を数えて true。
+ * 鍵には IP・電話番号そのものではなく要約（ハッシュ）を渡す
+ */
+function rate_take(array $checks, int $now): bool
+{
+    $db = Db::i();
+    $next = [];
+    foreach ($checks as [$kind, $key, $limits]) {
+        $keep = max(array_map(fn($l) => $l[0], $limits));
+        $at = array_values(array_filter(($db->get($kind, $key) ?? [])['at'] ?? [], fn($t) => $t > $now - $keep));
+        foreach ($limits as [$ms, $max]) {
+            if (count(array_filter($at, fn($t) => $t > $now - $ms)) >= $max) {
+                return false;
+            }
+        }
+        $next[] = [$kind, $key, [...$at, $now]];
+    }
+    foreach ($next as [$kind, $key, $at]) {
+        $db->put($kind, $key, ['at' => $at]);
+    }
+    return true;
 }
 
 /** 値が null の項目を除く（JavaScript の undefined の項目は JSON に出ないのと同じにする） */

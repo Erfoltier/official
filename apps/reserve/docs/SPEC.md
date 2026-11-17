@@ -203,3 +203,14 @@
 - フォームに院の住所（設定の書類の住所）と料金（3,300円税込、当日施術・シミクレール購入済みは無料）を出す
 - 文面は「【美容皮膚科・カウンセリング（ご来院）予約申請】／受診区分：③カウンセリング（ゼオスキン）・ご来院／注文番号：…」。受付箱は visitType=counseling・orderNo
 - 案内 URL：`https://liff.line.me/{LIFF ID}?type=counseling`
+
+## オンラインカウンセリング（Web 予約）
+
+- 公開ページ：`https://monshin.…/cs/`（`php/monshin/cs/`。画面 index.php・受け口 api.php）。CSP の frame-ancestors で `OnlineCs::FRAME_ANCESTORS`（いまは https://simiclair.myshopify.com）だけ iframe を許す。お客様向けの文言に「医師」「診察」「患者」を使わない
+- 設定（院の情報 →「オンラインカウンセリング（Web予約）」）：`onlineCsEnabled`（既定 false）・`onlineCsLaneId`・`onlineCsSlots`（「YYYY-MM-DD HH:MM-HH:MM」の行。行を消せば閉じる）
+- 選べる枠：受付日時の中の15分枠から、レーンの予約（取り消し・来院なしを除く）と重なる時間・過ぎた時間を除く（`OnlineCs::openSlots`）
+- 予約：お名前・フリガナ・生年月日・電話・メール（必須）、LINEの表示名・注文番号（任意）、共同利用の同意（必須、版 `OnlineCs::CONSENT_VERSION`、記録は onlineCsConsent）。書き込みの鍵を持ったまま空きを確かめ、自動予約と同じ患者の見分け（bookingEnsurePatient）と重なりの確認（bookingCreate）で入れる。登録者は「Web予約（オンラインカウンセリング）」。予約メモにメール・LINEの表示名・注文番号・同意
+- 確定メール：設定 → リマインドの送信元（SMTP）から。送れなくても予約は入る
+- 回数制限（`rate_take`、問診票と共通）：接続元 1時間5件・1日20件、電話番号 1日3件、全体 1時間60件。隠し欄が埋まっていれば保存せずに成功の形で返す
+- 予約表：`onlineCsLaneId` の列は「全レーン」のときふだん畳み、「オンライン」ボタンで開く（端末ごとに覚える）
+

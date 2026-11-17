@@ -627,6 +627,18 @@ final class Reminder
         return self::sendMail($to, $subject, $text, ['name' => $filename, 'bytes' => $bytes, 'type' => $type]);
     }
 
+    /** 文面だけのメールを1通送る（オンラインカウンセリングの予約の確定など） */
+    public static function sendText(string $to, string $subject, string $text): array
+    {
+        return self::sendMail($to, $subject, $text);
+    }
+
+    /** メールを送れる設定か（送信元のアドレスがある） */
+    public static function mailReady(): bool
+    {
+        return self::settings()['fromEmail'] !== '';
+    }
+
     private static function sendMail(string $to, string $subject, string $text, ?array $attach = null): array
     {
         $s = self::settings();

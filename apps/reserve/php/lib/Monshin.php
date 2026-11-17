@@ -201,18 +201,13 @@ final class Monshin
     /** 回数制限。数えるのは送り元の IP の要約（そのままの IP は残さない） */
     public static function checkRate(string $ip, int $now): void
     {
-        $id = hash('sha256', 'monshin:' . $ip);
-        $rec = Db::i()->get('monshinIp', $id) ?? ['at' => []];
-        $day = array_values(array_filter($rec['at'], fn($t) => $t > $now - 86_400_000));
-        $hour = array_filter($day, fn($t) => $t > $now - 3_600_000);
-        $all = array_values(array_filter(Db::i()->get('monshinIp', '*')['at'] ?? [], fn($t) => $t > $now - 3_600_000));
-        if (count($hour) >= self::IP_PER_HOUR || count($day) >= self::IP_PER_DAY || count($all) >= self::ALL_PER_HOUR) {
+        $ok = rate_take([
+            ['monshinIp', hash('sha256', 'monshin:' . $ip), [[3_600_000, self::IP_PER_HOUR], [86_400_000, self::IP_PER_DAY]]],
+            ['monshinIp', '*', [[3_600_000, self::ALL_PER_HOUR]]],
+        ], $now);
+        if (!$ok) {
             throw new StoreError('locked', '送信が続いたため、しばらく受け付けられません。お手数ですが、時間をおいて送信いただくか、お電話でお知らせください');
         }
-        $day[] = $now;
-        $all[] = $now;
-        Db::i()->put('monshinIp', $id, ['at' => $day]);
-        Db::i()->put('monshinIp', '*', ['at' => $all]);
     }
 
     /**

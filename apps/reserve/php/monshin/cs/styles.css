@@ -1,0 +1,8 @@
+.cs-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.cs-empty{text-align:center;font-size:.86rem;color:var(--muted);margin:10px 0 0}
+#times .pill span{cursor:pointer}
+#done h2{margin:0 0 10px}
+#done p{margin:6px 0;font-size:.9rem}
+.field-note{display:block;margin-top:4px;font-size:12px;color:#7a6f68}
+.joint-use a{color:inherit}
+.clinic-header h1{white-space:normal!important;max-width:none}
