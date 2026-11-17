@@ -361,8 +361,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
         <img src={withBase("/brand/lane-reserve-logo-wordmark.svg")} alt="LANE RESERVE" className={styles.brandBar} />
         <div className={`${styles.group} ${styles.tbNav}`}>
           <button
-            className={styles.btn}
-            data-active={receptionOpen || undefined}
+            className={`${styles.btn} ${styles.toggleOn}`}
             onClick={() => setReceptionOpen(!receptionOpen)}
             aria-pressed={receptionOpen}
             title="その日の予約と状態を時刻順に一覧（受付一覧）"
