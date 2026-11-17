@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f5ef">
   <title>予約申請</title>
-  <link rel="stylesheet" href="./styles.css?v=20261117-1">
+  <link rel="stylesheet" href="./styles.css?v=20261117-2">
 </head>
 <body>
   <main class="shell">
@@ -153,13 +153,14 @@
           <p>当日施術を受けられた方、シミクレールでご購入済みの方（ゼオスキンの『カウンセリング前に購入』、またはオンラインカウンセリングのご購入）は無料です。商品のご購入のみの場合はカウンセリング料がかかります。</p>
         </div>
         <label class="field"><span>電話番号 <em>必須</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="例：09012345678"></label>
+        <label class="field"><span>メールアドレス（任意）</span><input name="email" type="email" autocomplete="email" maxlength="200"></label>
         <label class="field"><span>シミクレールの注文番号（任意）</span><input name="orderNo" maxlength="40" placeholder="例：#1001"><small class="field-note">シミクレールでご購入済みの方は注文番号をご入力ください</small></label>
         <label class="field"><span>ご相談内容（任意）</span><textarea name="counselingNotes" maxlength="1000" placeholder="例：使い始めて赤みが出た、次に何を使えばよいか知りたい"></textarea></label>
         <div class="joint-use" id="joint-use-text">
           <p><b>個人情報の共同利用について</b></p>
           <p>カウンセリングのご予約と実施、ご注文内容の確認のため、ご入力いただいた個人情報を、いしだ皮フ科・美容皮膚科と株式会社エアフォルティアコンサルティング（シミクレール運営）で共同して利用します。</p>
           <ul>
-            <li>共同して利用する項目：お名前・フリガナ・生年月日・電話番号・LINEの表示名・注文番号・ご相談内容・ご予約の日時と内容</li>
+            <li>共同して利用する項目：お名前・フリガナ・生年月日・電話番号・メールアドレス・LINEの表示名・注文番号・ご予約の日時と内容</li>
             <li>共同して利用する者：いしだ皮フ科・美容皮膚科、株式会社エアフォルティアコンサルティング</li>
             <li>利用の目的：カウンセリングのご予約・実施・ご連絡、ご注文内容の確認</li>
             <li>管理について責任を持つ者：いしだ皮フ科・美容皮膚科</li>
@@ -207,6 +208,6 @@
   </dialog>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="./app.js?v=20261117-1"></script>
+  <script type="module" src="./app.js?v=20261117-2"></script>
 </body>
 </html>

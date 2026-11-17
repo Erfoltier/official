@@ -6,7 +6,7 @@ require __DIR__ . '/intake-common.php';
 
 // 同意の記録に残す、フォームの同意文の版（文面を変えたら日付を進める）
 const INTAKE_PRIVACY_CONSENT_VERSION = '2026-10-11';
-const INTAKE_JOINT_USE_CONSENT_VERSION = '2026-11-16-draft';
+const INTAKE_JOINT_USE_CONSENT_VERSION = '2026-11-17';  // オンラインの Web 予約（OnlineCs::CONSENT_VERSION）と同じ文面
 
 function intake_response(int $status, array $body): never
 {

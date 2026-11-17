@@ -374,6 +374,7 @@ export interface IntakeItem {
   visitType: "initial" | "returning" | "counseling";
   /** カウンセリング（ゼオスキン）のときのシミクレールの注文番号 */
   orderNo?: string;
+  email?: string;
   preferredDate: string;
   timePreference: string;
   timeNote: string;

@@ -40,6 +40,7 @@ export function validateIntake(data, { specialDates = [], weekdays = [0, 1, 2, 3
   if (!clean(data.kana)) errors.push('カナ氏名を入力してください');
   if (!parseIsoDate(data.birthDate) || data.birthDate >= todayIso) errors.push('正しい生年月日を入力してください');
   if (data.visitType === 'counseling' && !/^0\d{9,10}$/.test(clean(data.phone).replace(/[-ー\s]/g, ''))) errors.push('電話番号を半角数字で入力してください');
+  if (data.visitType === 'counseling' && clean(data.email) && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean(data.email))) errors.push('メールアドレスを正しく入力してください');
   if (data.visitType === 'counseling' && data.jointUseConsent !== 'agreed') errors.push('個人情報の共同利用への同意が必要です');
   if (data.visitType === 'initial' && !/^0\d{9,10}$/.test(clean(data.phone).replace(/[-ー\s]/g, ''))) errors.push('電話番号を半角数字で入力してください');
   if (data.visitType === 'initial' && !data.insuranceHistory) errors.push('保険通院歴を選択してください');
@@ -67,7 +68,7 @@ export function buildLineMessage(data, clinic = {}) {
   ];
   if (clean(data.gender)) lines.push(`性別：${clean(data.gender)}`);
   if (counseling) {
-    lines.push(`電話番号：${clean(data.phone)}`, '',
+    lines.push(`電話番号：${clean(data.phone)}`, `メールアドレス：${clean(data.email) || 'なし'}`, '',
       `注文番号：${clean(data.orderNo) || 'なし'}`,
       `ご相談内容：${clean(data.counselingNotes) || 'なし'}`,
       `個人情報の共同利用：同意`);

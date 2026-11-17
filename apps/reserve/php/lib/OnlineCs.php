@@ -12,7 +12,7 @@ final class OnlineCs
 {
     public const MINUTES = 15;
     /** 共同利用の同意文の版（文面を変えたら日付を進める） */
-    public const CONSENT_VERSION = '2026-11-17-draft';
+    public const CONSENT_VERSION = '2026-11-17';
     /** 公開ページを埋め込んでよいサイト（frame-ancestors） */
     public const FRAME_ANCESTORS = ['https://simiclair.myshopify.com'];
     public const ACTOR = ['id' => 'web-online-cs', 'name' => 'Web予約（オンラインカウンセリング）'];

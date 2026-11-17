@@ -148,6 +148,7 @@ final class Intake
                 'area' => $counsel ? '' : ($initial ? $s('initialBodyArea') : $s('returningBodyArea')),
                 'notes' => $counsel ? $s('counselingNotes') : ($initial ? $s('initialNotes') : $s('returningNotes')),
                 'orderNo' => $counsel ? $s('orderNo') : '',
+                'email' => $counsel ? $s('email') : '',
                 // 予約登録の画面に流し込む文面（LINE に届く文面と同じ形）。申請IDを足しておく
                 'message' => js_slice(trim((string) ($rec['message']['text'] ?? '')), 5000) . "\n予約申請ID：{$rid}",
                 'state' => $state,
