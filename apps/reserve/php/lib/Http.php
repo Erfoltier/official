@@ -517,6 +517,17 @@ final class Schema
                 }
                 return array_map(fn($s) => V::str($s, 40), $x);
             },
+            'tattooEnabled?' => fn($x) => V::bool($x),
+            'tattooLaneId?' => fn($x) => V::str($x, 80),
+            'tattooMenuId?' => fn($x) => V::str($x, 80),
+            'tattooExplainLaneId?' => fn($x) => V::str($x, 80),
+            'tattooExplainMenuId?' => fn($x) => V::str($x, 80),
+            'tattooSlots?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
+                    throw new InputError();
+                }
+                return array_map(fn($s) => V::str($s, 40), $x);
+            },
             'intakeSpecialDates?' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
                     throw new InputError();
