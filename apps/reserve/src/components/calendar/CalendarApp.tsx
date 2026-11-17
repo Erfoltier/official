@@ -431,8 +431,7 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
           )}
           {csLaneId && laneFilter === ALL_LANES && (
             <button
-              className={styles.btn}
-              data-active={csOpen || undefined}
+              className={`${styles.btn} ${styles.toggleOn}`}
               aria-pressed={csOpen}
               onClick={() => setCsOpen((v) => !v)}
               title={csOpen ? "オンラインカウンセリングの列を畳む" : "オンラインカウンセリングの列を開く"}
