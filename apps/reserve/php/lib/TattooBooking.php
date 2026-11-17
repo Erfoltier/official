@@ -12,6 +12,8 @@ final class TattooBooking
 {
     /** 初診の説明の時間（分） */
     public const EXPLAIN_MINUTES = 10;
+    /** 初診の予約を受ける先の期間（か月）。再診は受付日時を開けた分だけ */
+    public const FIRST_VISIT_MONTHS = 2;
     public const ACTOR = ['id' => 'web-tattoo', 'name' => 'Web予約（タトゥー除去・日曜）'];
     /** 1辺の上限（cm）と、1か所の面積の上限（cm²） */
     private const MAX_SIDE = 100.0;
@@ -163,10 +165,11 @@ final class TattooBooking
             return [];
         }
         $now = now_in_clinic();
+        $last = $firstVisit ? (new DateTimeImmutable($now['date']))->modify('+' . self::FIRST_VISIT_MONTHS . ' months')->format('Y-m-d') : '9999-12-31';
         $byDate = [];
         foreach ($s['slots'] as $line) {
             $w = OnlineCs::parseWindow($line);
-            if ($w && $w['date'] >= $now['date']) {
+            if ($w && $w['date'] >= $now['date'] && $w['date'] <= $last) {
                 $byDate[$w['date']][] = [$w['start'], $w['end']];
             }
         }
