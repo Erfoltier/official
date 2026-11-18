@@ -17,6 +17,12 @@ final class TattooBooking
     public const ACTOR = ['id' => 'web-tattoo', 'name' => 'Web予約（タトゥー除去・日曜）'];
     /** 1辺の上限（cm）と、1か所の面積の上限（cm²） */
     private const MAX_SIDE = 100.0;
+    /** 日曜のご来院の案内（院長の文面 11/18）。予約ページ・確定メール・リマインド（タトゥー除去のメニューの予約）で同じ文を出す */
+    public const VISIT_NOTICE = [
+        '日曜日は表のシャッターが閉まっております。建物左側面の駐車場に沿った奥に「美容皮膚科予約済の方専用入口」と掲示された扉がございますので、そちらからお入りください。',
+        'この日は受付がおりませんので、到着されましたら当院の LINE に「到着済」とご送信いただき、待合室におかけになってお待ちください。',
+        'ご予約の時間は「ご来院時間のご予約」です。前の方の処置の状況や混雑により、お呼び出しが遅れる場合がございます。後のご予定には十分に余裕をもってお越しください。',
+    ];
 
     public static function settings(): array
     {
@@ -36,6 +42,14 @@ final class TattooBooking
     {
         $s ??= self::settings();
         return $s['enabled'] && $s['laneId'] !== '' && $s['menuId'] !== '';
+    }
+
+    /** この来院（Reminder::visitsOn の1件）にタトゥー除去の照射か初診説明のメニューが入っているか */
+    public static function inVisit(array $v): bool
+    {
+        $s = self::settings();
+        $ids = array_filter([$s['menuId'], $s['explainMenuId']], fn($x) => $x !== '');
+        return $ids !== [] && array_intersect($ids, $v['menuIds'] ?? []) !== [];
     }
 
     /** 公開ページのアドレス（問診票のアドレスと同じサイトの /tattoo/） */
@@ -371,6 +385,10 @@ final class TattooBooking
             $p['address'] !== '' ? '場所：' . $p['address'] : null,
             '',
             'タトゥー・アートメイク除去は日曜日の診療です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なりますのでご注意ください。',
+            '',
+            '【日曜日のご来院について】',
+            ...self::VISIT_NOTICE,
+            '',
             'ご予約の変更・キャンセルは、当院の LINE' . ($phone !== '' ? "、またはお電話（{$phone}）" : '') . 'でご連絡ください。',
             '',
             $p['publicName'],

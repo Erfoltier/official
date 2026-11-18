@@ -125,6 +125,8 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
     expect(html).toContain("タトゥー・アートメイク除去のご予約");
     expect(html).not.toMatch(/詰め|空きの最初|最後だけ/);
+    expect(html).toContain("美容皮膚科予約済の方専用入口");
+    expect(html).toContain("「到着済」");
     const bad = await book({ ...person(day, "10:00"), rects: [[0, 1]], email: "x" });
     expect(bad.status).toBe(422);
     expect(bad.data.fields).toEqual(expect.arrayContaining(["area", "email"]));
@@ -141,5 +143,23 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(out.sent[0][1]).toContain("49,500円");
     expect(out.sent[0][1]).toContain("日曜日の診療");
     expect(out.sent[0][1]).not.toMatch(/詰め/);
+    expect(out.sent[0][1]).toContain("美容皮膚科予約済の方専用入口");
+    expect(out.sent[0][1]).toContain("「到着済」");
+  });
+
+  it("リマインドは、タトゥー除去のメニューが入った来院にだけ日曜のご来院の案内を足す", async () => {
+    const day = addDays(nowInClinic().date, 5);
+    await open(day);
+    const out = await h.srv.php(`
+      $p = ['name' => '除去 花子'];
+      $at = '${day}T10:00:00+09:00';
+      return [
+        Reminder::compose(['patient' => $p, 'arrivalAt' => $at, 'menuNames' => [], 'menuIds' => ['${MENU}']], 'd1', 'line')['text'],
+        Reminder::compose(['patient' => $p, 'arrivalAt' => $at, 'menuNames' => [], 'menuIds' => ['menu-other']], 'd1', 'line')['text'],
+      ];
+    `);
+    expect(out[0]).toContain("【日曜日のご来院について】");
+    expect(out[0]).toContain("美容皮膚科予約済の方専用入口");
+    expect(out[1]).not.toContain("日曜日のご来院");
   });
 });

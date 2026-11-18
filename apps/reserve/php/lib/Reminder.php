@@ -202,7 +202,7 @@ final class Reminder
                 continue;
             }
             $key = $date . '|' . ($r['visitId'] ?? $r['patientId']);
-            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'arrivalAt' => null, 'createdAt' => null];
+            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'menuIds' => [], 'arrivalAt' => null, 'createdAt' => null];
             $v['reservations'][] = $r;
             // LINE 予約フォームから入った予約は、申し込んだ LINE（予約ごとに記録）へ返す。名前での照合はしない
             if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
@@ -226,6 +226,7 @@ final class Reminder
                 $v['createdAt'] = $r['createdAt'];
             }
             foreach ($r['menuIds'] as $mid) {
+                $v['menuIds'][] = $mid;
                 $n = trim((string) ($menus[$mid]['publicName'] ?? '')) ?: (string) ($menus[$mid]['name'] ?? '');
                 if ($n !== '' && !in_array($n, $v['menuNames'], true)) {
                     $v['menuNames'][] = $n;
@@ -548,6 +549,10 @@ final class Reminder
             '{問診票}' => self::questionnaireLine($v, $channel),
         ];
         $text = strtr((string) $s['template'], $vars);
+        // タトゥー除去（日曜）の予約には、日曜のご来院の案内（入口・到着の連絡・呼び出し）を最後に足す
+        if (TattooBooking::inVisit($v)) {
+            $text = rtrim($text) . "\n\n【日曜日のご来院について】\n" . implode("\n", TattooBooking::VISIT_NOTICE);
+        }
         $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
         return ['subject' => '【' . $vars['{院名}'] . '】' . $vars['{いつ}'] . 'のご予約のお知らせ', 'text' => $text];
     }

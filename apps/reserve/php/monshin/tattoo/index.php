@@ -138,6 +138,13 @@ $v = '20261117-1';
 <?php endif; ?>
       </section>
 
+      <section class="card tt-visit">
+        <h2>日曜日のご来院について</h2>
+<?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
+        <p><?= $h($line) ?></p>
+<?php endforeach; ?>
+      </section>
+
       <div class="error-summary" id="error-summary" role="alert" hidden></div>
       <button class="submit-button" type="submit" id="submit-button">この内容で予約する</button>
     </form>
@@ -147,6 +154,12 @@ $v = '20261117-1';
       <h2>ご予約を承りました</h2>
       <p id="done-when"></p>
       <p id="done-mail"></p>
+      <div class="tt-visit">
+        <h3>日曜日のご来院について</h3>
+<?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
+        <p><?= $h($line) ?></p>
+<?php endforeach; ?>
+      </div>
 <?php if (($p['address'] ?? '') !== ''): ?>
       <p>場所：<?= $h($p['address']) ?></p>
 <?php endif; ?>
