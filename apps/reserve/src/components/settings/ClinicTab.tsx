@@ -945,6 +945,10 @@ function SundayMenusEditor({
               <span>分類（予約ページでまず選ぶ分類）</span>
               <input className={styles.input} value={it.category ?? ""} maxLength={20} list="sunday-cats" onChange={(ev) => put(i, { category: ev.target.value })} disabled={!canEdit} placeholder="例：注射・注入" />
             </label>
+            <label className={styles.field} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Switch on={it.neobo !== false} onChange={(on) => put(i, { neobo: on })} label="顔のメニュー" disabled={!canEdit} />
+              <span>顔のメニュー（モニターの方は、まず4番でネオボ撮影の枠を取る。ネオボは顔だけなので、脱毛など顔以外はオフ）</span>
+            </label>
             <label className={styles.field}>
               <span>時間の決め方</span>
               <select
@@ -1045,6 +1049,12 @@ function SundayMenusEditor({
             )}
             {(timeMode(it) === "parts" || timeMode(it) === "count") && (
               <div className={styles.timeRow}>
+                {timeMode(it) === "count" && (
+                  <label className={styles.field} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Switch on={!!it.needle} onChange={(on) => put(i, { needle: on })} label="針脱毛の料金の概算" disabled={!canEdit} />
+                    <span>針脱毛の料金の概算を出す（性別・部位・麻酔を聞き、ホームページの料金表から税込で）</span>
+                  </label>
+                )}
                 {timeMode(it) === "count" && (
                   <label className={styles.field}>
                     <span>1分あたりの本数</span>

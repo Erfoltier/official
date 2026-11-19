@@ -34,6 +34,7 @@ function rects() {
   return out;
 }
 let builtFor = '';
+let lineName = '';
 /** 区分を選んだら、その区分の部位のチェックを作り直す */
 function renderParts(groups) {
   const pl = document.querySelector('#parts-list');
@@ -66,6 +67,8 @@ function pickReady(item) {
   // 麻酔つきの注入：範囲（炭酸ガスの全顔・部分など）があれば、それも
   if (item.dataset.flow === '1') return val('visit') !== 'repeat' || (val('status') !== '' && val('anesthesiaType') !== '' && partsOk);
   if (JSON.parse(item.dataset.groups || '[]').length) return partsOk;
+  // 針脱毛：本数に加えて、料金の概算のための性別・部位・麻酔
+  if (item.dataset.needle === '1') return countVal() > 0 && !!val('sex') && !!val('zone') && !!val('needleAnes');
   if (item.dataset.count === '1') return countVal() > 0;
   return true;
 }
@@ -75,6 +78,7 @@ function pickQuery(item) {
   const parts = JSON.parse(item.dataset.groups || '[]').length ? `&group=${encodeURIComponent(val('group'))}&parts=${checkedParts().join(',')}` : '';
   if (item.dataset.flow === '1') return val('visit') === 'repeat' ? `&status=${encodeURIComponent(val('status'))}&anesthesia=${encodeURIComponent(val('anesthesiaType'))}${parts}` : '';
   if (parts) return parts;
+  if (item.dataset.needle === '1') return `&count=${countVal()}&sex=${encodeURIComponent(val('sex'))}&zone=${encodeURIComponent(val('zone'))}&needleAnes=${encodeURIComponent(val('needleAnes'))}`;
   if (item.dataset.count === '1') return `&count=${countVal()}`;
   return '';
 }
@@ -142,6 +146,9 @@ function syncInputs() {
   document.querySelector('#group-box').hidden = groups.length < 2;
   document.querySelector('#parts-box').hidden = groups.length === 0 || val('group') === '';
   document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1');
+  document.querySelector('#needle-box').hidden = !(item && item.dataset.needle === '1');
+  document.querySelector('#needle-box2').hidden = !(item && item.dataset.needle === '1');
+  if (!(item && item.dataset.needle === '1')) document.querySelector('#needle-est').hidden = true;
   // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は麻酔も（今回の治療内容は上で）
   document.querySelector('#flow-box').hidden = !(flow && val('visit') === 'repeat');
   // 麻酔クリームだけのメニュー（炭酸ガス・ダーマペン系）は「麻酔の注射」を出さない
@@ -196,6 +203,10 @@ async function load() {
     slots = data.slots && typeof data.slots === 'object' ? data.slots : {};
     price = Number(data.price) || 0;
     duration = typeof data.duration === 'string' ? data.duration : '';
+    // 針脱毛：料金の概算（税込）
+    const est = document.querySelector('#needle-est');
+    est.textContent = data.estimate ? `料金の概算：${data.estimate}` : '';
+    est.hidden = !data.estimate;
   } catch (_) {
     slots = {};
   }
@@ -253,11 +264,11 @@ function move(n) {
   render();
 }
 
-function showErrors(list) {
+function showErrors(list, heading = 'ご確認ください') {
   errorBox.hidden = false;
   errorBox.innerHTML = '';
   const strong = document.createElement('strong');
-  strong.textContent = 'ご確認ください';
+  strong.textContent = heading;
   const ul = document.createElement('ul');
   for (const e of list) {
     const li = document.createElement('li');
@@ -271,10 +282,10 @@ function showErrors(list) {
 const LABELS = {
   kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', clinicVisit: '当院の美容皮膚科の初診・再診を選んでください', initialInfo: '保険通院歴と当日施術のご希望を選んでください', status: '今回の治療内容を選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください',
-  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
+  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', needle: '性別・部位・麻酔を選んでください', agree: '「ご来院前のお願い」から「料金規定」までを読み、了承のチェックを入れてください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
 
-form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'part'].includes(e.target.name)) syncInputs(); });
+form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'part', 'agree'].includes(e.target.name)) syncInputs(); });
 form.addEventListener('change', (e) => {
   if (e.target.name === 'group') renderParts(JSON.parse(itemInput()?.dataset.groups || '[]'));
   if (['kind', 'visit', 'group', 'parts', 'count', 'status', 'anesthesiaType', 'clinicVisit'].includes(e.target.name)) syncInputs();
@@ -294,8 +305,12 @@ async function startLine() {
   }
   if (idToken) {
     document.querySelector('#line-note').hidden = false;
-    document.querySelector('#email-label').innerHTML = 'メールアドレス（任意）';
-    document.querySelector('[name="email"]').placeholder = 'LINE が届かないときのために（任意）';
+    // LINE の表示名は入力してもらわず、LINE から読む（予約のメモに残す）
+    try {
+      lineName = (await window.liff.getProfile()).displayName || '';
+    } catch (_) {
+      lineName = '';
+    }
   }
 }
 startLine();
@@ -327,7 +342,9 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (form.dataset.preview) { showErrors(['プレビューのため、予約は送れません']); return; }
   const fd = new FormData(form);
-  const body = Object.fromEntries(['kind', 'visit', 'clinicVisit', 'status', 'insuranceHistory', 'sameDayTreatment', 'referrer', 'color', 'part', 'anesthesia', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
+  const body = Object.fromEntries(['kind', 'visit', 'clinicVisit', 'status', 'insuranceHistory', 'sameDayTreatment', 'referrer', 'color', 'part', 'anesthesia', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
+  body.lineName = lineName;
+  body.agree = !!fd.get('agree');
   const item = itemInput();
   if (item) {
     body.item = item.value.slice(2);
@@ -336,6 +353,9 @@ form.addEventListener('submit', async (event) => {
     body.count = countVal();
     body.status = val('status');
     body.anesthesiaType = val('anesthesiaType');
+    body.sex = val('sex');
+    body.zone = val('zone');
+    body.needleAnes = val('needleAnes');
     body.kind = '';
     body.anesthesia = '';
     body.color = '';
@@ -351,14 +371,16 @@ form.addEventListener('submit', async (event) => {
   else if (body.clinicVisit === 'returning' && !body.status) local.push(LABELS.status);
   else if (!body.visit) local.push(document.querySelector('#visit-note').textContent || LABELS.visit);
   if (!item && body.kind && !body.rects.length) local.push(LABELS.area);
-  if (item && !pickReady(item)) local.push(item.dataset.flow === '1' ? LABELS.flow : item.dataset.count === '1' ? LABELS.count : LABELS.parts);
+  if (item && !pickReady(item)) local.push(item.dataset.flow === '1' ? LABELS.flow : item.dataset.needle === '1' && countVal() > 0 ? LABELS.needle : item.dataset.count === '1' ? LABELS.count : LABELS.parts);
   if (!body.date || !body.time) local.push(LABELS.slot);
   if (!body.name.trim()) local.push(LABELS.name);
   if (!body.kana.trim()) local.push(LABELS.kana);
   if (!body.birthDate) local.push(LABELS.birthDate);
   if (!/^0\d{9,10}$/.test(body.phone.replace(/[-ー\s]/g, ''))) local.push(LABELS.phone);
-  if ((!idToken || body.email.trim() !== '') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email.trim())) local.push(LABELS.email);
-  if (local.length) { showErrors(local); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email.trim())) local.push(LABELS.email);
+  if (!body.agree) local.push(LABELS.agree);
+  // 必須の項目が足りなければ送らない（院長 11/20）
+  if (local.length) { showErrors(local, '入力されていない必須項目があります'); return; }
   errorBox.hidden = true;
   submit.disabled = true;
   submit.textContent = '送信中…';
@@ -391,7 +413,7 @@ form.addEventListener('submit', async (event) => {
       await load();
       showErrors(['選んだ時刻は、先にご予約が入りました。別の日時をお選びください']);
     } else if (data.error === 'invalid') {
-      showErrors((data.fields || []).map((f) => LABELS[f]).filter(Boolean));
+      showErrors((data.fields || []).map((f) => LABELS[f]).filter(Boolean), '入力されていない必須項目があります');
     } else if (data.error === 'rate_limited') {
       showErrors(['送信が続いたため、しばらく受け付けられません。時間をおいてお試しください']);
     } else if (data.error === 'contact_us') {

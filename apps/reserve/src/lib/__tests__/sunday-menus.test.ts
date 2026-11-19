@@ -36,6 +36,7 @@ const book = async (body: object) => {
 };
 const person = (day: string, time: string, extra: object = {}, phone = "09011112222") => ({
   item: "peel0001",
+  agree: true,
   visit: "repeat",
   name: "日曜 花子",
   kana: "ニチヨウ ハナコ",
@@ -97,41 +98,60 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     await expect(c.patch("/clinic", { sundayMenus: next.map((x: any) => (x.id === "botox" ? { ...x, enabled: true } : x)) })).rejects.toThrow(/レーンと予約に付けるメニュー/);
   });
 
-  it("脱毛：レーザーは区分（男性・女性）と部位を選んで合計の時間（初診は説明15分を足す）、針は本数（4本で1分、上限90分）", async () => {
+  it("脱毛：レーザーはホームページの部位分け（女性・男性。鼻下＋顎などのセットはなし）で部位を選んで合計の時間（初診は説明15分を足す）、針は本数（4本で1分、上限90分）と性別・部位・麻酔で料金の概算", async () => {
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     const laser = presets.find((x: any) => x.id === "laserhair");
-    expect(laser.partGroups.map((g: any) => g.name)).toEqual(["男性", "女性"]);
-    const vio = laser.partGroups[1].parts.findIndex((x: any) => x.name === "VIO");
-    const navel = laser.partGroups[1].parts.findIndex((x: any) => x.name === "へそ回り");
-    expect(laser.partGroups[0].parts[vio].minutes).toBe(30);
-    expect(laser.partGroups[1].parts[vio].minutes).toBe(20);
-    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ countPerMinute: 4, maxMinutes: 90, firstLaneIds: [] });
+    expect(laser.partGroups.map((g: any) => g.name)).toEqual(["女性", "男性"]);
+    const women = laser.partGroups[0].parts.map((x: any) => x.name);
+    expect(women.slice(0, 5)).toEqual(["眉上・眉間", "鼻下", "顎", "顎下", "両ワキ"]);
+    expect(women.at(-1)).toBe("足甲～指先");
+    expect(laser.partGroups[1].parts.map((x: any) => x.name)).toContain("両頬");
+    expect(women.some((x: string) => x.includes("＋顎"))).toBe(false);
+    const v = women.indexOf("Vライン前面");
+    const navel = women.indexOf("へそ周り(濃い毛のみ)");
+    expect(laser.neobo).toBe(false);
+    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ countPerMinute: 4, maxMinutes: 90, firstLaneIds: [], needle: true });
     await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (["laserhair", "needlehair"].includes(x.id) ? { ...x, enabled: true } : x)) });
     const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
     expect(html).toContain('value="m:laserhair"');
     expect(html).toContain('value="m:needlehair" data-first="" data-repeat="1"');
-    // 女性 VIO＋へそ回り：再診 30分、初診は説明15分を足して45分
-    expect(await slots(`item=laserhair&visit=repeat&group=1&parts=${vio},${navel}`)).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "約30分" });
-    expect((await slots(`item=laserhair&visit=first&group=1&parts=${vio},${navel}`)).duration).toBe("約45分");
-    expect((await slots("item=laserhair&visit=repeat&group=1&parts=")).slots).toEqual({});
-    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "1", parts: [] }))).data.fields).toContain("parts");
-    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "1", parts: [vio, navel] }))).status).toBe(201);
+    // 女性 Vライン前面＋へそ周り：再診 20分、初診は説明15分を足して35分
+    expect(await slots(`item=laserhair&visit=repeat&group=0&parts=${v},${navel}`)).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "約20分" });
+    expect((await slots(`item=laserhair&visit=first&group=0&parts=${v},${navel}`)).duration).toBe("約35分");
+    expect((await slots("item=laserhair&visit=repeat&group=0&parts=")).slots).toEqual({});
+    // 脱毛は顔以外なので、モニターでもネオボ撮影の枠を取らない
+    expect((await slots(`item=laserhair&visit=repeat&status=monitor&group=0&parts=${v}`)).duration).toBe("約10分");
+    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "0", parts: [] }))).data.fields).toContain("parts");
+    // 「ご来院前のお願い」〜料金規定の了承がなければ送れない
+    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "0", parts: [v], agree: false }))).data.fields).toContain("agree");
+    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "0", parts: [v, navel] }))).status).toBe(201);
     const r = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.laneId === L1);
-    expect([r.startAt, r.endAt]).toEqual([toIso(day, 600), toIso(day, 645)]);
+    expect([r.startAt, r.endAt]).toEqual([toIso(day, 600), toIso(day, 635)]);
     expect(r.menuIds).toEqual(["menu-s0000A43A3", "menu-s0000A1344"]);
-    expect(r.memo).toContain("部位：女性：VIO・へそ回り");
+    expect(r.memo).toContain("部位：女性：Vライン前面・へそ周り(濃い毛のみ)");
     expect(r.memo).toContain("初診の説明：15分");
+    // 針の料金（ホームページの料金表から取り込んだもの。税込）
+    await h.srv.php(`
+      $rows = [['一般部位（男女共通） 20本まで', 12100], ['一般部位（男女共通） 21本以上', 220], ['女性VIO 20本まで', 18150], ['女性VIO 21本以上', 330], ['男性VIO 20本まで', 24200], ['男性VIO 21本以上', 770], ['針代', 4400]];
+      foreach ($rows as $i => [$n, $y]) Db::i()->put('price', "hp-needle{$i}", ['id' => "hp-needle{$i}", 'source' => 'homepage', 'category' => '医療ニードル脱毛', 'name' => $n, 'priceYen' => $y, 'priceText' => '', 'order' => $i, 'url' => '']);
+      return true;
+    `);
     // 針：300本 → 75分。400本 → 100分は上限90分を超えるので選べない
-    expect(await slots("item=needlehair&visit=repeat&count=300")).toMatchObject({ duration: "約75分" });
+    const nq = "item=needlehair&visit=repeat&count=300&sex=male&zone=vio&needleAnes=cream";
+    expect(await slots(nq)).toMatchObject({ duration: "約75分", estimate: "施術（300本） 239,800円＋針代（1本） 4,400円＋麻酔クリーム（約両手面積1つ分） 2,750円＝合計 246,950円（税込）" });
+    expect((await slots("item=needlehair&visit=repeat&count=30&sex=female&zone=general&needleAnes=none")).estimate).toBe("施術（30本） 14,300円＋針代（1本） 4,400円＝合計 18,700円（税込）");
     expect((await slots("item=needlehair&visit=repeat&count=400")).slots).toEqual({});
     expect((await book(person(day, "10:00", { item: "needlehair", count: 400 }, "09088889999"))).data.fields).toContain("count");
-    expect((await book(person(day, "10:00", { item: "needlehair", count: 300 }, "09088889999"))).status).toBe(201);
+    expect((await book(person(day, "10:00", { item: "needlehair", count: 300 }, "09088889999"))).data.fields).toContain("needle");
+    expect((await book(person(day, "10:00", { item: "needlehair", count: 300, sex: "male", zone: "vio", needleAnes: "cream" }, "09088889999"))).status).toBe(201);
     const n = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.laneId === L3);
     expect([n.startAt, n.endAt]).toEqual([toIso(day, 600), toIso(day, 675)]);
     expect(n.memo).toContain("本数：300本");
+    expect(n.memo).toContain("性別：男性／部位：VIO／麻酔：麻酔クリーム");
+    expect(n.memo).toContain("料金の概算：");
   });
 
   it("麻酔つきの注入：モニターの有無と麻酔で、4番の麻酔・撮影、40〜60分後の1・3番の施術、医師の診察を分けて取る", async () => {
@@ -180,7 +200,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
   it("タトゥー除去・アートメイク除去も日曜メニューとしてそれぞれオン・オフできる", async () => {
     const day = nextSunday();
     const c = await open(day, { sundayMenus: [] });
-    const tattoo = { kind: "tattoo", visit: "repeat", rects: [[2, 2]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09031310000", email: "t@example.jp", date: day, time: "10:00" };
+    const tattoo = { kind: "tattoo", agree: true, visit: "repeat", rects: [[2, 2]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09031310000", email: "t@example.jp", date: day, time: "10:00" };
     await c.patch("/clinic", { tattooKindOn: false });
     let html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
     expect(html).not.toContain('value="tattoo"');
@@ -232,7 +252,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
   it("同じ機器の名前のメニュー同士（タトゥーの照射を含む）は、レーンが違っても同じ時刻に入れない", async () => {
     const day = nextSunday();
     await open(day, { tattooMachine: "ピコ", sundayMenus: [botox, { ...peel, machine: "ピコ" }] });
-    const tattoo = { kind: "tattoo", visit: "repeat", rects: [[2, 2.5]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09044445555", email: "t@example.jp", date: day, time: "10:00" };
+    const tattoo = { kind: "tattoo", agree: true, visit: "repeat", rects: [[2, 2.5]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09044445555", email: "t@example.jp", date: day, time: "10:00" };
     expect((await book(tattoo)).status).toBe(201); // メイン 10:00〜10:05
     // ピールは 1番・3番とも 10:00 は機器が使用中。空きの最初しか出さないので、この日は時刻なし
     expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({});
@@ -249,13 +269,13 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(html).toContain("日曜日のご予約");
     expect(html).not.toContain('value="tattoo"');
     expect(html).not.toContain("照射部位の産毛");
-    const tattoo = await book({ kind: "tattoo", visit: "repeat", rects: [[2, 2]], name: "a", kana: "a", birthDate: "1990-01-01", phone: "09011110000", email: "a@example.jp", date: day, time: "10:00" });
+    const tattoo = await book({ kind: "tattoo", agree: true, visit: "repeat", rects: [[2, 2]], name: "a", kana: "a", birthDate: "1990-01-01", phone: "09011110000", email: "a@example.jp", date: day, time: "10:00" });
     expect(tattoo.data.error).toBe("closed");
     const out = await h.srv.php(`
       Db::i()->setMeta('reminderSettings', [...Reminder::defaults(), 'fromEmail' => 'info@example.jp']);
       $sent = [];
       Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = [$to, $body]; return [200, '']; };
-      $r = TattooBooking::book(['item' => 'peel0001', 'visit' => 'repeat', 'name' => 'ピール 花子', 'kana' => 'ピール ハナコ', 'birthDate' => '1990-01-01', 'phone' => '09055556666', 'email' => 'peel@example.jp', 'date' => '${day}', 'time' => '10:00'], '127.0.0.9');
+      $r = TattooBooking::book(['agree' => true, 'item' => 'peel0001', 'visit' => 'repeat', 'name' => 'ピール 花子', 'kana' => 'ピール ハナコ', 'birthDate' => '1990-01-01', 'phone' => '09055556666', 'email' => 'peel@example.jp', 'date' => '${day}', 'time' => '10:00'], '127.0.0.9');
       return ['r' => $r, 'sent' => $sent];
     `);
     expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20", duration: "約20分" });

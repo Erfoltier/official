@@ -50,3 +50,7 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-rect{gap:6px 8px}
 .tt-rect label span{white-space:nowrap;font-size:.86rem}
 .tt-rect input{min-width:5em}
+/* ご来院前のお願い〜料金規定を読んだことの確認（必須。院長 11/20） */
+.tt-agree{display:flex;gap:10px;align-items:flex-start;margin:18px 0 0;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:var(--surface,#fff);font-weight:600;line-height:1.6;cursor:pointer}
+.tt-agree input{width:22px;height:22px;flex:none;margin:2px 0 0}
+.tt-agree em{font-style:normal;font-size:.75rem;color:#a4473f;margin-left:4px}

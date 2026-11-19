@@ -792,6 +792,10 @@ export interface SundayMenu {
   pickOne?: boolean;
   /** その問いの見出し（例：個数）。空なら「部位」 */
   pickLabel?: string;
+  /** モニターのときネオボ撮影の枠を取るか（顔のメニュー。省くと見本の分け方） */
+  neobo?: boolean;
+  /** 針脱毛の料金の概算を出すか（性別・部位・麻酔を聞く。本数で決まるメニューだけ） */
+  needle?: boolean;
   /** 本数で時間が決まるとき、1分あたりの本数（針脱毛は4）。0 なら使わない */
   countPerMinute?: number;
   /** 1回の時間の上限（分）。0 なら180分 */

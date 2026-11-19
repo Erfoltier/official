@@ -74,7 +74,8 @@ final class TattooBooking
             // 分類を入れる前（11/19）に保存したものは、見本の分類を使う
             'items' => array_key_exists('sundayMenus', $c)
                 ? array_map(
-                    fn($it) => array_key_exists('category', $it) ? $it : $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''],
+                    // 顔のメニューか（11/20 より前に保存したものは見本の分け方）
+                    fn($it) => (array_key_exists('category', $it) ? $it : $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? '']) + ['neobo' => self::face($it)],
                     array_values(array_filter((array) $c['sundayMenus'], fn($it) => is_array($it) && !empty($it['id'])))
                 )
                 : self::presets(),
@@ -132,11 +133,28 @@ final class TattooBooking
     ];
 
     /** レーザー脱毛の部位ごとの時間（シート1「レーザー脱毛」。施術後の掃除とカルテ記載込み）。[部位, 男性の分, 女性の分] */
+    /**
+     * レーザー脱毛の部位（ホームページ「医療脱毛」の料金表の部位分け・並び。院長 11/20）。[部位, 女性の分, 男性の分]。男性だけの部位は女性を null。
+     * 鼻下＋顎・鼻下＋顎＋顎下のセットは入れない（ばらの部位を複数選ぶ）。時間は予約枠時間一覧から。両ワキ・乳輪・肘上10cm・手＋指・足甲～指先・両頬は一覧になく仮の10分
+     */
     private const LASER_HAIR_PARTS = [
-        ['下肢全部', 90, 60], ['大腿', 40, 30], ['下腿～足先', 40, 30], ['膝', 10, 10], ['下腿', 30, 20],
-        ['鼻下', 10, 10], ['顎', 10, 10], ['顎下', 10, 10], ['鼻下+顎+顎下', 15, 15], ['鼻下+顎', 10, 10], ['眉', 10, 10],
-        ['前腕', 20, 20], ['前腕～手先', 25, 25], ['へそ回り', 10, 10], ['V', 10, 10], ['IO', 20, 15], ['VIO', 30, 20],
+        ['眉上・眉間', 10, 10], ['鼻下', 10, 10], ['顎', 10, 10], ['顎下', 10, 10], ['両頬', null, 10],
+        ['両ワキ', 10, 10], ['乳輪(太い毛のみ)', 10, 10], ['へそ周り(濃い毛のみ)', 10, 10],
+        ['肘上10cm', 10, 10], ['肘～指先', 25, 25], ['Vライン前面', 10, 10], ['I＋Oライン', 15, 20], ['手＋指', 10, 10],
+        ['太もも', 30, 40], ['膝', 10, 10], ['スネ', 20, 30], ['足甲～指先', 10, 10],
     ];
+
+    /** レーザー脱毛の部位（$col 1：女性、2：男性） */
+    private static function laserParts(int $col): array
+    {
+        return array_values(array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[$col]], array_filter(self::LASER_HAIR_PARTS, fn($r) => $r[$col] !== null)));
+    }
+
+    /** 保存済みのレーザー脱毛を、ホームページの部位分けに置き換える（本番の一覧の入れ替え用） */
+    public static function laserHairParts(array $it): array
+    {
+        return [...$it, 'partGroups' => [['name' => '女性', 'parts' => self::laserParts(1)], ['name' => '男性', 'parts' => self::laserParts(2)]], 'pickOne' => false];
+    }
 
     /** プリセットを今の設定に合わせて出す（ないレーン・使えないメニューは空にする。オフなので、オンにするときに選び直す） */
     public static function presets(): array
@@ -161,8 +179,8 @@ final class TattooBooking
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000A1344'),
             'machine' => '', 'note' => '',
             'partGroups' => [
-                ['name' => '男性', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[1]], self::LASER_HAIR_PARTS)],
-                ['name' => '女性', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[2]], self::LASER_HAIR_PARTS)],
+                ['name' => '女性', 'parts' => self::laserParts(1)],
+                ['name' => '男性', 'parts' => self::laserParts(2)],
             ],
             'countPerMinute' => 0, 'maxMinutes' => 0,
         ];
@@ -227,10 +245,11 @@ final class TattooBooking
             'id' => 'needlehair', 'name' => '針脱毛（2回目以降）', 'enabled' => false,
             'firstMinutes' => 15, 'firstLaneIds' => [], 'firstMenuId' => '',
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
-            'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90,
+            'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90, 'needle' => true,
         ];
-        // ほくろ除去は個数を1つ選ぶ（院長 11/19）
+        // ほくろ除去は個数を1つ選ぶ（院長 11/19）。ネオボは顔だけなので、顔以外のメニューはモニターでも撮影の枠を取らない（院長 11/20）
         foreach ($out as &$it) {
+            $it['neobo'] = !in_array($it['id'], self::NOT_FACE, true);
             if ($it['id'] === 'hokuro') {
                 $it = self::hokuroParts($it);
             } elseif ($it['id'] === 'dyelaser') {
@@ -366,6 +385,8 @@ final class TattooBooking
     /** モニターのネオボ撮影（＋麻酔クリーム）・麻酔クリームの枠を取るレーン。4番が埋まっている・予約不可のときは1番・3番で（院長 11/20） */
     private const FOUR_LANES = ['lane-4', 'lane-1', 'lane-3'];
     private const NEOBO_MENU = 'menu-s0000B6B52';
+    /** 顔以外のメニュー（モニターでもネオボ撮影の枠を取らない。院長 11/20） */
+    public const NOT_FACE = ['hyperhidrosis', 'isotretinoin', 'zoskin', 'laserhair', 'needlehair', 'scalp', 'agafaga', 'neckwrinkle'];
     private const DOCTOR_SLOT = 10;
     /** 麻酔の後、施術までの待ち（分）。試す順 */
     private const WAITS = [45, 40, 50, 55, 60];
@@ -471,6 +492,61 @@ final class TattooBooking
         return '';
     }
 
+    /** 針脱毛の料金の概算に使う、性別・部位・麻酔（院長 11/20） */
+    public const NEEDLE_SEX = ['female' => '女性', 'male' => '男性'];
+    public const NEEDLE_ZONE = ['general' => 'VIO以外（顔・ワキ・腕など）', 'vio' => 'VIO'];
+    public const NEEDLE_ANES = ['none' => '麻酔なし', 'cream' => '麻酔クリーム', 'injection' => '局所麻酔注射'];
+    /** 麻酔は約両手面積あたり（ホームページ「医療脱毛」：クリーム税抜2,500円・局所麻酔注射税抜5,000円）。税込 */
+    private const NEEDLE_ANES_YEN = ['none' => 0, 'cream' => 2750, 'injection' => 5500];
+
+    /**
+     * 針脱毛の料金の概算（税込）。ホームページの料金表（取り込み済みの「医療ニードル脱毛」）から：20本までの料金＋21本目からの1本ごと＋針代1本＋麻酔（約両手面積1つ分）。
+     * 選び方が足りない・料金表にないときは null。['lines' => [[名前, 円], ...], 'total' => 円, 'text' => 1行の文]
+     */
+    public static function needleEstimate(array $pick): ?array
+    {
+        $sex = (string) ($pick['sex'] ?? '');
+        $zone = (string) ($pick['zone'] ?? '');
+        $anes = (string) ($pick['needleAnes'] ?? '');
+        $n = is_numeric($pick['count'] ?? null) ? (int) $pick['count'] : 0;
+        if (!isset(self::NEEDLE_SEX[$sex], self::NEEDLE_ZONE[$zone], self::NEEDLE_ANES[$anes]) || $n < 1 || $n > self::MAX_COUNT) {
+            return null;
+        }
+        $yen = [];
+        foreach (Store::getPriceList()['items'] as $x) {
+            if (($x['source'] ?? '') === 'homepage' && ($x['category'] ?? '') === '医療ニードル脱毛' && is_int($x['priceYen'] ?? null)) {
+                $yen[(string) $x['name']] = $x['priceYen'];
+            }
+        }
+        $row = $zone === 'vio' ? ($sex === 'male' ? '男性VIO' : '女性VIO') : '一般部位（男女共通）';
+        $base = $yen["{$row} 20本まで"] ?? null;
+        $per = $yen["{$row} 21本以上"] ?? null;
+        $needle = $yen['針代'] ?? null;
+        if ($base === null || $per === null || $needle === null) {
+            return null;
+        }
+        $lines = [["施術（{$n}本）", $base + max(0, $n - 20) * $per], ['針代（1本）', $needle]];
+        if ($anes !== 'none') {
+            $lines[] = [self::NEEDLE_ANES[$anes] . '（約両手面積1つ分）', self::NEEDLE_ANES_YEN[$anes]];
+        }
+        $total = array_sum(array_column($lines, 1));
+        $text = implode('＋', array_map(fn($l) => $l[0] . ' ' . number_format($l[1]) . '円', $lines)) . '＝合計 ' . number_format($total) . '円（税込）';
+        return ['lines' => $lines, 'total' => $total, 'text' => $text];
+    }
+
+    /** 予約メモ・確定の連絡に書く、針脱毛の性別・部位・麻酔と料金の概算 */
+    private static function needleLines(array $it, array $pick): array
+    {
+        if (empty($it['needle'])) {
+            return [];
+        }
+        $e = self::needleEstimate($pick);
+        return [
+            '性別：' . (self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')] ?? '') . '／部位：' . (self::NEEDLE_ZONE[(string) ($pick['zone'] ?? '')] ?? '') . '／麻酔：' . (self::NEEDLE_ANES[(string) ($pick['needleAnes'] ?? '')] ?? ''),
+            $e !== null ? '料金の概算：' . $e['text'] : null,
+        ];
+    }
+
     /** 予約ページに出す日曜メニューの一覧（患者に見せてよい項目だけ） */
     public static function publicItems(?array $s = null): array
     {
@@ -490,6 +566,7 @@ final class TattooBooking
                     'pickLabel' => self::pickLabel($it),
                     'flow' => self::isFlow($it),
                     'noInjection' => self::isFlow($it) && (int) ($it['injectionMinutes'] ?? 0) === 0,
+                    'needle' => !empty($it['needle']),
                 ];
             }
         }
@@ -654,6 +731,9 @@ final class TattooBooking
             $row['machine'] = mb_substr(js_trim((string) ($it['machine'] ?? '')), 0, 30);
             $row['note'] = mb_substr(js_trim(normalize_width((string) ($it['note'] ?? ''))), 0, 200);
             $row['category'] = mb_substr(js_trim(normalize_width((string) ($it['category'] ?? ''))), 0, 20);
+            // モニターのときネオボ撮影の枠を取るか（顔のメニュー）。針脱毛の料金の概算を出すか（本数で決まるメニューだけ）
+            $row['neobo'] = self::face([...$it, 'id' => $id]);
+            $row['needle'] = $cpm > 0 && !empty($it['needle']);
             $out[] = $row;
         }
         return $out;
@@ -888,6 +968,12 @@ final class TattooBooking
         return !$first && ($pick['status'] ?? '') === 'monitor';
     }
 
+    /** モニターのときネオボ撮影の枠を取るメニューか（顔のメニュー。保存前の一覧は見本の分け方） */
+    public static function face(array $it): bool
+    {
+        return array_key_exists('neobo', $it) ? $it['neobo'] !== false : !in_array($it['id'] ?? '', self::NOT_FACE, true);
+    }
+
     /** 区間の一覧から、[s, e) と重なるものがあるか */
     private static function overlaps(array $busy, int $s, int $e): bool
     {
@@ -1100,7 +1186,7 @@ final class TattooBooking
         }
         $machine = self::machineMenus((string) ($it['machine'] ?? ''), $s);
         // モニターの方は、施術の直前に4番（だめなら1番・3番）でネオボ撮影（＋麻酔クリーム）15分（日曜メニュー。タトゥー・アートメイクは顔でないので取らない）
-        $monitor = self::isMonitor($first, $pick);
+        $monitor = self::isMonitor($first, $pick) && self::face($it);
         $four = $monitor ? self::fourLanes() : [];
         $neobo = $monitor ? self::neoboMenu() : '';
         $out = [];
@@ -1153,7 +1239,7 @@ final class TattooBooking
     private static function planFlow(array $it, int $treat, array $fp, array $s): array
     {
         [$status, $anes] = $fp;
-        $monitor = $status === 'monitor';
+        $monitor = $status === 'monitor' && self::face($it);
         $cream = $anes === 'cream';
         // 施術の前の枠：[長さ, メニュー, 名前]、施術までの待ちの候補
         $pre = $monitor ? [self::NEOBO_SLOT, $it['neoboMenuId'], 'ネオボ撮影＋頬麻酔'] : ($cream ? [self::CREAM_SLOT, $it['creamMenuId'], '麻酔クリーム'] : null);
@@ -1237,12 +1323,12 @@ final class TattooBooking
         $m = self::itemMinutes($it, $first, $pick);
         if ($m !== null && !$first && self::isFlow($it)) {
             [$status, $anes] = self::flowPick($pick);
-            if ($status === 'monitor') {
+            if ($status === 'monitor' && self::face($it)) {
                 return $anes === 'cream' ? "撮影・麻酔のあと約45分お待ちいただき施術（施術は約{$m}分）" : '約' . ($m + self::NEOBO_SLOT) . '分（ネオボ撮影' . self::NEOBO_SLOT . "分・施術{$m}分）";
             }
             return $anes === 'cream' ? "麻酔クリームのあと約45分お待ちいただき施術（施術は約{$m}分）" : "約{$m}分";
         }
-        if ($m !== null && self::isMonitor($first, $pick)) {
+        if ($m !== null && self::isMonitor($first, $pick) && self::face($it)) {
             return '約' . ($m + self::NEOBO_SLOT) . '分（ネオボ撮影' . self::NEOBO_SLOT . "分・施術{$m}分）";
         }
         return $m === null ? '' : "約{$m}分";
@@ -1343,8 +1429,11 @@ final class TattooBooking
                 return ['ok' => false, 'error' => 'line_auth'];
             }
         }
-        if ($uid === null ? !filter_var($f['email'], FILTER_VALIDATE_EMAIL) : ($f['email'] !== '' && !filter_var($f['email'], FILTER_VALIDATE_EMAIL))) $bad[] = 'email';
+        // メールアドレスは LINE で開いたときも必須（院長 11/20。LINE が届かないときの確定の連絡）
+        if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) $bad[] = 'email';
         if (!is_date_string($f['date']) || !preg_match('/^\d{2}:\d{2}$/', $f['time'])) $bad[] = 'slot';
+        // ご来院前のお願い〜キャンセル・日程変更の料金規定を読んで了承した（予約ページのチェック。院長 11/20）
+        if (empty($in['agree'])) $bad[] = 'agree';
         if ($bad) {
             return ['ok' => false, 'error' => 'invalid', 'fields' => $bad];
         }
@@ -1357,9 +1446,14 @@ final class TattooBooking
             return ['ok' => false, 'error' => 'rate_limited'];
         }
         if ($item !== null) {
-            $pick = ['group' => $in['group'] ?? null, 'parts' => is_array($in['parts'] ?? null) ? $in['parts'] : [], 'count' => $in['count'] ?? null, 'status' => $in['status'] ?? null, 'anesthesia' => $in['anesthesiaType'] ?? null];
+            $pick = ['group' => $in['group'] ?? null, 'parts' => is_array($in['parts'] ?? null) ? $in['parts'] : [], 'count' => $in['count'] ?? null, 'status' => $in['status'] ?? null, 'anesthesia' => $in['anesthesiaType'] ?? null,
+                'sex' => $in['sex'] ?? null, 'zone' => $in['zone'] ?? null, 'needleAnes' => $in['needleAnes'] ?? null];
             if (self::itemMinutes($item, $visit === 'first', $pick) === null) {
                 return ['ok' => false, 'error' => 'invalid', 'fields' => self::isFlow($item) ? ['flow'] : [($item['countPerMinute'] ?? 0) > 0 ? 'count' : 'parts']];
+            }
+            // 針脱毛は性別・部位・麻酔も（料金の概算のため）
+            if (!empty($item['needle']) && (!isset(self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')], self::NEEDLE_ZONE[(string) ($pick['zone'] ?? '')], self::NEEDLE_ANES[(string) ($pick['needleAnes'] ?? '')]))) {
+                return ['ok' => false, 'error' => 'invalid', 'fields' => ['needle']];
             }
             return self::bookItem($item, $visit === 'first', $f, $s, $uid, $pick);
         }
@@ -1465,6 +1559,7 @@ final class TattooBooking
                 $it['name'] . '（Web予約・日曜）' . ($first ? '初診' : '再診') . "（{$len}分）",
                 ...($f['clinicLines'] ?? []),
                 $what !== '' ? (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：') . $what : null,
+                ...self::needleLines($it, $pick),
                 $first && self::variable($it) && (int) $it['firstMinutes'] > 0 ? "初診の説明：{$it['firstMinutes']}分（この予約の最初）" : null,
                 $f['part'] !== '' ? '部位（患者の記入）：' . $f['part'] : null,
                 $f['email'] !== '' ? 'メール：' . $f['email'] : null,
@@ -1571,6 +1666,7 @@ final class TattooBooking
                 '所要時間：' . self::itemDurationText($it, $first, $f['pick'] ?? []),
                 '区分：' . ($first ? '初診' : '再診'),
                 self::pickText($it, $f['pick'] ?? []) !== '' ? ((self::isFlow($it) ? '' : (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：')) . self::pickText($it, $f['pick'] ?? [])) : null,
+                ...self::needleLines($it, $f['pick'] ?? []),
                 $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
                 '',
                 '【ご来院前のお願い】',

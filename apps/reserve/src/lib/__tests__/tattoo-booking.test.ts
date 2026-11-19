@@ -22,6 +22,7 @@ const book = async (body: object) => {
 };
 const person = (day: string, time: string, extra: object = {}, phone = "09011112222") => ({
   kind: "tattoo",
+  agree: true,
   visit: "repeat",
   rects: [[2, 2.5]],
   color: "black",
@@ -146,7 +147,7 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
       Db::i()->setMeta('reminderSettings', [...Reminder::defaults(), 'fromEmail' => 'info@example.jp']);
       $sent = [];
       Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = [$to, $body]; return [200, '']; };
-      $r = TattooBooking::book(['kind' => 'artmake', 'visit' => 'first', 'rects' => [[1.5, 6], [1.5, 6]], 'anesthesia' => 'yes', 'name' => '眉 花子', 'kana' => 'マユ ハナコ', 'birthDate' => '1990-01-01', 'phone' => '09055556666', 'email' => 'mayu@example.jp', 'date' => '${day}', 'time' => '10:00'], '127.0.0.9');
+      $r = TattooBooking::book(['agree' => true, 'kind' => 'artmake', 'visit' => 'first', 'rects' => [[1.5, 6], [1.5, 6]], 'anesthesia' => 'yes', 'name' => '眉 花子', 'kana' => 'マユ ハナコ', 'birthDate' => '1990-01-01', 'phone' => '09055556666', 'email' => 'mayu@example.jp', 'date' => '${day}', 'time' => '10:00'], '127.0.0.9');
       return ['r' => $r, 'sent' => $sent];
     `);
     expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20", duration: "約20分（ご説明10分・照射10分）" });
@@ -167,7 +168,7 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(html).toContain("https://example.jp/clinic/access/");
   });
 
-  it("LINE の中で開いた予約は、本人の LINE を予約と患者に結びつけ、確定の連絡を LINE に送る（メールは任意）", async () => {
+  it("LINE の中で開いた予約は、本人の LINE を予約と患者に結びつけ、確定の連絡を LINE に送る（メールアドレスも必須）", async () => {
     const day = addDays(nowInClinic().date, 5);
     const c = await open(day);
     await expect(c.patch("/clinic", { tattooLiffId: "abc" })).rejects.toThrow(/LIFF ID の形/);
@@ -183,10 +184,10 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
         parse_str((string) $body, $q); $sent[] = [$url, 'client=' . ($q['client_id'] ?? '')];
         return ($q['id_token'] ?? '') === 'good' && ($q['client_id'] ?? '') === '1234567890' ? [200, json_encode(['sub' => '${uid}'])] : [400, '{}'];
       };
-      $base = ['kind' => 'tattoo', 'visit' => 'repeat', 'rects' => [[2, 2.5]], 'anesthesia' => 'no', 'name' => '線 花子', 'kana' => 'セン ハナコ', 'birthDate' => '1991-02-03', 'phone' => '09012340000', 'email' => '', 'date' => '${day}', 'time' => '10:00'];
+      $base = ['agree' => true, 'kind' => 'tattoo', 'visit' => 'repeat', 'rects' => [[2, 2.5]], 'anesthesia' => 'no', 'name' => '線 花子', 'kana' => 'セン ハナコ', 'birthDate' => '1991-02-03', 'phone' => '09012340000', 'email' => '', 'date' => '${day}', 'time' => '10:00'];
       $noLine = TattooBooking::book($base, '127.0.0.21');
       $bad = TattooBooking::book([...$base, 'idToken' => 'bad'], '127.0.0.22');
-      $r = TattooBooking::book([...$base, 'idToken' => 'good'], '127.0.0.23');
+      $r = TattooBooking::book([...$base, 'idToken' => 'good', 'email' => 'sen@example.jp'], '127.0.0.23');
       $res = array_values(array_filter(Db::i()->all('reservation'), fn($x) => ($x['lineUserId'] ?? '') === '${uid}'));
       $pat = Db::i()->get('patient', $res[0]['patientId'] ?? '') ?? [];
       return ['noLine' => $noLine, 'bad' => $bad, 'r' => $r, 'sent' => $sent, 'resCount' => count($res), 'patLine' => $pat['lineUserId'] ?? null];
