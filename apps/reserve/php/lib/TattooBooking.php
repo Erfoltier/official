@@ -69,8 +69,12 @@ final class TattooBooking
             // 予約ページに出す順（"tattoo"・"artmake"・日曜メニューの id）。ないものは後ろに今の順で
             'order' => array_values(array_filter((array) ($c['sundayOrder'] ?? []), 'is_string')),
             // タトゥー以外に日曜に受け付けるメニュー（normalizeItems の形）。まだ保存していなければプリセット
+            // 分類を入れる前（11/19）に保存したものは、見本の分類を使う
             'items' => array_key_exists('sundayMenus', $c)
-                ? array_values(array_filter((array) $c['sundayMenus'], fn($it) => is_array($it) && !empty($it['id'])))
+                ? array_map(
+                    fn($it) => array_key_exists('category', $it) ? $it : $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''],
+                    array_values(array_filter((array) $c['sundayMenus'], fn($it) => is_array($it) && !empty($it['id'])))
+                )
                 : self::presets(),
         ];
     }

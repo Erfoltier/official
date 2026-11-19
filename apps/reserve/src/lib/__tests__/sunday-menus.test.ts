@@ -307,4 +307,16 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(kinds).toEqual(["m:peel0001", "m:inj02", "tattoo", "m:botox01", "artmake", "m:inj01", "m:inj03", "m:inj04"]);
     expect(html).toContain('data-cat="注射・注入"');
   });
+
+  it("分類を入れる前に保存したメニューは、見本の分類を使う", async () => {
+    const day = nextSunday();
+    await open(day);
+    const out = await h.srv.php(`
+      $c = Store::clinic();
+      $c['sundayMenus'] = array_map(function ($it) { unset($it['category']); $it['id'] = 'botox'; return $it; }, array_slice($c['sundayMenus'], 0, 1));
+      Db::i()->setMeta('clinic', $c);
+      return TattooBooking::settings()['items'][0]['category'] ?? null;
+    `);
+    expect(out).toBe("注射・注入");
+  });
 });
