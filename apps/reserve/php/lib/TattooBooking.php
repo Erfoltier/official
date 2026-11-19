@@ -247,7 +247,7 @@ final class TattooBooking
     {
         [, $menus] = Store::laneAndMenuIds();
         $set = [
-            // セット：初診はヒアルロン酸の初診と同じ30分、再診は口元たるみ集中治療（部分HIFU＋…）の30分（時間は仮。オンにする前に確かめる）
+            // セット：初診30分（ヒアルロン酸の初診の枠）、再診30分（口元たるみ集中治療〈部分HIFU＋…〉の枠）。どちらも医師レーン（院長 11/20 確認）
             'marionette' => ['name' => 'たるみマリオネットライン集中治療（ハイフ＋ヒアルロン酸＋ぽにょりん割引セット）', 'repeatMinutes' => 30, 'repeatMenuId' => in_array('menu-x099', $menus, true) ? 'menu-x099' : ''],
             'neckwrinkle' => ['name' => '首のしわ治療（ヒアルロン酸・肌育注射など）'],
             'sagging' => ['name' => 'その他（自由記載）'],
