@@ -42,3 +42,11 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .choice-grid.two.tt-two{grid-template-columns:1fr 1fr}
 #status-box .row-choice input{width:auto;flex:none;margin:0}
 #status-box .row-choice{cursor:pointer}
+/* 長い辺・短い辺の入力欄：ガイドの文字が欠けないよう広げ、見出しは上の行に（院長 11/19） */
+.tt-rect{flex-wrap:wrap}
+.tt-rect-label{flex-basis:100%}
+.tt-rect label{flex:1 1 0;min-width:0}
+.tt-rect input{flex:1 1 auto;width:auto;min-width:6.5em}
+.tt-rect{gap:6px 8px}
+.tt-rect label span{white-space:nowrap;font-size:.86rem}
+.tt-rect input{min-width:5em}
