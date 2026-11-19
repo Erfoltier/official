@@ -320,6 +320,16 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     `);
     expect(out).toBe("注射・注入");
   });
+  it("日曜メニューを全部（見本の全件・説明つき）並べ替えて保存しても、大きすぎると断られない", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    const presets = (await c.get("/settings")).clinic.sundayMenus as any[];
+    const all = [...presets].reverse().map((x: any) => ({ ...x, note: "ご来院前のお願い：".padEnd(150, "あ") }));
+    expect(JSON.stringify({ sundayMenus: all }).length).toBeGreaterThan(16_384);
+    await c.patch("/clinic", { sundayMenus: all });
+    expect((await c.get("/settings")).clinic.sundayMenus.map((x: any) => x.id)).toEqual(all.map((x: any) => x.id));
+  });
   it("見本（すべてオフ）は、そのまま保存できる。分類も入っている", async () => {
     const day = nextSunday();
     await open(day);

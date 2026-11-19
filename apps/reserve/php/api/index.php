@@ -324,7 +324,8 @@ try {
     }
     if ($route === 'PATCH clinic') {
         $s = $manager();
-        Http::json(Store::updateClinic(Schema::clinic(Http::readJson()), $actor($s)));
+        // 日曜メニュー（60件まで・部位つき）を並べ替えて保存すると16KBを超えるので、院の情報だけ256KBまで受ける（院長 11/20）
+        Http::json(Store::updateClinic(Schema::clinic(Http::readJson(262_144)), $actor($s)));
     }
     if ($route === 'GET settings/restore') {
         $me(STAFF_ADMIN);
