@@ -21,13 +21,18 @@ try {
     $kindTattoo = TattooBooking::kindOn('tattoo');
     $kindArtmake = TattooBooking::kindOn('artmake');
     $items = TattooBooking::publicItems();
+    $menus = TattooBooking::publicMenus();
     $liffId = TattooBooking::settings()['liffId'];
 } catch (Throwable $e) {
     $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
     $liffId = '';
     $open = $tattooOn = $kindTattoo = $kindArtmake = false;
     $items = [];
+    $menus = [];
 }
+// メニューが多いときは、まず分類を選び、次にメニュー（院長 11/19）。並びは設定の順
+$useCat = TattooBooking::useCategories($menus);
+$cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -72,15 +77,23 @@ $v = '20261119-3';
         </div>
         <fieldset class="field">
           <legend><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?> <em>必須</em></legend>
-          <div class="choice-grid two">
-<?php if ($kindTattoo): ?>
-            <label class="pill"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php if ($useCat): ?>
+          <div class="choice-grid two tt-cats" id="cats">
+<?php foreach ($cats as $c): ?>
+            <label class="pill"><input type="radio" name="cat" value="<?= $h($c) ?>"><span><?= $h($c) ?></span></label>
+<?php endforeach; ?>
+          </div>
+          <p class="field-note" id="cat-note">分類を選ぶと、施術が出ます</p>
 <?php endif; ?>
-<?php if ($kindArtmake): ?>
-            <label class="pill"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
+          <div class="choice-grid two" id="kinds"<?= $useCat ? ' hidden' : '' ?>>
+<?php foreach ($menus as $m): ?>
+<?php if ($m['key'] === 'tattoo'): ?>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php elseif ($m['key'] === 'artmake'): ?>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php else: $it = $m['item']; ?>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endif; ?>
-<?php foreach ($items as $it): ?>
-            <label class="pill"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endforeach; ?>
           </div>
           <p class="field-note" id="item-note" hidden></p>

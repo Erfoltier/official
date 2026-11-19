@@ -283,4 +283,28 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(out[0]).toContain("【日曜日のご来院について】");
     expect(out[1]).not.toContain("日曜日のご来院");
   });
+  it("予約ページは設定の並び順。メニューが7つ以上で分類が2つ以上なら、まず分類を選ぶ", async () => {
+    const day = nextSunday();
+    const c = await open(day);
+    // 少ないうち（タトゥー・アートメイク・2つ）は分類を出さない
+    let html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).not.toContain('name="cat"');
+    const shots = ["inj01", "inj02", "inj03", "inj04"].map((id, k) => ({ ...botox, id, name: `注射${k + 1}`, category: "注射・注入" }));
+    await c.patch("/clinic", {
+      sundayMenus: [{ ...botox, category: "注射・注入" }, { ...peel, category: "ピーリング" }, ...shots],
+      sundayOrder: ["peel0001", "inj02", "tattoo", "botox01"],
+      removalCategory: "タトゥー・アートメイク除去",
+    });
+    const got = await c.get("/settings");
+    expect(got.clinic.sundayOrder).toEqual(["peel0001", "inj02", "tattoo", "botox01"]);
+    expect(got.clinic.sundayMenus.find((m: any) => m.id === "inj01").category).toBe("注射・注入");
+    html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    // 分類は、いちばん上にあるメニューの分類から：ピーリング → 注射・注入 → 除去
+    const cats = [...html.matchAll(/name="cat" value="([^"]+)"/g)].map((m) => m[1]);
+    expect(cats).toEqual(["ピーリング", "注射・注入", "タトゥー・アートメイク除去"]);
+    // 施術は並び順どおり（並び順にないものは後ろに、もとの順で）
+    const kinds = [...html.matchAll(/name="kind" value="([^"]+)"/g)].map((m) => m[1]);
+    expect(kinds).toEqual(["m:peel0001", "m:inj02", "tattoo", "m:botox01", "artmake", "m:inj01", "m:inj03", "m:inj04"]);
+    expect(html).toContain('data-cat="注射・注入"');
+  });
 });

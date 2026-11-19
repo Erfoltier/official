@@ -22,3 +22,5 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-visit p{margin:6px 0;font-size:.88rem;line-height:1.7}
 #done .tt-visit{text-align:left;margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
 .tt-visit p + h2{margin-top:16px}
+.tt-cats{margin-bottom:10px}
+#kinds{margin-top:4px}

@@ -279,6 +279,22 @@ async function startLine() {
 }
 startLine();
 
+// 分類を選ぶと、その分類の施術だけを出す（ほかの分類で選んでいた施術は外す）
+function syncCats() {
+  const cat = val('cat');
+  const kinds = document.querySelector('#kinds');
+  if (!document.querySelector('#cats')) return;
+  kinds.hidden = !cat;
+  document.querySelector('#cat-note').hidden = !!cat;
+  kinds.querySelectorAll('label[data-cat]').forEach((l) => {
+    const show = l.dataset.cat === cat;
+    l.hidden = !show;
+    const input = l.querySelector('input');
+    if (!show && input.checked) input.checked = false;
+  });
+}
+form.addEventListener('change', (e) => { if (e.target.name === 'cat') { syncCats(); syncInputs(); } });
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const fd = new FormData(form);

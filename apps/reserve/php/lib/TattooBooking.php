@@ -64,6 +64,10 @@ final class TattooBooking
             // 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか（省くとオン）
             'tattooOn' => ($c['tattooKindOn'] ?? true) !== false,
             'artmakeOn' => ($c['artmakeKindOn'] ?? true) !== false,
+            // タトゥー除去・アートメイク除去の分類（予約ページで分類を選ぶときの名前）
+            'removalCategory' => (string) ($c['removalCategory'] ?? '') !== '' ? (string) $c['removalCategory'] : self::REMOVAL_CATEGORY,
+            // 予約ページに出す順（"tattoo"・"artmake"・日曜メニューの id）。ないものは後ろに今の順で
+            'order' => array_values(array_filter((array) ($c['sundayOrder'] ?? []), 'is_string')),
             // タトゥー以外に日曜に受け付けるメニュー（normalizeItems の形）。まだ保存していなければプリセット
             'items' => array_key_exists('sundayMenus', $c)
                 ? array_values(array_filter((array) $c['sundayMenus'], fn($it) => is_array($it) && !empty($it['id'])))
@@ -71,6 +75,16 @@ final class TattooBooking
         ];
     }
 
+    public const REMOVAL_CATEGORY = '除去';
+    /** プリセットの分類（院長 11/19：まず分類を選び、次にメニュー） */
+    private const PRESET_CATEGORY = [
+        'botox' => '注射・注入', 'hyperhidrosis' => '注射・注入', 'hyaluronic' => '注射・注入', 'juvelook' => '注射・注入', 'babycollagen' => '注射・注入',
+        'miraclel' => '注射・注入', 'fatx' => '注射・注入', 'sunekos' => '注射・注入', 'fillroad' => '注射・注入', 'tapink' => '注射・注入',
+        'pinkglow' => '注射・注入', 'tranestamp' => '注射・注入', 'juveacell' => '注射・注入', 're2o' => '注射・注入',
+        'hokuro' => '除去', 'dyelaser' => 'レーザー', 'isotretinoin' => '内服・ご相談', 'oral' => '内服・ご相談', 'zoskin' => '内服・ご相談',
+        'tcapeel' => 'ピーリング', 'amalfi' => 'ピーリング', 'massagepeel' => 'ピーリング', 'milano' => 'ピーリング', 'salicylic' => 'ピーリング',
+        'laserhair' => '脱毛', 'needlehair' => '脱毛',
+    ];
     private const M = 'lane-main';
     private const N = ['lane-1', 'lane-3'];
     private const MEMO = 'menu-s000099DC1'; // 予約（メモに自由記載）
@@ -159,7 +173,7 @@ final class TattooBooking
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
             'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90,
         ];
-        return $out;
+        return array_map(fn($it) => $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''], $out);
     }
 
     /** 予約ページを開けるか（受け付けがオンで、タトゥーか日曜メニューのどちらかを受けられる） */
@@ -301,6 +315,7 @@ final class TattooBooking
             if ($first || $repeat) {
                 $out[] = [
                     'id' => $it['id'], 'name' => $it['name'], 'first' => $first, 'repeat' => $repeat, 'note' => $it['note'] ?? '',
+                    'category' => (string) ($it['category'] ?? ''),
                     // 部位ごとの時間のメニューは区分（男性・女性など）と部位の名前だけ（時間は出さない）。本数で決まるメニューは本数を入れてもらう
                     'groups' => array_map(fn($g) => ['name' => $g['name'], 'parts' => array_column($g['parts'], 'name')], $it['partGroups'] ?? []),
                     'count' => ($it['countPerMinute'] ?? 0) > 0,
@@ -309,6 +324,39 @@ final class TattooBooking
             }
         }
         return $out;
+    }
+
+    /**
+     * 予約ページに出すメニューを、設定の並び順で。タトゥー除去・アートメイク除去（受け付けるとき）と日曜メニュー（publicItems）。
+     * @return list<array{key:string,category:string,item:?array}> key は "tattoo"・"artmake"・"m:<id>"
+     */
+    public static function publicMenus(?array $s = null): array
+    {
+        $s ??= self::settings();
+        $all = [];
+        if (self::ready($s) && $s['tattooOn']) {
+            $all['tattoo'] = ['key' => 'tattoo', 'category' => $s['removalCategory'], 'item' => null];
+        }
+        if (self::ready($s) && $s['artmakeOn']) {
+            $all['artmake'] = ['key' => 'artmake', 'category' => $s['removalCategory'], 'item' => null];
+        }
+        foreach (self::publicItems($s) as $it) {
+            $all[$it['id']] = ['key' => 'm:' . $it['id'], 'category' => $it['category'] !== '' ? $it['category'] : 'その他', 'item' => $it];
+        }
+        $out = [];
+        foreach ($s['order'] as $k) {
+            if (isset($all[$k])) {
+                $out[] = $all[$k];
+                unset($all[$k]);
+            }
+        }
+        return [...$out, ...array_values($all)];
+    }
+
+    /** 分類を選ばせるか：分類が2つ以上で、メニューが7つ以上あるとき（少なければ一覧のまま） */
+    public static function useCategories(array $menus): bool
+    {
+        return count($menus) >= 7 && count(array_unique(array_column($menus, 'category'))) >= 2;
     }
 
     /**
@@ -432,6 +480,7 @@ final class TattooBooking
             }
             $row['machine'] = mb_substr(js_trim((string) ($it['machine'] ?? '')), 0, 30);
             $row['note'] = mb_substr(js_trim(normalize_width((string) ($it['note'] ?? ''))), 0, 200);
+            $row['category'] = mb_substr(js_trim(normalize_width((string) ($it['category'] ?? ''))), 0, 20);
             $out[] = $row;
         }
         return $out;

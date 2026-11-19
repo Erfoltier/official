@@ -757,6 +757,10 @@ export interface ClinicSettings {
   tattooMachine?: string;
   /** 日曜の予約ページで、タトゥー以外に患者が選べるメニュー（院が日曜の受付を許可したもの） */
   sundayMenus?: SundayMenu[];
+  /** 日曜の予約ページに出す順（"tattoo"・"artmake"・日曜メニューの id）。分類の順は、いちばん上にあるメニューの分類から */
+  sundayOrder?: string[];
+  /** タトゥー除去・アートメイク除去の分類（空なら「除去」） */
+  removalCategory?: string;
 }
 
 /**
@@ -778,6 +782,8 @@ export interface SundayMenu {
   machine: string;
   /** ご来院前のお願い（予約ページ・確定の連絡に出す。任意） */
   note: string;
+  /** 分類（予約ページで、まず分類を選んでもらう。例：注射・注入、ピーリング、脱毛） */
+  category?: string;
   /**
    * 部位ごとの時間（区分〈男性・女性など〉→ 部位と分）。患者が選んだ部位の合計＋初診・再診の時間（説明など）。空なら使わない
    */

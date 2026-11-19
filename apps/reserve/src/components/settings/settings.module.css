@@ -1458,3 +1458,18 @@ details.fold:not([open]) {
     position: static;
   }
 }
+.sundayGrip {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  letter-spacing: -2px;
+  cursor: grab;
+}
+.sundayList li[data-drop] {
+  outline: 1px dashed var(--accent-line);
+}
+.sundayMove {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}

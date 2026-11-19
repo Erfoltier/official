@@ -708,6 +708,8 @@ export function saveClinic(
       | "tattooKindOn"
       | "artmakeKindOn"
       | "sundayMenus"
+      | "sundayOrder"
+      | "removalCategory"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

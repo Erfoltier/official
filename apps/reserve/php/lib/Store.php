@@ -410,6 +410,19 @@ final class Store
                 $next[$k] = (bool) $input[$k];
             }
         }
+        // 日曜の予約ページの並び順と、タトゥー・アートメイク除去の分類（院長 11/19：まず分類を選び、次にメニュー）
+        if (isset($input['sundayOrder'])) {
+            $order = [];
+            foreach ((array) $input['sundayOrder'] as $k) {
+                if (is_string($k) && preg_match('/^(tattoo|artmake|[a-z0-9]{4,20})$/', $k) && !in_array($k, $order, true)) {
+                    $order[] = $k;
+                }
+            }
+            $next['sundayOrder'] = array_slice($order, 0, 80);
+        }
+        if (array_key_exists('removalCategory', $input)) {
+            $next['removalCategory'] = mb_substr(js_trim(normalize_width((string) $input['removalCategory'])), 0, 20);
+        }
         if (array_key_exists('tattooMachine', $input)) {
             $next['tattooMachine'] = mb_substr(js_trim((string) $input['tattooMachine']), 0, 30);
         }

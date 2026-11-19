@@ -532,6 +532,13 @@ final class Schema
             },
             'tattooMachine?' => fn($x) => V::str($x, 30),
             'tattooKindOn?' => fn($x) => V::bool($x),
+            'removalCategory?' => fn($x) => V::str($x, 20),
+            'sundayOrder?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 80) {
+                    throw new InputError();
+                }
+                return array_map(fn($s) => V::str($s, 20), $x);
+            },
             'artmakeKindOn?' => fn($x) => V::bool($x),
             // 中身の確かめ（レーン・メニューがあるか、分の範囲）は TattooBooking::normalizeItems
             'sundayMenus?' => function ($x) {

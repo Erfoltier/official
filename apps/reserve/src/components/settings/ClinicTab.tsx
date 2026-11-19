@@ -551,6 +551,8 @@ export function TattooCard({
   const [items, setItems] = useState<SundayMenu[]>(clinic.sundayMenus ?? []);
   const [tattooOn, setTattooOn] = useState(clinic.tattooKindOn !== false);
   const [artmakeOn, setArtmakeOn] = useState(clinic.artmakeKindOn !== false);
+  const [order, setOrder] = useState<string[]>(clinic.sundayOrder ?? []);
+  const [removalCategory, setRemovalCategory] = useState(clinic.removalCategory ?? "");
   const [busy, setBusy] = useState(false);
   const badItem = items.map(sundayMenuProblem).find(Boolean);
   const badLiff = liffId.trim() !== "" && !/^\d{6,20}-[A-Za-z0-9]{4,40}$/.test(liffId.trim());
@@ -578,6 +580,8 @@ export function TattooCard({
         tattooKindOn: tattooOn,
         artmakeKindOn: artmakeOn,
         sundayMenus: items,
+        sundayOrder: fullOrder(order, items),
+        removalCategory: removalCategory.trim(),
       });
       await onChanged();
       notify("日曜の Web 予約の設定を保存しました");
@@ -612,13 +616,13 @@ export function TattooCard({
       </div>
 
       <h4 className={styles.subTitle}>日曜メニュー</h4>
-      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} fixed={[
+      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} order={order} setOrder={setOrder} fixed={[
         {
           key: "tattoo",
           title: "タトゥー除去",
           on: tattooOn,
           setOn: setTattooOn,
-          about: "時間は面積で自動（初診は説明10分を足す）",
+          about: `［${removalCategory.trim() || "除去"}］時間は面積で自動（初診は説明10分を足す）`,
           warn: tattooOn && missing,
           detail: (
             <>
@@ -674,6 +678,10 @@ export function TattooCard({
                   <span>照射に使う機器の名前（任意。下の日曜メニューで同じ名前を入れたものとは、レーンが違っても同じ時刻に入れません）</span>
                   <input className={styles.input} value={machine} maxLength={30} onChange={(ev) => setMachine(ev.target.value)} disabled={!canEdit} placeholder="例：ピコレーザー" />
                 </label>
+                <label className={styles.field}>
+                  <span>分類（タトゥー・アートメイク除去の両方。予約ページでまず選ぶ分類）</span>
+                  <input className={styles.input} value={removalCategory} maxLength={20} list="sunday-cats" onChange={(ev) => setRemovalCategory(ev.target.value)} disabled={!canEdit} placeholder="除去" />
+                </label>
             </>
           ),
         },
@@ -682,7 +690,7 @@ export function TattooCard({
           title: "アートメイク除去",
           on: artmakeOn,
           setOn: setArtmakeOn,
-          about: "時間は面積で自動（眉は左右の合計）",
+          about: `［${removalCategory.trim() || "除去"}］時間は面積で自動（眉は左右の合計）`,
           warn: artmakeOn && missing,
           detail: <p className={styles.hint}>照射のレーン・メニュー・初診説明・機器は、タトゥー除去と共通です（タトゥー除去の設定で変えます）。</p>,
         },
@@ -840,7 +848,15 @@ function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (nex
   );
 }
 
-const emptySundayMenu = (): SundayMenu => ({ id: "", enabled: true, name: "", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 0, repeatLaneIds: [], repeatMenuId: "", machine: "", note: "" });
+/** 予約ページの並び順：保存した順に、まだ入っていないもの（新しいメニューなど）を後ろへ */
+function fullOrder(order: string[], items: SundayMenu[]): string[] {
+  const keys = ["tattoo", "artmake", ...items.map((it) => it.id)];
+  return [...order.filter((k) => keys.includes(k)), ...keys.filter((k) => !order.includes(k))];
+}
+
+const newMenuId = () => `n${Math.random().toString(36).slice(2, 10)}`.slice(0, 12).padEnd(5, "0");
+
+const emptySundayMenu = (): SundayMenu => ({ id: newMenuId(), enabled: true, name: "", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 0, repeatLaneIds: [], repeatMenuId: "", machine: "", note: "" });
 
 /**
  * 日曜メニューの表：院が日曜の受付を許可したメニュー（タトゥー以外）。予約ページで患者が選び、その場で予約が入る。
@@ -853,6 +869,8 @@ function SundayMenusEditor({
   menus,
   canEdit,
   fixed,
+  order,
+  setOrder,
 }: {
   items: SundayMenu[];
   setItems: (next: SundayMenu[]) => void;
@@ -860,6 +878,8 @@ function SundayMenusEditor({
   menus: Menu[];
   canEdit: boolean;
   fixed: { key: string; title: string; on: boolean; setOn: (on: boolean) => void; about: string; warn: boolean; detail: ReactNode }[];
+  order: string[];
+  setOrder: (next: string[]) => void;
 }) {
   const laneName = (id: string) => lanes.find((l) => l.id === id)?.shortName || lanes.find((l) => l.id === id)?.name || "?";
   const summary = (it: SundayMenu) => {
@@ -895,6 +915,10 @@ function SundayMenusEditor({
             <label className={styles.field}>
               <span>患者に見せる名前</span>
               <input className={styles.input} value={it.name} maxLength={40} onChange={(ev) => put(i, { name: ev.target.value })} disabled={!canEdit} placeholder="例：ボトックス注射" />
+            </label>
+            <label className={styles.field}>
+              <span>分類（予約ページでまず選ぶ分類）</span>
+              <input className={styles.input} value={it.category ?? ""} maxLength={20} list="sunday-cats" onChange={(ev) => put(i, { category: ev.target.value })} disabled={!canEdit} placeholder="例：注射・注入" />
             </label>
             <label className={styles.field}>
               <span>時間の決め方</span>
@@ -1060,27 +1084,63 @@ function SundayMenusEditor({
             )}
     </>
   );
-  const [sel, setSel] = useState<string>(fixed[0]?.key ?? "i0");
-  const rows = [
+  const [sel, setSel] = useState<string>(fixed[0]?.key ?? "");
+  const [drag, setDrag] = useState<string | null>(null);
+  const unsorted = [
     ...fixed.map((f) => ({ key: f.key, title: f.title, on: f.on, setOn: f.setOn, summary: f.about, warn: f.warn, detail: f.detail })),
     ...items.map((it, i) => ({
-      key: `i${i}`,
+      key: it.id,
       title: it.name.trim() || `日曜メニュー ${i + 1}`,
       on: it.enabled,
       setOn: (on: boolean) => put(i, { enabled: on }),
-      summary: summary(it),
+      summary: `${it.category?.trim() ? `［${it.category.trim()}］` : ""}${summary(it)}`,
       warn: it.enabled && !!sundayMenuProblem(it, i),
       detail: itemDetail(it, i),
     })),
   ];
+  const seq = fullOrder(order, items);
+  const rows = seq.map((k) => unsorted.find((r) => r.key === k)).filter((r): r is (typeof unsorted)[number] => !!r);
   const selRow = rows.find((r) => r.key === sel) ?? rows[0];
   const selKey = selRow?.key;
+  // 並べ替え：ドラッグで目的の行の前へ。スマホは「上へ・下へ」
+  const moveTo = (key: string, before: string) => {
+    if (key === before) return;
+    const rest = seq.filter((k) => k !== key);
+    const at = rest.indexOf(before);
+    setOrder([...rest.slice(0, at), key, ...rest.slice(at)]);
+  };
+  const moveBy = (key: string, d: -1 | 1) => {
+    const at = seq.indexOf(key);
+    const to = at + d;
+    if (to < 0 || to >= seq.length) return;
+    const next = [...seq];
+    [next[at], next[to]] = [next[to], next[at]];
+    setOrder(next);
+  };
+  const catList = Array.from(new Set(["除去", "注射・注入", "ピーリング", "脱毛", "レーザー", "内服・ご相談", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
   return (
     <>
+      <datalist id="sunday-cats">
+        {catList.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+      <p className={styles.hint}>行をドラッグすると、予約ページに出る順を並べ替えられます。分類は、いちばん上にあるメニューの分類から順に出ます。</p>
       <div className={styles.sundayMaster}>
         <ul className={styles.sundayList} aria-label="日曜メニュー">
           {rows.map((r) => (
-            <li key={r.key} data-sel={r.key === selKey || undefined} data-off={!r.on || undefined}>
+            <li
+              key={r.key}
+              data-sel={r.key === selKey || undefined}
+              data-off={!r.on || undefined}
+              data-drop={(drag && drag !== r.key) || undefined}
+              draggable={canEdit}
+              onDragStart={(ev) => { setDrag(r.key); ev.dataTransfer.effectAllowed = "move"; }}
+              onDragOver={(ev) => { if (drag) ev.preventDefault(); }}
+              onDrop={(ev) => { ev.preventDefault(); if (drag) moveTo(drag, r.key); setDrag(null); }}
+              onDragEnd={() => setDrag(null)}
+            >
+              {canEdit && <span className={styles.sundayGrip} aria-hidden="true">⋮⋮</span>}
               <Switch on={r.on} onChange={r.setOn} label={r.title} disabled={!canEdit} />
               <button type="button" className={styles.sundayRow} onClick={() => setSel(r.key)} aria-current={r.key === selKey || undefined}>
                 <strong>{r.title}</strong>
@@ -1091,7 +1151,7 @@ function SundayMenusEditor({
           ))}
           {canEdit && items.length < 40 && (
             <li className={styles.sundayAdd}>
-              <button type="button" onClick={() => { setItems([...items, emptySundayMenu()]); setSel(`i${items.length}`); }}>
+              <button type="button" onClick={() => { const it = emptySundayMenu(); setItems([...items, it]); setSel(it.id); }}>
                 ＋ 日曜メニューを足す
               </button>
             </li>
@@ -1103,6 +1163,16 @@ function SundayMenusEditor({
               <div className={styles.sundayPaneHead}>
                 <Switch on={selRow.on} onChange={selRow.setOn} label={selRow.title} disabled={!canEdit} />
                 <h5>{selRow.title}</h5>
+                {canEdit && (
+                  <span className={styles.sundayMove}>
+                    <button type="button" onClick={() => moveBy(selRow.key, -1)} disabled={seq.indexOf(selRow.key) === 0}>
+                      ↑ 上へ
+                    </button>
+                    <button type="button" onClick={() => moveBy(selRow.key, 1)} disabled={seq.indexOf(selRow.key) === seq.length - 1}>
+                      ↓ 下へ
+                    </button>
+                  </span>
+                )}
               </div>
               <div className={styles.sundayDetail}>{selRow.detail}</div>
             </>
