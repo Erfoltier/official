@@ -325,7 +325,7 @@ export interface SettingsData {
   /** オンラインカウンセリングの Web 予約ページのアドレス・メールを送れるか */
   onlineCs?: { url: string; mail: boolean };
   /** タトゥー・アートメイク除去（日曜）の Web 予約ページのアドレス */
-  tattoo?: { url: string };
+  tattoo?: { url: string; lineUrl?: string };
 }
 
 export interface HomepageDays {
@@ -689,6 +689,7 @@ export function saveClinic(
       | "department"
       | "privacyUrl"
       | "homepageUrl"
+      | "accessUrl"
       | "intakeHours"
       | "intakeWeekdays"
       | "intakeSpecialDates"
@@ -702,6 +703,7 @@ export function saveClinic(
       | "tattooExplainLaneId"
       | "tattooExplainMenuId"
       | "tattooSlots"
+      | "tattooLiffId"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

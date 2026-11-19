@@ -31,7 +31,7 @@ export function ClinicTab({
   lanes: Lane[];
   homepageDays?: HomepageDays;
   onlineCs?: { url: string; mail: boolean };
-  tattoo?: { url: string };
+  tattoo?: { url: string; lineUrl?: string };
   menus?: Menu[];
   canEdit: boolean;
   onChanged: () => Promise<void>;
@@ -297,6 +297,7 @@ function PublicCard({
   const [department, setDepartment] = useState(clinic.department ?? "");
   const [privacyUrl, setPrivacyUrl] = useState(clinic.privacyUrl ?? "");
   const [homepageUrl, setHomepageUrl] = useState(clinic.homepageUrl ?? "");
+  const [accessUrl, setAccessUrl] = useState(clinic.accessUrl ?? "");
   const [hours, setHours] = useState(clinic.intakeHours ?? "");
   const [weekdays, setWeekdays] = useState<number[]>(clinic.intakeWeekdays ?? [0, 1, 2, 3, 4, 5, 6]);
   const [special, setSpecial] = useState((clinic.intakeSpecialDates ?? []).join("\n"));
@@ -307,7 +308,7 @@ function PublicCard({
     .map((d) => d.trim().replace(/\//g, "-"))
     .filter(Boolean);
   const badDate = dates.find((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d));
-  const badUrl = [privacyUrl, homepageUrl].some((u) => u.trim() !== "" && !/^https:\/\/\S+$/.test(u.trim()));
+  const badUrl = [privacyUrl, homepageUrl, accessUrl].some((u) => u.trim() !== "" && !/^https:\/\/\S+$/.test(u.trim()));
   const toggleDay = (d: number) => setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d].sort()));
 
   const save = async () => {
@@ -319,6 +320,7 @@ function PublicCard({
         department,
         privacyUrl: privacyUrl.trim(),
         homepageUrl: homepageUrl.trim(),
+        accessUrl: accessUrl.trim(),
         intakeHours: hours,
         intakeWeekdays: weekdays,
         intakeSpecialDates: dates,
@@ -360,6 +362,10 @@ function PublicCard({
       <label className={styles.field}>
         <span>プライバシーポリシーのアドレス</span>
         <input className={styles.input} value={privacyUrl} maxLength={300} onChange={(ev) => setPrivacyUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
+      </label>
+      <label className={styles.field}>
+        <span>アクセスのページのアドレス（予約確定の案内に住所の代わりに出す。空欄なら住所）</span>
+        <input className={styles.input} value={accessUrl} maxLength={300} onChange={(ev) => setAccessUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
       </label>
       <label className={styles.field}>
         <span>受付日時の案内（予約申請フォームの見出しに出す。改行できます）</span>
@@ -532,7 +538,7 @@ function TattooCard({
   clinic: ClinicSettings;
   lanes: Lane[];
   menus: Menu[];
-  info?: { url: string };
+  info?: { url: string; lineUrl?: string };
   mail?: boolean;
   canEdit: boolean;
   onChanged: () => Promise<void>;
@@ -545,7 +551,9 @@ function TattooCard({
   const [explainLaneId, setExplainLaneId] = useState(clinic.tattooExplainLaneId ?? "");
   const [explainMenuId, setExplainMenuId] = useState(clinic.tattooExplainMenuId ?? "");
   const [text, setText] = useState((clinic.tattooSlots ?? []).join("\n"));
+  const [liffId, setLiffId] = useState(clinic.tattooLiffId ?? "");
   const [busy, setBusy] = useState(false);
+  const badLiff = liffId.trim() !== "" && !/^\d{6,20}-[A-Za-z0-9]{4,40}$/.test(liffId.trim());
   const lines = text
     .split(/\n+/)
     .map((l) => l.trim())
@@ -557,7 +565,7 @@ function TattooCard({
   const save = async () => {
     setBusy(true);
     try {
-      await saveClinic({ tattooEnabled: enabled, tattooLaneId: laneId, tattooMenuId: menuId, tattooExplainLaneId: explainLaneId, tattooExplainMenuId: explainMenuId, tattooSlots: lines });
+      await saveClinic({ tattooEnabled: enabled, tattooLaneId: laneId, tattooMenuId: menuId, tattooExplainLaneId: explainLaneId, tattooExplainMenuId: explainMenuId, tattooSlots: lines, tattooLiffId: liffId.trim() });
       await onChanged();
       notify("タトゥー・アートメイク除去（日曜）の設定を保存しました");
     } catch (err) {
@@ -570,7 +578,7 @@ function TattooCard({
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>タトゥー・アートメイク除去（日曜・Web予約）</h3>
       <p className={styles.hint}>
-        開ける日時を1行に1つ入れると、患者が予約ページで面積と初診・再診を入れて、その場で予約できます（予約表に入り、確定のメールを送ります）。照射の時間は面積で決まり（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）、初診は説明10分を足します。選べる時刻は、受付日時の中の空きの最初と最後だけです（予約の間に半端な空きが残らないように）。閉じるときは行を消して保存します。
+        開ける日時を1行に1つ入れると、患者が予約ページで面積と初診・再診を入れて、その場で予約できます（予約表に入り、確定のメールを送ります）。照射の時間は面積で決まり（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）、初診は説明10分を足します。選べる時刻は、受付日時の中の空きの最初と、後ろに予約がある空きの最後だけです（空いた日は受付の最初の時刻だけ。予約の間に半端な空きが残らないように）。LIFF ID を入れると、LINE の中で開いた方は本人の LINE が予約と患者に結びつき、確定の連絡が LINE に届きます。閉じるときは行を消して保存します。
       </p>
       <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={enabled} onChange={(ev) => setEnabled(ev.target.checked)} disabled={!canEdit} />
@@ -628,8 +636,15 @@ function TattooCard({
         <span>受付日時（1行に1つ、例：2026-12-06 10:00-13:00）</span>
         <textarea className={styles.input} value={text} rows={4} onChange={(ev) => setText(ev.target.value)} disabled={!canEdit} />
       </label>
-      <p className={styles.hint} data-invalid={bad || missing || (enabled && mail === false) || undefined}>
-        {bad
+      <label className={styles.field}>
+        <span>LINE で開くための LIFF ID（LINE Developers で、エンドポイントを予約ページにした LIFF アプリの ID。空なら LINE を使わずメールで確定）</span>
+        <input className={styles.input} value={liffId} maxLength={80} onChange={(ev) => setLiffId(ev.target.value)} disabled={!canEdit} placeholder="例：1234567890-AbCdEfGh" />
+      </label>
+      {info?.lineUrl && <p className={styles.hint}>LINE で開くアドレス：{info.lineUrl}（ホームページのボタン・LINE のメニューに貼る）</p>}
+      <p className={styles.hint} data-invalid={bad || badLiff || missing || (enabled && mail === false) || undefined}>
+        {badLiff
+          ? "LIFF ID の形が正しくありません（例：1234567890-AbCdEfGh）"
+          : bad
           ? `受付日時の形が正しくありません：${bad}`
           : missing
             ? "受け付けるには、照射のレーンとメニューを選んでください。"
@@ -641,7 +656,7 @@ function TattooCard({
       </p>
       {canEdit && (
         <div className={styles.actions}>
-          <button className={styles.primary} onClick={save} disabled={!!bad || busy}>
+          <button className={styles.primary} onClick={save} disabled={!!bad || badLiff || busy}>
             保存
           </button>
         </div>

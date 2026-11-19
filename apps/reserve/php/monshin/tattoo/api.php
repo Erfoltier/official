@@ -24,7 +24,7 @@ try {
         if ($area <= 0 || $area > 20_000) {
             $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) [], 'today' => now_in_clinic()['date']]);
         }
-        $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) TattooBooking::openTimes(TattooBooking::treatMinutes($area), $first), 'price' => TattooBooking::price($area), 'today' => now_in_clinic()['date']]);
+        $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) TattooBooking::openTimes(TattooBooking::treatMinutes($area), $first), 'price' => TattooBooking::price($area), 'duration' => TattooBooking::durationText(TattooBooking::treatMinutes($area), $first), 'today' => now_in_clinic()['date']]);
     }
     if ($method !== 'POST') {
         $out(405, ['ok' => false, 'error' => 'method_not_allowed']);
@@ -42,7 +42,7 @@ try {
     }
     $r = TattooBooking::book($in, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
     $status = $r['ok'] ? 201 : match ($r['error']) {
-        'invalid' => 422, 'slot_taken' => 409, 'rate_limited' => 429, 'closed' => 403, default => 409,
+        'invalid' => 422, 'slot_taken' => 409, 'rate_limited' => 429, 'closed' => 403, 'line_auth' => 401, default => 409,
     };
     $out($status, $r);
 } catch (Throwable $e) {

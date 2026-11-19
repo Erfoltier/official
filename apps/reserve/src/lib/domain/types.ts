@@ -723,6 +723,8 @@ export interface ClinicSettings {
   /** プライバシーポリシー・ホームページのアドレス（https://） */
   privacyUrl?: string;
   homepageUrl?: string;
+  /** アクセス（地図・道順）のページ（https://）。予約確定の案内で住所の代わりに出す */
+  accessUrl?: string;
   /** 予約申請フォームの見出しに出す受付日時の案内（改行可） */
   intakeHours?: string;
   /** 予約申請フォームで選べる曜日（0=日〜6=土。なければ毎日）と、それ以外に選べる特別診療日 */
@@ -746,6 +748,8 @@ export interface ClinicSettings {
   tattooExplainMenuId?: string;
   /** 受付日時（1つずつ「2026-12-06 10:00-13:00」） */
   tattooSlots?: string[];
+  /** タトゥーの予約ページを LINE の中で開く LIFF アプリの ID。あれば確定の連絡を LINE に送る */
+  tattooLiffId?: string;
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

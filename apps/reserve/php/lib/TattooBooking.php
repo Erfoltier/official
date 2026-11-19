@@ -2,7 +2,7 @@
 /**
  * タトゥー・アートメイク除去（日曜の不定期診療）の Web 予約。オンラインカウンセリング（OnlineCs）と同じ作り。
  * 院が開けた受付日時（設定 → 院の情報、1行に1つ「2026-12-06 10:00-13:00」）の中で、
- * 照射面積から決まる時間の枠を、予約の前後に隙間ができる時刻だけ出す（受付時間帯の空きの「最初」と「最後」だけ）。
+ * 照射面積から決まる時間の枠を、予約の前後に隙間ができる時刻だけ出す（受付時間帯の空きの「最初」と、後ろに予約がある空きの「最後」だけ）。
  * 初診は照射の前に説明10分を取る。説明は隣のレーン（看護師）で照射の直前に取り、空いていなければ照射のレーンに続けて取る。
  * 患者向けの画面・文言に「詰める」などの仕組みは出さない。選べる時刻だけを見せる。
  */
@@ -17,6 +17,20 @@ final class TattooBooking
     public const ACTOR = ['id' => 'web-tattoo', 'name' => 'Web予約（タトゥー除去・日曜）'];
     /** 1辺の上限（cm）と、1か所の面積の上限（cm²） */
     private const MAX_SIDE = 100.0;
+    /** 日曜のご来院の案内（院長の文面 11/18）。予約ページ・確定メール・リマインド（タトゥー除去のメニューの予約）で同じ文を出す */
+    public const VISIT_NOTICE = [
+        '日曜日は表のシャッターが閉まっております。建物左側面の駐車場に沿った奥に「美容皮膚科予約済の方専用入口」と掲示された扉がございますので、そちらからお入りください。',
+        'この日は受付がおりませんので、到着されましたら当院の LINE に「到着済」とご送信いただき、待合室におかけになってお待ちください。',
+        'ご予約の時間は「ご来院時間のご予約」です。前の方の処置の状況や混雑により、お呼び出しが遅れる場合がございます。後のご予定には十分に余裕をもってお越しください。',
+    ];
+
+    /** ご来院前のお願い（院長の指示 11/19）：照射する部位の産毛は剃ってくる。眉は周りの産毛だけ（ホームページの「照射前の準備」と同じ文） */
+    public const SHAVE_NOTICE = [
+        'tattoo' => '照射部位の産毛は、ご来院前にご自身で剃ってきてください。',
+        'artmake' => '眉の周りの産毛は、ご来院前にご自身で剃ってきてください（眉毛そのものは剃らないでください）。',
+    ];
+    /** 予約ページ（除去するものを選ぶ前にも出す）の文 */
+    public const SHAVE_NOTICE_PAGE = '照射部位の産毛は、ご来院前にご自身で剃ってきてください。眉のアートメイクの方は眉の周りの産毛だけを剃り、眉毛そのものは剃らないでください。';
 
     public static function settings(): array
     {
@@ -28,6 +42,8 @@ final class TattooBooking
             'explainLaneId' => (string) ($c['tattooExplainLaneId'] ?? ''),
             'explainMenuId' => (string) ($c['tattooExplainMenuId'] ?? ''),
             'slots' => array_values(array_filter((array) ($c['tattooSlots'] ?? []), 'is_string')),
+            // LINE の中でこのページを開く LIFF アプリの ID（LINE Developers で作る。エンドポイントは …/tattoo/）。空なら LINE を使わない
+            'liffId' => (string) ($c['tattooLiffId'] ?? ''),
         ];
     }
 
@@ -36,6 +52,29 @@ final class TattooBooking
     {
         $s ??= self::settings();
         return $s['enabled'] && $s['laneId'] !== '' && $s['menuId'] !== '';
+    }
+
+    /** この来院（Reminder::visitsOn の1件）にタトゥー除去の照射か初診説明のメニューが入っているか */
+    public static function inVisit(array $v): bool
+    {
+        $s = self::settings();
+        $ids = array_filter([$s['menuId'], $s['explainMenuId']], fn($x) => $x !== '');
+        return $ids !== [] && array_intersect($ids, $v['menuIds'] ?? []) !== [];
+    }
+
+    /** 患者に見せる所要時間の文：「約20分（ご説明10分・照射10分）」／再診は「約10分（照射）」 */
+    public static function durationText(int $treat, bool $first): string
+    {
+        return $first
+            ? '約' . ($treat + self::EXPLAIN_MINUTES) . '分（ご説明' . self::EXPLAIN_MINUTES . "分・照射{$treat}分）"
+            : "約{$treat}分（照射）";
+    }
+
+    /** LINE で開くアドレス（ホームページのボタン・LINE のメニューに貼る）。LIFF がなければ空 */
+    public static function liffUrl(): string
+    {
+        $id = self::settings()['liffId'];
+        return $id !== '' ? 'https://liff.line.me/' . $id : '';
     }
 
     /** 公開ページのアドレス（問診票のアドレスと同じサイトの /tattoo/） */
@@ -130,7 +169,7 @@ final class TattooBooking
 
     /**
      * その日の受付時間帯の中で、照射のレーンの空いている区間（[開始分, 終了分]、受付時間帯ごと）
-     * @return list<array{0:int,1:int,2:int}> [空きの開始, 空きの終了, 受付時間帯の開始]
+     * @return list<array{0:int,1:int,2:int,3:int}> [空きの開始, 空きの終了, 受付時間帯の開始, 受付時間帯の終了]
      */
     private static function gaps(array $windows, array $busy): array
     {
@@ -141,12 +180,12 @@ final class TattooBooking
             usort($inside, fn($x, $y) => $x[0] <=> $y[0]);
             foreach ($inside as [$bs, $be]) {
                 if ($bs > $cur) {
-                    $out[] = [$cur, min($bs, $we), $ws];
+                    $out[] = [$cur, min($bs, $we), $ws, $we];
                 }
                 $cur = max($cur, $be);
             }
             if ($cur < $we) {
-                $out[] = [$cur, $we, $ws];
+                $out[] = [$cur, $we, $ws, $we];
             }
         }
         return $out;
@@ -155,6 +194,7 @@ final class TattooBooking
     /**
      * 選べる枠。日付 => [[来院の時刻 "HH:MM", 照射の開始分, 説明のレーンを使うか], ...]（時刻順）。
      * 空きの区間ごとに「最初から」と「最後から」の2つだけを出す（予約が前後に隙間なく並ぶ）。
+     * 「最後から」は、空きのすぐ後ろに予約があるときだけ。受付の終わりまで空いているときは出さない（空いた日は受付の最初の時刻だけ。院長 11/19「中途半端な午後から入ると困る」）。
      * 初診は、説明10分を説明のレーンで照射の直前に取れればそこで、取れなければ照射のレーンで照射の前に続けて取る。
      * @return array<string, list<array{0:string,1:int,2:bool}>>
      */
@@ -178,8 +218,8 @@ final class TattooBooking
             $busy = Store::busyMinutes($date, $s['laneId']);
             $nurseBusy = $s['explainLaneId'] !== '' ? Store::busyMinutes($date, $s['explainLaneId']) : null;
             $found = [];
-            foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws]) {
-                foreach (['front', 'back'] as $side) {
+            foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws, $we]) {
+                foreach ($ge < $we ? ['front', 'back'] : ['front'] as $side) {
                     $c = self::fit($side, $gs, $ge, $ws, $treat, $firstVisit, $nurseBusy, $windows);
                     if ($c === null) {
                         continue;
@@ -268,7 +308,17 @@ final class TattooBooking
         if ($f['kana'] === '') $bad[] = 'kana';
         if (!is_date_string($f['birthDate']) || $f['birthDate'] >= now_in_clinic()['date'] || $f['birthDate'] < '1900-01-01') $bad[] = 'birthDate';
         if (!preg_match('/^0\d{9,10}$/', digits_only($f['phone']))) $bad[] = 'phone';
-        if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) $bad[] = 'email';
+        // LINE の中で開いたときは、確定の連絡を LINE に送る（メールは任意）。ID トークンで本人の LINE を確かめる
+        $uid = null;
+        $idToken = (string) ($in['idToken'] ?? '');
+        if ($idToken !== '' && $s['liffId'] !== '') {
+            try {
+                $uid = LineLink::verifyIdToken($idToken, explode('-', $s['liffId'], 2)[0]);
+            } catch (StoreError) {
+                return ['ok' => false, 'error' => 'line_auth'];
+            }
+        }
+        if ($uid === null ? !filter_var($f['email'], FILTER_VALIDATE_EMAIL) : ($f['email'] !== '' && !filter_var($f['email'], FILTER_VALIDATE_EMAIL))) $bad[] = 'email';
         if (!is_date_string($f['date']) || !preg_match('/^\d{2}:\d{2}$/', $f['time'])) $bad[] = 'slot';
         if ($bad) {
             return ['ok' => false, 'error' => 'invalid', 'fields' => $bad];
@@ -283,7 +333,7 @@ final class TattooBooking
         }
         $treat = self::treatMinutes($area);
         $first = $visit === 'first';
-        $result = Db::i()->transaction(function () use ($f, $s, $kind, $first, $color, $anesthesia, $area, $treat) {
+        $result = Db::i()->transaction(function () use ($f, $s, $kind, $first, $color, $anesthesia, $area, $treat, $uid) {
             // 送る直前にもう一度、その時刻が選べるか確かめる（書き込みの鍵を持ったまま）
             $pick = null;
             foreach (self::plan($treat, $first, $s)[$f['date']] ?? [] as $c) {
@@ -308,7 +358,8 @@ final class TattooBooking
                 '料金の目安：' . number_format(self::price($area)) . '円（税込・麻酔代別）',
                 '局所麻酔注射：' . ($anesthesia ? '希望あり' : '希望なし'),
                 $first ? ($nurse ? "初診説明：{$x}分（説明のレーン）" : "初診説明：{$x}分（この予約の最初）") : null,
-                'メール：' . $f['email'],
+                $f['email'] !== '' ? 'メール：' . $f['email'] : null,
+                $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                 $f['lineName'] !== '' ? 'LINEの表示名：' . $f['lineName'] : null,
                 $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
             ]));
@@ -321,6 +372,7 @@ final class TattooBooking
                 'startAt' => to_iso($f['date'], $mainStart),
                 'endAt' => to_iso($f['date'], $start + $treat),
                 'memo' => $memo,
+                'lineUserId' => $uid,
             ], self::ACTOR);
             if ($nurse) {
                 Store::bookingCreate([
@@ -330,7 +382,11 @@ final class TattooBooking
                     'startAt' => to_iso($f['date'], $start - $x),
                     'endAt' => to_iso($f['date'], $start),
                     'memo' => "タトゥー除去の初診説明（Web予約・日曜）\n照射はこのあと" . self::hm($start) . 'から（' . $treat . '分）',
+                    'lineUserId' => $uid,
                 ], self::ACTOR);
+            }
+            if ($uid !== null) {
+                Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（タトゥー除去の予約を LINE で）', self::ACTOR);
             }
             return ['ok' => true, 'end' => self::hm($start + $treat), 'id' => $r['id']];
         });
@@ -338,8 +394,13 @@ final class TattooBooking
             return $result;
         }
         $f += ['kind' => $kind, 'visit' => $visit, 'area' => $area, 'anesthesia' => $anesthesia, 'end' => $result['end']];
-        [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject($kind), self::mailBody($f)) : [false];
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'mailed' => (bool) $sent];
+        // 確定の連絡：LINE で開いた人は LINE へ（送れなければメールがあればメール）。それ以外はメール
+        [$lined] = $uid !== null ? Reminder::pushText($uid, self::mailBody($f)) : [false];
+        $sent = false;
+        if (!$lined && $f['email'] !== '') {
+            [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject($kind), self::mailBody($f)) : [false];
+        }
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::durationText($treat, $first), 'lined' => (bool) $lined, 'mailed' => (bool) $sent];
     }
 
     private static function num(float $a): string
@@ -364,13 +425,21 @@ final class TattooBooking
             "{$what}のご予約を承りました。",
             '',
             '日時：' . format_date_ja($f['date']) . " {$f['time']}〜{$f['end']}（ご来院は {$f['time']} までにお願いします）",
+            '所要時間：' . self::durationText(self::treatMinutes((float) $f['area']), $f['visit'] === 'first'),
             '区分：' . ($f['visit'] === 'first' ? '初診（照射の前にご説明があります）' : '再診'),
             '希望照射面積：' . self::num((float) $f['area']) . 'cm²',
             '料金の目安：1回 ' . number_format(self::price((float) $f['area'])) . '円（税込）' . ($f['anesthesia'] ? '＋局所麻酔注射 1ccあたり5,500円（税込）' : ''),
             '面積は当日に測り、照射の前に料金をお伝えします。',
-            $p['address'] !== '' ? '場所：' . $p['address'] : null,
+            $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
             '',
             'タトゥー・アートメイク除去は日曜日の診療です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なりますのでご注意ください。',
+            '',
+            '【ご来院前のお願い】',
+            self::SHAVE_NOTICE[$f['kind'] === 'artmake' ? 'artmake' : 'tattoo'],
+            '',
+            '【日曜日のご来院について】',
+            ...self::VISIT_NOTICE,
+            '',
             'ご予約の変更・キャンセルは、当院の LINE' . ($phone !== '' ? "、またはお電話（{$phone}）" : '') . 'でご連絡ください。',
             '',
             $p['publicName'],

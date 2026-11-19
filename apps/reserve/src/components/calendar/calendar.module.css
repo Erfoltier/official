@@ -3118,3 +3118,20 @@ button.stagePill[data-clickable]:disabled {
     url("../../app/themes/shell-light.webp") center / cover no-repeat, #f3eee2;
   box-shadow: inset 1px 0 0 #ffffff, inset 3px 0 6px -3px rgb(60 50 70 / 10%);
 }
+
+/* 押している間ずっと効く切り替え（オンラインの列を開く）。オンのときは決定ボタンと同じ色で反転させ、押されているのが一目で分かるように */
+.btn.toggleOn[aria-pressed="true"],
+.btn.toggleOn[aria-pressed="true"]:hover {
+  background: var(--grad, var(--accent));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-accent, none);
+}
+
+/* リンクの形のボタン（患者検索）も、ほかのボタンと同じ文字色に */
+a.btn,
+a.btn:visited {
+  color: var(--text);
+  text-decoration: none;
+}

@@ -1,3 +1,4 @@
+.tt-line{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#eaf7ee;color:#1b5e2a;font-size:.88rem}
 .tt-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .tt-empty{text-align:center;font-size:.86rem;color:var(--muted);margin:10px 0 0}
 #times .pill span{cursor:pointer}
@@ -16,3 +17,8 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-rect input{width:4.6em;min-width:0;padding:8px 10px;font-size:16px;border:1px solid #d9cfc8;border-radius:8px}
 .tt-area-result{margin:10px 0 0;font-size:.9rem;font-weight:600}
 .tt-area-result:empty{display:none}
+.tt-visit h2{margin:0 0 8px;font-size:1rem}
+.tt-visit h3{margin:14px 0 6px;font-size:.95rem}
+.tt-visit p{margin:6px 0;font-size:.88rem;line-height:1.7}
+#done .tt-visit{text-align:left;margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
+.tt-visit p + h2{margin-top:16px}

@@ -10,18 +10,21 @@ require __DIR__ . '/../../lib/bootstrap.php';
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
-header("Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
+// LINE の中で開いたとき（LIFF）の SDK と、LINE への確認の通信だけを許す
+header("Content-Security-Policy: default-src 'none'; script-src 'self' https://static.line-scdn.net; connect-src 'self' https://*.line.me https://*.line-scdn.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.line-scdn.net; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
 header_remove('X-Powered-By');
 
 try {
     $p = Store::publicInfo();
     $open = TattooBooking::ready();
+    $liffId = TattooBooking::settings()['liffId'];
 } catch (Throwable $e) {
-    $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => ''];
+    $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
+    $liffId = '';
     $open = false;
 }
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261117-1';
+$v = '20261119-1';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -67,6 +70,7 @@ $v = '20261117-1';
             <label class="pill"><input type="radio" name="visit" value="first"><span>はじめて</span></label>
             <label class="pill"><input type="radio" name="visit" value="repeat"><span>2回目以降</span></label>
           </div>
+          <small class="field-note">はじめての方は、照射の前にご説明（10分）があります</small>
         </fieldset>
 
         <div class="tt-area" id="area-box" hidden>
@@ -129,13 +133,23 @@ $v = '20261117-1';
         <label class="field"><span>フリガナ <em>必須</em></span><input name="kana" maxlength="60" placeholder="例：ヤマダ ハナコ"></label>
         <label class="field"><span>生年月日 <em>必須</em></span><input name="birthDate" type="date" min="1900-01-01"></label>
         <label class="field"><span>電話番号 <em>必須</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="例：09012345678"></label>
-        <label class="field"><span>メールアドレス <em>必須</em></span><input name="email" type="email" autocomplete="email" maxlength="200" placeholder="ご予約確定のメールをお送りします"></label>
+        <p class="tt-line" id="line-note" hidden>LINE で開いていただいたので、ご予約確定のご連絡はこの LINE にお送りします。</p>
+        <label class="field"><span id="email-label">メールアドレス <em>必須</em></span><input name="email" type="email" autocomplete="email" maxlength="200" placeholder="ご予約確定のメールをお送りします"></label>
         <label class="field"><span>LINEの表示名（任意）</span><input name="lineName" maxlength="60"></label>
         <label class="field"><span>ご相談・お伝えしたいこと（任意）</span><textarea name="notes" rows="3" maxlength="400"></textarea></label>
         <label class="tt-trap" aria-hidden="true">ウェブサイト<input name="website" tabindex="-1" autocomplete="off"></label>
 <?php if ($p['privacyUrl'] !== ''): ?>
         <p class="field-note">ご入力の内容は、<a href="<?= $h($p['privacyUrl']) ?>" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>に沿って取り扱います。</p>
 <?php endif; ?>
+      </section>
+
+      <section class="card tt-visit">
+        <h2>ご来院前のお願い</h2>
+        <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+        <h2>日曜日のご来院について</h2>
+<?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
+        <p><?= $h($line) ?></p>
+<?php endforeach; ?>
       </section>
 
       <div class="error-summary" id="error-summary" role="alert" hidden></div>
@@ -147,11 +161,24 @@ $v = '20261117-1';
       <h2>ご予約を承りました</h2>
       <p id="done-when"></p>
       <p id="done-mail"></p>
-<?php if (($p['address'] ?? '') !== ''): ?>
+      <div class="tt-visit">
+        <h3>ご来院前のお願い</h3>
+        <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+        <h3>日曜日のご来院について</h3>
+<?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
+        <p><?= $h($line) ?></p>
+<?php endforeach; ?>
+      </div>
+<?php if (($p['accessUrl'] ?? '') !== ''): ?>
+      <p>アクセス：<a href="<?= $h($p['accessUrl']) ?>" target="_blank" rel="noopener noreferrer"><?= $h($p['accessUrl']) ?></a></p>
+<?php elseif (($p['address'] ?? '') !== ''): ?>
       <p>場所：<?= $h($p['address']) ?></p>
 <?php endif; ?>
     </section>
-    <script type="module" src="./app.js?v=<?= $v ?>"></script>
+<?php if ($liffId !== ''): ?>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+<?php endif; ?>
+    <script type="module" src="./app.js?v=<?= $v ?>" data-liff="<?= $h($liffId) ?>"></script>
 <?php endif; ?>
   </main>
 </body>
