@@ -24,7 +24,7 @@ try {
     $open = false;
 }
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261119-1';
+$v = '20261119-2';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -150,6 +150,10 @@ $v = '20261119-1';
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
         <p><?= $h($line) ?></p>
 <?php endforeach; ?>
+        <h2>キャンセル・日程変更にかかる料金規定</h2>
+<?php foreach (TattooBooking::CANCEL_POLICY as $line): ?>
+        <p><?= $h($line) ?></p>
+<?php endforeach; ?>
       </section>
 
       <div class="error-summary" id="error-summary" role="alert" hidden></div>
@@ -166,6 +170,10 @@ $v = '20261119-1';
         <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
         <h3>日曜日のご来院について</h3>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
+        <p><?= $h($line) ?></p>
+<?php endforeach; ?>
+        <h3>キャンセル・日程変更にかかる料金規定</h3>
+<?php foreach (TattooBooking::CANCEL_POLICY as $line): ?>
         <p><?= $h($line) ?></p>
 <?php endforeach; ?>
       </div>

@@ -29,6 +29,14 @@ final class TattooBooking
         'tattoo' => '照射部位の産毛は、ご来院前にご自身で剃ってきてください。',
         'artmake' => '眉の周りの産毛は、ご来院前にご自身で剃ってきてください（眉毛そのものは剃らないでください）。',
     ];
+    /** キャンセル・日程変更にかかる料金規定（ホームページの料金ページ https://ishidahihuka.jp/service/price/ の「注意事項」と同じ文。院長 11/19） */
+    public const CANCEL_POLICY = [
+        '前々日の14時まで：無料',
+        '前々日14時～前日：施術料金の20％、または施術予定メニューが決まっていない方は3,000円',
+        '当日：施術料金の50％、または施術予定メニューが決まっていない方は8,000円。コース契約中の方は1回分消化',
+        '悪質なキャンセルや無断キャンセルは、次回以降のご予約をお断りします。',
+        'キャンセル料は次回来院時にお支払いください。',
+    ];
     /** 予約ページ（除去するものを選ぶ前にも出す）の文 */
     public const SHAVE_NOTICE_PAGE = '照射部位の産毛は、ご来院前にご自身で剃ってきてください。眉のアートメイクの方は眉の周りの産毛だけを剃り、眉毛そのものは剃らないでください。';
 
@@ -252,6 +260,11 @@ final class TattooBooking
             if ($start >= $gs && $start + $treat <= $ge && $start - $x >= $ws && !self::overlaps($nurseBusy, $start - $x, $start)) {
                 return [$start - $x, $start, true];
             }
+            // 空きの最初で、直前に説明を取れない（受付の始まり・説明のレーンが埋まっている）ときも、説明は説明のレーンで取り、
+            // 照射はその後ろから（照射のレーンの最初の10分は空く。院長 11/19「まず1番レーンで説明10分、その後メインで照射」）
+            if ($side === 'front' && $gs + $x + $treat <= $ge && !self::overlaps($nurseBusy, $gs, $gs + $x)) {
+                return [$gs, $gs + $x, true];
+            }
         }
         // 再診、または説明も照射のレーンで取る初診
         $len = $treat + ($first ? $x : 0);
@@ -441,6 +454,9 @@ final class TattooBooking
             ...self::VISIT_NOTICE,
             '',
             'ご予約の変更・キャンセルは、当院の LINE' . ($phone !== '' ? "、またはお電話（{$phone}）" : '') . 'でご連絡ください。',
+            '',
+            '【キャンセル・日程変更にかかる料金規定】',
+            ...self::CANCEL_POLICY,
             '',
             $p['publicName'],
         ], fn($l) => $l !== null));
