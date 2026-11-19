@@ -138,10 +138,12 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-13:00`] });
     const presets = (await c.get("/settings")).clinic.sundayMenus;
-    expect(presets.find((x: any) => x.id === "fillroad")).toMatchObject({ flow: true, creamMinutes: 25, injectionMinutes: 20, anesLaneIds: ["lane-4"], repeatLaneIds: [L1, L3], machine: "インナーフィル" });
-    expect(presets.find((x: any) => x.id === "tranestamp")).toMatchObject({ creamMinutes: 20, injectionMinutes: 15 });
-    // ジュブアセル・リトゥオは時間が空なので、そのままオンにはできない
-    await expect(c.patch("/clinic", { sundayMenus: presets.map((x: any) => (x.id === "juveacell" ? { ...x, enabled: true } : x)) })).rejects.toThrow(/施術の時間/);
+    expect(presets.find((x: any) => x.id === "fillroad")).toMatchObject({ flow: true, creamMinutes: 20, injectionMinutes: 20, anesLaneIds: ["lane-4"], repeatLaneIds: [L1, L3], machine: "インナーフィル" });
+    expect(presets.find((x: any) => x.id === "tranestamp")).toMatchObject({ creamMinutes: 20, injectionMinutes: 20 });
+    expect(presets.find((x: any) => x.id === "juveacell")).toMatchObject({ creamMinutes: 30, injectionMinutes: 30 });
+    expect(presets.find((x: any) => x.id === "re2o")).toMatchObject({ creamMinutes: 30, injectionMinutes: 30, repeatLaneIds: [MAIN] });
+    // 施術の時間が空ならオンにできない
+    await expect(c.patch("/clinic", { sundayMenus: presets.map((x: any) => (x.id === "juveacell" ? { ...x, enabled: true, creamMinutes: 0 } : x)) })).rejects.toThrow(/施術の時間/);
     await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (["fillroad", "pinkglow"].includes(x.id) ? { ...x, enabled: true } : x)) });
     const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
     expect(html).toContain('value="m:fillroad"');
@@ -149,7 +151,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const q = (st: string, an: string) => `item=fillroad&visit=repeat&status=${st}&anesthesia=${an}`;
     // 院内の麻酔クリーム：施術は 1番の 10:55〜（麻酔 10:00〜10:10 の45分後）。受付の始まりより前に麻酔は取れない
     expect((await slots(q("continue", "cream"))).slots[day]).toEqual(["10:00"]);
-    expect((await slots(q("continue", "cream"))).duration).toBe("麻酔クリームのあと約45分お待ちいただき施術（施術は約25分）");
+    expect((await slots(q("continue", "cream"))).duration).toBe("麻酔クリームのあと約45分お待ちいただき施術（施術は約20分）");
     // 麻酔の注射：待ちなし・注射の時間
     expect(await slots(q("continue", "injection"))).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "約20分" });
     expect((await book(person(day, "10:00", { item: "fillroad", status: "continue", anesthesiaType: "" }))).data.fields).toContain("flow");
@@ -159,17 +161,17 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const neobo = rs.find((r: any) => r.laneId === "lane-4");
     const treat = rs.find((r: any) => r.laneId === L1);
     expect([neobo.startAt, neobo.endAt, neobo.menuIds]).toEqual([toIso(day, 600), toIso(day, 615), ["menu-s0000B6B52"]]);
-    expect([treat.startAt, treat.endAt, treat.menuIds]).toEqual([toIso(day, 660), toIso(day, 685), ["menu-s0000B6EB7"]]);
+    expect([treat.startAt, treat.endAt, treat.menuIds]).toEqual([toIso(day, 660), toIso(day, 680), ["menu-s0000B6EB7"]]);
     expect(treat.memo).toContain("モニター");
     expect(treat.memo).toContain("麻酔：院内の麻酔クリーム");
-    // この治療は初めて・麻酔の注射：待ちなしで施術、最初の10分にメインで医師の診察。インナーフィルは1番と3番で同じ時刻に入れない（1番 11:00〜11:25 と重ならない）
+    // この治療は初めて・麻酔の注射：待ちなしで施術、最初の10分にメインで医師の診察。インナーフィルは1番と3番で同じ時刻に入れない（1番 11:00〜11:20 と重ならない）
     expect((await book(person(day, "10:00", { item: "pinkglow", status: "new", anesthesiaType: "injection" }, "09012120000"))).status).toBe(201);
     rs = await on();
     const doc = rs.find((r: any) => r.laneId === MAIN);
     const glow = rs.filter((r: any) => r.laneId === L1 || r.laneId === L3).find((r: any) => r.memo.includes("ピンクグロー"));
     expect([glow.startAt, glow.endAt]).toEqual([toIso(day, 600), toIso(day, 620)]);
     expect([doc.startAt, doc.endAt]).toEqual([toIso(day, 600), toIso(day, 610)]);
-    // 1番で 11:00〜11:25 にフィルロードがあるので、3番の空きでも 11:00 からの施術は出さない
+    // 1番で 11:00〜11:20 にフィルロードがあるので、3番の空きでも 11:00 からの施術は出さない
     const next = (await slots(q("continue", "injection"))).slots[day];
     expect(next).not.toContain("11:00");
   });

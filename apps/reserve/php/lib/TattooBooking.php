@@ -135,8 +135,7 @@ final class TattooBooking
             ],
             'countPerMinute' => 0, 'maxMinutes' => 0,
         ];
-        // 麻酔つきの注入（フィル・TAピンクの時間はシート1。機械打ち 麻クリ20／注射15、手打ち 麻クリ25／注射20。どちらで打つか分からないので長い手打ちで。
-        // スタンプ注射はシートに時間がないので機械打ちの時間。ジュブアセル・リトゥオはシートに時間がないので空〈入れるまでオンにできない〉。リトゥオは医師のみ）
+        // 麻酔つきの注入（院長 11/19：スタンプ系〈フィルロード・TAピンク・ピンクグロー・トラネキサム酸スタンプ〉の施術は麻酔によらず20分、ジュブアセル・リトゥオは30分。リトゥオは医師のみ）
         $flow = fn(string $id, string $name, array $treatLanes, string $treatMenu, int $cream, int $inj, string $machine) => [
             'id' => $id, 'name' => $name, 'enabled' => false,
             'firstMinutes' => 20, 'firstLaneIds' => $lane([self::M]), 'firstMenuId' => $menu(self::CONSULT),
@@ -145,12 +144,12 @@ final class TattooBooking
             'flow' => true, 'creamMinutes' => $cream, 'injectionMinutes' => $inj, 'anesLaneIds' => $lane(['lane-4']),
             'creamMenuId' => $menu(self::MEMO), 'neoboMenuId' => $menu('menu-s0000B6B52'), 'doctorMenuId' => $menu(self::MEMO), 'doctorLaneId' => in_array(self::M, $lanes, true) ? self::M : '',
         ];
-        $out[] = $flow('fillroad', 'フィルロード', self::N, 'menu-s0000B6EB7', 25, 20, 'インナーフィル');
-        $out[] = $flow('tapink', 'トラネ＋ピンク（TAピンク）', self::N, 'menu-s0000B6EB5', 25, 20, 'インナーフィル');
-        $out[] = $flow('pinkglow', 'ピンクグロー', self::N, 'menu-s0000B6EB5', 25, 20, 'インナーフィル');
-        $out[] = $flow('tranestamp', 'トラネキサム酸スタンプ注射', self::N, 'menu-s0000B6EB5', 20, 15, 'インナーフィル');
-        $out[] = $flow('juveacell', 'ジュブアセル', self::N, 'menu-s0000D0B81', 0, 0, 'インナーフィル');
-        $out[] = $flow('re2o', 'リトゥオ', [self::M], 'menu-s0000D14AA', 0, 0, '');
+        $out[] = $flow('fillroad', 'フィルロード', self::N, 'menu-s0000B6EB7', 20, 20, 'インナーフィル');
+        $out[] = $flow('tapink', 'トラネ＋ピンク（TAピンク）', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
+        $out[] = $flow('pinkglow', 'ピンクグロー', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
+        $out[] = $flow('tranestamp', 'トラネキサム酸スタンプ注射', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
+        $out[] = $flow('juveacell', 'ジュブアセル', self::N, 'menu-s0000D0B81', 30, 30, 'インナーフィル');
+        $out[] = $flow('re2o', 'リトゥオ', [self::M], 'menu-s0000D14AA', 30, 30, '');
         $out[] = [
             'id' => 'needlehair', 'name' => '針脱毛（2回目以降）', 'enabled' => false,
             'firstMinutes' => 15, 'firstLaneIds' => [], 'firstMenuId' => '',
