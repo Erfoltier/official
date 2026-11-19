@@ -563,7 +563,9 @@ export function TattooCard({
   const bad = lines.find((l) => !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}\s*[-〜～]\s*\d{1,2}:\d{2}$/.test(l));
   const activeLanes = (id: string) => lanes.filter((l) => l.active || l.id === id);
   const laneMenus = (lane: string, id: string) => menus.filter((m) => (m.active && (m.laneIds ?? []).includes(lane)) || m.id === id);
-  // タトゥー・アートメイクをオンにするなら照射のレーンとメニューが要る
+  // カレンダーの枠には名前（小さい枠は略称）が出るので、略称が違えば並べて見せる
+  const menuLabel = (m: { name: string; abbr?: string }) => (m.abbr && m.abbr !== m.name ? `${m.name}（略：${m.abbr}）` : m.name);
+  // タトゥー・アートメイクをオンにするなら照射のレーンとカレンダーでの表示名（メニュー）が要る
   const missing = (tattooOn || artmakeOn) && (!laneId || !menuId);
   const save = async () => {
     setBusy(true);
@@ -639,54 +641,64 @@ export function TattooCard({
           warn: tattooOn && missing,
           detail: (
             <>
-                <label className={styles.field}>
-                  <span>照射のレーン（タトゥー・アートメイク共通）</span>
-                  <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
-                    <option value="">（選ばない）</option>
-                    {activeLanes(laneId).map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  <span>照射のメニュー（予約に付ける。照射のレーンで使えるメニュー）</span>
-                  <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
-                    <option value="">（選ばない）</option>
-                    {laneMenus(laneId, menuId).map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  <span>初診説明のレーン（照射の直前の10分。空いていなければ照射のレーンに続けて取ります）</span>
-                  <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
-                    <option value="">（使わない：説明も照射のレーンで取る）</option>
-                    {activeLanes(explainLaneId)
-                      .filter((l) => l.id !== laneId)
-                      .map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                {explainLaneId && (
-                  <label className={styles.field}>
-                    <span>初診説明のメニュー（選ばなければ照射のメニューを付けます）</span>
-                    <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit}>
-                      <option value="">（選ばない）</option>
-                      {laneMenus(explainLaneId, explainMenuId).map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
+                  <span style={{ fontWeight: 700 }}>初診説明（はじめての方。照射の直前の10分）</span>
+                  <div className={styles.timeRow}>
+                    <label className={styles.field}>
+                      <span>レーン</span>
+                      <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
+                        <option value="">（使わない：説明も照射のレーンで）</option>
+                        {activeLanes(explainLaneId)
+                          .filter((l) => l.id !== laneId)
+                          .map((l) => (
+                            <option key={l.id} value={l.id}>
+                              {l.name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className={styles.field}>
+                      <span>カレンダーでの表示名</span>
+                      <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit || !explainLaneId}>
+                        <option value="">（選ばない）</option>
+                        {laneMenus(explainLaneId, explainMenuId).map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {menuLabel(m)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <p className={styles.hint} style={{ gridColumn: "1 / -1", margin: 0 }}>説明のレーンが空いていなければ、照射のレーンに続けて取ります。説明の表示名を選ばなければ、照射と同じ表示名です。</p>
+                <hr style={{ gridColumn: "1 / -1", border: 0, borderTop: "1px solid var(--line-strong)", margin: "4px 0", width: "100%" }} />
+                <div className={styles.field} style={{ gridColumn: "1 / -1" }}>
+                  <span style={{ fontWeight: 700 }}>照射（タトゥー・アートメイク共通）</span>
+                  <div className={styles.timeRow}>
+                    <label className={styles.field}>
+                      <span>レーン</span>
+                      <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
+                        <option value="">（選ばない）</option>
+                        {activeLanes(laneId).map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.field}>
+                      <span>カレンダーでの表示名</span>
+                      <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
+                        <option value="">（選ばない）</option>
+                        {laneMenus(laneId, menuId).map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {menuLabel(m)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
                 <label className={styles.field}>
                   <span>照射に使う機器の名前（任意。下の日曜メニューで同じ名前を入れたものとは、レーンが違っても同じ時刻に入れません）</span>
                   <input className={styles.input} value={machine} maxLength={30} onChange={(ev) => setMachine(ev.target.value)} disabled={!canEdit} placeholder="例：ピコレーザー" />
@@ -705,7 +717,7 @@ export function TattooCard({
           setOn: setArtmakeOn,
           about: `［${removalCategory.trim() || "除去・レーザー"}］時間は面積で自動（眉は左右の合計）`,
           warn: artmakeOn && missing,
-          detail: <p className={styles.hint}>照射のレーン・メニュー・初診説明・機器は、タトゥー除去と共通です（タトゥー除去の設定で変えます）。</p>,
+          detail: <p className={styles.hint}>照射・初診説明のレーンとカレンダーでの表示名・機器は、タトゥー除去と共通です（タトゥー除去の設定で変えます）。</p>,
         },
       ]} />
       <p className={styles.hint} data-invalid={bad || badLiff || badItem || missing || (enabled && mail === false) || undefined}>
@@ -716,7 +728,7 @@ export function TattooCard({
           : bad
           ? `受付日時の形が正しくありません：${bad}`
           : missing
-            ? "タトゥー・アートメイク除去をオンにするときは、照射のレーンとメニューを選んでください。"
+            ? "タトゥー・アートメイク除去をオンにするときは、照射のレーンとカレンダーでの表示名を選んでください。"
             : enabled && mail === false
               ? "メールの送信元が未設定のため、確定のメールを送れません（設定 → リマインド）。"
               : info?.url
