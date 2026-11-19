@@ -533,7 +533,7 @@ export function TattooCard({
   clinic: ClinicSettings;
   lanes: Lane[];
   menus: Menu[];
-  info?: { url: string; lineUrl?: string };
+  info?: { url: string; lineUrl?: string; preview?: string };
   mail?: boolean;
   canEdit: boolean;
   onChanged: () => Promise<void>;
@@ -615,7 +615,20 @@ export function TattooCard({
       </label>
       </div>
 
-      <h4 className={styles.subTitle}>日曜メニュー</h4>
+      <div className={styles.sundayTitle}>
+        <h4 className={styles.subTitle}>日曜メニュー</h4>
+        {info?.preview && (
+          <span className={styles.sundayMove}>
+            <button type="button" onClick={() => window.open(info.preview, "tt-preview", "width=430,height=880")}>
+              患者さんの画面をプレビュー
+            </button>
+            <button type="button" onClick={() => window.open(`${info.preview}&all=1`, "tt-preview", "width=430,height=880")}>
+              オフも含めてプレビュー
+            </button>
+          </span>
+        )}
+      </div>
+      {info?.preview && <p className={styles.hint}>プレビューは保存した設定で出ます（変えたら先に保存）。プレビューからは予約できません。</p>}
       <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} order={order} setOrder={setOrder} fixed={[
         {
           key: "tattoo",
@@ -1149,7 +1162,7 @@ function SundayMenusEditor({
               {r.warn && <span className={styles.sundayWarn}>要設定</span>}
             </li>
           ))}
-          {canEdit && items.length < 40 && (
+          {canEdit && items.length < 60 && (
             <li className={styles.sundayAdd}>
               <button type="button" onClick={() => { const it = emptySundayMenu(); setItems([...items, it]); setSel(it.id); }}>
                 ＋ 日曜メニューを足す

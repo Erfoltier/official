@@ -319,4 +319,43 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     `);
     expect(out).toBe("注射・注入");
   });
+  it("見本（すべてオフ）は、そのまま保存できる。分類も入っている", async () => {
+    const day = nextSunday();
+    await open(day);
+    const out = await h.srv.php(`
+      $p = TattooBooking::presets();
+      [$lanes, $menus] = Store::laneAndMenuIds();
+      $n = TattooBooking::normalizeItems($p, $lanes, $menus);
+      return ['count' => count($n), 'on' => count(array_filter($n, fn($x) => $x['enabled'])), 'noCat' => array_values(array_map(fn($x) => $x['id'], array_filter($n, fn($x) => $x['category'] === ''))), 'cats' => array_values(array_unique(array_column($n, 'category'))), 'oral' => in_array('oral', array_column($n, 'id'), true)];
+    `);
+    expect(out.count).toBe(40);
+    expect(out.on).toBe(0);
+    expect(out.noCat).toEqual([]);
+    expect(out.oral).toBe(false);
+    expect(out.cats).toEqual(expect.arrayContaining(["注射・注入", "除去・レーザー", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服"]));
+  });
+  it("プレビュー：設定を読めるスタッフに渡す印で、受け付けがオフでも患者の画面を開ける。オフのメニューも出せる。予約は送れない", async () => {
+    const day = nextSunday();
+    const c = await open(day, { tattooEnabled: false, sundayMenus: [botox, { ...peel, enabled: false }] });
+    // 設定の画面には、予約ページのアドレスがあるときだけプレビューのアドレスを渡す（この試験の環境にはない）
+    expect((await c.get("/settings")).tattoo.preview).toBe("");
+    const page = async (q: string) => (await fetch(`${h.srv.base}/monshin/tattoo/${q}`)).text();
+    const token = (await h.srv.php(`return TattooBooking::previewToken();`)) as string;
+    expect(token).toMatch(/^\d{10}\.[A-Za-z0-9_-]+$/);
+    // 印がないと、受け付けオフの画面
+    expect(await page("")).toContain("受け付けておりません");
+    expect(await page("?preview=1234567890.abcdefghijklmnopqrstuvwxyz")).toContain("受け付けておりません");
+    // 印があれば、オンのメニューで開く
+    const on = await page(`?preview=${token}`);
+    expect(on).toContain("プレビュー（院のスタッフ用）");
+    expect(on).toContain('value="m:botox01"');
+    expect(on).not.toContain('value="m:peel0001"');
+    expect(on).toContain('data-preview="1"');
+    // オフも含めて
+    const all = await page(`?preview=${token}&all=1`);
+    expect(all).toContain('value="m:peel0001"');
+    // 期限切れは開かない
+    const out = await h.srv.php(`return [TattooBooking::previewValid(TattooBooking::previewToken(time() - 8000)), TattooBooking::previewValid(TattooBooking::previewToken())];`);
+    expect(out).toEqual([false, true]);
+  });
 });

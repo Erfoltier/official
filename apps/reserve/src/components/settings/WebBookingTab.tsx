@@ -19,7 +19,7 @@ export function WebBookingTab({
   clinic: ClinicSettings;
   lanes: Lane[];
   menus: Menu[];
-  tattoo?: { url: string; lineUrl?: string };
+  tattoo?: { url: string; lineUrl?: string; preview?: string };
   mail?: boolean;
   canEdit: boolean;
   onChanged: () => Promise<void>;

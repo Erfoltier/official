@@ -325,7 +325,7 @@ export interface SettingsData {
   /** オンラインカウンセリングの Web 予約ページのアドレス・メールを送れるか */
   onlineCs?: { url: string; mail: boolean };
   /** タトゥー・アートメイク除去（日曜）の Web 予約ページのアドレス */
-  tattoo?: { url: string; lineUrl?: string };
+  tattoo?: { url: string; lineUrl?: string; preview?: string };
 }
 
 export interface HomepageDays {

@@ -297,6 +297,7 @@ form.addEventListener('change', (e) => { if (e.target.name === 'cat') { syncCats
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (form.dataset.preview) { showErrors(['プレビューのため、予約は送れません']); return; }
   const fd = new FormData(form);
   const body = Object.fromEntries(['kind', 'visit', 'color', 'part', 'anesthesia', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
   const item = itemInput();

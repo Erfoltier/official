@@ -23,7 +23,7 @@ final class TattooBooking
     /** 1辺の上限（cm）と、1か所の面積の上限（cm²） */
     private const MAX_SIDE = 100.0;
     /** 日曜メニューの数の上限と、1回の時間の上限（分） */
-    public const MAX_ITEMS = 40;
+    public const MAX_ITEMS = 60;
     private const MAX_ITEM_MINUTES = 180;
     /** 日曜のご来院の案内（院長の文面 11/18）。予約ページ・確定メール・リマインド（タトゥー除去のメニューの予約）で同じ文を出す */
     public const VISIT_NOTICE = [
@@ -88,6 +88,11 @@ final class TattooBooking
         'hokuro' => '除去・レーザー', 'dyelaser' => '除去・レーザー', 'isotretinoin' => '内服', 'zoskin' => 'ゼオスキン',
         'tcapeel' => 'ピーリング', 'amalfi' => 'ピーリング', 'massagepeel' => 'ピーリング', 'milano' => 'ピーリング', 'salicylic' => 'ピーリング',
         'laserhair' => '脱毛', 'needlehair' => '脱毛',
+        // 11/19 追加（院長「全部日曜に入れて。オンオフはこっちで」。すべてオフ）
+        'dermapen' => 'ダーマペン', 'velvet' => 'ダーマペン', 'supervelvet' => 'ダーマペン',
+        'co2frac' => '除去・レーザー', 'qruby' => '除去・レーザー', 'tightening' => '除去・レーザー', 'spotmonitor' => '除去・レーザー',
+        'hifu' => 'たるみ', 'mouthsag' => 'たるみ', 'sagging' => 'たるみ', 'marionette' => 'たるみ', 'neckwrinkle' => 'たるみ', 'ponyorin' => 'たるみ',
+        'scalp' => '薄毛', 'agafaga' => '薄毛',
     ];
     private const M = 'lane-main';
     private const N = ['lane-1', 'lane-3'];
@@ -170,6 +175,45 @@ final class TattooBooking
         $out[] = $flow('tranestamp', 'トラネキサム酸スタンプ注射', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
         $out[] = $flow('juveacell', 'ジュブアセル', self::N, 'menu-s0000D0B81', 30, 30, 'インナーフィル');
         $out[] = $flow('re2o', 'リトゥオ', [self::M], 'menu-s0000D14AA', 30, 30, '');
+        // ダーマペン系・炭酸ガス（予約エンジンルール「複合/麻酔施術」：麻酔クリーム10分の40〜60分後に施術。ダーマペン系は共通機器でレーン横断の重複禁止。炭酸ガスの施術はメイン）。
+        // 施術時間：ヴェルヴェット・スーパーヴェルヴェットは時間表の20分、ダーマペンは30分（自由10〜90分のため仮。オンにする前に確かめる）、炭酸ガスは全顔15分
+        $out[] = $flow('dermapen', 'ダーマペン', self::N, 'menu-x093', 30, 30, 'ダーマペン');
+        $out[] = $flow('velvet', 'ヴェルヴェットスキン', self::N, 'menu-x036', 20, 20, 'ダーマペン');
+        $out[] = $flow('supervelvet', 'スーパーヴェルヴェットスキン', self::N, 'menu-x037', 20, 20, 'ダーマペン');
+        $out[] = $flow('co2frac', '炭酸ガスフラクショナル', [self::M], 'menu-s0000A7D2D', 15, 15, '炭酸ガス');
+        // 決まった時間のもの（時間表・公開治療メニュー照合から。初診は医師の診察だけ）
+        $fixed = fn(string $id, string $name, int $fm, string $fmenu, int $rm, array $rl, string $rmenu, string $machine = '') => [
+            'id' => $id, 'name' => $name, 'enabled' => false,
+            'firstMinutes' => $fm, 'firstLaneIds' => $fm > 0 ? $lane([self::M]) : [], 'firstMenuId' => $fm > 0 ? $menu($fmenu) : '',
+            'repeatMinutes' => $rm, 'repeatLaneIds' => $rm > 0 ? $lane($rl) : [], 'repeatMenuId' => $rm > 0 ? $menu($rmenu) : '',
+            'machine' => $machine, 'note' => '', 'partGroups' => [], 'countPerMinute' => 0, 'maxMinutes' => 0,
+        ];
+        $out[] = $fixed('qruby', 'Qスイッチルビーレーザー', 20, self::CONSULT, 20, [self::M], 'menu-x103');
+        $out[] = $fixed('tightening', 'レーザーシャワー・タイトニングレーザー', 20, self::CONSULT, 15, self::N, 'menu-x030', '脱毛レーザー');
+        $out[] = $fixed('spotmonitor', 'シミ・くすみ・肝斑の集中治療モニター', 20, 'menu-x018', 15, [self::M], 'menu-x028');
+        $out[] = $fixed('mouthsag', '口元たるみ集中治療', 20, 'menu-mw7qa5ak-95be93', 30, [self::M], 'menu-x099');
+        $out[] = $fixed('sagging', 'たるみ治療', 20, 'menu-mw7qa5ak-95be93', 0, [], '');
+        $out[] = $fixed('marionette', 'マリオネットライン治療', 30, 'menu-s00009A0D8', 20, [self::M], 'menu-s00009A0D8');
+        $out[] = $fixed('neckwrinkle', '首のしわ治療', 20, 'menu-mw7qa5ak-95be93', 0, [], '');
+        $out[] = $fixed('ponyorin', 'ぽにょりん', 20, self::CONSULT, 0, [], '');
+        $out[] = $fixed('scalp', '頭皮注射（毛髪成長因子）', 20, 'menu-x013', 15, [self::M], 'menu-x027');
+        // AGA・FAGA：初診は「保険の日に案内」（時間表）なので受けない。再診の薬の相談15分だけ
+        $out[] = $fixed('agafaga', 'AGA・FAGA（お薬の再診）', 0, '', 15, [self::M], 'menu-x101');
+        // ハイフ（時間表）：初めては看護師のカウンセリング15分を足す。コース×部位の時間。オーダーメイドは各部位＋15分。脱毛とは別機械
+        $hifu = [['顔＋顎下', 45, 30], ['顔', 30, 20], ['頬', 15, 10], ['顎下', 15, 10], ['首', 15, 10]];
+        $out[] = [
+            'id' => 'hifu', 'name' => 'ハイフ', 'enabled' => false,
+            'firstMinutes' => 15, 'firstLaneIds' => $lane(self::N), 'firstMenuId' => $menu('menu-x041'),
+            'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000C0E47'),
+            'machine' => 'ハイフ', 'note' => '',
+            'partGroups' => [
+                ['name' => 'スタンダード・引き締め', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[1]], $hifu)],
+                ['name' => 'オーダーメイド', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[1] + 15], $hifu)],
+                ['name' => 'ライト', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[2]], $hifu)],
+                ['name' => '頬または顎下の脂肪集中', 'parts' => [['name' => '1部位', 'minutes' => 15]]],
+            ],
+            'countPerMinute' => 0, 'maxMinutes' => 0,
+        ];
         $out[] = [
             'id' => 'needlehair', 'name' => '針脱毛（2回目以降）', 'enabled' => false,
             'firstMinutes' => 15, 'firstLaneIds' => [], 'firstMenuId' => '',
@@ -560,6 +604,45 @@ final class TattooBooking
     {
         $id = self::settings()['liffId'];
         return $id !== '' ? 'https://liff.line.me/' . $id : '';
+    }
+
+    /**
+     * 設定画面のプレビュー（院長 11/19）：患者の画面を、受け付けがオフでも開いて見られる期限つきの印（2時間）。
+     * 予約ページとは別のサイトなのでログインの Cookie は届かない。印は session_secret で署名し、設定を読めるスタッフにだけ渡す
+     */
+    public static function previewToken(?int $now = null): string
+    {
+        $exp = ($now ?? time()) + 7200;
+        return $exp . '.' . b64url(hash_hmac('sha256', "tattoo-preview|{$exp}", self::previewSecret(), true));
+    }
+
+    public static function previewValid(string $token, ?int $now = null): bool
+    {
+        if (!preg_match('/^(\d{10})\.([A-Za-z0-9_-]{20,64})$/', $token, $m) || (int) $m[1] < ($now ?? time())) {
+            return false;
+        }
+        return hash_equals(b64url(hash_hmac('sha256', "tattoo-preview|{$m[1]}", self::previewSecret(), true)), $m[2]);
+    }
+
+    private static function previewSecret(): string
+    {
+        $s = (string) (config()['session_secret'] ?? '');
+        if (strlen($s) < 32) {
+            throw new RuntimeException('session_secret がありません');
+        }
+        return $s;
+    }
+
+    /** プレビューで見る設定：受け付けをオンにしたことにする。$all ならオフのメニューも出す */
+    public static function previewSettings(bool $all): array
+    {
+        $s = self::settings();
+        $s['enabled'] = true;
+        if ($all) {
+            $s['tattooOn'] = $s['artmakeOn'] = true;
+            $s['items'] = array_map(fn($it) => ['enabled' => true] + $it, array_map(fn($it) => array_diff_key($it, ['enabled' => 1]), $s['items']));
+        }
+        return $s;
     }
 
     /** 公開ページのアドレス（問診票のアドレスと同じサイトの /tattoo/） */

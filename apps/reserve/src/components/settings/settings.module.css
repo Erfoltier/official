@@ -1473,3 +1473,10 @@ details.fold:not([open]) {
   gap: 6px;
   margin-left: auto;
 }
+
+.sundayTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}

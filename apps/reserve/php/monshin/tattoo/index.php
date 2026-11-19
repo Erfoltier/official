@@ -14,14 +14,18 @@ header('Referrer-Policy: same-origin');
 header("Content-Security-Policy: default-src 'none'; script-src 'self' https://static.line-scdn.net; connect-src 'self' https://*.line.me https://*.line-scdn.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.line-scdn.net; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
 header_remove('X-Powered-By');
 
+$preview = false;
 try {
     $p = Store::publicInfo();
-    $open = TattooBooking::open();
-    $tattooOn = TattooBooking::ready();
-    $kindTattoo = TattooBooking::kindOn('tattoo');
-    $kindArtmake = TattooBooking::kindOn('artmake');
-    $items = TattooBooking::publicItems();
-    $menus = TattooBooking::publicMenus();
+    // 設定画面のプレビュー：受け付けがオフでも開く（?all=1 ならオフのメニューも）。予約は送れない
+    $preview = TattooBooking::previewValid((string) ($_GET['preview'] ?? ''));
+    $s = $preview ? TattooBooking::previewSettings(($_GET['all'] ?? '') === '1') : TattooBooking::settings();
+    $open = TattooBooking::open($s);
+    $tattooOn = TattooBooking::ready($s);
+    $kindTattoo = TattooBooking::kindOn('tattoo', $s);
+    $kindArtmake = TattooBooking::kindOn('artmake', $s);
+    $items = TattooBooking::publicItems($s);
+    $menus = TattooBooking::publicMenus($s);
     $liffId = TattooBooking::settings()['liffId'];
 } catch (Throwable $e) {
     $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
@@ -69,7 +73,10 @@ $v = '20261119-3';
 <?php if (!$open): ?>
     <div class="notice" role="note"><strong>現在、日曜日のご予約は受け付けておりません。</strong></div>
 <?php else: ?>
-    <form id="tt-form" novalidate>
+<?php if ($preview): ?>
+    <div class="notice tt-preview" role="note"><strong>プレビュー（院のスタッフ用）</strong><span>患者さんに見える画面です。ここからは予約できません。<?= ($_GET['all'] ?? '') === '1' ? 'オフのメニューも出しています。' : 'オンのメニューだけを出しています。' ?>日時は、受付日時と今の空きのとおりに出ます。</span></div>
+<?php endif; ?>
+    <form id="tt-form" novalidate<?= $preview ? ' data-preview="1"' : '' ?>>
       <section class="card">
         <div class="section-heading">
           <span class="step">1</span>

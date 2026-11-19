@@ -1237,7 +1237,7 @@ final class Store
     public static function getSettings(): array
     {
         // 日曜メニューは、まだ保存していなければプリセット（予約枠時間一覧から。すべてオフ）を出す
-        return ['clinic' => [...self::clinic(), 'sundayMenus' => TattooBooking::settings()['items']], 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl(), 'lineUrl' => TattooBooking::liffUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
+        return ['clinic' => [...self::clinic(), 'sundayMenus' => TattooBooking::settings()['items']], 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl(), 'lineUrl' => TattooBooking::liffUrl(), 'preview' => TattooBooking::pageUrl() !== '' ? TattooBooking::pageUrl() . '?preview=' . TattooBooking::previewToken() : ''], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
