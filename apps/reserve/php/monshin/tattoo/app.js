@@ -1,4 +1,5 @@
-// タトゥー・アートメイク除去（日曜）の Web 予約ページ。面積と初診・再診から、選べる日と来院の時刻を読み、予約する
+// 日曜の Web 予約ページ。タトゥー・アートメイク除去は面積と初診・再診から、日曜メニュー（院が許可した施術）は初診・再診から、
+// 選べる日と来院の時刻を読み、予約する
 const form = document.querySelector('#tt-form');
 const grid = document.querySelector('#calendar-grid');
 const title = document.querySelector('#calendar-title');
@@ -32,40 +33,75 @@ function rects() {
   if (kind === 'artmake' && a1 && b1) out.push([a1, b1]);
   return out;
 }
+/** 選んだ日曜メニュー（タトゥー以外）のラジオボタン。タトゥー・アートメイクなら null */
+const itemInput = () => {
+  const el = form.querySelector('input[name="kind"]:checked');
+  return el && el.value.startsWith('m:') ? el : null;
+};
+const isRemoval = () => ['tattoo', 'artmake'].includes(val('kind'));
 const areaOf = (rs) => Math.ceil(rs.reduce((s, [a, b]) => s + a * b, 0) * 10 - 1e-9) / 10;
 const fmt = (n) => String(Math.round(n * 10) / 10);
 
 function syncInputs() {
   const kind = val('kind');
-  document.querySelector('#area-box').hidden = !kind;
+  const item = itemInput();
+  // 日曜メニューは、受け付けている区分（初診・再診）だけを出す
+  const firstOk = !item || item.dataset.first === '1';
+  const repeatOk = !item || item.dataset.repeat === '1';
+  document.querySelector('#visit-first').hidden = !firstOk;
+  document.querySelector('#visit-repeat').hidden = !repeatOk;
+  for (const [ok, v] of [[firstOk, 'first'], [repeatOk, 'repeat']]) {
+    const el = form.querySelector(`input[name="visit"][value="${v}"]`);
+    if (!ok && el.checked) el.checked = false;
+  }
+  const visitNote = document.querySelector('#visit-note');
+  const hasRemoval = !!form.querySelector('input[name="kind"][value="tattoo"]');
+  visitNote.textContent = !item
+    ? (hasRemoval ? 'はじめての方は、照射の前にご説明（10分）があります' : '')
+    : !firstOk
+      ? 'この施術の日曜日のご予約は、2回目以降の方のみ承っております'
+      : !repeatOk
+        ? 'この施術の日曜日のご予約は、はじめての方のみ承っております'
+        : '';
+  visitNote.hidden = visitNote.textContent === '';
+  const itemNote = document.querySelector('#item-note');
+  itemNote.textContent = item && item.dataset.note ? `ご来院前のお願い：${item.dataset.note}` : '';
+  itemNote.hidden = itemNote.textContent === '';
+  document.querySelector('#anes-box').hidden = !!item;
+  form.elements.part.placeholder = item ? '例：額・わき' : '例：左腕・眉';
+  document.querySelector('#area-box').hidden = !isRemoval();
   document.querySelector('#color-box').hidden = kind !== 'tattoo';
   document.querySelector('#rect1').hidden = kind !== 'artmake';
   document.querySelector('#rect0-label').textContent = kind === 'artmake' ? '左眉' : '長方形';
   document.querySelector('#area-help').textContent = kind === 'artmake'
     ? '左右の眉を別々に、眉をすべて含めることのできる長方形の長い辺と短い辺をcmで入力してください（片方だけの場合は片方のみ）。'
     : 'タトゥーをすべて含めることのできる長方形を考え、その長い辺と短い辺をcmで入力してください。';
-  const rs = rects();
+  const rs = isRemoval() ? rects() : [];
   const area = rs.length ? areaOf(rs) : 0;
-  const ready = area > 0 && !!val('visit');
+  const ready = !!val('visit') && (item ? true : area > 0);
   document.querySelector('#date-card').hidden = !ready;
   const result = document.querySelector('#area-result');
   result.textContent = area > 0 ? `希望照射面積：${fmt(area)}cm²` : '';
-  const key = ready ? `${area}|${val('visit')}` : '';
+  const key = ready ? `${kind}|${area}|${val('visit')}` : '';
   if (key !== loadedKey) {
     loadedKey = key;
     selected = '';
     slots = {};
-    if (key) load(area);
+    if (key) load();
     else render();
   }
 }
 
-async function load(area) {
+/** 今の選択（タトゥーなら面積、日曜メニューならその id）で、選べる日時を読む */
+async function load() {
   const key = loadedKey;
+  const item = itemInput();
+  const area = item ? 0 : areaOf(rects());
   let price = 0;
   let duration = '';
   try {
-    const res = await fetch(`./api.php?area=${encodeURIComponent(area)}&visit=${encodeURIComponent(val('visit'))}`, { cache: 'no-store' });
+    const q = item ? `item=${encodeURIComponent(item.value.slice(2))}` : `area=${encodeURIComponent(area)}`;
+    const res = await fetch(`./api.php?${q}&visit=${encodeURIComponent(val('visit'))}`, { cache: 'no-store' });
     const data = await res.json();
     if (key !== loadedKey) return;
     slots = data.slots && typeof data.slots === 'object' ? data.slots : {};
@@ -144,7 +180,7 @@ function showErrors(list) {
 }
 
 const LABELS = {
-  kind: '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
+  kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください',
   phone: '電話番号を半角数字で入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
@@ -176,14 +212,21 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const fd = new FormData(form);
   const body = Object.fromEntries(['kind', 'visit', 'color', 'part', 'anesthesia', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
-  body.rects = rects();
+  const item = itemInput();
+  if (item) {
+    body.item = item.value.slice(2);
+    body.kind = '';
+    body.anesthesia = '';
+    body.color = '';
+  }
+  body.rects = item ? [] : rects();
   body.date = selected;
   body.time = String(fd.get('time') || '');
   if (idToken) body.idToken = idToken;
   const local = [];
-  if (!body.kind) local.push(LABELS.kind);
+  if (!item && !body.kind) local.push(LABELS.kind);
   if (!body.visit) local.push(LABELS.visit);
-  if (!body.rects.length) local.push(LABELS.area);
+  if (!item && body.kind && !body.rects.length) local.push(LABELS.area);
   if (!body.date || !body.time) local.push(LABELS.slot);
   if (!body.name.trim()) local.push(LABELS.name);
   if (!body.kana.trim()) local.push(LABELS.kana);
@@ -200,6 +243,12 @@ form.addEventListener('submit', async (event) => {
     if (res.ok && data.ok) {
       form.hidden = true;
       document.querySelector('#done').hidden = false;
+      // ご来院前のお願い：タトゥー・アートメイクは産毛の案内、日曜メニューはそのメニューの案内（なければ出さない）
+      const before = document.querySelector('#done-before');
+      if (before && item) {
+        before.textContent = item.dataset.note || '';
+        before.closest('.shave-notice').hidden = !item.dataset.note;
+      }
       document.querySelector('#done-when').textContent = `${ja(body.date)} ${body.time}〜${data.end || ''}（${data.duration || ''}）。${body.time} にご来院ください`;
       document.querySelector('#done-mail').textContent = data.lined
         ? 'LINE に、ご予約の内容をお送りしました。'
@@ -210,7 +259,7 @@ form.addEventListener('submit', async (event) => {
       return;
     }
     if (data.error === 'slot_taken') {
-      await load(areaOf(body.rects));
+      await load();
       showErrors(['選んだ時刻は、先にご予約が入りました。別の日時をお選びください']);
     } else if (data.error === 'invalid') {
       showErrors((data.fields || []).map((f) => LABELS[f]).filter(Boolean));

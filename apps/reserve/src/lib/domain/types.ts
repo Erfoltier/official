@@ -750,6 +750,29 @@ export interface ClinicSettings {
   tattooSlots?: string[];
   /** タトゥーの予約ページを LINE の中で開く LIFF アプリの ID。あれば確定の連絡を LINE に送る */
   tattooLiffId?: string;
+  /** タトゥーの照射に使う機器の名前。同じ名前の日曜メニューと同じ時刻に入れない */
+  tattooMachine?: string;
+  /** 日曜の予約ページで、タトゥー以外に患者が選べるメニュー（院が日曜の受付を許可したもの） */
+  sundayMenus?: SundayMenu[];
+}
+
+/**
+ * 日曜の予約ページで選べるメニュー（タトゥー以外）。初診・再診それぞれに時間（分。0 なら受けない）・レーン（複数なら空いているほう）・予約に付けるメニュー。
+ * 機器の名前が同じもの同士（タトゥーの照射を含む）は、レーンが違っても同じ時刻に入れない
+ */
+export interface SundayMenu {
+  id: string;
+  /** 患者に見せる名前 */
+  name: string;
+  firstMinutes: number;
+  firstLaneIds: LaneId[];
+  firstMenuId: MenuId | "";
+  repeatMinutes: number;
+  repeatLaneIds: LaneId[];
+  repeatMenuId: MenuId | "";
+  machine: string;
+  /** ご来院前のお願い（予約ページ・確定の連絡に出す。任意） */
+  note: string;
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

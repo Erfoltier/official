@@ -1,5 +1,5 @@
 <?php
-/** タトゥー・アートメイク除去（日曜）の Web 予約の受け口。GET：選べる時刻（area・visit で枠の長さを決める）、POST：予約 */
+/** 日曜の Web 予約（タトゥー・アートメイク除去と、院が許可した日曜メニュー）の受け口。GET：選べる時刻（area・visit、または item・visit）、POST：予約 */
 declare(strict_types=1);
 
 require __DIR__ . '/../../lib/bootstrap.php';
@@ -20,6 +20,13 @@ try {
     if ($method === 'GET') {
         $area = is_numeric($_GET['area'] ?? null) ? (float) $_GET['area'] : 0.0;
         $first = ($_GET['visit'] ?? '') === 'first';
+        // 日曜メニュー（タトゥー以外）：item で選んだメニューの空き
+        $itemId = (string) ($_GET['item'] ?? '');
+        if ($itemId !== '') {
+            $it = TattooBooking::item($itemId);
+            $plan = $it ? TattooBooking::planItem($it, $first) : [];
+            $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) array_map(fn($l) => array_map(fn($c) => $c[0], $l), $plan), 'duration' => $it && TattooBooking::accepts($it, $first) ? TattooBooking::itemDurationText($it, $first) : '', 'today' => now_in_clinic()['date']]);
+        }
         $open = TattooBooking::ready();
         if ($area <= 0 || $area > 20_000) {
             $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) [], 'today' => now_in_clinic()['date']]);

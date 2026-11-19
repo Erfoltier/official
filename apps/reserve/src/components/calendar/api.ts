@@ -704,6 +704,8 @@ export function saveClinic(
       | "tattooExplainMenuId"
       | "tattooSlots"
       | "tattooLiffId"
+      | "tattooMachine"
+      | "sundayMenus"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

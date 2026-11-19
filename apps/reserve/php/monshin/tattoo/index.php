@@ -1,6 +1,6 @@
 <?php
 /**
- * タトゥー・アートメイク除去（日曜の不定期診療）の Web 予約ページ（公開）。院の LINE のメニューなどから開く。
+ * 日曜の Web 予約ページ（公開）：タトゥー・アートメイク除去と、院が日曜の受付を許可したメニュー。院の LINE のメニューなどから開く。
  * 選べる時刻はサーバーが決める（TattooBooking::plan）。この画面には時刻の決め方の説明を出さない
  */
 declare(strict_types=1);
@@ -16,15 +16,20 @@ header_remove('X-Powered-By');
 
 try {
     $p = Store::publicInfo();
-    $open = TattooBooking::ready();
+    $open = TattooBooking::open();
+    $tattooOn = TattooBooking::ready();
+    $items = TattooBooking::publicItems();
     $liffId = TattooBooking::settings()['liffId'];
 } catch (Throwable $e) {
     $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
     $liffId = '';
-    $open = false;
+    $open = $tattooOn = false;
+    $items = [];
 }
+// タトゥー以外のメニューもあるときは「日曜日のご予約」
+$pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261119-2';
+$v = '20261119-3';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -32,7 +37,7 @@ $v = '20261119-2';
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex">
-  <title>タトゥー・アートメイク除去のご予約</title>
+  <title><?= $h($pageTitle) ?></title>
   <link rel="stylesheet" href="../intake/styles.css?v=<?= $v ?>">
   <link rel="stylesheet" href="./styles.css?v=<?= $v ?>">
 </head>
@@ -43,34 +48,46 @@ $v = '20261119-2';
         <img src="../intake/assets/clinic-mark.png" alt="">
         <span><b><?= $h($p['publicName']) ?></b><small><?= $h($p['publicNameEn']) ?></small></span>
       </div>
+<?php if ($items !== []): ?>
+      <p class="eyebrow">SUNDAY RESERVATION</p>
+      <h1>日曜日のご予約</h1>
+      <p>このページは<strong>日曜日の診療</strong>のご予約です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なります。</p>
+<?php else: ?>
       <p class="eyebrow">TATTOO / ART MAKE REMOVAL</p>
       <h1>タトゥー・アートメイク除去のご予約</h1>
       <p>タトゥー・アートメイク除去は<strong>日曜日の診療</strong>です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なります。</p>
+<?php endif; ?>
     </header>
 
 <?php if (!$open): ?>
-    <div class="notice" role="note"><strong>現在、タトゥー・アートメイク除去のご予約は受け付けておりません。</strong></div>
+    <div class="notice" role="note"><strong>現在、日曜日のご予約は受け付けておりません。</strong></div>
 <?php else: ?>
     <form id="tt-form" novalidate>
       <section class="card">
         <div class="section-heading">
           <span class="step">1</span>
-          <div><h2>ご希望の内容</h2><p>照射する面積によって、ご予約いただける時間が変わります</p></div>
+          <div><h2>ご希望の内容</h2><p><?= $tattooOn ? '除去の場合は、照射する面積によってご予約いただける時間が変わります' : 'ご希望の施術を選んでください' ?></p></div>
         </div>
         <fieldset class="field">
-          <legend>除去したいもの <em>必須</em></legend>
+          <legend><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?> <em>必須</em></legend>
           <div class="choice-grid two">
-            <label class="pill"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青</span></label>
-            <label class="pill"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）</span></label>
+<?php if ($tattooOn): ?>
+            <label class="pill"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
+            <label class="pill"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php endif; ?>
+<?php foreach ($items as $it): ?>
+            <label class="pill"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>"><span><?= $h($it['name']) ?></span></label>
+<?php endforeach; ?>
           </div>
+          <p class="field-note" id="item-note" hidden></p>
         </fieldset>
         <fieldset class="field">
-          <legend>当院でのタトゥー・アートメイク除去 <em>必須</em></legend>
+          <legend id="visit-legend">当院でのこの施術 <em>必須</em></legend>
           <div class="choice-grid two">
-            <label class="pill"><input type="radio" name="visit" value="first"><span>はじめて</span></label>
-            <label class="pill"><input type="radio" name="visit" value="repeat"><span>2回目以降</span></label>
+            <label class="pill" id="visit-first"><input type="radio" name="visit" value="first"><span>はじめて</span></label>
+            <label class="pill" id="visit-repeat"><input type="radio" name="visit" value="repeat"><span>2回目以降</span></label>
           </div>
-          <small class="field-note">はじめての方は、照射の前にご説明（10分）があります</small>
+          <small class="field-note" id="visit-note">はじめての方は、照射の前にご説明（10分）があります</small>
         </fieldset>
 
         <div class="tt-area" id="area-box" hidden>
@@ -97,7 +114,7 @@ $v = '20261119-2';
           </div>
         </fieldset>
         <label class="field"><span>部位（任意）</span><input name="part" maxlength="60" placeholder="例：左腕・眉"></label>
-        <fieldset class="field">
+        <fieldset class="field" id="anes-box">
           <legend>局所麻酔注射（任意）</legend>
           <div class="choice-grid two">
             <label class="pill"><input type="radio" name="anesthesia" value="no" checked><span>希望しない</span></label>
@@ -121,7 +138,7 @@ $v = '20261119-2';
         <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="ご希望の日"></div>
         <p class="selected-date" id="selected-date">日付を選んでください</p>
         <div class="choice-grid four" id="times" role="radiogroup" aria-label="ご来院の時刻"></div>
-        <p class="tt-empty" id="no-slots" hidden>ただいま、この面積でご予約いただける日時がありません。お手数ですが、LINE でご相談ください。</p>
+        <p class="tt-empty" id="no-slots" hidden>ただいま、この内容でご予約いただける日時がありません。お手数ですが、LINE でご相談ください。</p>
       </section>
 
       <section class="card">
@@ -144,8 +161,12 @@ $v = '20261119-2';
       </section>
 
       <section class="card tt-visit">
-        <h2>ご来院前のお願い</h2>
-        <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+<?php if ($tattooOn): ?>
+        <div class="shave-notice">
+          <h2>ご来院前のお願い<?= $items !== [] ? '（タトゥー・アートメイク除去の方）' : '' ?></h2>
+          <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+        </div>
+<?php endif; ?>
         <h2>日曜日のご来院について</h2>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
         <p><?= $h($line) ?></p>
@@ -166,8 +187,10 @@ $v = '20261119-2';
       <p id="done-when"></p>
       <p id="done-mail"></p>
       <div class="tt-visit">
-        <h3>ご来院前のお願い</h3>
-        <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+        <div class="shave-notice"<?= $tattooOn ? '' : ' hidden' ?>>
+          <h3>ご来院前のお願い</h3>
+          <p id="done-before"><?= $tattooOn ? $h(TattooBooking::SHAVE_NOTICE_PAGE) : '' ?></p>
+        </div>
         <h3>日曜日のご来院について</h3>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
         <p><?= $h($line) ?></p>

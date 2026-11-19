@@ -403,6 +403,14 @@ final class Store
         if (isset($input['tattooSlots'])) {
             $next['tattooSlots'] = TattooBooking::normalizeWindows($input['tattooSlots']);
         }
+        // 照射が使う機器の名前（同じ名前の日曜メニューと時間が重ならないようにする）
+        if (array_key_exists('tattooMachine', $input)) {
+            $next['tattooMachine'] = mb_substr(js_trim((string) $input['tattooMachine']), 0, 30);
+        }
+        // 日曜の予約ページで、タトゥー以外に患者が選べるメニュー（院が受付を許可したものだけ）
+        if (isset($input['sundayMenus'])) {
+            $next['sundayMenus'] = TattooBooking::normalizeItems($input['sundayMenus'], array_keys(self::lanes()), array_column(self::sortedMenus(), 'id'));
+        }
         // 以前の受付枠の項目（11/17 に取りやめ）は残さない
         unset($next['counselingLaneId'], $next['counselingSlots']);
         if (isset($input['intakeSpecialDates'])) {
@@ -990,6 +998,21 @@ final class Store
         $out = [];
         foreach (self::reservationsOn($date) as $r) {
             if ($r['laneId'] === $laneId && !self::inactive($r)) {
+                $out[] = [minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt'])];
+            }
+        }
+        return $out;
+    }
+
+    /** その日の、どのレーンかを問わず、指定のメニューを含む予約の [開始分, 終了分]（同じ機器を使う予約が重ならないようにするため） */
+    public static function busyMinutesForMenus(string $date, array $menuIds): array
+    {
+        if ($menuIds === []) {
+            return [];
+        }
+        $out = [];
+        foreach (self::reservationsOn($date) as $r) {
+            if (!self::inactive($r) && array_intersect($menuIds, $r['menuIds'] ?? []) !== []) {
                 $out[] = [minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt'])];
             }
         }

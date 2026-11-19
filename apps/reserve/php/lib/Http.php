@@ -530,6 +530,19 @@ final class Schema
                 }
                 return array_map(fn($s) => V::str($s, 40), $x);
             },
+            'tattooMachine?' => fn($x) => V::str($x, 30),
+            // 中身の確かめ（レーン・メニューがあるか、分の範囲）は TattooBooking::normalizeItems
+            'sundayMenus?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > TattooBooking::MAX_ITEMS) {
+                    throw new InputError();
+                }
+                foreach ($x as $it) {
+                    if (!is_array($it)) {
+                        throw new InputError();
+                    }
+                }
+                return $x;
+            },
             'intakeSpecialDates?' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
                     throw new InputError();
