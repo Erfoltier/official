@@ -33,6 +33,42 @@ function rects() {
   if (kind === 'artmake' && a1 && b1) out.push([a1, b1]);
   return out;
 }
+let builtFor = '';
+/** 区分を選んだら、その区分の部位のチェックを作り直す */
+function renderParts(groups) {
+  const pl = document.querySelector('#parts-list');
+  const g = groups[Number(val('group'))];
+  pl.replaceChildren();
+  if (!g) return;
+  g.parts.forEach((name, i) => {
+    const label = document.createElement('label');
+    label.className = 'pill';
+    const input = Object.assign(document.createElement('input'), { type: 'checkbox', name: 'parts', value: String(i) });
+    const span = document.createElement('span');
+    span.textContent = name;
+    label.append(input, span);
+    pl.append(label);
+  });
+}
+const checkedParts = () => [...form.querySelectorAll('input[name="parts"]:checked')].map((x) => x.value);
+const countVal = () => {
+  const n = Number(String(form.elements.count.value).replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
+  return Number.isInteger(n) && n >= 1 && n <= 5000 ? n : 0;
+};
+/** 部位・本数が要るメニューで、それがそろっているか */
+function pickReady(item) {
+  if (JSON.parse(item.dataset.groups || '[]').length) return val('group') !== '' && checkedParts().length > 0;
+  if (item.dataset.count === '1') return countVal() > 0;
+  return true;
+}
+/** 空きを読むときに付ける、部位・本数 */
+function pickQuery(item) {
+  if (!item) return '';
+  if (JSON.parse(item.dataset.groups || '[]').length) return `&group=${encodeURIComponent(val('group'))}&parts=${checkedParts().join(',')}`;
+  if (item.dataset.count === '1') return `&count=${countVal()}`;
+  return '';
+}
+
 /** 選んだ日曜メニュー（タトゥー以外）のラジオボタン。タトゥー・アートメイクなら null */
 const itemInput = () => {
   const el = form.querySelector('input[name="kind"]:checked');
@@ -68,6 +104,27 @@ function syncInputs() {
   itemNote.textContent = item && item.dataset.note ? `ご来院前のお願い：${item.dataset.note}` : '';
   itemNote.hidden = itemNote.textContent === '';
   document.querySelector('#anes-box').hidden = !!item;
+  // 部位ごとの時間のメニュー（脱毛など）：区分（男性・女性など）と部位。本数で決まるメニュー（針脱毛）：本数
+  const groups = item ? JSON.parse(item.dataset.groups || '[]') : [];
+  const pickKey = item ? item.value : '';
+  if (pickKey !== builtFor) {
+    builtFor = pickKey;
+    const gl = document.querySelector('#group-list');
+    gl.replaceChildren();
+    groups.forEach((g, i) => {
+      const label = document.createElement('label');
+      label.className = 'pill';
+      const input = Object.assign(document.createElement('input'), { type: 'radio', name: 'group', value: String(i), checked: groups.length === 1 });
+      const span = document.createElement('span');
+      span.textContent = g.name;
+      label.append(input, span);
+      gl.append(label);
+    });
+    renderParts(groups);
+  }
+  document.querySelector('#group-box').hidden = groups.length < 2;
+  document.querySelector('#parts-box').hidden = groups.length === 0 || val('group') === '';
+  document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1');
   form.elements.part.placeholder = item ? '例：額・わき' : '例：左腕・眉';
   document.querySelector('#area-box').hidden = !isRemoval();
   document.querySelector('#color-box').hidden = kind !== 'tattoo';
@@ -78,11 +135,11 @@ function syncInputs() {
     : 'タトゥーをすべて含めることのできる長方形を考え、その長い辺と短い辺をcmで入力してください。';
   const rs = isRemoval() ? rects() : [];
   const area = rs.length ? areaOf(rs) : 0;
-  const ready = !!val('visit') && (item ? true : area > 0);
+  const ready = !!val('visit') && (item ? pickReady(item) : area > 0);
   document.querySelector('#date-card').hidden = !ready;
   const result = document.querySelector('#area-result');
   result.textContent = area > 0 ? `希望照射面積：${fmt(area)}cm²` : '';
-  const key = ready ? `${kind}|${area}|${val('visit')}` : '';
+  const key = ready ? `${kind}|${area}|${val('visit')}|${pickQuery(item)}` : '';
   if (key !== loadedKey) {
     loadedKey = key;
     selected = '';
@@ -100,7 +157,7 @@ async function load() {
   let price = 0;
   let duration = '';
   try {
-    const q = item ? `item=${encodeURIComponent(item.value.slice(2))}` : `area=${encodeURIComponent(area)}`;
+    const q = item ? `item=${encodeURIComponent(item.value.slice(2))}${pickQuery(item)}` : `area=${encodeURIComponent(area)}`;
     const res = await fetch(`./api.php?${q}&visit=${encodeURIComponent(val('visit'))}`, { cache: 'no-store' });
     const data = await res.json();
     if (key !== loadedKey) return;
@@ -182,11 +239,14 @@ function showErrors(list) {
 const LABELS = {
   kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください',
-  phone: '電話番号を半角数字で入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
+  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', count: '本数を入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
 
 form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'part'].includes(e.target.name)) syncInputs(); });
-form.addEventListener('change', (e) => { if (['kind', 'visit'].includes(e.target.name)) syncInputs(); });
+form.addEventListener('change', (e) => {
+  if (e.target.name === 'group') renderParts(JSON.parse(itemInput()?.dataset.groups || '[]'));
+  if (['kind', 'visit', 'group', 'parts', 'count'].includes(e.target.name)) syncInputs();
+});
 
 // LINE の中で開いたとき（LIFF）：本人の LINE を確かめ、確定の連絡を LINE へ（メールは任意）
 let idToken = '';
@@ -215,6 +275,9 @@ form.addEventListener('submit', async (event) => {
   const item = itemInput();
   if (item) {
     body.item = item.value.slice(2);
+    body.group = val('group');
+    body.parts = checkedParts().map(Number);
+    body.count = countVal();
     body.kind = '';
     body.anesthesia = '';
     body.color = '';
@@ -227,6 +290,7 @@ form.addEventListener('submit', async (event) => {
   if (!item && !body.kind) local.push(LABELS.kind);
   if (!body.visit) local.push(LABELS.visit);
   if (!item && body.kind && !body.rects.length) local.push(LABELS.area);
+  if (item && !pickReady(item)) local.push(item.dataset.count === '1' ? LABELS.count : LABELS.parts);
   if (!body.date || !body.time) local.push(LABELS.slot);
   if (!body.name.trim()) local.push(LABELS.name);
   if (!body.kana.trim()) local.push(LABELS.kana);

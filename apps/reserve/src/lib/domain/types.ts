@@ -775,6 +775,14 @@ export interface SundayMenu {
   machine: string;
   /** ご来院前のお願い（予約ページ・確定の連絡に出す。任意） */
   note: string;
+  /**
+   * 部位ごとの時間（区分〈男性・女性など〉→ 部位と分）。患者が選んだ部位の合計＋初診・再診の時間（説明など）。空なら使わない
+   */
+  partGroups?: { name: string; parts: { name: string; minutes: number }[] }[];
+  /** 本数で時間が決まるとき、1分あたりの本数（針脱毛は4）。0 なら使わない */
+  countPerMinute?: number;
+  /** 1回の時間の上限（分）。0 なら180分 */
+  maxMinutes?: number;
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

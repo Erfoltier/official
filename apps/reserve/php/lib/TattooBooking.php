@@ -100,6 +100,13 @@ final class TattooBooking
         ['salicylic', 'サリチル酸ピーリング', 15, [self::M], self::CONSULT, 20, self::N, 'menu-s00009A18C', ''],
     ];
 
+    /** レーザー脱毛の部位ごとの時間（シート1「レーザー脱毛」。施術後の掃除とカルテ記載込み）。[部位, 男性の分, 女性の分] */
+    private const LASER_HAIR_PARTS = [
+        ['下肢全部', 90, 60], ['大腿', 40, 30], ['下腿～足先', 40, 30], ['膝', 10, 10], ['下腿', 30, 20],
+        ['鼻下', 10, 10], ['顎', 10, 10], ['顎下', 10, 10], ['鼻下+顎+顎下', 15, 15], ['鼻下+顎', 10, 10], ['眉', 10, 10],
+        ['前腕', 20, 20], ['前腕～手先', 25, 25], ['へそ回り', 10, 10], ['V', 10, 10], ['IO', 20, 15], ['VIO', 30, 20],
+    ];
+
     /** プリセットを今の設定に合わせて出す（ないレーン・使えないメニューは空にする。オフなので、オンにするときに選び直す） */
     public static function presets(): array
     {
@@ -110,9 +117,30 @@ final class TattooBooking
                 'id' => $id, 'name' => $name, 'enabled' => false,
                 'firstMinutes' => $fm, 'firstLaneIds' => array_values(array_intersect($fl, $lanes)), 'firstMenuId' => in_array($fmenu, $menus, true) ? $fmenu : '',
                 'repeatMinutes' => $rm, 'repeatLaneIds' => array_values(array_intersect($rl, $lanes)), 'repeatMenuId' => in_array($rmenu, $menus, true) ? $rmenu : '',
-                'machine' => '', 'note' => $note,
+                'machine' => '', 'note' => $note, 'partGroups' => [], 'countPerMinute' => 0, 'maxMinutes' => 0,
             ];
         }
+        $lane = fn(array $ids) => array_values(array_intersect($ids, $lanes));
+        $menu = fn(string $id) => in_array($id, $menus, true) ? $id : '';
+        // 医療脱毛（シート1・予約エンジンルール「複合/脱毛初回」）：初回は看護師レーンで説明15分を先に取り、続けて部位の照射。
+        // 針脱毛は4本で1分。本数が分からない初回は受けない（再診だけ。1件の上限は90分：一人の看護師が続けて行うのは1時間半を超えるなら1件まで）
+        $out[] = [
+            'id' => 'laserhair', 'name' => '医療レーザー脱毛', 'enabled' => false,
+            'firstMinutes' => 15, 'firstLaneIds' => $lane(self::N), 'firstMenuId' => $menu('menu-s0000A43A3'),
+            'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000A1344'),
+            'machine' => '', 'note' => '',
+            'partGroups' => [
+                ['name' => '男性', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[1]], self::LASER_HAIR_PARTS)],
+                ['name' => '女性', 'parts' => array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[2]], self::LASER_HAIR_PARTS)],
+            ],
+            'countPerMinute' => 0, 'maxMinutes' => 0,
+        ];
+        $out[] = [
+            'id' => 'needlehair', 'name' => '針脱毛（2回目以降）', 'enabled' => false,
+            'firstMinutes' => 15, 'firstLaneIds' => [], 'firstMenuId' => '',
+            'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
+            'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90,
+        ];
         return $out;
     }
 
@@ -135,11 +163,70 @@ final class TattooBooking
         return null;
     }
 
-    /** その日曜メニューで初診（$first）または再診を受けるか（時間・レーン・メニューがそろっている） */
+    /** 部位ごと（partGroups）か本数（countPerMinute）で時間が変わるメニューか。そのときの初診・再診の時間は「足す時間」（初診の説明など。0でもよい） */
+    public static function variable(array $it): bool
+    {
+        return ($it['partGroups'] ?? []) !== [] || ($it['countPerMinute'] ?? 0) > 0;
+    }
+
+    /** その日曜メニューで初診（$first）または再診を受けるか（時間・レーン・メニューがそろっている。時間が変わるメニューは、レーンを選んだ区分を受ける） */
     public static function accepts(array $it, bool $first): bool
     {
         $k = $first ? 'first' : 'repeat';
-        return ($it['enabled'] ?? true) !== false && ($it[$k . 'Minutes'] ?? 0) > 0 && ($it[$k . 'LaneIds'] ?? []) !== [] && ($it[$k . 'MenuId'] ?? '') !== '';
+        return ($it['enabled'] ?? true) !== false && (self::variable($it) || ($it[$k . 'Minutes'] ?? 0) > 0) && ($it[$k . 'LaneIds'] ?? []) !== [] && ($it[$k . 'MenuId'] ?? '') !== '';
+    }
+
+    /** 本数の上限（入力の誤りを防ぐ） */
+    private const MAX_COUNT = 5000;
+
+    /**
+     * 患者の選んだ内容（部位・本数）からの時間（分、5分刻みに切り上げ）。選び方がおかしい・上限を超えるときは null。
+     * $pick：['group' => 何番目の区分, 'parts' => [何番目の部位, ...], 'count' => 本数]
+     */
+    public static function itemMinutes(array $it, bool $first, array $pick = []): ?int
+    {
+        $min = (int) ($it[($first ? 'first' : 'repeat') . 'Minutes'] ?? 0);
+        if (($it['partGroups'] ?? []) !== []) {
+            $g = $it['partGroups'][(int) ($pick['group'] ?? -1)] ?? null;
+            $idx = array_values(array_unique(array_map('intval', array_filter((array) ($pick['parts'] ?? []), 'is_numeric'))));
+            if (!is_numeric($pick['group'] ?? null) || $g === null || $idx === []) {
+                return null;
+            }
+            foreach ($idx as $i) {
+                if (!isset($g['parts'][$i])) {
+                    return null;
+                }
+                $min += (int) $g['parts'][$i]['minutes'];
+            }
+        } elseif (($it['countPerMinute'] ?? 0) > 0) {
+            $n = is_numeric($pick['count'] ?? null) ? (int) $pick['count'] : 0;
+            if ($n < 1 || $n > self::MAX_COUNT) {
+                return null;
+            }
+            $min += (int) ceil($n / $it['countPerMinute']);
+        }
+        $min = (int) (ceil($min / 5) * 5);
+        $max = (int) ($it['maxMinutes'] ?? 0) ?: self::MAX_ITEM_MINUTES;
+        return $min >= 5 && $min <= $max ? $min : null;
+    }
+
+    /** 予約メモ・確定の連絡に書く、選んだ内容（「女性：VIO・へそ回り」「300本」）。なければ空 */
+    public static function pickText(array $it, array $pick): string
+    {
+        if (($it['partGroups'] ?? []) !== []) {
+            $g = $it['partGroups'][(int) ($pick['group'] ?? 0)] ?? ['name' => '', 'parts' => []];
+            $names = [];
+            foreach (array_unique(array_map('intval', (array) ($pick['parts'] ?? []))) as $i) {
+                if (isset($g['parts'][$i])) {
+                    $names[] = $g['parts'][$i]['name'];
+                }
+            }
+            return (count($it['partGroups']) > 1 ? $g['name'] . '：' : '') . implode('・', $names);
+        }
+        if (($it['countPerMinute'] ?? 0) > 0) {
+            return (int) ($pick['count'] ?? 0) . '本';
+        }
+        return '';
     }
 
     /** 予約ページに出す日曜メニューの一覧（患者に見せてよい項目だけ） */
@@ -151,7 +238,12 @@ final class TattooBooking
             $first = self::accepts($it, true);
             $repeat = self::accepts($it, false);
             if ($first || $repeat) {
-                $out[] = ['id' => $it['id'], 'name' => $it['name'], 'first' => $first, 'repeat' => $repeat, 'note' => $it['note'] ?? ''];
+                $out[] = [
+                    'id' => $it['id'], 'name' => $it['name'], 'first' => $first, 'repeat' => $repeat, 'note' => $it['note'] ?? '',
+                    // 部位ごとの時間のメニューは区分（男性・女性など）と部位の名前だけ（時間は出さない）。本数で決まるメニューは本数を入れてもらう
+                    'groups' => array_map(fn($g) => ['name' => $g['name'], 'parts' => array_column($g['parts'], 'name')], $it['partGroups'] ?? []),
+                    'count' => ($it['countPerMinute'] ?? 0) > 0,
+                ];
             }
         }
         return $out;
@@ -184,6 +276,36 @@ final class TattooBooking
             // オフのものは、足りない項目があっても残せる（オンにするときにそろえる）
             $on = ($it['enabled'] ?? true) !== false;
             $row = ['id' => $id, 'name' => $name, 'enabled' => $on];
+            // 部位ごとの時間（区分 → 部位と分）。区分は4つ、部位は区分ごとに60まで
+            $groups = [];
+            foreach (array_slice(array_values((array) ($it['partGroups'] ?? [])), 0, 4) as $g) {
+                $gname = mb_substr(js_trim(normalize_width((string) ($g['name'] ?? ''))), 0, 20);
+                $parts = [];
+                foreach (array_slice(array_values((array) ($g['parts'] ?? [])), 0, 60) as $pt) {
+                    $pname = mb_substr(js_trim(normalize_width((string) ($pt['name'] ?? ''))), 0, 30);
+                    $pm = (int) ($pt['minutes'] ?? 0);
+                    if ($pname === '') {
+                        throw new StoreError('invalid', "「{$name}」の部位の名前を入れてください");
+                    }
+                    if ($pm < 5 || $pm > self::MAX_ITEM_MINUTES || $pm % 5 !== 0) {
+                        throw new StoreError('invalid', "「{$name}」の部位「{$pname}」の時間は5〜" . self::MAX_ITEM_MINUTES . '分（5分刻み）で入れてください');
+                    }
+                    $parts[] = ['name' => $pname, 'minutes' => $pm];
+                }
+                if ($parts !== []) {
+                    $groups[] = ['name' => $gname !== '' ? $gname : '部位', 'parts' => $parts];
+                }
+            }
+            $cpm = $groups === [] ? (int) ($it['countPerMinute'] ?? 0) : 0;
+            if ($cpm < 0 || $cpm > 100) {
+                throw new StoreError('invalid', "「{$name}」の1分あたりの本数は0〜100で入れてください");
+            }
+            $maxMin = (int) ($it['maxMinutes'] ?? 0);
+            if ($maxMin < 0 || $maxMin > self::MAX_ITEM_MINUTES || $maxMin % 5 !== 0) {
+                throw new StoreError('invalid', "「{$name}」の時間の上限は0〜" . self::MAX_ITEM_MINUTES . '分（5分刻み。0は上限なし）で入れてください');
+            }
+            $row += ['partGroups' => $groups, 'countPerMinute' => $cpm, 'maxMinutes' => $maxMin];
+            $variable = $groups !== [] || $cpm > 0;
             foreach (['first' => '初診', 'repeat' => '再診'] as $k => $label) {
                 $min = (int) ($it[$k . 'Minutes'] ?? 0);
                 if ($min < 0 || $min > self::MAX_ITEM_MINUTES || $min % 5 !== 0) {
@@ -199,13 +321,20 @@ final class TattooBooking
                 if ($menu !== '' && !in_array($menu, $menuIds, true)) {
                     throw new StoreError('invalid', "「{$name}」の{$label}のメニューが見つかりません");
                 }
-                if ($on && $min > 0 && ($lanes === [] || $menu === '')) {
+                if ($on && !$variable && $min > 0 && ($lanes === [] || $menu === '')) {
                     throw new StoreError('invalid', "「{$name}」の{$label}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）");
+                }
+                // 時間が変わるメニューは、レーンを選んだ区分を受ける（メニューも要る）
+                if ($on && $variable && $lanes !== [] && $menu === '') {
+                    throw new StoreError('invalid', "「{$name}」の{$label}の予約に付けるメニューを選んでください（受けないときはレーンを外す）");
                 }
                 $row += [$k . 'Minutes' => $min, $k . 'LaneIds' => $lanes, $k . 'MenuId' => $menu];
             }
-            if ($on && $row['firstMinutes'] === 0 && $row['repeatMinutes'] === 0) {
+            if ($on && !$variable && $row['firstMinutes'] === 0 && $row['repeatMinutes'] === 0) {
                 throw new StoreError('invalid', "「{$name}」は、初診か再診の時間を入れてください");
+            }
+            if ($on && $variable && $row['firstLaneIds'] === [] && $row['repeatLaneIds'] === []) {
+                throw new StoreError('invalid', "「{$name}」は、初診か再診のレーンを選んでください");
             }
             $row['machine'] = mb_substr(js_trim((string) ($it['machine'] ?? '')), 0, 30);
             $row['note'] = mb_substr(js_trim(normalize_width((string) ($it['note'] ?? ''))), 0, 200);
@@ -481,14 +610,14 @@ final class TattooBooking
      * 受付日時はタトゥーと同じ。レーンが複数なら、設定の順に空いているほうへ。時刻の決め方はタトゥーの再診と同じ
      * @return array<string, list<array{0:string,1:int,2:string}>>
      */
-    public static function planItem(array $it, bool $first, ?array $s = null): array
+    public static function planItem(array $it, bool $first, ?array $s = null, array $pick = []): array
     {
         $s ??= self::settings();
-        if (!$s['enabled'] || !self::accepts($it, $first)) {
+        $len = self::itemMinutes($it, $first, $pick);
+        if (!$s['enabled'] || !self::accepts($it, $first) || $len === null) {
             return [];
         }
         $k = $first ? 'first' : 'repeat';
-        $len = (int) $it[$k . 'Minutes'];
         $now = now_in_clinic();
         $last = $first ? (new DateTimeImmutable($now['date']))->modify('+' . self::FIRST_VISIT_MONTHS . ' months')->format('Y-m-d') : '9999-12-31';
         $byDate = [];
@@ -528,10 +657,11 @@ final class TattooBooking
         return $out;
     }
 
-    /** 日曜メニューの所要時間の文（「約15分」） */
-    public static function itemDurationText(array $it, bool $first): string
+    /** 日曜メニューの所要時間の文（「約15分」）。選び方が足りなければ空 */
+    public static function itemDurationText(array $it, bool $first, array $pick = []): string
     {
-        return '約' . (int) $it[($first ? 'first' : 'repeat') . 'Minutes'] . '分';
+        $m = self::itemMinutes($it, $first, $pick);
+        return $m === null ? '' : "約{$m}分";
     }
 
     /**
@@ -609,7 +739,11 @@ final class TattooBooking
             return ['ok' => false, 'error' => 'rate_limited'];
         }
         if ($item !== null) {
-            return self::bookItem($item, $visit === 'first', $f, $s, $uid);
+            $pick = ['group' => $in['group'] ?? null, 'parts' => is_array($in['parts'] ?? null) ? $in['parts'] : [], 'count' => $in['count'] ?? null];
+            if (self::itemMinutes($item, $visit === 'first', $pick) === null) {
+                return ['ok' => false, 'error' => 'invalid', 'fields' => [($item['countPerMinute'] ?? 0) > 0 ? 'count' : 'parts']];
+            }
+            return self::bookItem($item, $visit === 'first', $f, $s, $uid, $pick);
         }
         $treat = self::treatMinutes($area);
         $first = $visit === 'first';
@@ -684,30 +818,33 @@ final class TattooBooking
     }
 
     /** 日曜メニューの予約（入力は book で確かめ済み） */
-    private static function bookItem(array $it, bool $first, array $f, array $s, ?string $uid): array
+    private static function bookItem(array $it, bool $first, array $f, array $s, ?string $uid, array $pick = []): array
     {
         $k = $first ? 'first' : 'repeat';
-        $len = (int) $it[$k . 'Minutes'];
-        $result = Db::i()->transaction(function () use ($it, $first, $f, $s, $uid, $k, $len) {
+        $len = (int) self::itemMinutes($it, $first, $pick);
+        $what = self::pickText($it, $pick);
+        $result = Db::i()->transaction(function () use ($it, $first, $f, $s, $uid, $k, $len, $pick, $what) {
             // 送る直前にもう一度、その時刻が選べるか確かめる（書き込みの鍵を持ったまま）
-            $pick = null;
-            foreach (self::planItem($it, $first, $s)[$f['date']] ?? [] as $c) {
+            $slot = null;
+            foreach (self::planItem($it, $first, $s, $pick)[$f['date']] ?? [] as $c) {
                 if ($c[0] === $f['time']) {
-                    $pick = $c;
+                    $slot = $c;
                 }
             }
-            if (!$pick) {
+            if (!$slot) {
                 return ['ok' => false, 'error' => 'slot_taken'];
             }
-            [, $start, $lane] = $pick;
+            [, $start, $lane] = $slot;
             try {
                 $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email']], self::ACTOR);
             } catch (StoreError $e) {
                 return ['ok' => false, 'error' => 'contact_us'];
             }
             $memo = implode("\n", array_filter([
-                $it['name'] . '（Web予約・日曜）' . ($first ? '初診' : '再診'),
-                $f['part'] !== '' ? '部位：' . $f['part'] : null,
+                $it['name'] . '（Web予約・日曜）' . ($first ? '初診' : '再診') . "（{$len}分）",
+                $what !== '' ? (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：') . $what : null,
+                $first && self::variable($it) && (int) $it['firstMinutes'] > 0 ? "初診の説明：{$it['firstMinutes']}分（この予約の最初）" : null,
+                $f['part'] !== '' ? '部位（患者の記入）：' . $f['part'] : null,
                 $f['email'] !== '' ? 'メール：' . $f['email'] : null,
                 $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                 $f['lineName'] !== '' ? 'LINEの表示名：' . $f['lineName'] : null,
@@ -717,7 +854,8 @@ final class TattooBooking
             $r = Store::bookingCreate([
                 'patientId' => $patientId,
                 'laneId' => $lane,
-                'menuIds' => [$it[$k . 'MenuId']],
+                // 時間が変わるメニューの初診は、説明と施術を続けて取るので、再診（施術）のメニューも付ける（機器の重なりを見分けるため）
+                'menuIds' => array_values(array_unique(array_filter([$it[$k . 'MenuId'], $first && self::variable($it) ? $it['repeatMenuId'] : '']))),
                 'startAt' => to_iso($f['date'], $start),
                 'endAt' => to_iso($f['date'], $start + $len),
                 'memo' => $memo,
@@ -731,13 +869,13 @@ final class TattooBooking
         if (!$result['ok']) {
             return $result;
         }
-        $f += ['kind' => 'menu', 'item' => $it, 'visit' => $first ? 'first' : 'repeat', 'end' => $result['end']];
+        $f += ['kind' => 'menu', 'item' => $it, 'visit' => $first ? 'first' : 'repeat', 'end' => $result['end'], 'pick' => $pick];
         [$lined] = $uid !== null ? Reminder::pushText($uid, self::mailBody($f)) : [false];
         $sent = false;
         if (!$lined && $f['email'] !== '') {
             [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject('menu', $it['name']), self::mailBody($f)) : [false];
         }
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::itemDurationText($it, $first), 'lined' => (bool) $lined, 'mailed' => (bool) $sent];
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::itemDurationText($it, $first, $pick), 'lined' => (bool) $lined, 'mailed' => (bool) $sent];
     }
 
     private static function num(float $a): string
@@ -765,8 +903,9 @@ final class TattooBooking
                 "{$it['name']}（日曜日）のご予約を承りました。",
                 '',
                 '日時：' . format_date_ja($f['date']) . " {$f['time']}〜{$f['end']}（ご来院は {$f['time']} までにお願いします）",
-                '所要時間：' . self::itemDurationText($it, $first),
+                '所要時間：' . self::itemDurationText($it, $first, $f['pick'] ?? []),
                 '区分：' . ($first ? '初診' : '再診'),
+                self::pickText($it, $f['pick'] ?? []) !== '' ? ((($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：') . self::pickText($it, $f['pick'] ?? [])) : null,
                 $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
                 ($it['note'] ?? '') !== '' ? '' : null,
                 ($it['note'] ?? '') !== '' ? '【ご来院前のお願い】' : null,

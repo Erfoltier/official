@@ -685,13 +685,115 @@ export function TattooCard({
 function sundayMenuProblem(it: SundayMenu, i: number): string {
   const label = it.name.trim() || `${i + 1}行目`;
   if (!it.name.trim()) return `日曜メニューの${i + 1}行目：患者に見せる名前を入れてください`;
+  const variable = isVariable(it);
+  for (const g of it.partGroups ?? []) {
+    for (const pt of g.parts) {
+      if (!pt.name.trim()) return `「${label}」の部位の名前を入れてください`;
+      if (!Number.isInteger(pt.minutes) || pt.minutes < 5 || pt.minutes > 180 || pt.minutes % 5 !== 0) return `「${label}」の部位「${pt.name}」の時間は5〜180分（5分刻み）で入れてください`;
+    }
+  }
   for (const [k, ja] of [["first", "初診"], ["repeat", "再診"]] as const) {
     const min = it[`${k}Minutes`];
     if (!Number.isInteger(min) || min < 0 || min > 180 || min % 5 !== 0) return `「${label}」の${ja}の時間は0〜180分（5分刻み）で入れてください`;
-    if (it.enabled && min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）`;
+    if (it.enabled && variable && it[`${k}LaneIds`].length > 0 && !it[`${k}MenuId`]) return `「${label}」の${ja}の予約に付けるメニューを選んでください（受けないときはレーンを外す）`;
+    if (it.enabled && !variable && min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）`;
   }
-  if (it.enabled && it.firstMinutes === 0 && it.repeatMinutes === 0) return `「${label}」は、初診か再診の時間を入れてください`;
+  if (it.enabled && variable && it.firstLaneIds.length === 0 && it.repeatLaneIds.length === 0) return `「${label}」は、初診か再診のレーンを選んでください`;
+  if (it.enabled && !variable && it.firstMinutes === 0 && it.repeatMinutes === 0) return `「${label}」は、初診か再診の時間を入れてください`;
   return "";
+}
+
+/** 部位ごと・本数で時間が変わるメニューか（そのときの初診・再診の時間は「足す時間」） */
+const isVariable = (it: SundayMenu) => (it.partGroups ?? []).length > 0 || (it.countPerMinute ?? 0) > 0;
+type TimeMode = "fixed" | "parts" | "count";
+const timeMode = (it: SundayMenu): TimeMode => ((it.partGroups ?? []).length > 0 ? "parts" : (it.countPerMinute ?? 0) > 0 ? "count" : "fixed");
+
+/**
+ * 部位ごとの時間：区分（男性・女性など）と部位をプルダウンで選び、選んだ部位の名前と分だけを直す（全部を並べると幅が大きくなるため）
+ */
+function PartsEditor({ it, onChange, canEdit }: { it: SundayMenu; onChange: (groups: NonNullable<SundayMenu["partGroups"]>) => void; canEdit: boolean }) {
+  const groups = it.partGroups ?? [];
+  const [gi, setGi] = useState(0);
+  const [pi, setPi] = useState(0);
+  const g = groups[Math.min(gi, groups.length - 1)];
+  const gIdx = Math.min(gi, groups.length - 1);
+  const pIdx = g ? Math.min(pi, g.parts.length - 1) : -1;
+  const part = g && pIdx >= 0 ? g.parts[pIdx] : undefined;
+  const setGroups = (next: NonNullable<SundayMenu["partGroups"]>) => onChange(next);
+  const putGroup = (patch: Partial<(typeof groups)[number]>) => setGroups(groups.map((x, i) => (i === gIdx ? { ...x, ...patch } : x)));
+  const putPart = (patch: Partial<{ name: string; minutes: number }>) => putGroup({ parts: g.parts.map((x, i) => (i === pIdx ? { ...x, ...patch } : x)) });
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div className={styles.timeRow}>
+        <label className={styles.field}>
+          <span>区分（{groups.length}）</span>
+          <select className={styles.input} value={gIdx} onChange={(ev) => { setGi(Number(ev.target.value)); setPi(0); }}>
+            {groups.map((x, i) => (
+              <option key={i} value={i}>
+                {x.name}（{x.parts.length}部位）
+              </option>
+            ))}
+          </select>
+        </label>
+        {g && (
+          <label className={styles.field}>
+            <span>区分の名前</span>
+            <input className={styles.input} value={g.name} maxLength={20} onChange={(ev) => putGroup({ name: ev.target.value })} disabled={!canEdit} />
+          </label>
+        )}
+      </div>
+      {g && (
+        <div className={styles.timeRow}>
+          <label className={styles.field}>
+            <span>部位（{g.parts.length}）</span>
+            <select className={styles.input} value={pIdx} onChange={(ev) => setPi(Number(ev.target.value))}>
+              {g.parts.map((x, i) => (
+                <option key={i} value={i}>
+                  {x.name}：{x.minutes}分
+                </option>
+              ))}
+            </select>
+          </label>
+          {part && (
+            <>
+              <label className={styles.field}>
+                <span>部位の名前</span>
+                <input className={styles.input} value={part.name} maxLength={30} onChange={(ev) => putPart({ name: ev.target.value })} disabled={!canEdit} />
+              </label>
+              <label className={styles.field} style={{ maxWidth: 110 }}>
+                <span>分</span>
+                <input className={styles.input} type="number" min={5} max={180} step={5} value={part.minutes} onChange={(ev) => putPart({ minutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+              </label>
+            </>
+          )}
+        </div>
+      )}
+      {canEdit && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {g && (
+            <button type="button" onClick={() => { putGroup({ parts: [...g.parts, { name: "新しい部位", minutes: 10 }] }); setPi(g.parts.length); }}>
+              部位を足す
+            </button>
+          )}
+          {part && (
+            <button type="button" onClick={() => { putGroup({ parts: g.parts.filter((_, i) => i !== pIdx) }); setPi(0); }}>
+              この部位を消す
+            </button>
+          )}
+          {groups.length < 4 && (
+            <button type="button" onClick={() => { setGroups([...groups, { name: "新しい区分", parts: g ? g.parts.map((x) => ({ ...x })) : [{ name: "新しい部位", minutes: 10 }] }]); setGi(groups.length); setPi(0); }}>
+              区分を足す（今の区分の写し）
+            </button>
+          )}
+          {g && groups.length > 1 && (
+            <button type="button" onClick={() => { setGroups(groups.filter((_, i) => i !== gIdx)); setGi(0); setPi(0); }}>
+              この区分を消す
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const emptySundayMenu = (): SundayMenu => ({ id: "", enabled: true, name: "", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 0, repeatLaneIds: [], repeatMenuId: "", machine: "", note: "" });
@@ -716,10 +818,17 @@ function SundayMenusEditor({
   // オフのメニューは、名前と時間の要約だけを出す（「設定を開く」で中身を見られる）
   const [opened, setOpened] = useState<Record<number, boolean>>({});
   const laneName = (id: string) => lanes.find((l) => l.id === id)?.shortName || lanes.find((l) => l.id === id)?.name || "?";
-  const summary = (it: SundayMenu) =>
-    (["first", "repeat"] as const)
-      .map((k) => `${k === "first" ? "初診" : "再診"} ${it[`${k}Minutes`] > 0 ? `${it[`${k}Minutes`]}分（${it[`${k}LaneIds`].map(laneName).join("・") || "レーン未選択"}）` : "受けない"}`)
-      .join("／");
+  const summary = (it: SundayMenu) => {
+    const mode = timeMode(it);
+    const how = mode === "parts" ? "部位ごとの時間" : mode === "count" ? `本数（${it.countPerMinute}本で1分）` : "";
+    const parts = (["first", "repeat"] as const).map((k) => {
+      const on = mode === "fixed" ? it[`${k}Minutes`] > 0 : it[`${k}LaneIds`].length > 0;
+      const lanesText = it[`${k}LaneIds`].map(laneName).join("・") || "レーン未選択";
+      if (!on) return `${k === "first" ? "初診" : "再診"} 受けない`;
+      return mode === "fixed" ? `${k === "first" ? "初診" : "再診"} ${it[`${k}Minutes`]}分（${lanesText}）` : `${k === "first" ? "初診" : "再診"}${it[`${k}Minutes`] ? ` ＋${it[`${k}Minutes`]}分` : ""}（${lanesText}）`;
+    });
+    return [how, ...parts].filter(Boolean).join("／");
+  };
   const put = (i: number, patch: Partial<SundayMenu>) => setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
   const activeLanes = (ids: string[]) => lanes.filter((l) => l.active || ids.includes(l.id));
   // 選んだレーンのどれかで使えるメニュー（レーンの指定がないメニューも）
@@ -753,13 +862,51 @@ function SundayMenusEditor({
             <span>患者に見せる名前</span>
             <input className={styles.input} value={it.name} maxLength={40} onChange={(ev) => put(i, { name: ev.target.value })} disabled={!canEdit} placeholder="例：ボトックス注射" />
           </label>
+          <label className={styles.field}>
+            <span>時間の決め方</span>
+            <select
+              className={styles.input}
+              value={timeMode(it)}
+              onChange={(ev) => {
+                const mode = ev.target.value as TimeMode;
+                put(i, {
+                  partGroups: mode === "parts" ? (it.partGroups?.length ? it.partGroups : [{ name: "部位", parts: [{ name: "新しい部位", minutes: 10 }] }]) : [],
+                  countPerMinute: mode === "count" ? it.countPerMinute || 4 : 0,
+                });
+              }}
+              disabled={!canEdit}
+            >
+              <option value="fixed">決まった時間</option>
+              <option value="parts">部位ごとの時間（患者が部位を選び、合計の時間）</option>
+              <option value="count">本数（患者が本数を入れる）</option>
+            </select>
+          </label>
+          {timeMode(it) === "parts" && <PartsEditor it={it} onChange={(partGroups) => put(i, { partGroups })} canEdit={canEdit} />}
+          {timeMode(it) !== "fixed" && (
+            <div className={styles.timeRow}>
+              {timeMode(it) === "count" && (
+                <label className={styles.field}>
+                  <span>1分あたりの本数</span>
+                  <input className={styles.input} type="number" min={1} max={100} value={it.countPerMinute ?? 0} onChange={(ev) => put(i, { countPerMinute: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+                </label>
+              )}
+              <label className={styles.field}>
+                <span>1回の時間の上限（分。0 なら180分。超えるときは予約ページで選べない）</span>
+                <input className={styles.input} type="number" min={0} max={180} step={5} value={it.maxMinutes ?? 0} onChange={(ev) => put(i, { maxMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+              </label>
+            </div>
+          )}
           {(["first", "repeat"] as const).map((k) => {
             const laneIds = it[`${k}LaneIds`];
             const menuId = it[`${k}MenuId`];
+            const variable = isVariable(it);
             return (
               <div key={k} style={{ display: "grid", gap: 4 }}>
                 <label className={styles.field}>
-                  <span>{k === "first" ? "初診（はじめての方）" : "再診（2回目以降の方）"}の時間（分。0 なら受けない）</span>
+                  <span>
+                    {k === "first" ? "初診（はじめての方）" : "再診（2回目以降の方）"}
+                    {variable ? "に足す時間（分。説明など。受けないときは下のレーンを外す）" : "の時間（分。0 なら受けない）"}
+                  </span>
                   <input
                     className={styles.input}
                     type="number"
@@ -771,7 +918,7 @@ function SundayMenusEditor({
                     disabled={!canEdit}
                   />
                 </label>
-                {it[`${k}Minutes`] > 0 && (
+                {(variable || it[`${k}Minutes`] > 0) && (
                   <>
                     <div className={styles.field}>
                       <span>レーン</span>

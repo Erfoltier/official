@@ -96,6 +96,43 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     await expect(c.patch("/clinic", { sundayMenus: next.map((x: any) => (x.id === "botox" ? { ...x, enabled: true } : x)) })).rejects.toThrow(/レーンと予約に付けるメニュー/);
   });
 
+  it("脱毛：レーザーは区分（男性・女性）と部位を選んで合計の時間（初診は説明15分を足す）、針は本数（4本で1分、上限90分）", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    const laser = presets.find((x: any) => x.id === "laserhair");
+    expect(laser.partGroups.map((g: any) => g.name)).toEqual(["男性", "女性"]);
+    const vio = laser.partGroups[1].parts.findIndex((x: any) => x.name === "VIO");
+    const navel = laser.partGroups[1].parts.findIndex((x: any) => x.name === "へそ回り");
+    expect(laser.partGroups[0].parts[vio].minutes).toBe(30);
+    expect(laser.partGroups[1].parts[vio].minutes).toBe(20);
+    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ countPerMinute: 4, maxMinutes: 90, firstLaneIds: [] });
+    await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (["laserhair", "needlehair"].includes(x.id) ? { ...x, enabled: true } : x)) });
+    const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).toContain('value="m:laserhair"');
+    expect(html).toContain('value="m:needlehair" data-first="" data-repeat="1"');
+    // 女性 VIO＋へそ回り：再診 30分、初診は説明15分を足して45分
+    expect(await slots(`item=laserhair&visit=repeat&group=1&parts=${vio},${navel}`)).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "約30分" });
+    expect((await slots(`item=laserhair&visit=first&group=1&parts=${vio},${navel}`)).duration).toBe("約45分");
+    expect((await slots("item=laserhair&visit=repeat&group=1&parts=")).slots).toEqual({});
+    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "1", parts: [] }))).data.fields).toContain("parts");
+    expect((await book(person(day, "10:00", { item: "laserhair", visit: "first", group: "1", parts: [vio, navel] }))).status).toBe(201);
+    const r = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.laneId === L1);
+    expect([r.startAt, r.endAt]).toEqual([toIso(day, 600), toIso(day, 645)]);
+    expect(r.menuIds).toEqual(["menu-s0000A43A3", "menu-s0000A1344"]);
+    expect(r.memo).toContain("部位：女性：VIO・へそ回り");
+    expect(r.memo).toContain("初診の説明：15分");
+    // 針：300本 → 75分。400本 → 100分は上限90分を超えるので選べない
+    expect(await slots("item=needlehair&visit=repeat&count=300")).toMatchObject({ duration: "約75分" });
+    expect((await slots("item=needlehair&visit=repeat&count=400")).slots).toEqual({});
+    expect((await book(person(day, "10:00", { item: "needlehair", count: 400 }, "09088889999"))).data.fields).toContain("count");
+    expect((await book(person(day, "10:00", { item: "needlehair", count: 300 }, "09088889999"))).status).toBe(201);
+    const n = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.laneId === L3);
+    expect([n.startAt, n.endAt]).toEqual([toIso(day, 600), toIso(day, 675)]);
+    expect(n.memo).toContain("本数：300本");
+  });
+
   it("予約ページに許可したメニューが出て、受け付ける区分だけを選べる。空きはタトゥーと同じ決め方で、レーンは空いているほうへ", async () => {
     const day = nextSunday();
     const c = await open(day);

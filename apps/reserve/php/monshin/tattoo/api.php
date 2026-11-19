@@ -24,8 +24,10 @@ try {
         $itemId = (string) ($_GET['item'] ?? '');
         if ($itemId !== '') {
             $it = TattooBooking::item($itemId);
-            $plan = $it ? TattooBooking::planItem($it, $first) : [];
-            $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) array_map(fn($l) => array_map(fn($c) => $c[0], $l), $plan), 'duration' => $it && TattooBooking::accepts($it, $first) ? TattooBooking::itemDurationText($it, $first) : '', 'today' => now_in_clinic()['date']]);
+            // 部位ごと：group（何番目の区分）・parts（何番目の部位をカンマ区切り）、本数：count
+            $pick = ['group' => $_GET['group'] ?? null, 'parts' => array_filter(explode(',', (string) ($_GET['parts'] ?? '')), 'is_numeric'), 'count' => $_GET['count'] ?? null];
+            $plan = $it ? TattooBooking::planItem($it, $first, null, $pick) : [];
+            $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) array_map(fn($l) => array_map(fn($c) => $c[0], $l), $plan), 'duration' => $it && TattooBooking::accepts($it, $first) ? TattooBooking::itemDurationText($it, $first, $pick) : '', 'today' => now_in_clinic()['date']]);
         }
         $open = TattooBooking::ready();
         if ($area <= 0 || $area > 20_000) {

@@ -76,7 +76,7 @@ $v = '20261119-3';
             <label class="pill"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
 <?php endif; ?>
 <?php foreach ($items as $it): ?>
-            <label class="pill"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>"><span><?= $h($it['name']) ?></span></label>
+            <label class="pill"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endforeach; ?>
           </div>
           <p class="field-note" id="item-note" hidden></p>
@@ -89,6 +89,16 @@ $v = '20261119-3';
           </div>
           <small class="field-note" id="visit-note">はじめての方は、照射の前にご説明（10分）があります</small>
         </fieldset>
+
+        <fieldset class="field" id="group-box" hidden>
+          <legend>区分 <em>必須</em></legend>
+          <div class="choice-grid two" id="group-list"></div>
+        </fieldset>
+        <fieldset class="field" id="parts-box" hidden>
+          <legend>ご希望の部位 <em>必須</em>（いくつでも選べます）</legend>
+          <div class="choice-grid two" id="parts-list"></div>
+        </fieldset>
+        <label class="field" id="count-box" hidden><span>本数 <em>必須</em></span><input name="count" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="前回お伝えした本数（例：300）"><small class="field-note">本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</small></label>
 
         <div class="tt-area" id="area-box" hidden>
           <p class="tt-area-title">希望照射面積 <em>必須</em></p>
