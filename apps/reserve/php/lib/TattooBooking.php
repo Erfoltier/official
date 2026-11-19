@@ -230,20 +230,37 @@ final class TattooBooking
         foreach ($out as &$it) {
             if ($it['id'] === 'hokuro') {
                 $it = self::hokuroParts($it);
+            } elseif ($it['id'] === 'dyelaser') {
+                $it = self::dyeParts($it);
             }
         }
         unset($it);
         return array_map(fn($it) => $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''], $out);
     }
 
-    /** ほくろ除去の個数（顔1〜4個 20分・顔15個までまとめ 20分・顔20個以上まとめ 30分）。初診のみ（再診はレーンなし） */
+    /**
+     * 色素レーザーの範囲（全顔・頬・顎・ポイント照射〈1か所から。1か所2,200円のメニュー〉）。どれも10分（院長 11/19）。
+     * 初診は医師の診察20分＝説明10分＋範囲10分、再診は範囲の10分
+     */
+    public static function dyeParts(array $it): array
+    {
+        return [
+            ...$it,
+            'firstMinutes' => 10,
+            'repeatMinutes' => 0,
+            'partGroups' => [['name' => '範囲', 'parts' => [['name' => '全顔', 'minutes' => 10], ['name' => '頬', 'minutes' => 10], ['name' => '顎', 'minutes' => 10], ['name' => 'ポイント照射（1か所から）', 'minutes' => 10]]]],
+            'pickOne' => true, 'pickLabel' => '範囲',
+        ];
+    }
+
+    /** ほくろ除去の個数（顔1〜4個 15分・顔15個までまとめ 20分・顔20個以上まとめ 30分。院長 11/19）。初診のみ（再診はレーンなし） */
     public static function hokuroParts(array $it): array
     {
         return [
             ...$it,
             'firstMinutes' => 0,
             'repeatMinutes' => 0, 'repeatLaneIds' => [], 'repeatMenuId' => '',
-            'partGroups' => [['name' => '顔', 'parts' => [['name' => '顔1〜4個', 'minutes' => 20], ['name' => '顔15個までまとめ', 'minutes' => 20], ['name' => '顔20個以上まとめ', 'minutes' => 30]]]],
+            'partGroups' => [['name' => '顔', 'parts' => [['name' => '顔1〜4個', 'minutes' => 15], ['name' => '顔15個までまとめ', 'minutes' => 20], ['name' => '顔20個以上まとめ', 'minutes' => 30]]]],
             'pickOne' => true, 'pickLabel' => '個数',
         ];
     }
