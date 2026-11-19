@@ -328,7 +328,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       $n = TattooBooking::normalizeItems($p, $lanes, $menus);
       return ['count' => count($n), 'on' => count(array_filter($n, fn($x) => $x['enabled'])), 'noCat' => array_values(array_map(fn($x) => $x['id'], array_filter($n, fn($x) => $x['category'] === ''))), 'cats' => array_values(array_unique(array_column($n, 'category'))), 'oral' => in_array('oral', array_column($n, 'id'), true)];
     `);
-    expect(out.count).toBe(40);
+    expect(out.count).toBe(41);
     expect(out.on).toBe(0);
     expect(out.noCat).toEqual([]);
     expect(out.oral).toBe(false);
