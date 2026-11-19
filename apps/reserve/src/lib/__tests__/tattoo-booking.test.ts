@@ -64,6 +64,8 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     await expect(c.patch("/clinic", { tattooSlots: ["2026-12-06 10時から"] })).rejects.toThrow(/受付日時の形/);
     // 空いた日は 10:00 だけ（受付の終わりから逆算した 11:55 は出さない）
     expect((await slots(5, "repeat")).slots).toEqual({ [day]: ["10:00"] });
+    expect((await slots(20, "first")).duration).toBe("約20分（ご説明10分・照射10分）");
+    expect((await slots(5, "repeat")).duration).toBe("約5分（照射）");
     expect((await book(person(day, "11:55"))).data.error).toBe("slot_taken");
     expect((await book(person(day, "10:00"))).status).toBe(201);
     // 前の予約のすぐ後ろから（〜50cm²・15分）
@@ -138,7 +140,9 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
       $r = TattooBooking::book(['kind' => 'artmake', 'visit' => 'first', 'rects' => [[1.5, 6], [1.5, 6]], 'anesthesia' => 'yes', 'name' => '眉 花子', 'kana' => 'マユ ハナコ', 'birthDate' => '1990-01-01', 'phone' => '09055556666', 'email' => 'mayu@example.jp', 'date' => '${day}', 'time' => '10:00'], '127.0.0.9');
       return ['r' => $r, 'sent' => $sent];
     `);
-    expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20" });
+    expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20", duration: "約20分（ご説明10分・照射10分）" });
+    expect(out.sent[0][1]).toContain("10:00〜10:20");
+    expect(out.sent[0][1]).toContain("所要時間：約20分（ご説明10分・照射10分）");
     expect(out.sent[0][1]).toContain("アートメイク除去のご予約を承りました");
     expect(out.sent[0][1]).toContain("希望照射面積：18cm²");
     expect(out.sent[0][1]).toContain("49,500円");

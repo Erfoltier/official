@@ -67,6 +67,7 @@ $v = '20261117-1';
             <label class="pill"><input type="radio" name="visit" value="first"><span>はじめて</span></label>
             <label class="pill"><input type="radio" name="visit" value="repeat"><span>2回目以降</span></label>
           </div>
+          <small class="field-note">はじめての方は、照射の前にご説明（10分）があります</small>
         </fieldset>
 
         <div class="tt-area" id="area-box" hidden>

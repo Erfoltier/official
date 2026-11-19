@@ -63,17 +63,19 @@ function syncInputs() {
 async function load(area) {
   const key = loadedKey;
   let price = 0;
+  let duration = '';
   try {
     const res = await fetch(`./api.php?area=${encodeURIComponent(area)}&visit=${encodeURIComponent(val('visit'))}`, { cache: 'no-store' });
     const data = await res.json();
     if (key !== loadedKey) return;
     slots = data.slots && typeof data.slots === 'object' ? data.slots : {};
     price = Number(data.price) || 0;
+    duration = typeof data.duration === 'string' ? data.duration : '';
   } catch (_) {
     slots = {};
   }
   if (price) {
-    document.querySelector('#area-result').textContent = `希望照射面積：${fmt(area)}cm²／1回の料金の目安：${price.toLocaleString('ja-JP')}円（税込・麻酔代別）`;
+    document.querySelector('#area-result').textContent = `希望照射面積：${fmt(area)}cm²／1回の料金の目安：${price.toLocaleString('ja-JP')}円（税込・麻酔代別）${duration ? `／所要時間の目安：${duration}` : ''}`;
   }
   if (selected && !(slots[selected] || []).length) selected = '';
   const first = Object.keys(slots).sort()[0];
@@ -177,7 +179,7 @@ form.addEventListener('submit', async (event) => {
     if (res.ok && data.ok) {
       form.hidden = true;
       document.querySelector('#done').hidden = false;
-      document.querySelector('#done-when').textContent = `${ja(body.date)} ${body.time} にご来院ください`;
+      document.querySelector('#done-when').textContent = `${ja(body.date)} ${body.time}〜${data.end || ''}（${data.duration || ''}）。${body.time} にご来院ください`;
       document.querySelector('#done-mail').textContent = data.mailed
         ? 'ご入力のメールアドレスに、ご予約の内容をお送りしました。'
         : '確認のメールをお送りできませんでした。ご予約は承っております。';

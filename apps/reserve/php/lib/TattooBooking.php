@@ -52,6 +52,14 @@ final class TattooBooking
         return $ids !== [] && array_intersect($ids, $v['menuIds'] ?? []) !== [];
     }
 
+    /** 患者に見せる所要時間の文：「約20分（ご説明10分・照射10分）」／再診は「約10分（照射）」 */
+    public static function durationText(int $treat, bool $first): string
+    {
+        return $first
+            ? '約' . ($treat + self::EXPLAIN_MINUTES) . '分（ご説明' . self::EXPLAIN_MINUTES . "分・照射{$treat}分）"
+            : "約{$treat}分（照射）";
+    }
+
     /** 公開ページのアドレス（問診票のアドレスと同じサイトの /tattoo/） */
     public static function pageUrl(): string
     {
@@ -354,7 +362,7 @@ final class TattooBooking
         }
         $f += ['kind' => $kind, 'visit' => $visit, 'area' => $area, 'anesthesia' => $anesthesia, 'end' => $result['end']];
         [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject($kind), self::mailBody($f)) : [false];
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'mailed' => (bool) $sent];
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::durationText($treat, $first), 'mailed' => (bool) $sent];
     }
 
     private static function num(float $a): string
@@ -379,6 +387,7 @@ final class TattooBooking
             "{$what}のご予約を承りました。",
             '',
             '日時：' . format_date_ja($f['date']) . " {$f['time']}〜{$f['end']}（ご来院は {$f['time']} までにお願いします）",
+            '所要時間：' . self::durationText(self::treatMinutes((float) $f['area']), $f['visit'] === 'first'),
             '区分：' . ($f['visit'] === 'first' ? '初診（照射の前にご説明があります）' : '再診'),
             '希望照射面積：' . self::num((float) $f['area']) . 'cm²',
             '料金の目安：1回 ' . number_format(self::price((float) $f['area'])) . '円（税込）' . ($f['anesthesia'] ? '＋局所麻酔注射 1ccあたり5,500円（税込）' : ''),

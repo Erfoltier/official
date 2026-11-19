@@ -24,7 +24,7 @@ try {
         if ($area <= 0 || $area > 20_000) {
             $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) [], 'today' => now_in_clinic()['date']]);
         }
-        $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) TattooBooking::openTimes(TattooBooking::treatMinutes($area), $first), 'price' => TattooBooking::price($area), 'today' => now_in_clinic()['date']]);
+        $out(200, ['ok' => true, 'open' => $open, 'slots' => (object) TattooBooking::openTimes(TattooBooking::treatMinutes($area), $first), 'price' => TattooBooking::price($area), 'duration' => TattooBooking::durationText(TattooBooking::treatMinutes($area), $first), 'today' => now_in_clinic()['date']]);
     }
     if ($method !== 'POST') {
         $out(405, ['ok' => false, 'error' => 'method_not_allowed']);
