@@ -551,7 +551,6 @@ export function TattooCard({
   const [items, setItems] = useState<SundayMenu[]>(clinic.sundayMenus ?? []);
   const [tattooOn, setTattooOn] = useState(clinic.tattooKindOn !== false);
   const [artmakeOn, setArtmakeOn] = useState(clinic.artmakeKindOn !== false);
-  const [removalOpen, setRemovalOpen] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const badItem = items.map(sundayMenuProblem).find(Boolean);
   const badLiff = liffId.trim() !== "" && !/^\d{6,20}-[A-Za-z0-9]{4,40}$/.test(liffId.trim());
@@ -588,7 +587,6 @@ export function TattooCard({
       setBusy(false);
     }
   };
-  const removalOpenDefault = !laneId || !menuId;
   return (
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>日曜の Web 予約</h3>
@@ -614,81 +612,81 @@ export function TattooCard({
       </div>
 
       <h4 className={styles.subTitle}>日曜メニュー</h4>
-      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} leading={(
-        [
-          ["tattoo", "タトゥー除去", tattooOn, setTattooOn, "時間は面積で自動（初診は説明10分を足す）"],
-          ["artmake", "アートメイク除去", artmakeOn, setArtmakeOn, "時間は面積で自動（眉は左右の合計）。照射の設定はタトゥー除去と共通"],
-        ] as const
-      ).map(([key, title, on, setOn, about]) => (
-        <fieldset key={key} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: on ? 1 : 0.85 }}>
-          <legend style={{ fontWeight: 700 }}>{title}</legend>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px" }}>
-            <Switch on={on} onChange={setOn} label={title} disabled={!canEdit} />
-            <span className={styles.hint} style={{ margin: 0 }}>{about}</span>
-            {key === "tattoo" && (
-              <button type="button" onClick={() => setRemovalOpen(!(removalOpen ?? removalOpenDefault))}>
-                {removalOpen ?? removalOpenDefault ? "照射の設定を閉じる" : "照射の設定を開く"}
-              </button>
-            )}
-          </div>
-          {key === "tattoo" && (removalOpen ?? removalOpenDefault) && (
+      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} fixed={[
+        {
+          key: "tattoo",
+          title: "タトゥー除去",
+          on: tattooOn,
+          setOn: setTattooOn,
+          about: "時間は面積で自動（初診は説明10分を足す）",
+          warn: tattooOn && missing,
+          detail: (
             <>
-              <label className={styles.field}>
-                <span>照射のレーン（タトゥー・アートメイク共通）</span>
-                <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
-                  <option value="">（選ばない）</option>
-                  {activeLanes(laneId).map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span>照射のメニュー（予約に付ける。照射のレーンで使えるメニュー）</span>
-                <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
-                  <option value="">（選ばない）</option>
-                  {laneMenus(laneId, menuId).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span>初診説明のレーン（照射の直前の10分。空いていなければ照射のレーンに続けて取ります）</span>
-                <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
-                  <option value="">（使わない：説明も照射のレーンで取る）</option>
-                  {activeLanes(explainLaneId)
-                    .filter((l) => l.id !== laneId)
-                    .map((l) => (
+                <label className={styles.field}>
+                  <span>照射のレーン（タトゥー・アートメイク共通）</span>
+                  <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
+                    <option value="">（選ばない）</option>
+                    {activeLanes(laneId).map((l) => (
                       <option key={l.id} value={l.id}>
                         {l.name}
                       </option>
                     ))}
-                </select>
-              </label>
-              {explainLaneId && (
+                  </select>
+                </label>
                 <label className={styles.field}>
-                  <span>初診説明のメニュー（選ばなければ照射のメニューを付けます）</span>
-                  <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit}>
+                  <span>照射のメニュー（予約に付ける。照射のレーンで使えるメニュー）</span>
+                  <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
                     <option value="">（選ばない）</option>
-                    {laneMenus(explainLaneId, explainMenuId).map((m) => (
+                    {laneMenus(laneId, menuId).map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
                       </option>
                     ))}
                   </select>
                 </label>
-              )}
-              <label className={styles.field}>
-                <span>照射に使う機器の名前（任意。下の日曜メニューで同じ名前を入れたものとは、レーンが違っても同じ時刻に入れません）</span>
-                <input className={styles.input} value={machine} maxLength={30} onChange={(ev) => setMachine(ev.target.value)} disabled={!canEdit} placeholder="例：ピコレーザー" />
-              </label>
+                <label className={styles.field}>
+                  <span>初診説明のレーン（照射の直前の10分。空いていなければ照射のレーンに続けて取ります）</span>
+                  <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
+                    <option value="">（使わない：説明も照射のレーンで取る）</option>
+                    {activeLanes(explainLaneId)
+                      .filter((l) => l.id !== laneId)
+                      .map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                {explainLaneId && (
+                  <label className={styles.field}>
+                    <span>初診説明のメニュー（選ばなければ照射のメニューを付けます）</span>
+                    <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit}>
+                      <option value="">（選ばない）</option>
+                      {laneMenus(explainLaneId, explainMenuId).map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label className={styles.field}>
+                  <span>照射に使う機器の名前（任意。下の日曜メニューで同じ名前を入れたものとは、レーンが違っても同じ時刻に入れません）</span>
+                  <input className={styles.input} value={machine} maxLength={30} onChange={(ev) => setMachine(ev.target.value)} disabled={!canEdit} placeholder="例：ピコレーザー" />
+                </label>
             </>
-          )}
-        </fieldset>
-      ))} />
+          ),
+        },
+        {
+          key: "artmake",
+          title: "アートメイク除去",
+          on: artmakeOn,
+          setOn: setArtmakeOn,
+          about: "時間は面積で自動（眉は左右の合計）",
+          warn: artmakeOn && missing,
+          detail: <p className={styles.hint}>照射のレーン・メニュー・初診説明・機器は、タトゥー除去と共通です（タトゥー除去の設定で変えます）。</p>,
+        },
+      ]} />
       <p className={styles.hint} data-invalid={bad || badLiff || badItem || missing || (enabled && mail === false) || undefined}>
         {badItem
           ? badItem
@@ -854,17 +852,15 @@ function SundayMenusEditor({
   lanes,
   menus,
   canEdit,
-  leading,
+  fixed,
 }: {
   items: SundayMenu[];
   setItems: (next: SundayMenu[]) => void;
   lanes: Lane[];
   menus: Menu[];
   canEdit: boolean;
-  leading?: ReactNode;
+  fixed: { key: string; title: string; on: boolean; setOn: (on: boolean) => void; about: string; warn: boolean; detail: ReactNode }[];
 }) {
-  // オフのメニューは、名前と時間の要約だけを出す（「設定を開く」で中身を見られる）
-  const [opened, setOpened] = useState<Record<number, boolean>>({});
   const laneName = (id: string) => lanes.find((l) => l.id === id)?.shortName || lanes.find((l) => l.id === id)?.name || "?";
   const summary = (it: SundayMenu) => {
     const mode = timeMode(it);
@@ -894,202 +890,227 @@ function SundayMenusEditor({
   // 選んだレーンのどれかで使えるメニュー（レーンの指定がないメニューも）
   const menusFor = (laneIds: string[], id: string) =>
     menus.filter((m) => (m.active && !m.deleted && ((m.laneIds ?? []).length === 0 || laneIds.some((l) => (m.laneIds ?? []).includes(l)))) || m.id === id);
-  return (
+  const itemDetail = (it: SundayMenu, i: number) => (
     <>
-      <div className={styles.sundayGrid}>
-      {leading}
-      {items.map((it, i) => (
-        <fieldset key={it.id || `new-${i}`} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: it.enabled ? 1 : 0.85 }}>
-          <legend style={{ fontWeight: 700 }}>{it.name.trim() || `日曜メニュー ${i + 1}`}</legend>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px" }}>
-            <Switch on={it.enabled} onChange={(on) => put(i, { enabled: on })} label={it.name || `日曜メニュー ${i + 1}`} disabled={!canEdit} />
-            <span className={styles.hint} style={{ margin: 0 }}>{summary(it)}</span>
-            {!it.enabled && (
-              <button type="button" onClick={() => setOpened({ ...opened, [i]: !opened[i] })}>
-                {opened[i] ? "閉じる" : "設定を開く"}
-              </button>
-            )}
-          </div>
-          {(it.enabled || opened[i]) && (
-          <>
-          <label className={styles.field}>
-            <span>患者に見せる名前</span>
-            <input className={styles.input} value={it.name} maxLength={40} onChange={(ev) => put(i, { name: ev.target.value })} disabled={!canEdit} placeholder="例：ボトックス注射" />
-          </label>
-          <label className={styles.field}>
-            <span>時間の決め方</span>
-            <select
-              className={styles.input}
-              value={timeMode(it)}
-              onChange={(ev) => {
-                const mode = ev.target.value as TimeMode;
-                put(i, {
-                  partGroups: mode === "parts" ? (it.partGroups?.length ? it.partGroups : [{ name: "部位", parts: [{ name: "新しい部位", minutes: 10 }] }]) : [],
-                  countPerMinute: mode === "count" ? it.countPerMinute || 4 : 0,
-                  flow: mode === "flow",
-                });
-              }}
-              disabled={!canEdit}
-            >
-              <option value="fixed">決まった時間</option>
-              <option value="parts">部位ごとの時間（患者が部位を選び、合計の時間）</option>
-              <option value="count">本数（患者が本数を入れる）</option>
-              <option value="flow">麻酔つきの注入（モニターの有無と麻酔で、麻酔・撮影のレーンと待ち時間を分ける）</option>
-            </select>
-          </label>
-          {timeMode(it) === "flow" && (
-            <div style={{ display: "grid", gap: 6 }}>
-              <p className={styles.hint} style={{ margin: 0 }}>
-                当院がはじめての方は下の「初診」の時間の医師の診察だけ。受診したことのある方は、今回の治療内容と麻酔を選びます。院内の麻酔クリームは麻酔のレーンで10分→40〜60分後（なるべく45分後）に施術、モニターはネオボ撮影＋頬麻酔15分→クリームなら40〜60分後・それ以外は直後に施術、この治療が初めての方は施術の最初の10分に医師の診察を重ねます。施術は「再診」のレーンとメニューで取ります。
-              </p>
-              <div className={styles.timeRow}>
-                <label className={styles.field}>
-                  <span>施術の時間（麻酔クリーム・自分で塗る・なし）</span>
-                  <input className={styles.input} type="number" min={0} max={180} step={5} value={it.creamMinutes ?? 0} onChange={(ev) => put(i, { creamMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
-                </label>
-                <label className={styles.field}>
-                  <span>施術の時間（麻酔の注射）</span>
-                  <input className={styles.input} type="number" min={0} max={180} step={5} value={it.injectionMinutes ?? 0} onChange={(ev) => put(i, { injectionMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
-                </label>
-              </div>
-              <div className={styles.field}>
-                <span>麻酔・撮影のレーン</span>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
-                  {activeLanes(it.anesLaneIds ?? []).map((l) => (
-                    <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <input
-                        type="checkbox"
-                        checked={(it.anesLaneIds ?? []).includes(l.id)}
-                        onChange={(ev) => put(i, { anesLaneIds: ev.target.checked ? [...(it.anesLaneIds ?? []), l.id] : (it.anesLaneIds ?? []).filter((x) => x !== l.id) })}
-                        disabled={!canEdit}
-                      />
-                      {l.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className={styles.timeRow}>
-                {(
-                  [
-                    ["creamMenuId", "麻酔クリーム（10分）のメニュー", it.anesLaneIds ?? []],
-                    ["neoboMenuId", "ネオボ撮影＋頬麻酔（15分）のメニュー", it.anesLaneIds ?? []],
-                    ["doctorMenuId", "医師の診察（この治療が初めての方・10分）のメニュー", [it.doctorLaneId || it.firstLaneIds[0] || ""]],
-                  ] as const
-                ).map(([key, label, ls]) => (
-                  <label key={key} className={styles.field}>
-                    <span>{label}</span>
-                    <select className={styles.input} value={it[key] ?? ""} onChange={(ev) => put(i, { [key]: ev.target.value } as Partial<SundayMenu>)} disabled={!canEdit}>
-                      <option value="">（選ばない）</option>
-                      {menusFor([...ls], it[key] ?? "").map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
+            <label className={styles.field}>
+              <span>患者に見せる名前</span>
+              <input className={styles.input} value={it.name} maxLength={40} onChange={(ev) => put(i, { name: ev.target.value })} disabled={!canEdit} placeholder="例：ボトックス注射" />
+            </label>
+            <label className={styles.field}>
+              <span>時間の決め方</span>
+              <select
+                className={styles.input}
+                value={timeMode(it)}
+                onChange={(ev) => {
+                  const mode = ev.target.value as TimeMode;
+                  put(i, {
+                    partGroups: mode === "parts" ? (it.partGroups?.length ? it.partGroups : [{ name: "部位", parts: [{ name: "新しい部位", minutes: 10 }] }]) : [],
+                    countPerMinute: mode === "count" ? it.countPerMinute || 4 : 0,
+                    flow: mode === "flow",
+                  });
+                }}
+                disabled={!canEdit}
+              >
+                <option value="fixed">決まった時間</option>
+                <option value="parts">部位ごとの時間（患者が部位を選び、合計の時間）</option>
+                <option value="count">本数（患者が本数を入れる）</option>
+                <option value="flow">麻酔つきの注入（モニターの有無と麻酔で、麻酔・撮影のレーンと待ち時間を分ける）</option>
+              </select>
+            </label>
+            {timeMode(it) === "flow" && (
+              <div style={{ display: "grid", gap: 6 }}>
+                <p className={styles.hint} style={{ margin: 0 }}>
+                  当院がはじめての方は下の「初診」の時間の医師の診察だけ。受診したことのある方は、今回の治療内容と麻酔を選びます。院内の麻酔クリームは麻酔のレーンで10分→40〜60分後（なるべく45分後）に施術、モニターはネオボ撮影＋頬麻酔15分→クリームなら40〜60分後・それ以外は直後に施術、この治療が初めての方は施術の最初の10分に医師の診察を重ねます。施術は「再診」のレーンとメニューで取ります。
+                </p>
+                <div className={styles.timeRow}>
+                  <label className={styles.field}>
+                    <span>施術の時間（麻酔クリーム・自分で塗る・なし）</span>
+                    <input className={styles.input} type="number" min={0} max={180} step={5} value={it.creamMinutes ?? 0} onChange={(ev) => put(i, { creamMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
                   </label>
-                ))}
-              </div>
-            </div>
-          )}
-          {timeMode(it) === "parts" && <PartsEditor it={it} onChange={(partGroups) => put(i, { partGroups })} canEdit={canEdit} />}
-          {(timeMode(it) === "parts" || timeMode(it) === "count") && (
-            <div className={styles.timeRow}>
-              {timeMode(it) === "count" && (
-                <label className={styles.field}>
-                  <span>1分あたりの本数</span>
-                  <input className={styles.input} type="number" min={1} max={100} value={it.countPerMinute ?? 0} onChange={(ev) => put(i, { countPerMinute: Number(ev.target.value) || 0 })} disabled={!canEdit} />
-                </label>
-              )}
-              <label className={styles.field}>
-                <span>1回の時間の上限（分。0 なら180分。超えるときは予約ページで選べない）</span>
-                <input className={styles.input} type="number" min={0} max={180} step={5} value={it.maxMinutes ?? 0} onChange={(ev) => put(i, { maxMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
-              </label>
-            </div>
-          )}
-          {(["first", "repeat"] as const).map((k) => {
-            const laneIds = it[`${k}LaneIds`];
-            const menuId = it[`${k}MenuId`];
-            const variable = isVariable(it);
-            return (
-              <div key={k} style={{ display: "grid", gap: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
-                  <Switch on={kindOn(it, k) || !!shown[`${i}-${k}`]} onChange={(on) => setKind(i, it, k, on)} label={`${it.name} ${k === "first" ? "初診" : "再診"}`} disabled={!canEdit} />
-                  {k === "first" ? "初診（はじめての方）" : "再診（2回目以降の方）"}
+                  <label className={styles.field}>
+                    <span>施術の時間（麻酔の注射）</span>
+                    <input className={styles.input} type="number" min={0} max={180} step={5} value={it.injectionMinutes ?? 0} onChange={(ev) => put(i, { injectionMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+                  </label>
                 </div>
-                {(kindOn(it, k) || !!shown[`${i}-${k}`]) && !(it.flow && k === "repeat") && (
-                <label className={styles.field}>
-                  <span>{it.flow ? "時間（分。医師の診察）" : variable ? "足す時間（分。説明など）" : "時間（分）"}</span>
-                  <input
-                    className={styles.input}
-                    type="number"
-                    min={0}
-                    max={180}
-                    step={5}
-                    value={it[`${k}Minutes`]}
-                    onChange={(ev) => put(i, { [`${k}Minutes`]: Number(ev.target.value) || 0 } as Partial<SundayMenu>)}
-                    disabled={!canEdit}
-                  />
-                </label>
-                )}
-                {(kindOn(it, k) || !!shown[`${i}-${k}`]) && (
-                  <>
-                    <div className={styles.field}>
-                      <span>レーン</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
-                        {activeLanes(laneIds).map((l) => (
-                          <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <input
-                              type="checkbox"
-                              checked={laneIds.includes(l.id)}
-                              onChange={(ev) => put(i, { [`${k}LaneIds`]: ev.target.checked ? [...laneIds, l.id] : laneIds.filter((x) => x !== l.id) } as Partial<SundayMenu>)}
-                              disabled={!canEdit}
-                            />
-                            {l.name}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <label className={styles.field}>
-                      <span>予約に付けるメニュー</span>
-                      <select className={styles.input} value={menuId} onChange={(ev) => put(i, { [`${k}MenuId`]: ev.target.value } as Partial<SundayMenu>)} disabled={!canEdit || laneIds.length === 0}>
+                <div className={styles.field}>
+                  <span>麻酔・撮影のレーン</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
+                    {activeLanes(it.anesLaneIds ?? []).map((l) => (
+                      <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <input
+                          type="checkbox"
+                          checked={(it.anesLaneIds ?? []).includes(l.id)}
+                          onChange={(ev) => put(i, { anesLaneIds: ev.target.checked ? [...(it.anesLaneIds ?? []), l.id] : (it.anesLaneIds ?? []).filter((x) => x !== l.id) })}
+                          disabled={!canEdit}
+                        />
+                        {l.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className={styles.timeRow}>
+                  {(
+                    [
+                      ["creamMenuId", "麻酔クリーム（10分）のメニュー", it.anesLaneIds ?? []],
+                      ["neoboMenuId", "ネオボ撮影＋頬麻酔（15分）のメニュー", it.anesLaneIds ?? []],
+                      ["doctorMenuId", "医師の診察（この治療が初めての方・10分）のメニュー", [it.doctorLaneId || it.firstLaneIds[0] || ""]],
+                    ] as const
+                  ).map(([key, label, ls]) => (
+                    <label key={key} className={styles.field}>
+                      <span>{label}</span>
+                      <select className={styles.input} value={it[key] ?? ""} onChange={(ev) => put(i, { [key]: ev.target.value } as Partial<SundayMenu>)} disabled={!canEdit}>
                         <option value="">（選ばない）</option>
-                        {menusFor(laneIds, menuId).map((m) => (
+                        {menusFor([...ls], it[key] ?? "").map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.name}
                           </option>
                         ))}
                       </select>
                     </label>
-                  </>
-                )}
+                  ))}
+                </div>
               </div>
-            );
-          })}
-          <label className={styles.field}>
-            <span>機器の名前（任意。同じ名前のもの同士は同じ時刻に入れない）</span>
-            <input className={styles.input} value={it.machine} maxLength={30} onChange={(ev) => put(i, { machine: ev.target.value })} disabled={!canEdit} placeholder="例：脱毛レーザー" />
-          </label>
-          <label className={styles.field}>
-            <span>ご来院前のお願い（任意。予約ページと確定の連絡に出ます）</span>
-            <input className={styles.input} value={it.note} maxLength={200} onChange={(ev) => put(i, { note: ev.target.value })} disabled={!canEdit} placeholder="例：当日はメイクを落としやすい状態でお越しください。" />
-          </label>
-          {canEdit && (
-            <button type="button" className={styles.linkDanger} onClick={() => setItems(items.filter((_, j) => j !== i))}>
-              このメニューを一覧から消す
-            </button>
+            )}
+            {timeMode(it) === "parts" && <PartsEditor it={it} onChange={(partGroups) => put(i, { partGroups })} canEdit={canEdit} />}
+            {(timeMode(it) === "parts" || timeMode(it) === "count") && (
+              <div className={styles.timeRow}>
+                {timeMode(it) === "count" && (
+                  <label className={styles.field}>
+                    <span>1分あたりの本数</span>
+                    <input className={styles.input} type="number" min={1} max={100} value={it.countPerMinute ?? 0} onChange={(ev) => put(i, { countPerMinute: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+                  </label>
+                )}
+                <label className={styles.field}>
+                  <span>1回の時間の上限（分。0 なら180分。超えるときは予約ページで選べない）</span>
+                  <input className={styles.input} type="number" min={0} max={180} step={5} value={it.maxMinutes ?? 0} onChange={(ev) => put(i, { maxMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+                </label>
+              </div>
+            )}
+            {(["first", "repeat"] as const).map((k) => {
+              const laneIds = it[`${k}LaneIds`];
+              const menuId = it[`${k}MenuId`];
+              const variable = isVariable(it);
+              return (
+                <div key={k} style={{ display: "grid", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+                    <Switch on={kindOn(it, k) || !!shown[`${i}-${k}`]} onChange={(on) => setKind(i, it, k, on)} label={`${it.name} ${k === "first" ? "初診" : "再診"}`} disabled={!canEdit} />
+                    {k === "first" ? "初診（はじめての方）" : "再診（2回目以降の方）"}
+                  </div>
+                  {(kindOn(it, k) || !!shown[`${i}-${k}`]) && !(it.flow && k === "repeat") && (
+                  <label className={styles.field}>
+                    <span>{it.flow ? "時間（分。医師の診察）" : variable ? "足す時間（分。説明など）" : "時間（分）"}</span>
+                    <input
+                      className={styles.input}
+                      type="number"
+                      min={0}
+                      max={180}
+                      step={5}
+                      value={it[`${k}Minutes`]}
+                      onChange={(ev) => put(i, { [`${k}Minutes`]: Number(ev.target.value) || 0 } as Partial<SundayMenu>)}
+                      disabled={!canEdit}
+                    />
+                  </label>
+                  )}
+                  {(kindOn(it, k) || !!shown[`${i}-${k}`]) && (
+                    <>
+                      <div className={styles.field}>
+                        <span>レーン</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
+                          {activeLanes(laneIds).map((l) => (
+                            <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <input
+                                type="checkbox"
+                                checked={laneIds.includes(l.id)}
+                                onChange={(ev) => put(i, { [`${k}LaneIds`]: ev.target.checked ? [...laneIds, l.id] : laneIds.filter((x) => x !== l.id) } as Partial<SundayMenu>)}
+                                disabled={!canEdit}
+                              />
+                              {l.name}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <label className={styles.field}>
+                        <span>予約に付けるメニュー</span>
+                        <select className={styles.input} value={menuId} onChange={(ev) => put(i, { [`${k}MenuId`]: ev.target.value } as Partial<SundayMenu>)} disabled={!canEdit || laneIds.length === 0}>
+                          <option value="">（選ばない）</option>
+                          {menusFor(laneIds, menuId).map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+            <label className={styles.field}>
+              <span>機器の名前（任意。同じ名前のもの同士は同じ時刻に入れない）</span>
+              <input className={styles.input} value={it.machine} maxLength={30} onChange={(ev) => put(i, { machine: ev.target.value })} disabled={!canEdit} placeholder="例：脱毛レーザー" />
+            </label>
+            <label className={styles.field}>
+              <span>ご来院前のお願い（任意。予約ページと確定の連絡に出ます）</span>
+              <input className={styles.input} value={it.note} maxLength={200} onChange={(ev) => put(i, { note: ev.target.value })} disabled={!canEdit} placeholder="例：当日はメイクを落としやすい状態でお越しください。" />
+            </label>
+            {canEdit && (
+              <button type="button" className={styles.linkDanger} onClick={() => setItems(items.filter((_, j) => j !== i))}>
+                このメニューを一覧から消す
+              </button>
+            )}
+    </>
+  );
+  const [sel, setSel] = useState<string>(fixed[0]?.key ?? "i0");
+  const rows = [
+    ...fixed.map((f) => ({ key: f.key, title: f.title, on: f.on, setOn: f.setOn, summary: f.about, warn: f.warn, detail: f.detail })),
+    ...items.map((it, i) => ({
+      key: `i${i}`,
+      title: it.name.trim() || `日曜メニュー ${i + 1}`,
+      on: it.enabled,
+      setOn: (on: boolean) => put(i, { enabled: on }),
+      summary: summary(it),
+      warn: it.enabled && !!sundayMenuProblem(it, i),
+      detail: itemDetail(it, i),
+    })),
+  ];
+  const selRow = rows.find((r) => r.key === sel) ?? rows[0];
+  const selKey = selRow?.key;
+  return (
+    <>
+      <div className={styles.sundayMaster}>
+        <ul className={styles.sundayList} aria-label="日曜メニュー">
+          {rows.map((r) => (
+            <li key={r.key} data-sel={r.key === selKey || undefined} data-off={!r.on || undefined}>
+              <Switch on={r.on} onChange={r.setOn} label={r.title} disabled={!canEdit} />
+              <button type="button" className={styles.sundayRow} onClick={() => setSel(r.key)} aria-current={r.key === selKey || undefined}>
+                <strong>{r.title}</strong>
+                <span className={styles.sundaySummary}>{r.summary}</span>
+              </button>
+              {r.warn && <span className={styles.sundayWarn}>要設定</span>}
+            </li>
+          ))}
+          {canEdit && items.length < 40 && (
+            <li className={styles.sundayAdd}>
+              <button type="button" onClick={() => { setItems([...items, emptySundayMenu()]); setSel(`i${items.length}`); }}>
+                ＋ 日曜メニューを足す
+              </button>
+            </li>
           )}
-          </>
+        </ul>
+        <div className={styles.sundayPane}>
+          {selRow ? (
+            <>
+              <div className={styles.sundayPaneHead}>
+                <Switch on={selRow.on} onChange={selRow.setOn} label={selRow.title} disabled={!canEdit} />
+                <h5>{selRow.title}</h5>
+              </div>
+              <div className={styles.sundayDetail}>{selRow.detail}</div>
+            </>
+          ) : (
+            <p className={styles.hint}>左の一覧からメニューを選ぶと、ここに設定が出ます。</p>
           )}
-        </fieldset>
-      ))}
-      </div>
-      {canEdit && items.length < 40 && (
-        <div className={styles.actions}>
-          <button type="button" onClick={() => setItems([...items, emptySundayMenu()])}>
-            日曜メニューを足す
-          </button>
         </div>
-      )}
+      </div>
     </>
   );
 }

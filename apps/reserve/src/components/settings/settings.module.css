@@ -1263,6 +1263,66 @@ details.fold:not([open]) {
   margin: 0;
   min-width: 0;
 }
+/* 日曜メニューの1件：ふだんは1行（スイッチ・名前・要約・設定）。開いたものだけ横幅いっぱいに広げる */
+.sundayItem {
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface, var(--bg));
+}
+.sundayItem[data-off] {
+  background: transparent;
+}
+.sundayItem[data-off] .sundayHead strong {
+  color: var(--text-muted);
+}
+.sundayItem[data-open] {
+  grid-column: 1 / -1;
+  border-color: var(--accent-line);
+  box-shadow: var(--shadow-card, none);
+}
+.sundayHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+}
+.sundayHead strong {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.sundaySummary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sundayWarn {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+}
+.sundayEdit {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.sundayDetail {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 10px 16px;
+  align-items: start;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
 
 /* オン・オフのスライドスイッチ：配色に合わせる。オンは決定ボタンを押したときと同じグラデーション（シェルなら黒蝶貝）、
    オフはボタンの地と枠、つまみはボタンの地（シェルなら白蝶貝のつや）。べた塗りにしない */
@@ -1306,4 +1366,95 @@ details.fold:not([open]) {
 .switch:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* 日曜メニュー：左に一覧（縦にスクロール）、右に選んだメニューの設定 */
+.sundayMaster {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .sundayMaster {
+    grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  }
+}
+.sundayList {
+  display: grid;
+  gap: 2px;
+  max-height: 70vh;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface, var(--bg));
+}
+.sundayList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.sundayList li:hover {
+  background: var(--accent-soft);
+}
+.sundayList li[data-sel] {
+  background: var(--grad-soft, var(--accent-soft));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.sundayRow {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sundayRow strong {
+  overflow: hidden;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sundayList li[data-off] .sundayRow strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.sundayAdd button {
+  width: 100%;
+}
+.sundayPane {
+  position: sticky;
+  top: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  background: var(--surface, var(--bg));
+  box-shadow: var(--shadow-card, none);
+}
+.sundayPaneHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sundayPaneHead h5 {
+  margin: 0;
+  font-size: 16px;
+}
+@media (max-width: 999px) {
+  .sundayList {
+    max-height: 42vh;
+  }
+  .sundayPane {
+    position: static;
+  }
 }
