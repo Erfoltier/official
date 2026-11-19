@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ClinicSettings, Lane, Menu, PaperSize, SundayMenu, ThemeId } from "@/lib/domain/types";
 import { DEFAULT_ESTIMATE_NOTE, DEFAULT_ESTIMATE_VALID_DAYS, THEMES } from "@/lib/domain/types";
 import { applyTheme } from "@/lib/theme";
@@ -593,14 +593,14 @@ export function TattooCard({
     <div className={styles.clinicCard}>
       <h3 className={styles.cardTitle}>日曜の Web 予約</h3>
       <p className={styles.hint}>
-        受付日時を1行に1つ入れると、患者が日曜の予約ページで、下の日曜メニューのうちオンにしたものを選んでその場で予約できます（予約表に入り、確定の連絡を送ります）。選べる時刻は、受付日時の中の空きの最初と、後ろに予約がある空きの最後だけです（空いた日は受付の最初の時刻だけ。予約の間に半端な空きが残らないように）。LIFF ID を入れると、LINE の中で開いた方は本人の LINE が予約と患者に結びつき、確定の連絡が LINE に届きます。
+        オンにしたメニューだけが日曜の予約ページに出て、患者がその場で予約できます。選べる時刻は受付日時の中の空きの最初と、後ろに予約がある空きの最後だけ。レーンを2つ以上選ぶと空いているほうに入り、機器の名前が同じメニュー同士は同じ時刻に入りません。
       </p>
       <div className={styles.sundayGrid}>
       <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
-      <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={enabled} onChange={(ev) => setEnabled(ev.target.checked)} disabled={!canEdit} />
-        <span>日曜の予約ページで受け付ける（全体のスイッチ。オフにすると、どのメニューも予約できません）</span>
-      </label>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700 }}>
+        <Switch on={enabled} onChange={setEnabled} label="日曜の Web 予約" disabled={!canEdit} />
+        日曜の Web 予約
+      </div>
       <label className={styles.field}>
         <span>LINE で開くための LIFF ID（LINE Developers で、エンドポイントを予約ページにした LIFF アプリの ID。空なら LINE を使わずメールで確定）</span>
         <input className={styles.input} value={liffId} maxLength={80} onChange={(ev) => setLiffId(ev.target.value)} disabled={!canEdit} placeholder="例：1234567890-AbCdEfGh" />
@@ -613,21 +613,17 @@ export function TattooCard({
       </label>
       </div>
 
-      <h4 className={styles.subTitle}>日曜メニュー（日曜に患者が自分で予約できるメニュー）</h4>
-      <div className={styles.sundayGrid}>
-      {(
+      <h4 className={styles.subTitle}>日曜メニュー</h4>
+      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} leading={(
         [
-          ["tattoo", "タトゥー除去", tattooOn, setTattooOn, "時間は面積から自動計算（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）。初診は説明10分を足す"],
-          ["artmake", "アートメイク除去", artmakeOn, setArtmakeOn, "時間は面積から自動計算（眉は左右の合計。タトゥー除去と同じ決まり）。照射の設定はタトゥー除去と共通"],
+          ["tattoo", "タトゥー除去", tattooOn, setTattooOn, "時間は面積で自動（初診は説明10分を足す）"],
+          ["artmake", "アートメイク除去", artmakeOn, setArtmakeOn, "時間は面積で自動（眉は左右の合計）。照射の設定はタトゥー除去と共通"],
         ] as const
       ).map(([key, title, on, setOn, about]) => (
         <fieldset key={key} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: on ? 1 : 0.85 }}>
           <legend style={{ fontWeight: 700 }}>{title}</legend>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
-              <input type="checkbox" role="switch" aria-label={`${title}を日曜に受け付ける`} checked={on} onChange={(ev) => setOn(ev.target.checked)} disabled={!canEdit} />
-              {on ? "日曜に受け付ける" : "受け付けない（オフ）"}
-            </label>
+            <Switch on={on} onChange={setOn} label={title} disabled={!canEdit} />
             <span className={styles.hint} style={{ margin: 0 }}>{about}</span>
             {key === "tattoo" && (
               <button type="button" onClick={() => setRemovalOpen(!(removalOpen ?? removalOpenDefault))}>
@@ -692,9 +688,7 @@ export function TattooCard({
             </>
           )}
         </fieldset>
-      ))}
-      </div>
-      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} />
+      ))} />
       <p className={styles.hint} data-invalid={bad || badLiff || badItem || missing || (enabled && mail === false) || undefined}>
         {badItem
           ? badItem
@@ -735,11 +729,11 @@ function sundayMenuProblem(it: SundayMenu, i: number): string {
   for (const [k, ja] of [["first", "初診"], ["repeat", "再診"]] as const) {
     const min = it[`${k}Minutes`];
     if (!Number.isInteger(min) || min < 0 || min > 180 || min % 5 !== 0) return `「${label}」の${ja}の時間は0〜180分（5分刻み）で入れてください`;
-    if (it.enabled && variable && it[`${k}LaneIds`].length > 0 && !it[`${k}MenuId`]) return `「${label}」の${ja}の予約に付けるメニューを選んでください（受けないときはレーンを外す）`;
-    if (it.enabled && !variable && min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）`;
+    if (it.enabled && variable && it[`${k}LaneIds`].length > 0 && !it[`${k}MenuId`]) return `「${label}」の${ja}の予約に付けるメニューを選んでください（受けないときは区分のスイッチをオフに）`;
+    if (it.enabled && !variable && min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは区分のスイッチをオフに）`;
   }
   if (it.enabled && it.flow && it.repeatLaneIds.length > 0 && (!it.creamMinutes || !it.injectionMinutes || !(it.anesLaneIds ?? []).length || !it.creamMenuId || !it.neoboMenuId))
-    return `「${label}」は、施術の時間（クリーム・注射）、麻酔のレーン、麻酔クリームとネオボのメニューを入れてください（受診したことのある方を受けないときは再診のレーンを外す）`;
+    return `「${label}」は、施術の時間（クリーム・注射）、麻酔のレーン、麻酔クリームとネオボのメニューを入れてください（受診したことのある方を受けないときは再診のスイッチをオフに）`;
   for (const v of [it.creamMinutes ?? 0, it.injectionMinutes ?? 0]) if (!Number.isInteger(v) || v < 0 || v > 180 || v % 5 !== 0) return `「${label}」の施術の時間は0〜180分（5分刻み）で入れてください`;
   if (it.enabled && variable && it.firstLaneIds.length === 0 && it.repeatLaneIds.length === 0) return `「${label}」は、初診か再診のレーンを選んでください`;
   if (it.enabled && !variable && it.firstMinutes === 0 && it.repeatMinutes === 0) return `「${label}」は、初診か再診の時間を入れてください`;
@@ -839,11 +833,20 @@ function PartsEditor({ it, onChange, canEdit }: { it: SundayMenu; onChange: (gro
   );
 }
 
+/** よくあるオン・オフのスライドスイッチ */
+function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} className={styles.switch} data-on={on || undefined} onClick={() => onChange(!on)} disabled={disabled}>
+      <span />
+    </button>
+  );
+}
+
 const emptySundayMenu = (): SundayMenu => ({ id: "", enabled: true, name: "", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 0, repeatLaneIds: [], repeatMenuId: "", machine: "", note: "" });
 
 /**
  * 日曜メニューの表：院が日曜の受付を許可したメニュー（タトゥー以外）。予約ページで患者が選び、その場で予約が入る。
- * 初診・再診ごとに、時間（0 なら受けない）・レーン（複数ならチェックの順に空いているほう）・予約に付けるメニュー
+ * 初診・再診ごとに、受けるか（スイッチ）・時間・レーン（複数ならチェックの順に空いているほう）・予約に付けるメニュー
  */
 function SundayMenusEditor({
   items,
@@ -851,12 +854,14 @@ function SundayMenusEditor({
   lanes,
   menus,
   canEdit,
+  leading,
 }: {
   items: SundayMenu[];
   setItems: (next: SundayMenu[]) => void;
   lanes: Lane[];
   menus: Menu[];
   canEdit: boolean;
+  leading?: ReactNode;
 }) {
   // オフのメニューは、名前と時間の要約だけを出す（「設定を開く」で中身を見られる）
   const [opened, setOpened] = useState<Record<number, boolean>>({});
@@ -874,25 +879,30 @@ function SundayMenusEditor({
     return [how, ...parts].filter(Boolean).join("／");
   };
   const put = (i: number, patch: Partial<SundayMenu>) => setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  // 初診・再診を受けるか：時間で決まるメニューは時間があるか、部位・本数・麻酔の再診はレーンがあるか
+  const [shown, setShown] = useState<Record<string, boolean>>({});
+  const kindOn = (it: SundayMenu, k: "first" | "repeat") => (isVariable(it) || (it.flow && k === "repeat") ? it[`${k}LaneIds`].length > 0 : it[`${k}Minutes`] > 0);
+  const setKind = (i: number, it: SundayMenu, k: "first" | "repeat", on: boolean) => {
+    setShown({ ...shown, [`${i}-${k}`]: on });
+    if (on) {
+      if (!(isVariable(it) || (it.flow && k === "repeat")) && it[`${k}Minutes`] <= 0) put(i, { [`${k}Minutes`]: 15 } as Partial<SundayMenu>);
+    } else {
+      put(i, (isVariable(it) || (it.flow && k === "repeat") ? { [`${k}LaneIds`]: [], [`${k}MenuId`]: "" } : { [`${k}Minutes`]: 0, [`${k}LaneIds`]: [], [`${k}MenuId`]: "" }) as Partial<SundayMenu>);
+    }
+  };
   const activeLanes = (ids: string[]) => lanes.filter((l) => l.active || ids.includes(l.id));
   // 選んだレーンのどれかで使えるメニュー（レーンの指定がないメニューも）
   const menusFor = (laneIds: string[], id: string) =>
     menus.filter((m) => (m.active && !m.deleted && ((m.laneIds ?? []).length === 0 || laneIds.some((l) => (m.laneIds ?? []).includes(l)))) || m.id === id);
   return (
     <>
-      <p className={styles.hint}>
-        ここからはタトゥー・アートメイク以外のメニューです。オンにしたメニューだけが、日曜の予約ページに出ます。最初の一覧は、スプレッドシート「予約枠時間一覧」の時間とレーンから作ったもの（すべてオフ）で、レーンと時間は変えられます。初診・再診それぞれの時間を入れ、受けない区分は0にします（予約枠時間一覧の時間に合わせてください。初診は医師の診察の時間）。レーンを2つ以上選ぶと、空いているほうに入ります。選べる時刻の決め方はタトゥーと同じです。機器の名前が同じもの同士は、レーンが違っても同じ時刻に入りません（予約に付けるメニューで見分けるので、「予約（メモに自由記載）」など共通のメニューに機器の名前は付けないでください）。
-      </p>
-      {items.length === 0 && <p className={styles.hint}>まだありません（タトゥー・アートメイク除去だけを受け付けます）。</p>}
       <div className={styles.sundayGrid}>
+      {leading}
       {items.map((it, i) => (
         <fieldset key={it.id || `new-${i}`} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: it.enabled ? 1 : 0.85 }}>
           <legend style={{ fontWeight: 700 }}>{it.name.trim() || `日曜メニュー ${i + 1}`}</legend>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
-              <input type="checkbox" role="switch" aria-label={`${it.name}を日曜に受け付ける`} checked={it.enabled} onChange={(ev) => put(i, { enabled: ev.target.checked })} disabled={!canEdit} />
-              {it.enabled ? "日曜に受け付ける" : "受け付けない（オフ）"}
-            </label>
+            <Switch on={it.enabled} onChange={(on) => put(i, { enabled: on })} label={it.name || `日曜メニュー ${i + 1}`} disabled={!canEdit} />
             <span className={styles.hint} style={{ margin: 0 }}>{summary(it)}</span>
             {!it.enabled && (
               <button type="button" onClick={() => setOpened({ ...opened, [i]: !opened[i] })}>
@@ -1002,12 +1012,13 @@ function SundayMenusEditor({
             const variable = isVariable(it);
             return (
               <div key={k} style={{ display: "grid", gap: 4 }}>
-                {!(it.flow && k === "repeat") && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+                  <Switch on={kindOn(it, k) || !!shown[`${i}-${k}`]} onChange={(on) => setKind(i, it, k, on)} label={`${it.name} ${k === "first" ? "初診" : "再診"}`} disabled={!canEdit} />
+                  {k === "first" ? "初診（はじめての方）" : "再診（2回目以降の方）"}
+                </div>
+                {(kindOn(it, k) || !!shown[`${i}-${k}`]) && !(it.flow && k === "repeat") && (
                 <label className={styles.field}>
-                  <span>
-                    {k === "first" ? "初診（はじめての方）" : "再診（2回目以降の方）"}
-                    {it.flow ? "の時間（分。医師の診察。0 なら受けない）" : variable ? "に足す時間（分。説明など。受けないときは下のレーンを外す）" : "の時間（分。0 なら受けない）"}
-                  </span>
+                  <span>{it.flow ? "時間（分。医師の診察）" : variable ? "足す時間（分。説明など）" : "時間（分）"}</span>
                   <input
                     className={styles.input}
                     type="number"
@@ -1020,7 +1031,7 @@ function SundayMenusEditor({
                   />
                 </label>
                 )}
-                {(variable || it[`${k}Minutes`] > 0) && (
+                {(kindOn(it, k) || !!shown[`${i}-${k}`]) && (
                   <>
                     <div className={styles.field}>
                       <span>レーン</span>
