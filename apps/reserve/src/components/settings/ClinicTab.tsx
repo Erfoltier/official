@@ -595,21 +595,26 @@ export function TattooCard({
       <p className={styles.hint}>
         受付日時を1行に1つ入れると、患者が日曜の予約ページで、下の日曜メニューのうちオンにしたものを選んでその場で予約できます（予約表に入り、確定の連絡を送ります）。選べる時刻は、受付日時の中の空きの最初と、後ろに予約がある空きの最後だけです（空いた日は受付の最初の時刻だけ。予約の間に半端な空きが残らないように）。LIFF ID を入れると、LINE の中で開いた方は本人の LINE が予約と患者に結びつき、確定の連絡が LINE に届きます。
       </p>
+      <div className={styles.sundayGrid}>
+      <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
       <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={enabled} onChange={(ev) => setEnabled(ev.target.checked)} disabled={!canEdit} />
         <span>日曜の予約ページで受け付ける（全体のスイッチ。オフにすると、どのメニューも予約できません）</span>
-      </label>
-      <label className={styles.field}>
-        <span>受付日時（全メニューで共通。1行に1つ、例：2026-12-06 10:00-13:00）</span>
-        <textarea className={styles.input} value={text} rows={4} onChange={(ev) => setText(ev.target.value)} disabled={!canEdit} />
       </label>
       <label className={styles.field}>
         <span>LINE で開くための LIFF ID（LINE Developers で、エンドポイントを予約ページにした LIFF アプリの ID。空なら LINE を使わずメールで確定）</span>
         <input className={styles.input} value={liffId} maxLength={80} onChange={(ev) => setLiffId(ev.target.value)} disabled={!canEdit} placeholder="例：1234567890-AbCdEfGh" />
       </label>
       {info?.lineUrl && <p className={styles.hint}>LINE で開くアドレス：{info.lineUrl}（ホームページのボタン・LINE のメニューに貼る）</p>}
+      </div>
+      <label className={styles.field}>
+        <span>受付日時（全メニューで共通。1行に1つ、例：2026-12-06 10:00-13:00）</span>
+        <textarea className={styles.input} value={text} rows={6} onChange={(ev) => setText(ev.target.value)} disabled={!canEdit} />
+      </label>
+      </div>
 
       <h4 className={styles.subTitle}>日曜メニュー（日曜に患者が自分で予約できるメニュー）</h4>
+      <div className={styles.sundayGrid}>
       {(
         [
           ["tattoo", "タトゥー除去", tattooOn, setTattooOn, "時間は面積から自動計算（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）。初診は説明10分を足す"],
@@ -688,6 +693,7 @@ export function TattooCard({
           )}
         </fieldset>
       ))}
+      </div>
       <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} />
       <p className={styles.hint} data-invalid={bad || badLiff || badItem || missing || (enabled && mail === false) || undefined}>
         {badItem
@@ -878,6 +884,7 @@ function SundayMenusEditor({
         ここからはタトゥー・アートメイク以外のメニューです。オンにしたメニューだけが、日曜の予約ページに出ます。最初の一覧は、スプレッドシート「予約枠時間一覧」の時間とレーンから作ったもの（すべてオフ）で、レーンと時間は変えられます。初診・再診それぞれの時間を入れ、受けない区分は0にします（予約枠時間一覧の時間に合わせてください。初診は医師の診察の時間）。レーンを2つ以上選ぶと、空いているほうに入ります。選べる時刻の決め方はタトゥーと同じです。機器の名前が同じもの同士は、レーンが違っても同じ時刻に入りません（予約に付けるメニューで見分けるので、「予約（メモに自由記載）」など共通のメニューに機器の名前は付けないでください）。
       </p>
       {items.length === 0 && <p className={styles.hint}>まだありません（タトゥー・アートメイク除去だけを受け付けます）。</p>}
+      <div className={styles.sundayGrid}>
       {items.map((it, i) => (
         <fieldset key={it.id || `new-${i}`} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: it.enabled ? 1 : 0.85 }}>
           <legend style={{ fontWeight: 700 }}>{it.name.trim() || `日曜メニュー ${i + 1}`}</legend>
@@ -1064,6 +1071,7 @@ function SundayMenusEditor({
           )}
         </fieldset>
       ))}
+      </div>
       {canEdit && items.length < 40 && (
         <div className={styles.actions}>
           <button type="button" onClick={() => setItems([...items, emptySundayMenu()])}>

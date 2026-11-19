@@ -30,7 +30,7 @@ export function WebBookingTab({
     <section className={styles.clinic}>
       <p className={styles.lead}>患者が自分で日時を選んで予約するページの設定です。</p>
       <h3 className={styles.subTitle}>日曜予約設定</h3>
-      <div className={styles.clinicMasonry}>
+      <div className={styles.webBooking}>
         <TattooCard clinic={clinic} lanes={lanes} menus={menus} info={tattoo} mail={mail} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
