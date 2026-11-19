@@ -235,7 +235,53 @@ final class TattooBooking
             }
         }
         unset($it);
-        return array_map(fn($it) => $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''], $out);
+        return self::reshapeSagging(array_map(fn($it) => $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''], $out));
+    }
+
+    /**
+     * たるみの分類を院長の指示どおりに（11/19）：ハイフ → たるみマリオネットライン集中治療（ハイフ＋ヒアルロン酸＋ぽにょりん割引セット）
+     * → 首のしわ治療（ヒアルロン酸・肌育注射など）→ その他（自由記載）。口元たるみ集中治療・ぽにょりんはセットにまとめて消す。
+     * オン・オフとレーンは今の設定のまま。見本と本番の保存済みの一覧の両方に使う
+     */
+    public static function reshapeSagging(array $items): array
+    {
+        [, $menus] = Store::laneAndMenuIds();
+        $set = [
+            // セット：初診はヒアルロン酸の初診と同じ30分、再診は口元たるみ集中治療（部分HIFU＋…）の30分（時間は仮。オンにする前に確かめる）
+            'marionette' => ['name' => 'たるみマリオネットライン集中治療（ハイフ＋ヒアルロン酸＋ぽにょりん割引セット）', 'repeatMinutes' => 30, 'repeatMenuId' => in_array('menu-x099', $menus, true) ? 'menu-x099' : ''],
+            'neckwrinkle' => ['name' => '首のしわ治療（ヒアルロン酸・肌育注射など）'],
+            'sagging' => ['name' => 'その他（自由記載）'],
+        ];
+        $byId = [];
+        foreach ($items as $it) {
+            if (in_array($it['id'], ['mouthsag', 'ponyorin'], true)) {
+                continue;
+            }
+            if (isset($set[$it['id']])) {
+                $it = [...$it, ...$set[$it['id']], 'category' => 'たるみ'];
+                if ($it['id'] === 'marionette' && ($it['repeatLaneIds'] ?? []) === []) {
+                    $it['repeatLaneIds'] = ['lane-main'];
+                }
+            }
+            $byId[$it['id']] = $it;
+        }
+        // 脂肪溶解注射（Fat X）は注射・注入のまま（院長「移さない」）
+        $order = ['hifu', 'marionette', 'neckwrinkle', 'sagging'];
+        $out = [];
+        foreach ($byId as $id => $it) {
+            if (in_array($id, $order, true)) {
+                if ($id === 'hifu' || !isset($byId['hifu'])) {
+                    foreach ($order as $k) {
+                        if (isset($byId[$k]) && !in_array($k, array_column($out, 'id'), true)) {
+                            $out[] = $byId[$k];
+                        }
+                    }
+                }
+                continue;
+            }
+            $out[] = $it;
+        }
+        return $out;
     }
 
     /**

@@ -329,7 +329,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       $n = TattooBooking::normalizeItems($p, $lanes, $menus);
       return ['count' => count($n), 'on' => count(array_filter($n, fn($x) => $x['enabled'])), 'noCat' => array_values(array_map(fn($x) => $x['id'], array_filter($n, fn($x) => $x['category'] === ''))), 'cats' => array_values(array_unique(array_column($n, 'category'))), 'oral' => in_array('oral', array_column($n, 'id'), true)];
     `);
-    expect(out.count).toBe(41);
+    expect(out.count).toBe(39);
     expect(out.on).toBe(0);
     expect(out.noCat).toEqual([]);
     expect(out.oral).toBe(false);
@@ -415,5 +415,19 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     `);
     expect(out).toEqual([15, 30, null, false, "顔15個までまとめ", "個数", 20, 10]);
     void day;
+  });
+  it("たるみは ハイフ → マリオネットのセット → 首のしわ → その他（自由記載）。口元たるみ・ぽにょりんはセットにまとめる。脂肪溶解注射は注射・注入のまま", async () => {
+    const day = nextSunday();
+    await open(day);
+    const out = await h.srv.php(`
+      $p = TattooBooking::presets();
+      $sag = array_values(array_filter($p, fn($x) => $x['category'] === 'たるみ'));
+      $fat = array_values(array_filter($p, fn($x) => $x['id'] === 'fatx'))[0];
+      $ids = array_column($p, 'id');
+      return ['sag' => array_column($sag, 'name'), 'fat' => [$fat['name'], $fat['category']], 'gone' => array_values(array_intersect(['mouthsag', 'ponyorin'], $ids))];
+    `);
+    expect(out.sag).toEqual(["ハイフ", "たるみマリオネットライン集中治療（ハイフ＋ヒアルロン酸＋ぽにょりん割引セット）", "首のしわ治療（ヒアルロン酸・肌育注射など）", "その他（自由記載）"]);
+    expect(out.fat).toEqual(["Fat X（脂肪溶解注射）", "注射・注入"]);
+    expect(out.gone).toEqual([]);
   });
 });
