@@ -1264,21 +1264,25 @@ details.fold:not([open]) {
   min-width: 0;
 }
 
-/* オン・オフのスライドスイッチ */
+/* オン・オフのスライドスイッチ：配色に合わせる。オンは決定ボタンを押したときと同じグラデーション（シェルなら黒蝶貝）、
+   オフはボタンの地と枠、つまみはボタンの地（シェルなら白蝶貝のつや）。べた塗りにしない */
 .switch {
   position: relative;
   flex-shrink: 0;
-  width: 44px;
-  height: 24px;
+  width: 46px;
+  height: 26px;
   padding: 0;
-  border: none;
+  border: 1px solid var(--btn-line, var(--line-strong));
   border-radius: 999px;
-  background: #c9c4cf;
+  background: var(--btn-bg, var(--bg-muted));
+  box-shadow: inset 0 1px 3px rgb(var(--shadow-rgb, 0 0 0) / 22%);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
 }
 .switch[data-on] {
-  background: var(--accent);
+  border-color: transparent;
+  background: var(--grad, var(--accent));
+  box-shadow: var(--shadow-accent, none), inset 0 1px 2px rgb(0 0 0 / 18%);
 }
 .switch > span {
   position: absolute;
@@ -1287,8 +1291,9 @@ details.fold:not([open]) {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 95%) 0 18%, rgb(255 255 255 / 0%) 55%), var(--btn-bg, #fff);
+  background-color: var(--surface, #fff);
+  box-shadow: 0 1px 3px rgb(var(--shadow-rgb, 0 0 0) / 35%), inset 0 -1px 2px rgb(var(--shadow-rgb, 0 0 0) / 12%);
   transition: transform 0.15s;
 }
 .switch[data-on] > span {
