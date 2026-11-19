@@ -759,7 +759,7 @@ export interface ClinicSettings {
   sundayMenus?: SundayMenu[];
   /** 日曜の予約ページに出す順（"tattoo"・"artmake"・日曜メニューの id）。分類の順は、いちばん上にあるメニューの分類から */
   sundayOrder?: string[];
-  /** タトゥー除去・アートメイク除去の分類（空なら「除去」） */
+  /** タトゥー除去・アートメイク除去の分類（空なら「除去・レーザー」） */
   removalCategory?: string;
 }
 

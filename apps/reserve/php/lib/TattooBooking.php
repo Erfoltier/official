@@ -79,13 +79,13 @@ final class TattooBooking
         ];
     }
 
-    public const REMOVAL_CATEGORY = '除去';
+    public const REMOVAL_CATEGORY = '除去・レーザー';
     /** プリセットの分類（院長 11/19：まず分類を選び、次にメニュー） */
     private const PRESET_CATEGORY = [
         'botox' => '注射・注入', 'hyperhidrosis' => '注射・注入', 'hyaluronic' => '注射・注入', 'juvelook' => '注射・注入', 'babycollagen' => '注射・注入',
         'miraclel' => '注射・注入', 'fatx' => '注射・注入', 'sunekos' => '注射・注入', 'fillroad' => '注射・注入', 'tapink' => '注射・注入',
         'pinkglow' => '注射・注入', 'tranestamp' => '注射・注入', 'juveacell' => '注射・注入', 're2o' => '注射・注入',
-        'hokuro' => '除去', 'dyelaser' => 'レーザー', 'isotretinoin' => '内服・ご相談', 'oral' => '内服・ご相談', 'zoskin' => '内服・ご相談',
+        'hokuro' => '除去・レーザー', 'dyelaser' => '除去・レーザー', 'isotretinoin' => '内服・ご相談', 'oral' => '内服・ご相談', 'zoskin' => '内服・ご相談',
         'tcapeel' => 'ピーリング', 'amalfi' => 'ピーリング', 'massagepeel' => 'ピーリング', 'milano' => 'ピーリング', 'salicylic' => 'ピーリング',
         'laserhair' => '脱毛', 'needlehair' => '脱毛',
     ];

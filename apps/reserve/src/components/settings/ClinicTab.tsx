@@ -622,7 +622,7 @@ export function TattooCard({
           title: "タトゥー除去",
           on: tattooOn,
           setOn: setTattooOn,
-          about: `［${removalCategory.trim() || "除去"}］時間は面積で自動（初診は説明10分を足す）`,
+          about: `［${removalCategory.trim() || "除去・レーザー"}］時間は面積で自動（初診は説明10分を足す）`,
           warn: tattooOn && missing,
           detail: (
             <>
@@ -680,7 +680,7 @@ export function TattooCard({
                 </label>
                 <label className={styles.field}>
                   <span>分類（タトゥー・アートメイク除去の両方。予約ページでまず選ぶ分類）</span>
-                  <input className={styles.input} value={removalCategory} maxLength={20} list="sunday-cats" onChange={(ev) => setRemovalCategory(ev.target.value)} disabled={!canEdit} placeholder="除去" />
+                  <input className={styles.input} value={removalCategory} maxLength={20} list="sunday-cats" onChange={(ev) => setRemovalCategory(ev.target.value)} disabled={!canEdit} placeholder="除去・レーザー" />
                 </label>
             </>
           ),
@@ -690,7 +690,7 @@ export function TattooCard({
           title: "アートメイク除去",
           on: artmakeOn,
           setOn: setArtmakeOn,
-          about: `［${removalCategory.trim() || "除去"}］時間は面積で自動（眉は左右の合計）`,
+          about: `［${removalCategory.trim() || "除去・レーザー"}］時間は面積で自動（眉は左右の合計）`,
           warn: artmakeOn && missing,
           detail: <p className={styles.hint}>照射のレーン・メニュー・初診説明・機器は、タトゥー除去と共通です（タトゥー除去の設定で変えます）。</p>,
         },
@@ -1117,7 +1117,7 @@ function SundayMenusEditor({
     [next[at], next[to]] = [next[to], next[at]];
     setOrder(next);
   };
-  const catList = Array.from(new Set(["除去", "注射・注入", "ピーリング", "脱毛", "レーザー", "内服・ご相談", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
+  const catList = Array.from(new Set(["除去・レーザー", "注射・注入", "ピーリング", "脱毛", "内服・ご相談", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
   return (
     <>
       <datalist id="sunday-cats">
