@@ -34,6 +34,8 @@ final class TattooBooking
             'explainLaneId' => (string) ($c['tattooExplainLaneId'] ?? ''),
             'explainMenuId' => (string) ($c['tattooExplainMenuId'] ?? ''),
             'slots' => array_values(array_filter((array) ($c['tattooSlots'] ?? []), 'is_string')),
+            // LINE の中でこのページを開く LIFF アプリの ID（LINE Developers で作る。エンドポイントは …/tattoo/）。空なら LINE を使わない
+            'liffId' => (string) ($c['tattooLiffId'] ?? ''),
         ];
     }
 
@@ -58,6 +60,13 @@ final class TattooBooking
         return $first
             ? '約' . ($treat + self::EXPLAIN_MINUTES) . '分（ご説明' . self::EXPLAIN_MINUTES . "分・照射{$treat}分）"
             : "約{$treat}分（照射）";
+    }
+
+    /** LINE で開くアドレス（ホームページのボタン・LINE のメニューに貼る）。LIFF がなければ空 */
+    public static function liffUrl(): string
+    {
+        $id = self::settings()['liffId'];
+        return $id !== '' ? 'https://liff.line.me/' . $id : '';
     }
 
     /** 公開ページのアドレス（問診票のアドレスと同じサイトの /tattoo/） */
@@ -291,7 +300,17 @@ final class TattooBooking
         if ($f['kana'] === '') $bad[] = 'kana';
         if (!is_date_string($f['birthDate']) || $f['birthDate'] >= now_in_clinic()['date'] || $f['birthDate'] < '1900-01-01') $bad[] = 'birthDate';
         if (!preg_match('/^0\d{9,10}$/', digits_only($f['phone']))) $bad[] = 'phone';
-        if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) $bad[] = 'email';
+        // LINE の中で開いたときは、確定の連絡を LINE に送る（メールは任意）。ID トークンで本人の LINE を確かめる
+        $uid = null;
+        $idToken = (string) ($in['idToken'] ?? '');
+        if ($idToken !== '' && $s['liffId'] !== '') {
+            try {
+                $uid = LineLink::verifyIdToken($idToken, explode('-', $s['liffId'], 2)[0]);
+            } catch (StoreError) {
+                return ['ok' => false, 'error' => 'line_auth'];
+            }
+        }
+        if ($uid === null ? !filter_var($f['email'], FILTER_VALIDATE_EMAIL) : ($f['email'] !== '' && !filter_var($f['email'], FILTER_VALIDATE_EMAIL))) $bad[] = 'email';
         if (!is_date_string($f['date']) || !preg_match('/^\d{2}:\d{2}$/', $f['time'])) $bad[] = 'slot';
         if ($bad) {
             return ['ok' => false, 'error' => 'invalid', 'fields' => $bad];
@@ -306,7 +325,7 @@ final class TattooBooking
         }
         $treat = self::treatMinutes($area);
         $first = $visit === 'first';
-        $result = Db::i()->transaction(function () use ($f, $s, $kind, $first, $color, $anesthesia, $area, $treat) {
+        $result = Db::i()->transaction(function () use ($f, $s, $kind, $first, $color, $anesthesia, $area, $treat, $uid) {
             // 送る直前にもう一度、その時刻が選べるか確かめる（書き込みの鍵を持ったまま）
             $pick = null;
             foreach (self::plan($treat, $first, $s)[$f['date']] ?? [] as $c) {
@@ -331,7 +350,8 @@ final class TattooBooking
                 '料金の目安：' . number_format(self::price($area)) . '円（税込・麻酔代別）',
                 '局所麻酔注射：' . ($anesthesia ? '希望あり' : '希望なし'),
                 $first ? ($nurse ? "初診説明：{$x}分（説明のレーン）" : "初診説明：{$x}分（この予約の最初）") : null,
-                'メール：' . $f['email'],
+                $f['email'] !== '' ? 'メール：' . $f['email'] : null,
+                $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                 $f['lineName'] !== '' ? 'LINEの表示名：' . $f['lineName'] : null,
                 $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
             ]));
@@ -344,6 +364,7 @@ final class TattooBooking
                 'startAt' => to_iso($f['date'], $mainStart),
                 'endAt' => to_iso($f['date'], $start + $treat),
                 'memo' => $memo,
+                'lineUserId' => $uid,
             ], self::ACTOR);
             if ($nurse) {
                 Store::bookingCreate([
@@ -353,7 +374,11 @@ final class TattooBooking
                     'startAt' => to_iso($f['date'], $start - $x),
                     'endAt' => to_iso($f['date'], $start),
                     'memo' => "タトゥー除去の初診説明（Web予約・日曜）\n照射はこのあと" . self::hm($start) . 'から（' . $treat . '分）',
+                    'lineUserId' => $uid,
                 ], self::ACTOR);
+            }
+            if ($uid !== null) {
+                Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（タトゥー除去の予約を LINE で）', self::ACTOR);
             }
             return ['ok' => true, 'end' => self::hm($start + $treat), 'id' => $r['id']];
         });
@@ -361,8 +386,13 @@ final class TattooBooking
             return $result;
         }
         $f += ['kind' => $kind, 'visit' => $visit, 'area' => $area, 'anesthesia' => $anesthesia, 'end' => $result['end']];
-        [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject($kind), self::mailBody($f)) : [false];
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::durationText($treat, $first), 'mailed' => (bool) $sent];
+        // 確定の連絡：LINE で開いた人は LINE へ（送れなければメールがあればメール）。それ以外はメール
+        [$lined] = $uid !== null ? Reminder::pushText($uid, self::mailBody($f)) : [false];
+        $sent = false;
+        if (!$lined && $f['email'] !== '') {
+            [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject($kind), self::mailBody($f)) : [false];
+        }
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::durationText($treat, $first), 'lined' => (bool) $lined, 'mailed' => (bool) $sent];
     }
 
     private static function num(float $a): string

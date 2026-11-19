@@ -632,6 +632,15 @@ final class Reminder
         return self::sendMail($to, $subject, $text, ['name' => $filename, 'bytes' => $bytes, 'type' => $type]);
     }
 
+    /** LINE で文面を1通送る（LINE の中で開いた予約ページの確定の連絡）。送れれば [true, null]、だめなら [false, 理由] */
+    public static function pushText(string $to, string $text): array
+    {
+        if (self::lineToken() === '' || !preg_match('/^U[0-9a-f]{32}$/', $to)) {
+            return [false, 'line_unavailable'];
+        }
+        return self::pushLine($to, $text);
+    }
+
     /** 文面だけのメールを1通送る（オンラインカウンセリングの予約の確定など） */
     public static function sendText(string $to, string $subject, string $text): array
     {

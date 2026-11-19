@@ -1,3 +1,4 @@
+.tt-line{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#eaf7ee;color:#1b5e2a;font-size:.88rem}
 .tt-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .tt-empty{text-align:center;font-size:.86rem;color:var(--muted);margin:10px 0 0}
 #times .pill span{cursor:pointer}

@@ -10,14 +10,17 @@ require __DIR__ . '/../../lib/bootstrap.php';
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
-header("Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
+// LINE の中で開いたとき（LIFF）の SDK と、LINE への確認の通信だけを許す
+header("Content-Security-Policy: default-src 'none'; script-src 'self' https://static.line-scdn.net; connect-src 'self' https://*.line.me https://*.line-scdn.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.line-scdn.net; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
 header_remove('X-Powered-By');
 
 try {
     $p = Store::publicInfo();
     $open = TattooBooking::ready();
+    $liffId = TattooBooking::settings()['liffId'];
 } catch (Throwable $e) {
     $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
+    $liffId = '';
     $open = false;
 }
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -130,7 +133,8 @@ $v = '20261117-1';
         <label class="field"><span>フリガナ <em>必須</em></span><input name="kana" maxlength="60" placeholder="例：ヤマダ ハナコ"></label>
         <label class="field"><span>生年月日 <em>必須</em></span><input name="birthDate" type="date" min="1900-01-01"></label>
         <label class="field"><span>電話番号 <em>必須</em></span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="例：09012345678"></label>
-        <label class="field"><span>メールアドレス <em>必須</em></span><input name="email" type="email" autocomplete="email" maxlength="200" placeholder="ご予約確定のメールをお送りします"></label>
+        <p class="tt-line" id="line-note" hidden>LINE で開いていただいたので、ご予約確定のご連絡はこの LINE にお送りします。</p>
+        <label class="field"><span id="email-label">メールアドレス <em>必須</em></span><input name="email" type="email" autocomplete="email" maxlength="200" placeholder="ご予約確定のメールをお送りします"></label>
         <label class="field"><span>LINEの表示名（任意）</span><input name="lineName" maxlength="60"></label>
         <label class="field"><span>ご相談・お伝えしたいこと（任意）</span><textarea name="notes" rows="3" maxlength="400"></textarea></label>
         <label class="tt-trap" aria-hidden="true">ウェブサイト<input name="website" tabindex="-1" autocomplete="off"></label>
@@ -167,7 +171,10 @@ $v = '20261117-1';
       <p>場所：<?= $h($p['address']) ?></p>
 <?php endif; ?>
     </section>
-    <script type="module" src="./app.js?v=<?= $v ?>"></script>
+<?php if ($liffId !== ''): ?>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+<?php endif; ?>
+    <script type="module" src="./app.js?v=<?= $v ?>" data-liff="<?= $h($liffId) ?>"></script>
 <?php endif; ?>
   </main>
 </body>

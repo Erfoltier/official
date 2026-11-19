@@ -98,12 +98,12 @@ final class LineLink
     }
 
     /** LIFF の ID トークンを LINE に確かめてもらい、LINE の利用者 ID を返す */
-    public static function verifyIdToken(string $idToken): string
+    public static function verifyIdToken(string $idToken, ?string $client = null): string
     {
         if (self::testMode() && preg_match('/^test:(U[0-9a-f]{32})$/', $idToken, $m)) {
             return $m[1];
         }
-        $client = self::settings()['loginChannelId'];
+        $client ??= self::settings()['loginChannelId'];
         if ($idToken === '' || strlen($idToken) > 4096 || $client === '') {
             throw new StoreError('forbidden', 'LINE で開き直してください');
         }

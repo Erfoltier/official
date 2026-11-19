@@ -392,6 +392,14 @@ final class Store
                 $next[$k] = $menu;
             }
         }
+        // LINE の中でタトゥーの予約ページを開く LIFF アプリの ID（例：1234567890-AbCdEfGh）。空で消す
+        if (array_key_exists('tattooLiffId', $input)) {
+            $v = trim((string) $input['tattooLiffId']);
+            if ($v !== '' && !preg_match('/^\d{6,20}-[A-Za-z0-9]{4,40}$/', $v)) {
+                throw new StoreError('invalid', 'LIFF ID の形が正しくありません（例：1234567890-AbCdEfGh）');
+            }
+            $next['tattooLiffId'] = $v;
+        }
         if (isset($input['tattooSlots'])) {
             $next['tattooSlots'] = TattooBooking::normalizeWindows($input['tattooSlots']);
         }
@@ -1180,7 +1188,7 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
+        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl(), 'lineUrl' => TattooBooking::liffUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
@@ -1273,6 +1281,10 @@ final class Store
         }
         if (!empty($input['requestId'])) {
             $r['requestId'] = $input['requestId'];
+        }
+        // LINE の中で開いた予約ページ（タトゥー除去）から入った予約：申し込んだ LINE（ID トークンで確かめたもの）。リマインドもここへ送る
+        if (is_string($input['lineUserId'] ?? null) && preg_match('/^U[0-9a-f]{32}$/', $input['lineUserId'])) {
+            $r['lineUserId'] = $input['lineUserId'];
         }
         $r['reminder'] = ['status' => 'pending'];
         if ($by) {
@@ -5645,6 +5657,22 @@ final class Store
         }
         $m = self::createMenu($in, $by);
         return array_filter(['id' => $m['id'], 'name' => $m['name'], 'duration' => $m['duration'] ?? null], fn($v) => $v !== null);
+    }
+
+    /**
+     * LINE で確かめた予約者の LINE を、まだ LINE のない患者に紐付ける（LINE の中で開いた予約ページから）。
+     * 別の LINE が紐付いている患者はそのまま（予約ごとの LINE には送る）。紐付けたら true
+     */
+    public static function bookingLinkLine(string $patientId, string $uid, string $why, array $by): bool
+    {
+        $p = self::patients()[$patientId] ?? null;
+        if (!$p || !empty($p['deleted']) || !empty($p['lineUserId']) || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            return false;
+        }
+        $now = now_iso();
+        self::putPatient([...$p, 'lineUserId' => $uid, 'version' => $p['version'] + 1, 'updatedAt' => $now]);
+        self::recordChange($patientId, [$why], $now, $by);
+        return true;
     }
 
     /** 取り消す（記録は残る。カレンダーでは取り消しとして見える） */

@@ -519,6 +519,7 @@ final class Schema
                 return array_map(fn($s) => V::str($s, 40), $x);
             },
             'tattooEnabled?' => fn($x) => V::bool($x),
+            'tattooLiffId?' => fn($x) => V::str($x, 80),
             'tattooLaneId?' => fn($x) => V::str($x, 80),
             'tattooMenuId?' => fn($x) => V::str($x, 80),
             'tattooExplainLaneId?' => fn($x) => V::str($x, 80),

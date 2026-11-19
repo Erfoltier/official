@@ -154,6 +154,41 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(html).toContain("https://example.jp/clinic/access/");
   });
 
+  it("LINE の中で開いた予約は、本人の LINE を予約と患者に結びつけ、確定の連絡を LINE に送る（メールは任意）", async () => {
+    const day = addDays(nowInClinic().date, 5);
+    const c = await open(day);
+    await expect(c.patch("/clinic", { tattooLiffId: "abc" })).rejects.toThrow(/LIFF ID の形/);
+    await c.patch("/clinic", { tattooLiffId: "1234567890-TaTtOo01" });
+    expect((await c.get("/settings")).tattoo.lineUrl).toBe("https://liff.line.me/1234567890-TaTtOo01");
+    const uid = "U" + "a".repeat(32);
+    const out = await h.srv.php(`
+      $s = Db::i()->meta('reminderSecrets'); Db::i()->setMeta('reminderSecrets', [...(is_array($s) ? $s : []), 'lineToken' => 'x']);
+      $sent = [];
+      Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = [$to, (string) $body]; return [200, '{}']; };
+      // LINE の ID トークンの確認：予約ページの LIFF のチャネル（1234567890）で、good だけ通す
+      LineLink::$transport = function ($m, $url, $headers, $body) use (&$sent) {
+        parse_str((string) $body, $q); $sent[] = [$url, 'client=' . ($q['client_id'] ?? '')];
+        return ($q['id_token'] ?? '') === 'good' && ($q['client_id'] ?? '') === '1234567890' ? [200, json_encode(['sub' => '${uid}'])] : [400, '{}'];
+      };
+      $base = ['kind' => 'tattoo', 'visit' => 'repeat', 'rects' => [[2, 2.5]], 'anesthesia' => 'no', 'name' => '線 花子', 'kana' => 'セン ハナコ', 'birthDate' => '1991-02-03', 'phone' => '09012340000', 'email' => '', 'date' => '${day}', 'time' => '10:00'];
+      $noLine = TattooBooking::book($base, '127.0.0.21');
+      $bad = TattooBooking::book([...$base, 'idToken' => 'bad'], '127.0.0.22');
+      $r = TattooBooking::book([...$base, 'idToken' => 'good'], '127.0.0.23');
+      $res = array_values(array_filter(Db::i()->all('reservation'), fn($x) => ($x['lineUserId'] ?? '') === '${uid}'));
+      $pat = Db::i()->get('patient', $res[0]['patientId'] ?? '') ?? [];
+      return ['noLine' => $noLine, 'bad' => $bad, 'r' => $r, 'sent' => $sent, 'resCount' => count($res), 'patLine' => $pat['lineUserId'] ?? null];
+    `);
+    expect(out.noLine).toMatchObject({ ok: false, fields: ["email"] });
+    expect(out.bad).toMatchObject({ ok: false, error: "line_auth" });
+    expect(out.r).toMatchObject({ ok: true, lined: true, mailed: false, time: "10:00" });
+    expect(out.resCount).toBe(1);
+    expect(out.patLine).toBe(uid);
+    const push = out.sent.find((x: any) => String(x[0]).includes("/message/push"));
+    expect(push[1]).toContain(uid);
+    expect(push[1]).toContain("タトゥー除去のご予約を承りました");
+    expect(out.sent.some((x: any) => String(x[0]).startsWith("smtp") || String(x[0]).includes("@"))).toBe(false);
+  });
+
   it("リマインドは、タトゥー除去のメニューが入った来院にだけ日曜のご来院の案内を足す", async () => {
     const day = addDays(nowInClinic().date, 5);
     await open(day);

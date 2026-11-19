@@ -748,6 +748,8 @@ export interface ClinicSettings {
   tattooExplainMenuId?: string;
   /** 受付日時（1つずつ「2026-12-06 10:00-13:00」） */
   tattooSlots?: string[];
+  /** タトゥーの予約ページを LINE の中で開く LIFF アプリの ID。あれば確定の連絡を LINE に送る */
+  tattooLiffId?: string;
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

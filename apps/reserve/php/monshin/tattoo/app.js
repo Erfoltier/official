@@ -152,6 +152,26 @@ const LABELS = {
 form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'part'].includes(e.target.name)) syncInputs(); });
 form.addEventListener('change', (e) => { if (['kind', 'visit'].includes(e.target.name)) syncInputs(); });
 
+// LINE の中で開いたとき（LIFF）：本人の LINE を確かめ、確定の連絡を LINE へ（メールは任意）
+let idToken = '';
+async function startLine() {
+  const id = document.querySelector('script[data-liff]')?.dataset.liff || '';
+  if (!id || !window.liff) return;
+  try {
+    await window.liff.init({ liffId: id });
+    if (!window.liff.isInClient() && !window.liff.isLoggedIn()) return;
+    idToken = window.liff.getIDToken() || '';
+  } catch (_) {
+    idToken = '';
+  }
+  if (idToken) {
+    document.querySelector('#line-note').hidden = false;
+    document.querySelector('#email-label').innerHTML = 'メールアドレス（任意）';
+    document.querySelector('[name="email"]').placeholder = 'LINE が届かないときのために（任意）';
+  }
+}
+startLine();
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const fd = new FormData(form);
@@ -159,6 +179,7 @@ form.addEventListener('submit', async (event) => {
   body.rects = rects();
   body.date = selected;
   body.time = String(fd.get('time') || '');
+  if (idToken) body.idToken = idToken;
   const local = [];
   if (!body.kind) local.push(LABELS.kind);
   if (!body.visit) local.push(LABELS.visit);
@@ -168,7 +189,7 @@ form.addEventListener('submit', async (event) => {
   if (!body.kana.trim()) local.push(LABELS.kana);
   if (!body.birthDate) local.push(LABELS.birthDate);
   if (!/^0\d{9,10}$/.test(body.phone.replace(/[-ー\s]/g, ''))) local.push(LABELS.phone);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email.trim())) local.push(LABELS.email);
+  if ((!idToken || body.email.trim() !== '') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email.trim())) local.push(LABELS.email);
   if (local.length) { showErrors(local); return; }
   errorBox.hidden = true;
   submit.disabled = true;
@@ -180,9 +201,11 @@ form.addEventListener('submit', async (event) => {
       form.hidden = true;
       document.querySelector('#done').hidden = false;
       document.querySelector('#done-when').textContent = `${ja(body.date)} ${body.time}〜${data.end || ''}（${data.duration || ''}）。${body.time} にご来院ください`;
-      document.querySelector('#done-mail').textContent = data.mailed
-        ? 'ご入力のメールアドレスに、ご予約の内容をお送りしました。'
-        : '確認のメールをお送りできませんでした。ご予約は承っております。';
+      document.querySelector('#done-mail').textContent = data.lined
+        ? 'LINE に、ご予約の内容をお送りしました。'
+        : data.mailed
+          ? 'ご入力のメールアドレスに、ご予約の内容をお送りしました。'
+          : 'ご予約の内容をお送りできませんでした。ご予約は承っております。';
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -195,6 +218,8 @@ form.addEventListener('submit', async (event) => {
       showErrors(['送信が続いたため、しばらく受け付けられません。時間をおいてお試しください']);
     } else if (data.error === 'contact_us') {
       showErrors(['ご予約を受け付けられませんでした。お手数ですが、当院の LINE からご連絡ください']);
+    } else if (data.error === 'line_auth') {
+      showErrors(['LINE の確認ができませんでした。お手数ですが、LINE で開き直してください']);
     } else if (data.error === 'closed') {
       showErrors(['現在、ご予約は受け付けておりません']);
     } else {
