@@ -23,3 +23,11 @@ export function durationChoices(step: number, base: number, current: number, men
   if (!out.includes(current)) out.push(current);
   return out.sort((a, b) => a - b);
 }
+
+/** 時間の選択肢の表示：60分以上は「90分（1時間30分）」 */
+export function minutesLabel(m: number): string {
+  if (m < 60) return `${m}分`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return `${m}分（${h}時間${r ? `${r}分` : ""}）`;
+}

@@ -7,7 +7,7 @@ import { searchKey } from "@/lib/domain/text";
 import { ApiError, fetchSettings, patchReservation } from "@/components/calendar/api";
 import { MenuManagerDialog } from "@/components/settings/MenuManagerDialog";
 import styles from "./reservations.module.css";
-import { durationChoices, MAX_RESERVATION_MINUTES } from "@/components/calendar/menuFormat";
+import { durationChoices, MAX_RESERVATION_MINUTES, minutesLabel } from "@/components/calendar/menuFormat";
 
 /** 変更に必要な予約の情報（カレンダーの予約・患者画面の予約のどちらからでも作れる） */
 export interface EditableReservation {
@@ -186,7 +186,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
             >
               {durOptions.map((m) => (
                 <option key={m} value={m}>
-                  {m}分
+                  {minutesLabel(m)}
                 </option>
               ))}
             </select>

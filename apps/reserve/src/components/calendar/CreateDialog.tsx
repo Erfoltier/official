@@ -6,7 +6,7 @@ import { formatDateJa, formatHm, toIso } from "@/lib/domain/time";
 import { searchKey } from "@/lib/domain/text";
 import { MEMO_MAX, REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/domain/bookingRequest";
 import { ApiError, createPatient, postReservation, searchPatients } from "./api";
-import { durationChoices, durationLabel } from "./menuFormat";
+import { durationChoices, durationLabel, minutesLabel } from "./menuFormat";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { MenuManagerDialog } from "@/components/settings/MenuManagerDialog";
 import styles from "./calendar.module.css";
@@ -475,7 +475,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
             <select id="pd" className={styles.input} value={dur} onChange={(e) => setDuration(Number(e.target.value))}>
               {durationOptions.map((m) => (
                 <option key={m} value={m}>
-                  {m}分
+                  {minutesLabel(m)}
                 </option>
               ))}
             </select>

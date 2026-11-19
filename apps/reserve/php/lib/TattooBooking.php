@@ -721,7 +721,7 @@ final class TattooBooking
     public static function durationText(int $treat, bool $first, bool $monitor = false): string
     {
         if ($monitor && !$first) {
-            return "撮影のあと照射（照射は約{$treat}分）";
+            return '約' . ($treat + self::NEOBO_SLOT) . '分（ネオボ撮影' . self::NEOBO_SLOT . "分・照射{$treat}分）";
         }
         return $first
             ? '約' . ($treat + self::EXPLAIN_MINUTES) . '分（ご説明' . self::EXPLAIN_MINUTES . "分・照射{$treat}分）"
@@ -853,7 +853,6 @@ final class TattooBooking
         return sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
     }
 
-    /** 区間の一覧から、[s, e) と重なるものがあるか */
     /** 4番の仕事（ネオボ撮影・麻酔クリーム）をするレーン。$prefer（メニューの設定）→ 4番 → 1番・3番の順で、今あるもの */
     private static function fourLanes(array $prefer = []): array
     {
@@ -892,6 +891,7 @@ final class TattooBooking
         return !$first && ($pick['status'] ?? '') === 'monitor';
     }
 
+    /** 区間の一覧から、[s, e) と重なるものがあるか */
     private static function overlaps(array $busy, int $s, int $e): bool
     {
         foreach ($busy as [$bs, $be]) {
@@ -902,10 +902,6 @@ final class TattooBooking
         return false;
     }
 
-    /**
-     * その日の受付時間帯の中で、照射のレーンの空いている区間（[開始分, 終了分]、受付時間帯ごと）
-     * @return list<array{0:int,1:int,2:int,3:int}> [空きの開始, 空きの終了, 受付時間帯の開始, 受付時間帯の終了]
-     */
     /** これより短い空きは何も入れられない半端な隙間（院長 11/20：10分あればシミ20分の後でも色素10分が入る） */
     private const MIN_GAP = 10;
 
@@ -970,6 +966,10 @@ final class TattooBooking
         return [];
     }
 
+    /**
+     * その日の受付時間帯の中で、照射のレーンの空いている区間（[開始分, 終了分]、受付時間帯ごと）
+     * @return list<array{0:int,1:int,2:int,3:int}> [空きの開始, 空きの終了, 受付時間帯の開始, 受付時間帯の終了]
+     */
     private static function gaps(array $windows, array $busy): array
     {
         $out = [];
@@ -995,7 +995,8 @@ final class TattooBooking
      * 空きの区間ごとに「最初から」と「最後から」の2つだけを出す（予約が前後に隙間なく並ぶ）。
      * 「最後から」は、空きのすぐ後ろに予約があるときだけ。受付の終わりまで空いているときは出さない（空いた日は受付の最初の時刻だけ。院長 11/19「中途半端な午後から入ると困る」）。
      * 初診は、説明10分を説明のレーンで照射の直前に取れればそこで、取れなければ照射のレーンで照射の前に続けて取る。
-     * @return array<string, list<array{0:string,1:int,2:bool}>>
+     * モニターの再診は、照射の直前に4番（だめなら1番・3番）でネオボ撮影15分（4つ目にそのレーン）。前後に半端な隙間を作る時刻は除く（tidy）。
+     * @return array<string, list<array{0:string,1:int,2:bool,3?:string}>>
      */
     public static function plan(int $treat, bool $firstVisit, ?array $s = null, bool $monitor = false): array
     {
@@ -1256,12 +1257,12 @@ final class TattooBooking
         if ($m !== null && !$first && self::isFlow($it)) {
             [$status, $anes] = self::flowPick($pick);
             if ($status === 'monitor') {
-                return $anes === 'cream' ? "撮影・麻酔のあと約45分お待ちいただき施術（施術は約{$m}分）" : "撮影のあと施術（施術は約{$m}分）";
+                return $anes === 'cream' ? "撮影・麻酔のあと約45分お待ちいただき施術（施術は約{$m}分）" : '約' . ($m + self::NEOBO_SLOT) . '分（ネオボ撮影' . self::NEOBO_SLOT . "分・施術{$m}分）";
             }
             return $anes === 'cream' ? "麻酔クリームのあと約45分お待ちいただき施術（施術は約{$m}分）" : "約{$m}分";
         }
         if ($m !== null && self::isMonitor($first, $pick)) {
-            return "撮影のあと施術（施術は約{$m}分）";
+            return '約' . ($m + self::NEOBO_SLOT) . '分（ネオボ撮影' . self::NEOBO_SLOT . "分・施術{$m}分）";
         }
         return $m === null ? '' : "約{$m}分";
     }

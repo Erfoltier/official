@@ -477,7 +477,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const day = nextSunday();
     const c = await open(day);
     const q = "item=botox01&visit=repeat&status=monitor";
-    expect(await slots(q)).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "撮影のあと施術（施術は約10分）" });
+    expect(await slots(q)).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "約25分（ネオボ撮影15分・施術10分）" });
     const mon = (time: string, phone: string) => person(day, time, { item: "botox01", visit: "", clinicVisit: "returning", status: "monitor" }, phone);
     expect((await book(mon("10:00", "09040000001"))).status).toBe(201);
     expect(await lanesOn(c, day, "lane-4")).toEqual([[toIso(day, 600), toIso(day, 615)]]);
@@ -496,7 +496,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 615), toIso(day, 625)], [toIso(day, 625), toIso(day, 635)]]);
     // タトゥー除去もモニターなら撮影のあと照射
     const t = await slots(`area=5&visit=repeat&status=monitor`);
-    expect(t.duration).toBe("撮影のあと照射（照射は約5分）");
+    expect(t.duration).toBe("約20分（ネオボ撮影15分・照射5分）");
     expect(t.slots[day]).toEqual(["10:20"]);
   });
   it("20分以上の空きを虫食いにして10分未満の半端な隙間を残す時刻は出さない。20分未満の空きは自由に埋めてよい。1つも残らない日は隙間のいちばん小さい時刻を1つ", async () => {
