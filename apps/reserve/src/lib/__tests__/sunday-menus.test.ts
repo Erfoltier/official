@@ -473,7 +473,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 600), endAt: toIso(day, 655) });
     expect((await slots(q)).slots[day] ?? []).toEqual([]);
   });
-  it("どのメニューも、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で", async () => {
+  it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);
     const q = "item=botox01&visit=repeat&status=monitor";
@@ -494,10 +494,13 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect((await book(mon("10:10", "09040000002"))).status).toBe(201);
     expect(await lanesOn(c, day, L1)).toEqual([[toIso(day, 610), toIso(day, 625)]]);
     expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 615), toIso(day, 625)], [toIso(day, 625), toIso(day, 635)]]);
-    // タトゥー除去もモニターなら撮影のあと照射
+    // タトゥー除去はネオボ（顔だけ）を使わないので、モニターでも撮影の枠は取らない（院長 11/20）
     const t = await slots(`area=5&visit=repeat&status=monitor`);
-    expect(t.duration).toBe("約20分（ネオボ撮影15分・照射5分）");
-    expect(t.slots[day]).toEqual(["10:20"]);
+    expect(t.duration).toBe("約5分（照射）");
+    expect(t.slots[day]).toEqual(["10:00", "10:10", "10:35"]);
+    expect((await book({ ...person(day, "10:00", { item: "", kind: "tattoo", visit: "", clinicVisit: "returning", status: "monitor", rects: [[1, 5]] }, "09040000003") })).status).toBe(201);
+    expect(await lanesOn(c, day, "lane-4")).toEqual([[toIso(day, 600), toIso(day, 615)], [toIso(day, 615), toIso(day, 720)]]);
+    expect((await c.get(`/day?date=${day}`)).reservations.find((r: any) => r.memo.startsWith("タトゥー除去")).memo).toContain("モニター");
   });
   it("20分以上の空きを虫食いにして10分未満の半端な隙間を残す時刻は出さない。20分未満の空きは自由に埋めてよい。1つも残らない日は隙間のいちばん小さい時刻を1つ", async () => {
     const day = nextSunday();
