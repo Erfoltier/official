@@ -76,7 +76,7 @@ $v = '20261119-3';
             <label class="pill"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
 <?php endif; ?>
 <?php foreach ($items as $it): ?>
-            <label class="pill"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
+            <label class="pill"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endforeach; ?>
           </div>
           <p class="field-note" id="item-note" hidden></p>
@@ -90,6 +90,25 @@ $v = '20261119-3';
           <small class="field-note" id="visit-note">はじめての方は、照射の前にご説明（10分）があります</small>
         </fieldset>
 
+        <div id="flow-box" hidden>
+          <fieldset class="field">
+            <legend>今回の治療内容 <em>必須</em></legend>
+            <div class="choice-grid two">
+<?php foreach (TattooBooking::STATUSES as $k => $label): ?>
+              <label class="pill"><input type="radio" name="status" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
+<?php endforeach; ?>
+            </div>
+          </fieldset>
+          <fieldset class="field">
+            <legend>麻酔 <em>必須</em></legend>
+            <div class="choice-grid two">
+<?php foreach (TattooBooking::ANESTHESIA as $k => $label): ?>
+              <label class="pill"><input type="radio" name="anesthesiaType" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
+<?php endforeach; ?>
+            </div>
+            <small class="field-note">院内の麻酔クリームの方は、麻酔のあと約45分お待ちいただいてから施術します（ご来院の時刻は麻酔の時刻です）</small>
+          </fieldset>
+        </div>
         <fieldset class="field" id="group-box" hidden>
           <legend>区分 <em>必須</em></legend>
           <div class="choice-grid two" id="group-list"></div>

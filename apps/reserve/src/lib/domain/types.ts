@@ -783,6 +783,21 @@ export interface SundayMenu {
   countPerMinute?: number;
   /** 1回の時間の上限（分）。0 なら180分 */
   maxMinutes?: number;
+  /**
+   * 麻酔つきの注入（フィルロード・ピンクグローなど）。受診したことのある方は、今回の治療内容（この治療は初めて・継続・モニター）と麻酔（院内クリーム・注射・自分で塗る・なし）で、
+   * 麻酔のレーンの麻酔10分／ネオボ撮影＋頬麻酔15分 → 40〜60分後に施術、この治療が初めてなら施術の最初の10分に医師の診察、と枠を分ける
+   */
+  flow?: boolean;
+  /** 施術の時間：麻酔クリーム（院内・自分で塗る・なし）のとき／麻酔の注射のとき */
+  creamMinutes?: number;
+  injectionMinutes?: number;
+  /** 麻酔・撮影のレーン（4番） */
+  anesLaneIds?: LaneId[];
+  creamMenuId?: MenuId | "";
+  neoboMenuId?: MenuId | "";
+  /** この治療が初めての方の医師の診察（レーンが空なら初診のレーン） */
+  doctorMenuId?: MenuId | "";
+  doctorLaneId?: LaneId | "";
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

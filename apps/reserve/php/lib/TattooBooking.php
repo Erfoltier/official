@@ -135,6 +135,22 @@ final class TattooBooking
             ],
             'countPerMinute' => 0, 'maxMinutes' => 0,
         ];
+        // 麻酔つきの注入（フィル・TAピンクの時間はシート1。機械打ち 麻クリ20／注射15、手打ち 麻クリ25／注射20。どちらで打つか分からないので長い手打ちで。
+        // スタンプ注射はシートに時間がないので機械打ちの時間。ジュブアセル・リトゥオはシートに時間がないので空〈入れるまでオンにできない〉。リトゥオは医師のみ）
+        $flow = fn(string $id, string $name, array $treatLanes, string $treatMenu, int $cream, int $inj, string $machine) => [
+            'id' => $id, 'name' => $name, 'enabled' => false,
+            'firstMinutes' => 20, 'firstLaneIds' => $lane([self::M]), 'firstMenuId' => $menu(self::CONSULT),
+            'repeatMinutes' => 0, 'repeatLaneIds' => $lane($treatLanes), 'repeatMenuId' => $menu($treatMenu),
+            'machine' => $machine, 'note' => '', 'partGroups' => [], 'countPerMinute' => 0, 'maxMinutes' => 0,
+            'flow' => true, 'creamMinutes' => $cream, 'injectionMinutes' => $inj, 'anesLaneIds' => $lane(['lane-4']),
+            'creamMenuId' => $menu(self::MEMO), 'neoboMenuId' => $menu('menu-s0000B6B52'), 'doctorMenuId' => $menu(self::MEMO), 'doctorLaneId' => in_array(self::M, $lanes, true) ? self::M : '',
+        ];
+        $out[] = $flow('fillroad', 'フィルロード', self::N, 'menu-s0000B6EB7', 25, 20, 'インナーフィル');
+        $out[] = $flow('tapink', 'トラネ＋ピンク（TAピンク）', self::N, 'menu-s0000B6EB5', 25, 20, 'インナーフィル');
+        $out[] = $flow('pinkglow', 'ピンクグロー', self::N, 'menu-s0000B6EB5', 25, 20, 'インナーフィル');
+        $out[] = $flow('tranestamp', 'トラネキサム酸スタンプ注射', self::N, 'menu-s0000B6EB5', 20, 15, 'インナーフィル');
+        $out[] = $flow('juveacell', 'ジュブアセル', self::N, 'menu-s0000D0B81', 0, 0, 'インナーフィル');
+        $out[] = $flow('re2o', 'リトゥオ', [self::M], 'menu-s0000D14AA', 0, 0, '');
         $out[] = [
             'id' => 'needlehair', 'name' => '針脱毛（2回目以降）', 'enabled' => false,
             'firstMinutes' => 15, 'firstLaneIds' => [], 'firstMenuId' => '',
@@ -172,8 +188,42 @@ final class TattooBooking
     /** その日曜メニューで初診（$first）または再診を受けるか（時間・レーン・メニューがそろっている。時間が変わるメニューは、レーンを選んだ区分を受ける） */
     public static function accepts(array $it, bool $first): bool
     {
+        if (!$first && self::isFlow($it)) {
+            return ($it['enabled'] ?? true) !== false && ($it['repeatLaneIds'] ?? []) !== [] && ($it['repeatMenuId'] ?? '') !== ''
+                && ($it['creamMinutes'] ?? 0) > 0 && ($it['injectionMinutes'] ?? 0) > 0
+                && ($it['anesLaneIds'] ?? []) !== [] && ($it['creamMenuId'] ?? '') !== '' && ($it['neoboMenuId'] ?? '') !== '';
+        }
         $k = $first ? 'first' : 'repeat';
         return ($it['enabled'] ?? true) !== false && (self::variable($it) || ($it[$k . 'Minutes'] ?? 0) > 0) && ($it[$k . 'LaneIds'] ?? []) !== [] && ($it[$k . 'MenuId'] ?? '') !== '';
+    }
+
+    /**
+     * 麻酔つきの注入（フィルロード・ピンクグロー・トラネ・ジュブアセルなど。予約枠時間一覧の「麻酔連動」「複合/モニター注入」「麻酔／現在の指示」）。
+     * 当院がはじめての方は医師の診察だけ（初診の時間）。受診したことのある方は、今回の治療内容と麻酔を選び、次のように枠を続けて取る：
+     * - モニタープログラム中：麻酔のレーン（4番）でネオボ撮影＋頬麻酔 → 麻酔クリームなら40〜60分後、それ以外は直後に施術
+     * - 院内の麻酔クリーム：麻酔のレーンで麻酔10分 → 40〜60分後に施術（なるべく45分後）
+     * - 麻酔の注射・ご自身で塗ってくる・なし：施術だけ（麻酔の注射のときは注射の時間）
+     * - この治療は初めて：施術の最初の10分にメインで医師の診察を重ねる
+     */
+    public const STATUSES = ['new' => 'この治療は初めて', 'continue' => '継続／コース消化', 'monitor' => 'モニタープログラム中'];
+    public const ANESTHESIA = ['cream' => '院内の麻酔クリーム', 'injection' => '麻酔の注射', 'self' => 'ご自身で麻酔クリームを塗ってくる', 'none' => '麻酔なし'];
+    private const CREAM_SLOT = 10;
+    private const NEOBO_SLOT = 15;
+    private const DOCTOR_SLOT = 10;
+    /** 麻酔の後、施術までの待ち（分）。試す順 */
+    private const WAITS = [45, 40, 50, 55, 60];
+
+    public static function isFlow(array $it): bool
+    {
+        return !empty($it['flow']);
+    }
+
+    /** 麻酔つきの注入の、今回の治療内容と麻酔（選び方がおかしければ null） */
+    private static function flowPick(array $pick): ?array
+    {
+        $st = (string) ($pick['status'] ?? '');
+        $an = (string) ($pick['anesthesia'] ?? '');
+        return isset(self::STATUSES[$st], self::ANESTHESIA[$an]) ? [$st, $an] : null;
     }
 
     /** 本数の上限（入力の誤りを防ぐ） */
@@ -185,6 +235,11 @@ final class TattooBooking
      */
     public static function itemMinutes(array $it, bool $first, array $pick = []): ?int
     {
+        // 麻酔つきの注入：施術の時間（麻酔の注射なら注射の時間、それ以外はクリームの時間）
+        if (!$first && self::isFlow($it)) {
+            $fp = self::flowPick($pick);
+            return $fp === null ? null : (int) ($fp[1] === 'injection' ? $it['injectionMinutes'] : $it['creamMinutes']);
+        }
         $min = (int) ($it[($first ? 'first' : 'repeat') . 'Minutes'] ?? 0);
         if (($it['partGroups'] ?? []) !== []) {
             $g = $it['partGroups'][(int) ($pick['group'] ?? -1)] ?? null;
@@ -213,6 +268,10 @@ final class TattooBooking
     /** 予約メモ・確定の連絡に書く、選んだ内容（「女性：VIO・へそ回り」「300本」）。なければ空 */
     public static function pickText(array $it, array $pick): string
     {
+        if (self::isFlow($it)) {
+            $fp = self::flowPick($pick);
+            return $fp === null ? '' : '今回：' . self::STATUSES[$fp[0]] . '／麻酔：' . self::ANESTHESIA[$fp[1]];
+        }
         if (($it['partGroups'] ?? []) !== []) {
             $g = $it['partGroups'][(int) ($pick['group'] ?? 0)] ?? ['name' => '', 'parts' => []];
             $names = [];
@@ -243,6 +302,7 @@ final class TattooBooking
                     // 部位ごとの時間のメニューは区分（男性・女性など）と部位の名前だけ（時間は出さない）。本数で決まるメニューは本数を入れてもらう
                     'groups' => array_map(fn($g) => ['name' => $g['name'], 'parts' => array_column($g['parts'], 'name')], $it['partGroups'] ?? []),
                     'count' => ($it['countPerMinute'] ?? 0) > 0,
+                    'flow' => self::isFlow($it),
                 ];
             }
         }
@@ -305,7 +365,39 @@ final class TattooBooking
                 throw new StoreError('invalid', "「{$name}」の時間の上限は0〜" . self::MAX_ITEM_MINUTES . '分（5分刻み。0は上限なし）で入れてください');
             }
             $row += ['partGroups' => $groups, 'countPerMinute' => $cpm, 'maxMinutes' => $maxMin];
-            $variable = $groups !== [] || $cpm > 0;
+            // 麻酔つきの注入（部位・本数とは一緒に使わない）
+            $flow = !empty($it['flow']) && $groups === [] && $cpm === 0;
+            $row['flow'] = $flow;
+            foreach (['creamMinutes' => 'クリームのときの施術', 'injectionMinutes' => '麻酔の注射のときの施術'] as $fk => $flabel) {
+                $v = (int) ($it[$fk] ?? 0);
+                if ($v < 0 || $v > self::MAX_ITEM_MINUTES || $v % 5 !== 0) {
+                    throw new StoreError('invalid', "「{$name}」の{$flabel}の時間は0〜" . self::MAX_ITEM_MINUTES . '分（5分刻み）で入れてください');
+                }
+                $row[$fk] = $v;
+            }
+            $anes = array_values(array_unique(array_map('strval', (array) ($it['anesLaneIds'] ?? []))));
+            foreach ($anes as $l) {
+                if (!in_array($l, $laneIds, true)) {
+                    throw new StoreError('invalid', "「{$name}」の麻酔のレーンが見つかりません");
+                }
+            }
+            $row['anesLaneIds'] = $anes;
+            foreach (['creamMenuId' => '麻酔クリーム', 'neoboMenuId' => 'ネオボ撮影＋頬麻酔', 'doctorMenuId' => '医師の診察'] as $fk => $flabel) {
+                $v = (string) ($it[$fk] ?? '');
+                if ($v !== '' && !in_array($v, $menuIds, true)) {
+                    throw new StoreError('invalid', "「{$name}」の{$flabel}のメニューが見つかりません");
+                }
+                $row[$fk] = $v;
+            }
+            $dl = (string) ($it['doctorLaneId'] ?? '');
+            if ($dl !== '' && !in_array($dl, $laneIds, true)) {
+                throw new StoreError('invalid', "「{$name}」の医師の診察のレーンが見つかりません");
+            }
+            $row['doctorLaneId'] = $dl;
+            if ($on && $flow && ($it['repeatLaneIds'] ?? []) !== [] && ($row['creamMinutes'] === 0 || $row['injectionMinutes'] === 0 || $anes === [] || $row['creamMenuId'] === '' || $row['neoboMenuId'] === '')) {
+                throw new StoreError('invalid', "「{$name}」は、施術の時間（クリーム・注射）、麻酔のレーン、麻酔クリームとネオボのメニューを入れてください（受診したことのある方を受けないときは再診のレーンを外す）");
+            }
+            $variable = $groups !== [] || $cpm > 0 || $flow;
             foreach (['first' => '初診', 'repeat' => '再診'] as $k => $label) {
                 $min = (int) ($it[$k . 'Minutes'] ?? 0);
                 if ($min < 0 || $min > self::MAX_ITEM_MINUTES || $min % 5 !== 0) {
@@ -355,7 +447,10 @@ final class TattooBooking
         }
         foreach ($s['items'] as $it) {
             if (($it['enabled'] ?? true) !== false && ($it['machine'] ?? '') === $machine) {
-                $ids[] = $it['firstMenuId'];
+                // 麻酔つきの注入の初診は医師の診察だけなので、機器は使わない
+                if (!self::isFlow($it)) {
+                    $ids[] = $it['firstMenuId'];
+                }
                 $ids[] = $it['repeatMenuId'];
             }
         }
@@ -617,6 +712,9 @@ final class TattooBooking
         if (!$s['enabled'] || !self::accepts($it, $first) || $len === null) {
             return [];
         }
+        if (!$first && self::isFlow($it)) {
+            return self::planFlow($it, $len, self::flowPick($pick), $s);
+        }
         $k = $first ? 'first' : 'repeat';
         $now = now_in_clinic();
         $last = $first ? (new DateTimeImmutable($now['date']))->modify('+' . self::FIRST_VISIT_MONTHS . ' months')->format('Y-m-d') : '9999-12-31';
@@ -657,10 +755,113 @@ final class TattooBooking
         return $out;
     }
 
+    /**
+     * 麻酔つきの注入の枠。日付 => [[来院の時刻, 来院の分, 施術のレーン, [[レーン, メニュー, 開始分, 終了分, 何の枠], ...]], ...]。
+     * 施術の枠はほかと同じく、施術のレーンの空きの最初か、後ろに予約がある空きの最後にそろえ、麻酔・撮影の枠はそこから逆算する
+     */
+    private static function planFlow(array $it, int $treat, array $fp, array $s): array
+    {
+        [$status, $anes] = $fp;
+        $monitor = $status === 'monitor';
+        $cream = $anes === 'cream';
+        // 施術の前の枠：[長さ, メニュー, 名前]、施術までの待ちの候補
+        $pre = $monitor ? [self::NEOBO_SLOT, $it['neoboMenuId'], 'ネオボ撮影＋頬麻酔'] : ($cream ? [self::CREAM_SLOT, $it['creamMenuId'], '麻酔クリーム'] : null);
+        $waits = $pre === null ? [] : ($cream ? self::WAITS : [0]);
+        $doctorLane = $it['doctorLaneId'] !== '' ? $it['doctorLaneId'] : ($it['firstLaneIds'][0] ?? '');
+        $doctor = $status === 'new' && $doctorLane !== '' && ($it['doctorMenuId'] ?? '') !== '';
+        $now = now_in_clinic();
+        $byDate = [];
+        foreach ($s['slots'] as $line) {
+            $w = OnlineCs::parseWindow($line);
+            if ($w && $w['date'] >= $now['date']) {
+                $byDate[$w['date']][] = [$w['start'], $w['end']];
+            }
+        }
+        $machine = self::machineMenus((string) ($it['machine'] ?? ''), $s);
+        $inWindow = function (array $windows, int $a, int $b): bool {
+            foreach ($windows as [$ws, $we]) {
+                if ($a >= $ws && $b <= $we) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        $out = [];
+        foreach ($byDate as $date => $windows) {
+            $busy = fn(string $lane) => Store::busyMinutes($date, $lane);
+            $machineBusy = Store::busyMinutesForMenus($date, $machine);
+            $doctorBusy = $doctor ? $busy($doctorLane) : [];
+            $found = [];
+            foreach ($it['repeatLaneIds'] as $lane) {
+                foreach (self::gaps($windows, $busy($lane)) as [$gs, $ge, $ws, $we]) {
+                    if ($ge - $gs < $treat) {
+                        continue;
+                    }
+                    // 空きの最初・最後に加えて、麻酔・撮影が受付の始まりより前になってしまうときは、受付の始まりに麻酔をして待ったあとの時刻
+                    $starts = $ge < $we ? [$gs, $ge - $treat] : [$gs];
+                    if ($pre !== null) {
+                        $starts[] = max($gs, $ws + $pre[0] + $waits[0]);
+                    }
+                    foreach (array_unique($starts) as $start) {
+                        $end = $start + $treat;
+                        if ($end > $ge) {
+                            continue;
+                        }
+                        if (self::overlaps($machineBusy, $start, $end) || ($doctor && self::overlaps($doctorBusy, $start, $start + self::DOCTOR_SLOT))) {
+                            continue;
+                        }
+                        $segs = [[$lane, $it['repeatMenuId'], $start, $end, '施術']];
+                        if ($doctor) {
+                            $segs[] = [$doctorLane, $it['doctorMenuId'], $start, $start + self::DOCTOR_SLOT, '医師の診察（施術の最初に重ねる）'];
+                        }
+                        $arrive = $start;
+                        if ($pre !== null) {
+                            $ok = false;
+                            foreach ($waits as $wait) {
+                                $a0 = $start - $wait - $pre[0];
+                                if (!$inWindow($windows, $a0, $a0 + $pre[0])) {
+                                    continue;
+                                }
+                                foreach ($it['anesLaneIds'] as $al) {
+                                    if (!self::overlaps($busy($al), $a0, $a0 + $pre[0])) {
+                                        $segs[] = [$al, $pre[1], $a0, $a0 + $pre[0], $pre[2]];
+                                        $arrive = $a0;
+                                        $ok = true;
+                                        break 2;
+                                    }
+                                }
+                            }
+                            if (!$ok) {
+                                continue;
+                            }
+                        }
+                        if (isset($found[$arrive]) || ($date === $now['date'] && $arrive <= $now['minutes'])) {
+                            continue;
+                        }
+                        $found[$arrive] = [self::hm($arrive), $arrive, $lane, $segs];
+                    }
+                }
+            }
+            if ($found) {
+                ksort($found);
+                $out[$date] = array_values($found);
+            }
+        }
+        ksort($out);
+        return $out;
+    }
+
     /** 日曜メニューの所要時間の文（「約15分」）。選び方が足りなければ空 */
     public static function itemDurationText(array $it, bool $first, array $pick = []): string
     {
         $m = self::itemMinutes($it, $first, $pick);
+        if ($m !== null && !$first && self::isFlow($it)) {
+            [$status, $anes] = self::flowPick($pick);
+            if ($status === 'monitor') {
+                return $anes === 'cream' ? "撮影・麻酔のあと約45分お待ちいただき施術（施術は約{$m}分）" : "撮影のあと施術（施術は約{$m}分）";
+            }
+            return $anes === 'cream' ? "麻酔クリームのあと約45分お待ちいただき施術（施術は約{$m}分）" : "約{$m}分";
+        }
         return $m === null ? '' : "約{$m}分";
     }
 
@@ -739,9 +940,9 @@ final class TattooBooking
             return ['ok' => false, 'error' => 'rate_limited'];
         }
         if ($item !== null) {
-            $pick = ['group' => $in['group'] ?? null, 'parts' => is_array($in['parts'] ?? null) ? $in['parts'] : [], 'count' => $in['count'] ?? null];
+            $pick = ['group' => $in['group'] ?? null, 'parts' => is_array($in['parts'] ?? null) ? $in['parts'] : [], 'count' => $in['count'] ?? null, 'status' => $in['status'] ?? null, 'anesthesia' => $in['anesthesiaType'] ?? null];
             if (self::itemMinutes($item, $visit === 'first', $pick) === null) {
-                return ['ok' => false, 'error' => 'invalid', 'fields' => [($item['countPerMinute'] ?? 0) > 0 ? 'count' : 'parts']];
+                return ['ok' => false, 'error' => 'invalid', 'fields' => self::isFlow($item) ? ['flow'] : [($item['countPerMinute'] ?? 0) > 0 ? 'count' : 'parts']];
             }
             return self::bookItem($item, $visit === 'first', $f, $s, $uid, $pick);
         }
@@ -835,6 +1036,7 @@ final class TattooBooking
                 return ['ok' => false, 'error' => 'slot_taken'];
             }
             [, $start, $lane] = $slot;
+            $segs = $slot[3] ?? null;
             try {
                 $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email']], self::ACTOR);
             } catch (StoreError $e) {
@@ -851,6 +1053,39 @@ final class TattooBooking
                 $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
             ]));
             $patientId = $pat['patient']['id'];
+            // 麻酔つきの注入：麻酔・撮影・医師の診察・施術の枠をそれぞれ予約に（予約申請と同じく、モニターは必ず「モニター」と書く）
+            if ($segs !== null) {
+                $fp = self::flowPick($pick);
+                $head = $it['name'] . '（Web予約・日曜）' . ($fp[0] === 'monitor' ? 'モニター' : '再診') . "\n" . $what;
+                $r = null;
+                usort($segs, fn($x, $y) => $x[2] <=> $y[2]);
+                $treatEnd = $start;
+                foreach ($segs as [$sl, $sm, $ss, $se, $role]) {
+                    $made = Store::bookingCreate([
+                        'patientId' => $patientId,
+                        'laneId' => $sl,
+                        'menuIds' => [$sm],
+                        'startAt' => to_iso($f['date'], $ss),
+                        'endAt' => to_iso($f['date'], $se),
+                        'memo' => implode("\n", array_filter([
+                            "{$head}\n{$role}（" . self::hm($ss) . '〜' . self::hm($se) . '）',
+                            $f['part'] !== '' ? '部位：' . $f['part'] : null,
+                            $f['email'] !== '' ? 'メール：' . $f['email'] : null,
+                            $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
+                            $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
+                        ])),
+                        'lineUserId' => $uid,
+                    ], self::ACTOR);
+                    $r ??= $made;
+                    if ($role === '施術') {
+                        $treatEnd = $se;
+                    }
+                }
+                if ($uid !== null) {
+                    Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（日曜の予約を LINE で）', self::ACTOR);
+                }
+                return ['ok' => true, 'end' => self::hm($treatEnd), 'id' => $r['id']];
+            }
             $r = Store::bookingCreate([
                 'patientId' => $patientId,
                 'laneId' => $lane,
@@ -905,7 +1140,7 @@ final class TattooBooking
                 '日時：' . format_date_ja($f['date']) . " {$f['time']}〜{$f['end']}（ご来院は {$f['time']} までにお願いします）",
                 '所要時間：' . self::itemDurationText($it, $first, $f['pick'] ?? []),
                 '区分：' . ($first ? '初診' : '再診'),
-                self::pickText($it, $f['pick'] ?? []) !== '' ? ((($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：') . self::pickText($it, $f['pick'] ?? [])) : null,
+                self::pickText($it, $f['pick'] ?? []) !== '' ? ((self::isFlow($it) ? '' : (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：')) . self::pickText($it, $f['pick'] ?? [])) : null,
                 $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
                 ($it['note'] ?? '') !== '' ? '' : null,
                 ($it['note'] ?? '') !== '' ? '【ご来院前のお願い】' : null,

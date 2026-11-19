@@ -57,6 +57,7 @@ const countVal = () => {
 };
 /** 部位・本数が要るメニューで、それがそろっているか */
 function pickReady(item) {
+  if (item.dataset.flow === '1') return val('visit') !== 'repeat' || (val('status') !== '' && val('anesthesiaType') !== '');
   if (JSON.parse(item.dataset.groups || '[]').length) return val('group') !== '' && checkedParts().length > 0;
   if (item.dataset.count === '1') return countVal() > 0;
   return true;
@@ -64,6 +65,7 @@ function pickReady(item) {
 /** 空きを読むときに付ける、部位・本数 */
 function pickQuery(item) {
   if (!item) return '';
+  if (item.dataset.flow === '1') return val('visit') === 'repeat' ? `&status=${encodeURIComponent(val('status'))}&anesthesia=${encodeURIComponent(val('anesthesiaType'))}` : '';
   if (JSON.parse(item.dataset.groups || '[]').length) return `&group=${encodeURIComponent(val('group'))}&parts=${checkedParts().join(',')}`;
   if (item.dataset.count === '1') return `&count=${countVal()}`;
   return '';
@@ -125,6 +127,15 @@ function syncInputs() {
   document.querySelector('#group-box').hidden = groups.length < 2;
   document.querySelector('#parts-box').hidden = groups.length === 0 || val('group') === '';
   document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1');
+  // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は今回の治療内容と麻酔
+  const flow = !!item && item.dataset.flow === '1';
+  document.querySelector('#visit-first span').textContent = flow ? '当院がはじめて' : 'はじめて';
+  document.querySelector('#visit-repeat span').textContent = flow ? '当院を受診したことがある' : '2回目以降';
+  document.querySelector('#flow-box').hidden = !(flow && val('visit') === 'repeat');
+  if (flow && val('visit') === 'first') {
+    visitNote.textContent = '当院がはじめての方は、医師の診察（約20分）のご予約です。施術は診察のうえでご相談となります';
+    visitNote.hidden = false;
+  }
   form.elements.part.placeholder = item ? '例：額・わき' : '例：左腕・眉';
   document.querySelector('#area-box').hidden = !isRemoval();
   document.querySelector('#color-box').hidden = kind !== 'tattoo';
@@ -239,13 +250,13 @@ function showErrors(list) {
 const LABELS = {
   kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください',
-  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', count: '本数を入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
+  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
 
 form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'part'].includes(e.target.name)) syncInputs(); });
 form.addEventListener('change', (e) => {
   if (e.target.name === 'group') renderParts(JSON.parse(itemInput()?.dataset.groups || '[]'));
-  if (['kind', 'visit', 'group', 'parts', 'count'].includes(e.target.name)) syncInputs();
+  if (['kind', 'visit', 'group', 'parts', 'count', 'status', 'anesthesiaType'].includes(e.target.name)) syncInputs();
 });
 
 // LINE の中で開いたとき（LIFF）：本人の LINE を確かめ、確定の連絡を LINE へ（メールは任意）
@@ -278,6 +289,8 @@ form.addEventListener('submit', async (event) => {
     body.group = val('group');
     body.parts = checkedParts().map(Number);
     body.count = countVal();
+    body.status = val('status');
+    body.anesthesiaType = val('anesthesiaType');
     body.kind = '';
     body.anesthesia = '';
     body.color = '';
@@ -290,7 +303,7 @@ form.addEventListener('submit', async (event) => {
   if (!item && !body.kind) local.push(LABELS.kind);
   if (!body.visit) local.push(LABELS.visit);
   if (!item && body.kind && !body.rects.length) local.push(LABELS.area);
-  if (item && !pickReady(item)) local.push(item.dataset.count === '1' ? LABELS.count : LABELS.parts);
+  if (item && !pickReady(item)) local.push(item.dataset.flow === '1' ? LABELS.flow : item.dataset.count === '1' ? LABELS.count : LABELS.parts);
   if (!body.date || !body.time) local.push(LABELS.slot);
   if (!body.name.trim()) local.push(LABELS.name);
   if (!body.kana.trim()) local.push(LABELS.kana);
