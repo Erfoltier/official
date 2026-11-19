@@ -32,11 +32,13 @@ final class TattooBooking
         'ご予約の時間は「ご来院時間のご予約」です。前の方の処置の状況や混雑により、お呼び出しが遅れる場合がございます。後のご予定には十分に余裕をもってお越しください。',
     ];
 
-    /** ご来院前のお願い（院長の指示 11/19）：照射する部位の産毛は剃ってくる。眉は周りの産毛だけ（ホームページの「照射前の準備」と同じ文） */
+    /** ご来院前のお願い（院長の指示 11/19）：照射する部分の毛は剃ってくる。眉のアートメイクも、照射する部分は眉毛ごと剃る（院長「打ってほしい部分は眉毛だろうが剃る」） */
     public const SHAVE_NOTICE = [
         'tattoo' => '照射部位の産毛は、ご来院前にご自身で剃ってきてください。',
-        'artmake' => '眉の周りの産毛は、ご来院前にご自身で剃ってきてください（眉毛そのものは剃らないでください）。',
+        'artmake' => '照射する部分は、眉毛も含めて、ご来院前にご自身で剃ってきてください。',
     ];
+    /** 日曜のご予約すべてのご来院前のお願い（施術によらない。院長 11/19） */
+    public const NO_MAKEUP = '診察希望部位・施術希望部位は、ノーメイクでお越しください。';
     /** キャンセル・日程変更にかかる料金規定（ホームページの料金ページ https://ishidahihuka.jp/service/price/ の「注意事項」と同じ文。院長 11/19） */
     public const CANCEL_POLICY = [
         '前々日の14時まで：無料',
@@ -46,7 +48,7 @@ final class TattooBooking
         'キャンセル料は次回来院時にお支払いください。',
     ];
     /** 予約ページ（除去するものを選ぶ前にも出す）の文 */
-    public const SHAVE_NOTICE_PAGE = '照射部位の産毛は、ご来院前にご自身で剃ってきてください。眉のアートメイクの方は眉の周りの産毛だけを剃り、眉毛そのものは剃らないでください。';
+    public const SHAVE_NOTICE_PAGE = '照射する部分の毛は、ご来院前にご自身で剃ってきてください（眉のアートメイクの方は、照射する部分の眉毛も剃ってください）。';
 
     public static function settings(): array
     {
@@ -1334,8 +1336,9 @@ final class TattooBooking
                 '区分：' . ($first ? '初診' : '再診'),
                 self::pickText($it, $f['pick'] ?? []) !== '' ? ((self::isFlow($it) ? '' : (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：')) . self::pickText($it, $f['pick'] ?? [])) : null,
                 $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
-                ($it['note'] ?? '') !== '' ? '' : null,
-                ($it['note'] ?? '') !== '' ? '【ご来院前のお願い】' : null,
+                '',
+                '【ご来院前のお願い】',
+                self::NO_MAKEUP,
                 ($it['note'] ?? '') !== '' ? $it['note'] : null,
                 ...$qLines,
                 '',
@@ -1367,6 +1370,7 @@ final class TattooBooking
             'タトゥー・アートメイク除去は日曜日の診療です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なりますのでご注意ください。',
             '',
             '【ご来院前のお願い】',
+            self::NO_MAKEUP,
             self::SHAVE_NOTICE[$f['kind'] === 'artmake' ? 'artmake' : 'tattoo'],
             ...$qLines,
             '',

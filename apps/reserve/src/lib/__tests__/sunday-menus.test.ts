@@ -262,7 +262,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const body = out.sent[0][1];
     expect(body).toContain("マッサージピール（日曜日）のご予約を承りました");
     expect(body).toContain("所要時間：約20分");
-    expect(body).toContain("【ご来院前のお願い】\n当日はメイクを落としやすい状態でお越しください。");
+    expect(body).toContain("【ご来院前のお願い】\n診察希望部位・施術希望部位は、ノーメイクでお越しください。\n当日はメイクを落としやすい状態でお越しください。");
     expect(body).toContain("美容皮膚科予約済の方専用入口");
     expect(body).toContain("【キャンセル・日程変更にかかる料金規定】");
     expect(body).toContain("アクセス：https://example.jp/clinic/access/");

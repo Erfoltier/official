@@ -133,7 +133,9 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     await c.patch("/clinic", { tattooEnabled: true });
     const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
     expect(html).toContain("タトゥー・アートメイク除去のご予約");
-    expect(html).toContain("照射部位の産毛は、ご来院前にご自身で剃ってきてください。");
+    expect(html).toContain("照射する部分の毛は、ご来院前にご自身で剃ってきてください（眉のアートメイクの方は、照射する部分の眉毛も剃ってください）。");
+    expect(html).toContain("診察希望部位・施術希望部位は、ノーメイクでお越しください。");
+    expect(html).not.toContain("眉毛そのもの");
     expect(html).not.toMatch(/詰め|空きの最初|最後だけ/);
     expect(html).toContain("美容皮膚科予約済の方専用入口");
     expect(html).toContain("「到着済」");
@@ -154,7 +156,7 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(out.sent[0][1]).toContain("希望照射面積：18cm²");
     expect(out.sent[0][1]).toContain("49,500円");
     expect(out.sent[0][1]).toContain("日曜日の診療");
-    expect(out.sent[0][1]).toContain("【ご来院前のお願い】\n眉の周りの産毛は、ご来院前にご自身で剃ってきてください（眉毛そのものは剃らないでください）。");
+    expect(out.sent[0][1]).toContain("【ご来院前のお願い】\n診察希望部位・施術希望部位は、ノーメイクでお越しください。\n照射する部分は、眉毛も含めて、ご来院前にご自身で剃ってきてください。");
     expect(out.sent[0][1]).not.toMatch(/詰め/);
     expect(out.sent[0][1]).toContain("美容皮膚科予約済の方専用入口");
     expect(out.sent[0][1]).toContain("「到着済」");

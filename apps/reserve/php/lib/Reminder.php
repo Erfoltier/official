@@ -551,7 +551,7 @@ final class Reminder
         $text = strtr((string) $s['template'], $vars);
         // タトゥー除去（日曜）の予約には、日曜のご来院の案内（入口・到着の連絡・呼び出し）を最後に足す
         if (TattooBooking::inVisit($v)) {
-            $text = rtrim($text) . "\n\n【日曜日のご来院について】\n" . implode("\n", TattooBooking::VISIT_NOTICE);
+            $text = rtrim($text) . "\n\n【ご来院前のお願い】\n" . TattooBooking::NO_MAKEUP . "\n\n【日曜日のご来院について】\n" . implode("\n", TattooBooking::VISIT_NOTICE);
         }
         $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
         return ['subject' => '【' . $vars['{院名}'] . '】' . $vars['{いつ}'] . 'のご予約のお知らせ', 'text' => $text];

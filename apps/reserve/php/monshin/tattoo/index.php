@@ -40,7 +40,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261119-5';
+$v = '20261119-6';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -243,12 +243,13 @@ $v = '20261119-5';
       </section>
 
       <section class="card tt-visit">
-<?php if ($tattooOn): ?>
         <div class="shave-notice">
-          <h2>ご来院前のお願い<?= $items !== [] ? '（タトゥー・アートメイク除去の方）' : '' ?></h2>
-          <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
-        </div>
+          <h2>ご来院前のお願い</h2>
+          <p><?= $h(TattooBooking::NO_MAKEUP) ?></p>
+<?php if ($tattooOn): ?>
+          <p><?= $items !== [] ? 'タトゥー・アートメイク除去の方：' : '' ?><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
 <?php endif; ?>
+        </div>
         <h2>日曜日のご来院について</h2>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
         <p><?= $h($line) ?></p>
@@ -270,9 +271,10 @@ $v = '20261119-5';
       <p id="done-mail"></p>
       <p class="tt-q" id="done-q" hidden>初めての方は、ご来院前に問診票のご記入をお願いいたします。<a class="submit-button" id="done-q-link" href="#" target="_blank" rel="noopener">問診票を記入する</a></p>
       <div class="tt-visit">
-        <div class="shave-notice"<?= $tattooOn ? '' : ' hidden' ?>>
+        <div class="shave-notice">
           <h3>ご来院前のお願い</h3>
-          <p id="done-before"><?= $tattooOn ? $h(TattooBooking::SHAVE_NOTICE_PAGE) : '' ?></p>
+          <p><?= $h(TattooBooking::NO_MAKEUP) ?></p>
+          <p id="done-before"<?= $tattooOn ? '' : ' hidden' ?>><?= $tattooOn ? $h(TattooBooking::SHAVE_NOTICE_PAGE) : '' ?></p>
         </div>
         <h3>日曜日のご来院について</h3>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>

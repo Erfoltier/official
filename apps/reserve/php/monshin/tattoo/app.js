@@ -354,7 +354,7 @@ form.addEventListener('submit', async (event) => {
       const before = document.querySelector('#done-before');
       if (before && item) {
         before.textContent = item.dataset.note || '';
-        before.closest('.shave-notice').hidden = !item.dataset.note;
+        before.hidden = !item.dataset.note;
       }
       document.querySelector('#done-when').textContent = `${ja(body.date)} ${body.time}〜${data.end || ''}（${data.duration || ''}）。${body.time} にご来院ください`;
       document.querySelector('#done-mail').textContent = data.lined
