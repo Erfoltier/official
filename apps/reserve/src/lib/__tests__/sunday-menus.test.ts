@@ -327,12 +327,13 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       $p = TattooBooking::presets();
       [$lanes, $menus] = Store::laneAndMenuIds();
       $n = TattooBooking::normalizeItems($p, $lanes, $menus);
-      return ['count' => count($n), 'on' => count(array_filter($n, fn($x) => $x['enabled'])), 'noCat' => array_values(array_map(fn($x) => $x['id'], array_filter($n, fn($x) => $x['category'] === ''))), 'cats' => array_values(array_unique(array_column($n, 'category'))), 'oral' => in_array('oral', array_column($n, 'id'), true)];
+      return ['count' => count($n), 'on' => count(array_filter($n, fn($x) => $x['enabled'])), 'noCat' => array_values(array_map(fn($x) => $x['id'], array_filter($n, fn($x) => $x['category'] === ''))), 'cats' => array_values(array_unique(array_column($n, 'category'))), 'oral' => in_array('oral', array_column($n, 'id'), true), 'qruby' => in_array('qruby', array_column($n, 'id'), true)];
     `);
-    expect(out.count).toBe(39);
+    expect(out.count).toBe(38);
     expect(out.on).toBe(0);
     expect(out.noCat).toEqual([]);
     expect(out.oral).toBe(false);
+    expect(out.qruby).toBe(false);
     expect(out.cats).toEqual(expect.arrayContaining(["注射・注入", "除去・レーザー", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服"]));
   });
   it("プレビュー：設定を読めるスタッフに渡す印で、受け付けがオフでも患者の画面を開ける。オフのメニューも出せる。予約は送れない", async () => {

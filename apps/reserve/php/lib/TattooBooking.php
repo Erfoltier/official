@@ -92,7 +92,7 @@ final class TattooBooking
         'laserhair' => '脱毛', 'needlehair' => '脱毛',
         // 11/19 追加（院長「全部日曜に入れて。オンオフはこっちで」。すべてオフ）
         'dermapen' => 'ダーマペン', 'velvet' => 'ダーマペン', 'supervelvet' => 'ダーマペン',
-        'co2frac' => '除去・レーザー', 'qruby' => '除去・レーザー', 'tightening' => '除去・レーザー', 'spotmonitor' => '除去・レーザー',
+        'co2frac' => '除去・レーザー', 'tightening' => '除去・レーザー', 'spotmonitor' => '除去・レーザー',
         'hifu' => 'たるみ', 'mouthsag' => 'たるみ', 'sagging' => 'たるみ', 'marionette' => 'たるみ', 'neckwrinkle' => 'たるみ', 'ponyorin' => 'たるみ',
         'scalp' => '薄毛', 'agafaga' => '薄毛',
     ];
@@ -197,7 +197,7 @@ final class TattooBooking
             'repeatMinutes' => $rm, 'repeatLaneIds' => $rm > 0 ? $lane($rl) : [], 'repeatMenuId' => $rm > 0 ? $menu($rmenu) : '',
             'machine' => $machine, 'note' => '', 'partGroups' => [], 'countPerMinute' => 0, 'maxMinutes' => 0,
         ];
-        $out[] = $fixed('qruby', 'Qスイッチルビーレーザー', 20, self::CONSULT, 20, [self::M], 'menu-x103');
+        // Qスイッチルビーレーザーはシミ取りと同じなので、シミ取りに統合（院長 11/20）
         $out[] = $fixed('tightening', 'レーザーシャワー・タイトニングレーザー', 20, self::CONSULT, 15, self::N, 'menu-x030', '脱毛レーザー');
         $out[] = $fixed('spotmonitor', 'シミ・くすみ・肝斑の集中治療モニター', 20, 'menu-x018', 15, [self::M], 'menu-x028');
         $out[] = $fixed('mouthsag', '口元たるみ集中治療', 20, 'menu-mw7qa5ak-95be93', 30, [self::M], 'menu-x099');
