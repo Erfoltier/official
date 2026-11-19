@@ -61,6 +61,9 @@ final class TattooBooking
             // LINE の中でこのページを開く LIFF アプリの ID（LINE Developers で作る。エンドポイントは …/tattoo/）。空なら LINE を使わない
             'liffId' => (string) ($c['tattooLiffId'] ?? ''),
             'machine' => (string) ($c['tattooMachine'] ?? ''),
+            // 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか（省くとオン）
+            'tattooOn' => ($c['tattooKindOn'] ?? true) !== false,
+            'artmakeOn' => ($c['artmakeKindOn'] ?? true) !== false,
             // タトゥー以外に日曜に受け付けるメニュー（normalizeItems の形）。まだ保存していなければプリセット
             'items' => array_key_exists('sundayMenus', $c)
                 ? array_values(array_filter((array) $c['sundayMenus'], fn($it) => is_array($it) && !empty($it['id'])))
@@ -456,11 +459,18 @@ final class TattooBooking
         return array_values(array_unique(array_filter($ids, fn($x) => $x !== '')));
     }
 
-    /** 受け付けられる設定か（受け付けがオンで、照射のレーンとメニューがある） */
+    /** タトゥー・アートメイクのどちらかを受け付けられるか（受け付けがオンで、照射のレーンとメニューがあり、どちらかがオン） */
     public static function ready(?array $s = null): bool
     {
         $s ??= self::settings();
-        return $s['enabled'] && $s['laneId'] !== '' && $s['menuId'] !== '';
+        return $s['enabled'] && $s['laneId'] !== '' && $s['menuId'] !== '' && ($s['tattooOn'] || $s['artmakeOn']);
+    }
+
+    /** タトゥー（tattoo）・アートメイク（artmake）のそれぞれを受け付けるか */
+    public static function kindOn(string $kind, ?array $s = null): bool
+    {
+        $s ??= self::settings();
+        return self::ready($s) && in_array($kind, ['tattoo', 'artmake'], true) && $s[$kind . 'On'];
     }
 
     /** この来院（Reminder::visitsOn の1件）にタトゥー除去の照射か初診説明のメニューが入っているか */
@@ -900,6 +910,9 @@ final class TattooBooking
             return ['ok' => false, 'error' => 'closed'];
         }
         $kind = $item !== null ? 'menu' : (in_array($in['kind'] ?? '', ['tattoo', 'artmake'], true) ? $in['kind'] : '');
+        if ($kind !== '' && $kind !== 'menu' && !self::kindOn($kind, $s)) {
+            return ['ok' => false, 'error' => 'closed'];
+        }
         $visit = in_array($in['visit'] ?? '', ['first', 'repeat'], true) ? $in['visit'] : '';
         if ($item !== null && $visit !== '' && !self::accepts($item, $visit === 'first')) {
             $visit = '';

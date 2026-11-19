@@ -404,6 +404,12 @@ final class Store
             $next['tattooSlots'] = TattooBooking::normalizeWindows($input['tattooSlots']);
         }
         // 照射が使う機器の名前（同じ名前の日曜メニューと時間が重ならないようにする）
+        // 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか
+        foreach (['tattooKindOn', 'artmakeKindOn'] as $k) {
+            if (array_key_exists($k, $input)) {
+                $next[$k] = (bool) $input[$k];
+            }
+        }
         if (array_key_exists('tattooMachine', $input)) {
             $next['tattooMachine'] = mb_substr(js_trim((string) $input['tattooMachine']), 0, 30);
         }

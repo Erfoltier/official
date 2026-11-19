@@ -705,6 +705,8 @@ export function saveClinic(
       | "tattooSlots"
       | "tattooLiffId"
       | "tattooMachine"
+      | "tattooKindOn"
+      | "artmakeKindOn"
       | "sundayMenus"
     >
   >,

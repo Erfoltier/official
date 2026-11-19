@@ -93,7 +93,7 @@ function syncInputs() {
     if (!ok && el.checked) el.checked = false;
   }
   const visitNote = document.querySelector('#visit-note');
-  const hasRemoval = !!form.querySelector('input[name="kind"][value="tattoo"]');
+  const hasRemoval = !!form.querySelector('input[name="kind"][value="tattoo"], input[name="kind"][value="artmake"]');
   visitNote.textContent = !item
     ? (hasRemoval ? 'はじめての方は、照射の前にご説明（10分）があります' : '')
     : !firstOk

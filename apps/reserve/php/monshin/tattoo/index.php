@@ -18,12 +18,14 @@ try {
     $p = Store::publicInfo();
     $open = TattooBooking::open();
     $tattooOn = TattooBooking::ready();
+    $kindTattoo = TattooBooking::kindOn('tattoo');
+    $kindArtmake = TattooBooking::kindOn('artmake');
     $items = TattooBooking::publicItems();
     $liffId = TattooBooking::settings()['liffId'];
 } catch (Throwable $e) {
     $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
     $liffId = '';
-    $open = $tattooOn = false;
+    $open = $tattooOn = $kindTattoo = $kindArtmake = false;
     $items = [];
 }
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
@@ -71,8 +73,10 @@ $v = '20261119-3';
         <fieldset class="field">
           <legend><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?> <em>必須</em></legend>
           <div class="choice-grid two">
-<?php if ($tattooOn): ?>
+<?php if ($kindTattoo): ?>
             <label class="pill"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php endif; ?>
+<?php if ($kindArtmake): ?>
             <label class="pill"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
 <?php endif; ?>
 <?php foreach ($items as $it): ?>

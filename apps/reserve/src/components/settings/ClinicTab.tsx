@@ -549,6 +549,9 @@ export function TattooCard({
   const [liffId, setLiffId] = useState(clinic.tattooLiffId ?? "");
   const [machine, setMachine] = useState(clinic.tattooMachine ?? "");
   const [items, setItems] = useState<SundayMenu[]>(clinic.sundayMenus ?? []);
+  const [tattooOn, setTattooOn] = useState(clinic.tattooKindOn !== false);
+  const [artmakeOn, setArtmakeOn] = useState(clinic.artmakeKindOn !== false);
+  const [removalOpen, setRemovalOpen] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const badItem = items.map(sundayMenuProblem).find(Boolean);
   const badLiff = liffId.trim() !== "" && !/^\d{6,20}-[A-Za-z0-9]{4,40}$/.test(liffId.trim());
@@ -559,8 +562,8 @@ export function TattooCard({
   const bad = lines.find((l) => !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}:\d{2}\s*[-〜～]\s*\d{1,2}:\d{2}$/.test(l));
   const activeLanes = (id: string) => lanes.filter((l) => l.active || l.id === id);
   const laneMenus = (lane: string, id: string) => menus.filter((m) => (m.active && (m.laneIds ?? []).includes(lane)) || m.id === id);
-  // タトゥーを受けない（照射のレーン・メニューなし）でも、日曜メニューがあれば予約ページは開く
-  const missing = enabled && (!laneId || !menuId) && items.length === 0;
+  // タトゥー・アートメイクをオンにするなら照射のレーンとメニューが要る
+  const missing = (tattooOn || artmakeOn) && (!laneId || !menuId);
   const save = async () => {
     setBusy(true);
     try {
@@ -573,6 +576,8 @@ export function TattooCard({
         tattooSlots: lines,
         tattooLiffId: liffId.trim(),
         tattooMachine: machine.trim(),
+        tattooKindOn: tattooOn,
+        artmakeKindOn: artmakeOn,
         sundayMenus: items,
       });
       await onChanged();
@@ -583,71 +588,19 @@ export function TattooCard({
       setBusy(false);
     }
   };
+  const removalOpenDefault = !laneId || !menuId;
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>タトゥー・アートメイク除去と日曜メニュー</h3>
+      <h3 className={styles.cardTitle}>日曜の Web 予約</h3>
       <p className={styles.hint}>
-        開ける日時を1行に1つ入れると、患者が予約ページで面積と初診・再診を入れて、その場で予約できます（予約表に入り、確定のメールを送ります）。照射の時間は面積で決まり（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）、初診は説明10分を足します。選べる時刻は、受付日時の中の空きの最初と、後ろに予約がある空きの最後だけです（空いた日は受付の最初の時刻だけ。予約の間に半端な空きが残らないように）。LIFF ID を入れると、LINE の中で開いた方は本人の LINE が予約と患者に結びつき、確定の連絡が LINE に届きます。閉じるときは行を消して保存します。
+        受付日時を1行に1つ入れると、患者が日曜の予約ページで、下の日曜メニューのうちオンにしたものを選んでその場で予約できます（予約表に入り、確定の連絡を送ります）。選べる時刻は、受付日時の中の空きの最初と、後ろに予約がある空きの最後だけです（空いた日は受付の最初の時刻だけ。予約の間に半端な空きが残らないように）。LIFF ID を入れると、LINE の中で開いた方は本人の LINE が予約と患者に結びつき、確定の連絡が LINE に届きます。
       </p>
       <label className={styles.field} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <input type="checkbox" style={{ marginTop: 3, flexShrink: 0 }} checked={enabled} onChange={(ev) => setEnabled(ev.target.checked)} disabled={!canEdit} />
-        <span>予約ページで受け付ける</span>
+        <span>日曜の予約ページで受け付ける（全体のスイッチ。オフにすると、どのメニューも予約できません）</span>
       </label>
       <label className={styles.field}>
-        <span>照射のレーン</span>
-        <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
-          <option value="">（選ばない）</option>
-          {activeLanes(laneId).map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span>照射のメニュー（予約に付ける。照射のレーンで使えるメニュー）</span>
-        <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
-          <option value="">（選ばない）</option>
-          {laneMenus(laneId, menuId).map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span>初診説明のレーン（照射の直前の10分。空いていなければ照射のレーンに続けて取ります）</span>
-        <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
-          <option value="">（使わない：説明も照射のレーンで取る）</option>
-          {activeLanes(explainLaneId)
-            .filter((l) => l.id !== laneId)
-            .map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-        </select>
-      </label>
-      {explainLaneId && (
-        <label className={styles.field}>
-          <span>初診説明のメニュー（選ばなければ照射のメニューを付けます）</span>
-          <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit}>
-            <option value="">（選ばない）</option>
-            {laneMenus(explainLaneId, explainMenuId).map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <label className={styles.field}>
-        <span>照射に使う機器の名前（任意。下の日曜メニューで同じ名前を入れたものとは、レーンが違っても同じ時刻に入れません）</span>
-        <input className={styles.input} value={machine} maxLength={30} onChange={(ev) => setMachine(ev.target.value)} disabled={!canEdit} placeholder="例：ピコレーザー" />
-      </label>
-      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} />
-      <label className={styles.field}>
-        <span>受付日時（タトゥーと日曜メニューで共通。1行に1つ、例：2026-12-06 10:00-13:00）</span>
+        <span>受付日時（全メニューで共通。1行に1つ、例：2026-12-06 10:00-13:00）</span>
         <textarea className={styles.input} value={text} rows={4} onChange={(ev) => setText(ev.target.value)} disabled={!canEdit} />
       </label>
       <label className={styles.field}>
@@ -655,6 +608,87 @@ export function TattooCard({
         <input className={styles.input} value={liffId} maxLength={80} onChange={(ev) => setLiffId(ev.target.value)} disabled={!canEdit} placeholder="例：1234567890-AbCdEfGh" />
       </label>
       {info?.lineUrl && <p className={styles.hint}>LINE で開くアドレス：{info.lineUrl}（ホームページのボタン・LINE のメニューに貼る）</p>}
+
+      <h4 className={styles.subTitle}>日曜メニュー（日曜に患者が自分で予約できるメニュー）</h4>
+      {(
+        [
+          ["tattoo", "タトゥー除去", tattooOn, setTattooOn, "時間は面積から自動計算（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）。初診は説明10分を足す"],
+          ["artmake", "アートメイク除去", artmakeOn, setArtmakeOn, "時間は面積から自動計算（眉は左右の合計。タトゥー除去と同じ決まり）。照射の設定はタトゥー除去と共通"],
+        ] as const
+      ).map(([key, title, on, setOn, about]) => (
+        <fieldset key={key} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: on ? 1 : 0.85 }}>
+          <legend style={{ fontWeight: 700 }}>{title}</legend>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+              <input type="checkbox" role="switch" aria-label={`${title}を日曜に受け付ける`} checked={on} onChange={(ev) => setOn(ev.target.checked)} disabled={!canEdit} />
+              {on ? "日曜に受け付ける" : "受け付けない（オフ）"}
+            </label>
+            <span className={styles.hint} style={{ margin: 0 }}>{about}</span>
+            {key === "tattoo" && (
+              <button type="button" onClick={() => setRemovalOpen(!(removalOpen ?? removalOpenDefault))}>
+                {removalOpen ?? removalOpenDefault ? "照射の設定を閉じる" : "照射の設定を開く"}
+              </button>
+            )}
+          </div>
+          {key === "tattoo" && (removalOpen ?? removalOpenDefault) && (
+            <>
+              <label className={styles.field}>
+                <span>照射のレーン（タトゥー・アートメイク共通）</span>
+                <select className={styles.input} value={laneId} onChange={(ev) => setLaneId(ev.target.value)} disabled={!canEdit}>
+                  <option value="">（選ばない）</option>
+                  {activeLanes(laneId).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>照射のメニュー（予約に付ける。照射のレーンで使えるメニュー）</span>
+                <select className={styles.input} value={menuId} onChange={(ev) => setMenuId(ev.target.value)} disabled={!canEdit || !laneId}>
+                  <option value="">（選ばない）</option>
+                  {laneMenus(laneId, menuId).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>初診説明のレーン（照射の直前の10分。空いていなければ照射のレーンに続けて取ります）</span>
+                <select className={styles.input} value={explainLaneId} onChange={(ev) => setExplainLaneId(ev.target.value)} disabled={!canEdit}>
+                  <option value="">（使わない：説明も照射のレーンで取る）</option>
+                  {activeLanes(explainLaneId)
+                    .filter((l) => l.id !== laneId)
+                    .map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {explainLaneId && (
+                <label className={styles.field}>
+                  <span>初診説明のメニュー（選ばなければ照射のメニューを付けます）</span>
+                  <select className={styles.input} value={explainMenuId} onChange={(ev) => setExplainMenuId(ev.target.value)} disabled={!canEdit}>
+                    <option value="">（選ばない）</option>
+                    {laneMenus(explainLaneId, explainMenuId).map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className={styles.field}>
+                <span>照射に使う機器の名前（任意。下の日曜メニューで同じ名前を入れたものとは、レーンが違っても同じ時刻に入れません）</span>
+                <input className={styles.input} value={machine} maxLength={30} onChange={(ev) => setMachine(ev.target.value)} disabled={!canEdit} placeholder="例：ピコレーザー" />
+              </label>
+            </>
+          )}
+        </fieldset>
+      ))}
+      <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} />
       <p className={styles.hint} data-invalid={bad || badLiff || badItem || missing || (enabled && mail === false) || undefined}>
         {badItem
           ? badItem
@@ -663,7 +697,7 @@ export function TattooCard({
           : bad
           ? `受付日時の形が正しくありません：${bad}`
           : missing
-            ? "受け付けるには、照射のレーンとメニューを選ぶか、日曜メニューを足してください。"
+            ? "タトゥー・アートメイク除去をオンにするときは、照射のレーンとメニューを選んでください。"
             : enabled && mail === false
               ? "メールの送信元が未設定のため、確定のメールを送れません（設定 → リマインド）。"
               : info?.url
@@ -672,7 +706,7 @@ export function TattooCard({
       </p>
       {canEdit && (
         <div className={styles.actions}>
-          <button className={styles.primary} onClick={save} disabled={!!bad || badLiff || !!badItem || busy}>
+          <button className={styles.primary} onClick={save} disabled={!!bad || badLiff || !!badItem || missing || busy}>
             保存
           </button>
         </div>
@@ -840,9 +874,8 @@ function SundayMenusEditor({
     menus.filter((m) => (m.active && !m.deleted && ((m.laneIds ?? []).length === 0 || laneIds.some((l) => (m.laneIds ?? []).includes(l)))) || m.id === id);
   return (
     <>
-      <h4 className={styles.subTitle}>日曜メニュー（タトゥー以外に、日曜に患者が自分で予約できるメニュー）</h4>
       <p className={styles.hint}>
-        オンにしたメニューだけが、日曜の予約ページに出ます。最初の一覧は、スプレッドシート「予約枠時間一覧」の時間とレーンから作ったもの（すべてオフ）で、レーンと時間は変えられます。初診・再診それぞれの時間を入れ、受けない区分は0にします（予約枠時間一覧の時間に合わせてください。初診は医師の診察の時間）。レーンを2つ以上選ぶと、空いているほうに入ります。選べる時刻の決め方はタトゥーと同じです。機器の名前が同じもの同士は、レーンが違っても同じ時刻に入りません（予約に付けるメニューで見分けるので、「予約（メモに自由記載）」など共通のメニューに機器の名前は付けないでください）。
+        ここからはタトゥー・アートメイク以外のメニューです。オンにしたメニューだけが、日曜の予約ページに出ます。最初の一覧は、スプレッドシート「予約枠時間一覧」の時間とレーンから作ったもの（すべてオフ）で、レーンと時間は変えられます。初診・再診それぞれの時間を入れ、受けない区分は0にします（予約枠時間一覧の時間に合わせてください。初診は医師の診察の時間）。レーンを2つ以上選ぶと、空いているほうに入ります。選べる時刻の決め方はタトゥーと同じです。機器の名前が同じもの同士は、レーンが違っても同じ時刻に入りません（予約に付けるメニューで見分けるので、「予約（メモに自由記載）」など共通のメニューに機器の名前は付けないでください）。
       </p>
       {items.length === 0 && <p className={styles.hint}>まだありません（タトゥー・アートメイク除去だけを受け付けます）。</p>}
       {items.map((it, i) => (

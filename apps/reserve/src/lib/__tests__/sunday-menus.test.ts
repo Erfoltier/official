@@ -176,6 +176,28 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(next).not.toContain("11:00");
   });
 
+  it("タトゥー除去・アートメイク除去も日曜メニューとしてそれぞれオン・オフできる", async () => {
+    const day = nextSunday();
+    const c = await open(day, { sundayMenus: [] });
+    const tattoo = { kind: "tattoo", visit: "repeat", rects: [[2, 2]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09031310000", email: "t@example.jp", date: day, time: "10:00" };
+    await c.patch("/clinic", { tattooKindOn: false });
+    let html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).not.toContain('value="tattoo"');
+    expect(html).toContain('value="artmake"');
+    expect((await book(tattoo)).data.error).toBe("closed");
+    expect((await book({ ...tattoo, kind: "artmake", rects: [[1, 3]] })).status).toBe(201);
+    // 両方オフで日曜メニューもなければ、予約ページは閉じる
+    await c.patch("/clinic", { artmakeKindOn: false });
+    html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).toContain("現在、日曜日のご予約は受け付けておりません");
+    // 日曜メニューだけでも開く
+    await c.patch("/clinic", { sundayMenus: [peel] });
+    html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).toContain('value="m:peel0001"');
+    expect(html).not.toContain('value="artmake"');
+    expect((await c.get("/settings")).clinic).toMatchObject({ tattooKindOn: false, artmakeKindOn: false });
+  });
+
   it("予約ページに許可したメニューが出て、受け付ける区分だけを選べる。空きはタトゥーと同じ決め方で、レーンは空いているほうへ", async () => {
     const day = nextSunday();
     const c = await open(day);

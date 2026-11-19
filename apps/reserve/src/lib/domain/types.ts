@@ -750,6 +750,9 @@ export interface ClinicSettings {
   tattooSlots?: string[];
   /** タトゥーの予約ページを LINE の中で開く LIFF アプリの ID。あれば確定の連絡を LINE に送る */
   tattooLiffId?: string;
+  /** 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか（省くとオン） */
+  tattooKindOn?: boolean;
+  artmakeKindOn?: boolean;
   /** タトゥーの照射に使う機器の名前。同じ名前の日曜メニューと同じ時刻に入れない */
   tattooMachine?: string;
   /** 日曜の予約ページで、タトゥー以外に患者が選べるメニュー（院が日曜の受付を許可したもの） */
