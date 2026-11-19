@@ -910,7 +910,7 @@ final class TattooBooking
     private const MIN_GAP = 10;
 
     /**
-     * 選べる時刻の候補から、前後に10分未満の半端な隙間を作らない時刻だけを残す（時刻順）。
+     * 選べる時刻の候補から、20分以上の空きを虫食いにして前後に10分未満の半端な隙間を作る時刻を除く（時刻順）。20分未満の空きは自由に埋めてよい。
      * 同じ来院の時刻に候補が複数（レーン違い）あれば、隙間の少ないほう。1つも残らない日は、半端な隙間がいちばん小さい時刻を1つだけ（院長 11/20）。
      * $segsOf：候補 → その予約で埋まる [レーン, 開始分, 終了分] の一覧
      * @param list<array> $cands
@@ -940,7 +940,8 @@ final class TattooBooking
                 $gaps = self::gaps($windows, $busy[$l]);
                 foreach ($blocks as [$a, $b]) {
                     foreach ($gaps as [$gs, $ge]) {
-                        if ($a >= $gs && $b <= $ge) {
+                        // 20分未満の空き（もともと1つしか入らない）は自由に埋めてよい。虫食いにしないのは2つ以上入る空きだけ（院長 11/20）
+                        if ($a >= $gs && $b <= $ge && $ge - $gs >= 2 * self::MIN_GAP) {
                             foreach ([$a - $gs, $ge - $b] as $left) {
                                 if ($left > 0 && $left < self::MIN_GAP) {
                                     $waste += $left;

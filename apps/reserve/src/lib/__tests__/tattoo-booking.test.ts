@@ -100,9 +100,8 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(main.memo).toContain("初診説明：10分（説明のレーン）");
     expect(main.memo).toContain("面積：5cm²（照射5分）");
     expect(main.memo).toContain("料金の目安：29,700円");
-    // メインの空いた 10:00〜10:10 には再診10分（〜20cm²）がぴったり入る。5分の照射は5分の半端な隙間が残るので出さない（院長 11/20）
-    expect((await slots(20, "repeat")).slots[day]).toContain("10:00");
-    expect((await slots(5, "repeat")).slots[day]).not.toContain("10:00");
+    // メインの空いた 10:00〜10:10 には再診（〜10分）が入れる（20分未満の空きは5分の照射で埋めてもよい。院長 11/20）
+    expect((await slots(5, "repeat")).slots[day]).toContain("10:00");
     // 次の初診は照射 10:15〜。説明は直前 10:05〜が説明のレーンで埋まっているので、説明 10:15〜10:25（説明のレーン）・照射 10:25〜
     expect((await slots(5, "first")).slots[day][0]).toBe("10:15");
     expect((await book(person(day, "10:15", { visit: "first" }, "09066667777"))).status).toBe(201);
