@@ -398,4 +398,20 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(r2.mail).not.toContain("問診票");
     void c;
   });
+  it("ほくろ除去は個数を1つだけ選ぶ（顔1～4個 20分・15個まで 20分・20個以上 30分）。2つ選ぶと受けない", async () => {
+    const day = nextSunday();
+    const out = await h.srv.php(`
+      $h = TattooBooking::hokuroParts(['id' => 'hokuro', 'name' => 'ほくろ除去', 'enabled' => true, 'firstMinutes' => 20, 'firstLaneIds' => ['lane-main'], 'firstMenuId' => '', 'repeatMinutes' => 0, 'repeatLaneIds' => [], 'repeatMenuId' => '', 'machine' => '', 'note' => '']);
+      return [
+        TattooBooking::itemMinutes($h, true, ['group' => 0, 'parts' => [0]]),
+        TattooBooking::itemMinutes($h, true, ['group' => 0, 'parts' => [2]]),
+        TattooBooking::itemMinutes($h, true, ['group' => 0, 'parts' => [0, 1]]),
+        TattooBooking::accepts($h, false),
+        TattooBooking::pickText($h, ['group' => 0, 'parts' => [1]]),
+        TattooBooking::pickLabel($h),
+      ];
+    `);
+    expect(out).toEqual([20, 30, null, false, "顔15個までまとめ", "個数"]);
+    void day;
+  });
 });

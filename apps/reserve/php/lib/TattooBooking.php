@@ -117,6 +117,8 @@ final class TattooBooking
         ['fatx', 'Fat X（脂肪溶解注射）', 30, [self::M], 'menu-s00009A18F', 15, [self::M], 'menu-s00009A191', ''],
         ['sunekos', 'スネコス', 30, [self::M], 'menu-s00009E6B7', 15, [self::M], 'menu-s000099E63', ''],
         ['hokuro', 'ほくろ除去', 20, [self::M], 'menu-s00009A192', 0, [], '', ''],
+        // ほくろ除去：個数を1つ選ぶ（院長 11/19。時間は時間表「初診ほくろまとめ15」20分・「20以上」30分。1〜4個は表にないので20分）。初診のみ・医師レーン
+        // （PRESETS の 'hokuro' は下で部位の形に置き換える）
         // シミ取り（時間表「初診シミ」20分・登録「シミまとめ標準20分」。どちらも医師レーン。院長 11/19）
         ['spot', 'シミ取り', 20, [self::M], 'menu-x003', 20, [self::M], 'menu-s000099B91', ''],
         ['dyelaser', '色素レーザー（ダイレーザー）', 20, [self::M], self::CONSULT, 10, [self::M], 'menu-s00009A3AE', ''],
@@ -224,7 +226,26 @@ final class TattooBooking
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
             'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90,
         ];
+        // ほくろ除去は個数を1つ選ぶ（院長 11/19）
+        foreach ($out as &$it) {
+            if ($it['id'] === 'hokuro') {
+                $it = self::hokuroParts($it);
+            }
+        }
+        unset($it);
         return array_map(fn($it) => $it + ['category' => self::PRESET_CATEGORY[$it['id']] ?? ''], $out);
+    }
+
+    /** ほくろ除去の個数（顔1〜4個 20分・顔15個までまとめ 20分・顔20個以上まとめ 30分）。初診のみ（再診はレーンなし） */
+    public static function hokuroParts(array $it): array
+    {
+        return [
+            ...$it,
+            'firstMinutes' => 0,
+            'repeatMinutes' => 0, 'repeatLaneIds' => [], 'repeatMenuId' => '',
+            'partGroups' => [['name' => '顔', 'parts' => [['name' => '顔1〜4個', 'minutes' => 20], ['name' => '顔15個までまとめ', 'minutes' => 20], ['name' => '顔20個以上まとめ', 'minutes' => 30]]]],
+            'pickOne' => true, 'pickLabel' => '個数',
+        ];
     }
 
     /** 予約ページを開けるか（受け付けがオンで、タトゥーか日曜メニューのどちらかを受けられる） */
@@ -311,7 +332,7 @@ final class TattooBooking
         if (($it['partGroups'] ?? []) !== []) {
             $g = $it['partGroups'][(int) ($pick['group'] ?? -1)] ?? null;
             $idx = array_values(array_unique(array_map('intval', array_filter((array) ($pick['parts'] ?? []), 'is_numeric'))));
-            if (!is_numeric($pick['group'] ?? null) || $g === null || $idx === []) {
+            if (!is_numeric($pick['group'] ?? null) || $g === null || $idx === [] || (!empty($it['pickOne']) && count($idx) !== 1)) {
                 return null;
             }
             foreach ($idx as $i) {
@@ -333,6 +354,13 @@ final class TattooBooking
     }
 
     /** 予約メモ・確定の連絡に書く、選んだ内容（「女性：VIO・へそ回り」「300本」）。なければ空 */
+    /** 部位ごとの時間のメニューの問いの見出し（ほくろなら「個数」）。なければ「部位」 */
+    public static function pickLabel(array $it): string
+    {
+        $l = trim((string) ($it['pickLabel'] ?? ''));
+        return $l !== '' ? $l : '部位';
+    }
+
     public static function pickText(array $it, array $pick): string
     {
         if (self::isFlow($it)) {
@@ -370,6 +398,8 @@ final class TattooBooking
                     // 部位ごとの時間のメニューは区分（男性・女性など）と部位の名前だけ（時間は出さない）。本数で決まるメニューは本数を入れてもらう
                     'groups' => array_map(fn($g) => ['name' => $g['name'], 'parts' => array_column($g['parts'], 'name')], $it['partGroups'] ?? []),
                     'count' => ($it['countPerMinute'] ?? 0) > 0,
+                    'one' => !empty($it['pickOne']),
+                    'pickLabel' => self::pickLabel($it),
                     'flow' => self::isFlow($it),
                 ];
             }
@@ -466,6 +496,9 @@ final class TattooBooking
                 throw new StoreError('invalid', "「{$name}」の時間の上限は0〜" . self::MAX_ITEM_MINUTES . '分（5分刻み。0は上限なし）で入れてください');
             }
             $row += ['partGroups' => $groups, 'countPerMinute' => $cpm, 'maxMinutes' => $maxMin];
+            // 部位ごとの時間で、1つだけ選ぶもの（ほくろの個数など）と、その問いの見出し（空なら「部位」）
+            $row['pickOne'] = $groups !== [] && !empty($it['pickOne']);
+            $row['pickLabel'] = $groups !== [] ? mb_substr(js_trim(normalize_width((string) ($it['pickLabel'] ?? ''))), 0, 10) : '';
             // 麻酔つきの注入（部位・本数とは一緒に使わない）
             $flow = !empty($it['flow']) && $groups === [] && $cpm === 0;
             $row['flow'] = $flow;
@@ -1228,7 +1261,7 @@ final class TattooBooking
             $memo = implode("\n", array_filter([
                 $it['name'] . '（Web予約・日曜）' . ($first ? '初診' : '再診') . "（{$len}分）",
                 ...($f['clinicLines'] ?? []),
-                $what !== '' ? (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：') . $what : null,
+                $what !== '' ? (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：') . $what : null,
                 $first && self::variable($it) && (int) $it['firstMinutes'] > 0 ? "初診の説明：{$it['firstMinutes']}分（この予約の最初）" : null,
                 $f['part'] !== '' ? '部位（患者の記入）：' . $f['part'] : null,
                 $f['email'] !== '' ? 'メール：' . $f['email'] : null,
@@ -1334,7 +1367,7 @@ final class TattooBooking
                 '日時：' . format_date_ja($f['date']) . " {$f['time']}〜{$f['end']}（ご来院は {$f['time']} までにお願いします）",
                 '所要時間：' . self::itemDurationText($it, $first, $f['pick'] ?? []),
                 '区分：' . ($first ? '初診' : '再診'),
-                self::pickText($it, $f['pick'] ?? []) !== '' ? ((self::isFlow($it) ? '' : (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : '部位：')) . self::pickText($it, $f['pick'] ?? [])) : null,
+                self::pickText($it, $f['pick'] ?? []) !== '' ? ((self::isFlow($it) ? '' : (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：')) . self::pickText($it, $f['pick'] ?? [])) : null,
                 $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
                 '',
                 '【ご来院前のお願い】',

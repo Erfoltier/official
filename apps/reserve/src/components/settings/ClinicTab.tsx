@@ -1009,6 +1009,18 @@ function SundayMenusEditor({
               </div>
             )}
             {timeMode(it) === "parts" && <PartsEditor it={it} onChange={(partGroups) => put(i, { partGroups })} canEdit={canEdit} />}
+            {timeMode(it) === "parts" && (
+              <div className={styles.timeRow}>
+                <label className={styles.field}>
+                  <span>患者に聞く見出し（例：個数。空なら「部位」）</span>
+                  <input className={styles.input} value={it.pickLabel ?? ""} maxLength={10} onChange={(ev) => put(i, { pickLabel: ev.target.value })} disabled={!canEdit} placeholder="部位" />
+                </label>
+                <label className={styles.field} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Switch on={!!it.pickOne} onChange={(on) => put(i, { pickOne: on })} label="1つだけ選ぶ" disabled={!canEdit} />
+                  <span>1つだけ選ぶ（オフならいくつでも選べて時間を足す）</span>
+                </label>
+              </div>
+            )}
             {(timeMode(it) === "parts" || timeMode(it) === "count") && (
               <div className={styles.timeRow}>
                 {timeMode(it) === "count" && (

@@ -40,10 +40,15 @@ function renderParts(groups) {
   const g = groups[Number(val('group'))];
   pl.replaceChildren();
   if (!g) return;
+  // ほくろの個数など、1つだけ選ぶものはラジオ
+  const it = itemInput();
+  const one = !!it && it.dataset.one === '1';
+  const lab = (it && it.dataset.pickLabel) || '部位';
+  document.querySelector('#parts-legend').innerHTML = `ご希望の${lab.replace(/[<>&"]/g, '')} <em>必須</em>${one ? '' : '（いくつでも選べます）'}`;
   g.parts.forEach((name, i) => {
     const label = document.createElement('label');
     label.className = 'pill';
-    const input = Object.assign(document.createElement('input'), { type: 'checkbox', name: 'parts', value: String(i) });
+    const input = Object.assign(document.createElement('input'), { type: one ? 'radio' : 'checkbox', name: 'parts', value: String(i) });
     const span = document.createElement('span');
     span.textContent = name;
     label.append(input, span);

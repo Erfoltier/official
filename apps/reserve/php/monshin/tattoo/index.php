@@ -103,7 +103,7 @@ $v = '20261119-7';
 <?php elseif ($m['key'] === 'artmake'): ?>
             <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
 <?php else: $it = $m['item']; ?>
-            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endif; ?>
 <?php endforeach; ?>
           </div>
@@ -167,7 +167,7 @@ $v = '20261119-7';
           <div class="choice-grid two" id="group-list"></div>
         </fieldset>
         <fieldset class="field" id="parts-box" hidden>
-          <legend>ご希望の部位 <em>必須</em>（いくつでも選べます）</legend>
+          <legend id="parts-legend">ご希望の部位 <em>必須</em>（いくつでも選べます）</legend>
           <div class="choice-grid two" id="parts-list"></div>
         </fieldset>
         <label class="field" id="count-box" hidden><span>本数 <em>必須</em></span><input name="count" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="前回お伝えした本数（例：300）"><small class="field-note">本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</small></label>

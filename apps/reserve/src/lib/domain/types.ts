@@ -788,6 +788,10 @@ export interface SundayMenu {
    * 部位ごとの時間（区分〈男性・女性など〉→ 部位と分）。患者が選んだ部位の合計＋初診・再診の時間（説明など）。空なら使わない
    */
   partGroups?: { name: string; parts: { name: string; minutes: number }[] }[];
+  /** 部位ごとの時間で、1つだけ選ばせる（ほくろの個数など） */
+  pickOne?: boolean;
+  /** その問いの見出し（例：個数）。空なら「部位」 */
+  pickLabel?: string;
   /** 本数で時間が決まるとき、1分あたりの本数（針脱毛は4）。0 なら使わない */
   countPerMinute?: number;
   /** 1回の時間の上限（分）。0 なら180分 */
