@@ -24,3 +24,15 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-visit p + h2{margin-top:16px}
 .tt-cats{margin-bottom:10px}
 #kinds{margin-top:4px}
+/* 分類は丸いタブ、選んだ分類の施術は下の囲みにリストで（同じ見た目だと展開されたと分からない。院長 11/19） */
+.tt-cats{gap:7px}
+.tt-cats .pill span{border-radius:999px;padding:9px 6px;font-size:.8rem;font-weight:700}
+.tt-sub{position:relative;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,253,249,.9);box-shadow:0 6px 18px rgba(69,56,47,.08)}
+.tt-sub:before{content:"";position:absolute;top:-8px;left:var(--arrow,24px);width:14px;height:14px;background:rgba(255,253,249,1);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+.tt-sub-title{margin:0 0 9px;font-size:.8rem;font-weight:700;color:var(--muted)}
+.tt-sub-list{display:grid;gap:6px}
+.tt-sub-list .pill span{display:flex;align-items:center;gap:10px;text-align:left;padding:11px 12px;background:#fff;font-size:.86rem}
+.tt-sub-list .pill span:before{content:"";flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);background:#fff}
+.tt-sub-list .pill input:checked+span{background:#f4eee7;border-color:var(--green);color:var(--ink);font-weight:700}
+.tt-sub-list .pill input:checked+span:before{border-color:var(--green);background:radial-gradient(circle,var(--green) 0 40%,#fff 46%)}
+@media(max-width:420px){.choice-grid.two.tt-cats{grid-template-columns:1fr 1fr}}

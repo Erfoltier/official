@@ -284,8 +284,15 @@ function syncCats() {
   const cat = val('cat');
   const kinds = document.querySelector('#kinds');
   if (!document.querySelector('#cats')) return;
-  kinds.hidden = !cat;
+  const sub = document.querySelector('#sub');
+  sub.hidden = !cat;
   document.querySelector('#cat-note').hidden = !!cat;
+  if (cat) {
+    document.querySelector('#sub-title').textContent = `「${cat}」の施術を選んでください`;
+    // 囲みの上の三角を、押した分類の下に合わせる（どこから開いたか分かるように）
+    const lab = document.querySelector('#cats input[name="cat"]:checked')?.closest('label');
+    if (lab) sub.style.setProperty('--arrow', `${lab.offsetLeft - sub.offsetLeft + lab.offsetWidth / 2 - 8}px`);
+  }
   kinds.querySelectorAll('label[data-cat]').forEach((l) => {
     const show = l.dataset.cat === cat;
     l.hidden = !show;

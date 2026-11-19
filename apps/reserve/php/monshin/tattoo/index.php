@@ -40,7 +40,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261119-3';
+$v = '20261119-4';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -92,7 +92,11 @@ $v = '20261119-3';
           </div>
           <p class="field-note" id="cat-note">分類を選ぶと、施術が出ます</p>
 <?php endif; ?>
-          <div class="choice-grid two" id="kinds"<?= $useCat ? ' hidden' : '' ?>>
+<?php if ($useCat): ?>
+          <div class="tt-sub" id="sub" hidden>
+            <p class="tt-sub-title" id="sub-title"></p>
+<?php endif; ?>
+          <div class="<?= $useCat ? 'tt-sub-list' : 'choice-grid two' ?>" id="kinds">
 <?php foreach ($menus as $m): ?>
 <?php if ($m['key'] === 'tattoo'): ?>
             <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
@@ -103,6 +107,9 @@ $v = '20261119-3';
 <?php endif; ?>
 <?php endforeach; ?>
           </div>
+<?php if ($useCat): ?>
+          </div>
+<?php endif; ?>
           <p class="field-note" id="item-note" hidden></p>
         </fieldset>
         <fieldset class="field">
