@@ -30,3 +30,8 @@
 .tt-guide .tt-measure-text strong, .tt-guide .tt-measure-note strong, .tt-guide .tt-brows strong { color: #fff; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .55); text-underline-offset: 4px; }
 /* 料金カード（白地）の寸法例は濃い色で読みやすく */
 .tt-guide .tt-plan-size { color: #6B3A54; font-size: 13px; font-weight: 500; }
+/* スマホ：波長カードを横3列にまとめる（筆記体の数字も小さく） */
+@media (max-width: 767px) {
+  .tt-guide .tt-wave-nm { font-size: 30px; white-space: nowrap; }
+  .tt-guide .tt-wave-nm span { font-size: 13px; margin-left: 0; }
+}

@@ -919,3 +919,29 @@
 
 /* 改行させない語句 */
 .tt-guide .nw, .tt-guide abbr.nw { white-space: nowrap; text-decoration: none; border: 0; cursor: inherit; font: inherit; color: inherit; letter-spacing: inherit; }
+
+/* ===== 画面いっぱいに表示（左右の白い余白をなくす。11/19 院長） ===== */
+#container { overflow-x: clip; }
+.tt-guide { max-width: none; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); border-radius: 0; }
+@media (min-width: 768px) {
+  /* 広い画面でも文章の幅は今までどおり（背景だけ画面いっぱい） */
+  .tt-guide { --gx: max(0px, calc((100vw - 1080px) / 2)); }
+  .tt-guide .tt-hero { padding-left: calc(56px + var(--gx)); padding-right: calc(56px + var(--gx)); }
+  .tt-guide .tt-summary, .tt-guide .tt-toc { margin-left: calc(56px + var(--gx)); margin-right: calc(56px + var(--gx)); }
+  .tt-guide .tt-sec, .tt-guide .tt-sec-doctor, .tt-guide #tt-artmake { padding-left: calc(56px + var(--gx)); padding-right: calc(56px + var(--gx)); }
+  .tt-guide .tt-close { padding-left: calc(32px + var(--gx)); padding-right: calc(32px + var(--gx)); }
+}
+/* ===== 波長カード：テーマ共通の段落の下余白（2em）を外して詰める ===== */
+.tt-guide .tt-wave p { margin-bottom: 0; }
+/* ===== スマホ：波長カードを横3列にまとめる ===== */
+@media (max-width: 767px) {
+  .tt-guide .tt-waves { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tt-guide .tt-wave { padding: 16px 10px 14px; border-radius: 16px; }
+  .tt-guide .tt-wave::before { top: -40px; height: 80px; }
+  .tt-guide .tt-wave-nm { font-size: 28px; }
+  .tt-guide .tt-wave-nm span { font-size: 11px; margin-left: 2px; }
+  .tt-guide .tt-wave-name { margin-top: 6px; font-size: 10.5px; line-height: 1.5; }
+  .tt-guide .tt-wave-target { margin-top: 6px; font-size: 12px; line-height: 1.6; letter-spacing: 0; }
+  .tt-guide .tt-chips { flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .tt-guide .tt-chip { width: 12px; height: 12px; }
+}
