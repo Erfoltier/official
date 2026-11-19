@@ -283,6 +283,8 @@ final class Store
             'department' => (string) ($c['department'] ?? ''),
             'privacyUrl' => (string) ($c['privacyUrl'] ?? ''),
             'homepageUrl' => (string) ($c['homepageUrl'] ?? ''),
+            // アクセス（地図・道順）のページ。予約確定の案内で住所の代わりに出す（空なら住所）
+            'accessUrl' => (string) ($c['accessUrl'] ?? ''),
             'intakeHours' => (string) ($c['intakeHours'] ?? ''),
             'address' => (string) ($c['address'] ?? ''),
             'intakeWeekdays' => array_values(array_map('intval', (array) ($c['intakeWeekdays'] ?? [0, 1, 2, 3, 4, 5, 6]))),
@@ -334,7 +336,7 @@ final class Store
                 unset($next['intakeHours']);
             }
         }
-        foreach ([['privacyUrl', 'プライバシーポリシーのアドレス'], ['homepageUrl', 'ホームページのアドレス']] as [$k, $label]) {
+        foreach ([['privacyUrl', 'プライバシーポリシーのアドレス'], ['homepageUrl', 'ホームページのアドレス'], ['accessUrl', 'アクセスのページのアドレス']] as [$k, $label]) {
             if (isset($input[$k])) {
                 $v = trim((string) $input[$k]);
                 if ($v === '') {

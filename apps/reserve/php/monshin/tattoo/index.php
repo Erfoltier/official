@@ -17,7 +17,7 @@ try {
     $p = Store::publicInfo();
     $open = TattooBooking::ready();
 } catch (Throwable $e) {
-    $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => ''];
+    $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
     $open = false;
 }
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -160,7 +160,9 @@ $v = '20261117-1';
         <p><?= $h($line) ?></p>
 <?php endforeach; ?>
       </div>
-<?php if (($p['address'] ?? '') !== ''): ?>
+<?php if (($p['accessUrl'] ?? '') !== ''): ?>
+      <p>アクセス：<a href="<?= $h($p['accessUrl']) ?>" target="_blank" rel="noopener noreferrer"><?= $h($p['accessUrl']) ?></a></p>
+<?php elseif (($p['address'] ?? '') !== ''): ?>
       <p>場所：<?= $h($p['address']) ?></p>
 <?php endif; ?>
     </section>

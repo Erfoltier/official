@@ -500,6 +500,7 @@ final class Schema
             'publicNameEn?' => fn($x) => V::str($x, 100),
             'department?' => fn($x) => V::str($x, 40),
             'privacyUrl?' => fn($x) => V::str($x, 300),
+            'accessUrl?' => fn($x) => V::str($x, 300),
             'homepageUrl?' => fn($x) => V::str($x, 300),
             'intakeHours?' => fn($x) => V::str($x, 200),
             'intakeWeekdays?' => function ($x) {

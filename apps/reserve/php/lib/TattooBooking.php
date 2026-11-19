@@ -382,7 +382,7 @@ final class TattooBooking
             '希望照射面積：' . self::num((float) $f['area']) . 'cm²',
             '料金の目安：1回 ' . number_format(self::price((float) $f['area'])) . '円（税込）' . ($f['anesthesia'] ? '＋局所麻酔注射 1ccあたり5,500円（税込）' : ''),
             '面積は当日に測り、照射の前に料金をお伝えします。',
-            $p['address'] !== '' ? '場所：' . $p['address'] : null,
+            $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
             '',
             'タトゥー・アートメイク除去は日曜日の診療です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なりますのでご注意ください。',
             '',

@@ -118,7 +118,7 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
 
   it("受け付けないときは時刻を出さず、送っても断る。画面と文面に仕組みの言葉を出さない", async () => {
     const day = addDays(nowInClinic().date, 5);
-    const c = await open(day, { tattooEnabled: false });
+    const c = await open(day, { tattooEnabled: false, accessUrl: "https://example.jp/clinic/access/" });
     expect((await slots(5, "repeat")).slots).toEqual({});
     expect((await book(person(day, "10:00"))).status).toBe(403);
     await c.patch("/clinic", { tattooEnabled: true });
@@ -145,6 +145,8 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(out.sent[0][1]).not.toMatch(/詰め/);
     expect(out.sent[0][1]).toContain("美容皮膚科予約済の方専用入口");
     expect(out.sent[0][1]).toContain("「到着済」");
+    expect(out.sent[0][1]).toContain("アクセス：https://example.jp/clinic/access/");
+    expect(html).toContain("https://example.jp/clinic/access/");
   });
 
   it("リマインドは、タトゥー除去のメニューが入った来院にだけ日曜のご来院の案内を足す", async () => {

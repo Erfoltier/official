@@ -297,6 +297,7 @@ function PublicCard({
   const [department, setDepartment] = useState(clinic.department ?? "");
   const [privacyUrl, setPrivacyUrl] = useState(clinic.privacyUrl ?? "");
   const [homepageUrl, setHomepageUrl] = useState(clinic.homepageUrl ?? "");
+  const [accessUrl, setAccessUrl] = useState(clinic.accessUrl ?? "");
   const [hours, setHours] = useState(clinic.intakeHours ?? "");
   const [weekdays, setWeekdays] = useState<number[]>(clinic.intakeWeekdays ?? [0, 1, 2, 3, 4, 5, 6]);
   const [special, setSpecial] = useState((clinic.intakeSpecialDates ?? []).join("\n"));
@@ -307,7 +308,7 @@ function PublicCard({
     .map((d) => d.trim().replace(/\//g, "-"))
     .filter(Boolean);
   const badDate = dates.find((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d));
-  const badUrl = [privacyUrl, homepageUrl].some((u) => u.trim() !== "" && !/^https:\/\/\S+$/.test(u.trim()));
+  const badUrl = [privacyUrl, homepageUrl, accessUrl].some((u) => u.trim() !== "" && !/^https:\/\/\S+$/.test(u.trim()));
   const toggleDay = (d: number) => setWeekdays((w) => (w.includes(d) ? w.filter((x) => x !== d) : [...w, d].sort()));
 
   const save = async () => {
@@ -319,6 +320,7 @@ function PublicCard({
         department,
         privacyUrl: privacyUrl.trim(),
         homepageUrl: homepageUrl.trim(),
+        accessUrl: accessUrl.trim(),
         intakeHours: hours,
         intakeWeekdays: weekdays,
         intakeSpecialDates: dates,
@@ -360,6 +362,10 @@ function PublicCard({
       <label className={styles.field}>
         <span>プライバシーポリシーのアドレス</span>
         <input className={styles.input} value={privacyUrl} maxLength={300} onChange={(ev) => setPrivacyUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
+      </label>
+      <label className={styles.field}>
+        <span>アクセスのページのアドレス（予約確定の案内に住所の代わりに出す。空欄なら住所）</span>
+        <input className={styles.input} value={accessUrl} maxLength={300} onChange={(ev) => setAccessUrl(ev.target.value)} disabled={!canEdit} placeholder="https://" inputMode="url" />
       </label>
       <label className={styles.field}>
         <span>受付日時の案内（予約申請フォームの見出しに出す。改行できます）</span>

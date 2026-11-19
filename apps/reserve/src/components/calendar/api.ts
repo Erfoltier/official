@@ -689,6 +689,7 @@ export function saveClinic(
       | "department"
       | "privacyUrl"
       | "homepageUrl"
+      | "accessUrl"
       | "intakeHours"
       | "intakeWeekdays"
       | "intakeSpecialDates"
