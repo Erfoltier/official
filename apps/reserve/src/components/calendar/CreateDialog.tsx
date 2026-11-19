@@ -6,7 +6,7 @@ import { formatDateJa, formatHm, toIso } from "@/lib/domain/time";
 import { searchKey } from "@/lib/domain/text";
 import { MEMO_MAX, REQUEST_ID_RE, parseBookingRequest, type BookingRequest } from "@/lib/domain/bookingRequest";
 import { ApiError, createPatient, postReservation, searchPatients } from "./api";
-import { durationLabel } from "./menuFormat";
+import { durationChoices, durationLabel } from "./menuFormat";
 import { RichTextEditor } from "@/components/richtext/RichTextEditor";
 import { MenuManagerDialog } from "@/components/settings/MenuManagerDialog";
 import styles from "./calendar.module.css";
@@ -88,8 +88,7 @@ export function CreateDialog({ bundle, date, laneId: initialLane, minute, onClos
 
   const autoDuration = selectedMenus.reduce((sum, m) => sum + m.defaultMinutes, 0);
   const dur = duration ?? (autoDuration || clinic.slotMin * 2);
-  const durationOptions: number[] = [];
-  for (let m = clinic.slotMin; m <= Math.max(180, dur); m += clinic.slotMin) durationOptions.push(m);
+  const durationOptions = durationChoices(clinic.slotMin, 180, dur, selectedMenus);
 
   const startOptions: number[] = [];
   for (let m = clinic.dayStartMin; m < clinic.dayEndMin; m += clinic.slotMin) startOptions.push(m);
