@@ -85,7 +85,7 @@ final class TattooBooking
         'botox' => '注射・注入', 'hyperhidrosis' => '注射・注入', 'hyaluronic' => '注射・注入', 'juvelook' => '注射・注入', 'babycollagen' => '注射・注入',
         'miraclel' => '注射・注入', 'fatx' => '注射・注入', 'sunekos' => '注射・注入', 'fillroad' => '注射・注入', 'tapink' => '注射・注入',
         'pinkglow' => '注射・注入', 'tranestamp' => '注射・注入', 'juveacell' => '注射・注入', 're2o' => '注射・注入',
-        'hokuro' => '除去・レーザー', 'dyelaser' => '除去・レーザー', 'isotretinoin' => '内服・ご相談', 'oral' => '内服・ご相談', 'zoskin' => '内服・ご相談',
+        'hokuro' => '除去・レーザー', 'dyelaser' => '除去・レーザー', 'isotretinoin' => '内服', 'zoskin' => 'ゼオスキン',
         'tcapeel' => 'ピーリング', 'amalfi' => 'ピーリング', 'massagepeel' => 'ピーリング', 'milano' => 'ピーリング', 'salicylic' => 'ピーリング',
         'laserhair' => '脱毛', 'needlehair' => '脱毛',
     ];
@@ -112,7 +112,6 @@ final class TattooBooking
         ['hokuro', 'ほくろ除去', 20, [self::M], 'menu-s00009A192', 0, [], '', ''],
         ['dyelaser', '色素レーザー（ダイレーザー）', 20, [self::M], self::CONSULT, 10, [self::M], 'menu-s00009A3AE', ''],
         ['isotretinoin', 'イソトレチノイン', 15, [self::M], self::MEMO, 10, [self::M], self::MEMO, ''],
-        ['oral', '美白・しわ・ニキビの内服（はじめてのご相談）', 15, [self::M], self::MEMO, 0, [], '', ''],
         ['tcapeel', 'TCAピーリング', 15, [self::M], self::MEMO, 10, [self::M], self::MEMO, ''],
         ['amalfi', 'アマルフィーピール', 15, [self::M], self::MEMO, 20, self::N, self::MEMO, ''],
         ['zoskin', 'ゼオスキンヘルス（カウンセリング）', 15, [self::M], self::MEMO, 15, [self::M], self::MEMO, ''],

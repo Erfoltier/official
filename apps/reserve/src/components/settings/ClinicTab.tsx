@@ -1117,7 +1117,7 @@ function SundayMenusEditor({
     [next[at], next[to]] = [next[to], next[at]];
     setOrder(next);
   };
-  const catList = Array.from(new Set(["除去・レーザー", "注射・注入", "ピーリング", "脱毛", "内服・ご相談", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
+  const catList = Array.from(new Set(["除去・レーザー", "注射・注入", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
   return (
     <>
       <datalist id="sunday-cats">
