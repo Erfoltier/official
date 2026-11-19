@@ -2,7 +2,7 @@
 /**
  * タトゥー・アートメイク除去（日曜の不定期診療）の Web 予約。オンラインカウンセリング（OnlineCs）と同じ作り。
  * 院が開けた受付日時（設定 → 院の情報、1行に1つ「2026-12-06 10:00-13:00」）の中で、
- * 照射面積から決まる時間の枠を、予約の前後に隙間ができる時刻だけ出す（受付時間帯の空きの「最初」と「最後」だけ）。
+ * 照射面積から決まる時間の枠を、予約の前後に隙間ができる時刻だけ出す（受付時間帯の空きの「最初」と、後ろに予約がある空きの「最後」だけ）。
  * 初診は照射の前に説明10分を取る。説明は隣のレーン（看護師）で照射の直前に取り、空いていなければ照射のレーンに続けて取る。
  * 患者向けの画面・文言に「詰める」などの仕組みは出さない。選べる時刻だけを見せる。
  */
@@ -144,7 +144,7 @@ final class TattooBooking
 
     /**
      * その日の受付時間帯の中で、照射のレーンの空いている区間（[開始分, 終了分]、受付時間帯ごと）
-     * @return list<array{0:int,1:int,2:int}> [空きの開始, 空きの終了, 受付時間帯の開始]
+     * @return list<array{0:int,1:int,2:int,3:int}> [空きの開始, 空きの終了, 受付時間帯の開始, 受付時間帯の終了]
      */
     private static function gaps(array $windows, array $busy): array
     {
@@ -155,12 +155,12 @@ final class TattooBooking
             usort($inside, fn($x, $y) => $x[0] <=> $y[0]);
             foreach ($inside as [$bs, $be]) {
                 if ($bs > $cur) {
-                    $out[] = [$cur, min($bs, $we), $ws];
+                    $out[] = [$cur, min($bs, $we), $ws, $we];
                 }
                 $cur = max($cur, $be);
             }
             if ($cur < $we) {
-                $out[] = [$cur, $we, $ws];
+                $out[] = [$cur, $we, $ws, $we];
             }
         }
         return $out;
@@ -169,6 +169,7 @@ final class TattooBooking
     /**
      * 選べる枠。日付 => [[来院の時刻 "HH:MM", 照射の開始分, 説明のレーンを使うか], ...]（時刻順）。
      * 空きの区間ごとに「最初から」と「最後から」の2つだけを出す（予約が前後に隙間なく並ぶ）。
+     * 「最後から」は、空きのすぐ後ろに予約があるときだけ。受付の終わりまで空いているときは出さない（空いた日は受付の最初の時刻だけ。院長 11/19「中途半端な午後から入ると困る」）。
      * 初診は、説明10分を説明のレーンで照射の直前に取れればそこで、取れなければ照射のレーンで照射の前に続けて取る。
      * @return array<string, list<array{0:string,1:int,2:bool}>>
      */
@@ -192,8 +193,8 @@ final class TattooBooking
             $busy = Store::busyMinutes($date, $s['laneId']);
             $nurseBusy = $s['explainLaneId'] !== '' ? Store::busyMinutes($date, $s['explainLaneId']) : null;
             $found = [];
-            foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws]) {
-                foreach (['front', 'back'] as $side) {
+            foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws, $we]) {
+                foreach ($ge < $we ? ['front', 'back'] : ['front'] as $side) {
                     $c = self::fit($side, $gs, $ge, $ws, $treat, $firstVisit, $nurseBusy, $windows);
                     if ($c === null) {
                         continue;

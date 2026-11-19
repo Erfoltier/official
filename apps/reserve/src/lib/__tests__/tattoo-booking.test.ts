@@ -58,53 +58,54 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(out[4]).toBeNull();
   });
 
-  it("選べる時刻は空きの最初と最後だけ。予約が前後から隙間なく並ぶ", async () => {
+  it("選べる時刻は空きの最初と、後ろに予約がある空きの最後だけ。空いた日は受付の最初の時刻だけ", async () => {
     const day = addDays(nowInClinic().date, 3);
     const c = await open(day);
     await expect(c.patch("/clinic", { tattooSlots: ["2026-12-06 10時から"] })).rejects.toThrow(/受付日時の形/);
-    // 再診・〜10cm²（5分）：10:00 と 11:55 だけ
-    expect((await slots(5, "repeat")).slots).toEqual({ [day]: ["10:00", "11:55"] });
-    expect((await book(person(day, "10:30"))).data.error).toBe("slot_taken");
+    // 空いた日は 10:00 だけ（受付の終わりから逆算した 11:55 は出さない）
+    expect((await slots(5, "repeat")).slots).toEqual({ [day]: ["10:00"] });
+    expect((await book(person(day, "11:55"))).data.error).toBe("slot_taken");
     expect((await book(person(day, "10:00"))).status).toBe(201);
-    // 再診・〜50cm²（15分）：前は 10:05 から、後ろは 11:45 から
-    expect((await slots(40, "repeat")).slots).toEqual({ [day]: ["10:05", "11:45"] });
-    expect((await book(person(day, "11:45", { rects: [[5, 8]] }, "09022223333"))).status).toBe(201);
-    // 初診（説明10分を同じレーンで）・〜30cm²（10分）：20分の枠
-    expect((await slots(20, "first")).slots).toEqual({ [day]: ["10:05", "11:25"] });
-    expect((await book(person(day, "11:25", { visit: "first", rects: [[4, 5]] }, "09033334444"))).status).toBe(201);
+    // 前の予約のすぐ後ろから（〜50cm²・15分）
+    expect((await slots(40, "repeat")).slots).toEqual({ [day]: ["10:05"] });
+    expect((await book(person(day, "10:05", { rects: [[5, 8]] }, "09022223333"))).status).toBe(201);
+    // スタッフが 11:30〜12:00 に入れた予約があると、その前の空きは最初（10:20）と最後（初診20分なら 11:10）の両方
+    const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [MENU], startAt: toIso(day, 690), endAt: toIso(day, 720) });
+    expect((await slots(20, "first")).slots).toEqual({ [day]: ["10:20", "11:10"] });
+    expect((await book(person(day, "11:10", { visit: "first", rects: [[4, 5]] }, "09033334444"))).status).toBe(201);
     expect(await mainOn(c, day)).toEqual([
       [toIso(day, 600), toIso(day, 605)],
-      [toIso(day, 685), toIso(day, 705)],
-      [toIso(day, 705), toIso(day, 720)],
+      [toIso(day, 605), toIso(day, 620)],
+      [toIso(day, 670), toIso(day, 690)],
+      [toIso(day, 690), toIso(day, 720)],
     ]);
-    // 大きすぎて入らない面積は出さない（空きは 10:05〜11:25 の80分）
+    // 大きすぎて入らない面積は出さない（空きは 10:20〜11:10 の50分）
     expect((await slots(1000, "repeat")).slots).toEqual({});
   });
 
   it("初診の説明は隣のレーンで照射の直前に取る。空いていなければ照射のレーンに続けて取る", async () => {
     const day = addDays(nowInClinic().date, 4);
     const c = await open(day, { tattooExplainLaneId: NURSE });
-    // 前の端は説明が受付時間帯の前にはみ出すので照射のレーンで（10:00 来院・10:10 照射）、後ろの端は説明のレーンで（11:45 来院・11:55 照射）
-    expect((await slots(5, "first")).slots).toEqual({ [day]: ["10:00", "11:45"] });
-    expect((await book(person(day, "11:45", { visit: "first" }))).status).toBe(201);
+    // 空いた日の最初は、説明が受付時間帯の前にはみ出すので照射のレーンで（10:00 来院・10:10 照射）
+    expect((await slots(5, "first")).slots).toEqual({ [day]: ["10:00"] });
+    // 10:00〜10:10 に再診が入ると、次の初診は説明を隣のレーンで 10:00〜10:10、照射は 10:10〜
+    expect((await book(person(day, "10:00", { rects: [[4, 5]] }))).status).toBe(201);
+    expect((await slots(5, "first")).slots).toEqual({ [day]: ["10:00"] });
+    expect((await book(person(day, "10:00", { visit: "first" }, "09066667777"))).status).toBe(201);
     const bundle = await c.get(`/day?date=${day}`);
     const nurse = bundle.reservations.find((r: any) => r.laneId === NURSE);
-    const main = bundle.reservations.find((r: any) => r.laneId === MAIN);
-    expect([nurse.startAt, nurse.endAt]).toEqual([toIso(day, 705), toIso(day, 715)]);
-    expect([main.startAt, main.endAt]).toEqual([toIso(day, 715), toIso(day, 720)]);
+    expect([nurse.startAt, nurse.endAt]).toEqual([toIso(day, 600), toIso(day, 610)]);
+    const main = bundle.reservations.find((r: any) => r.laneId === MAIN && r.memo.includes("初診"));
+    expect([main.startAt, main.endAt]).toEqual([toIso(day, 610), toIso(day, 615)]);
     expect(main.memo).toContain("初診説明：10分（説明のレーン）");
     expect(main.memo).toContain("面積：5cm²（照射5分）");
     expect(main.memo).toContain("料金の目安：29,700円");
-    // 後ろの端は照射が 11:50、説明は 11:40〜。説明のレーンがそこで埋まっていれば、照射のレーンで説明＋照射（11:40〜11:55）をまとめて取る
-    expect((await slots(5, "first")).slots).toEqual({ [day]: ["10:00", "11:40"] });
-    const p = await c.post("/patients", { name: "看護 太郎", kana: "カンゴ タロウ", birthDate: "1980-01-01" });
-    await c.post("/reservations", { patientId: p.id, laneId: NURSE, menuIds: [MENU], startAt: toIso(day, 690), endAt: toIso(day, 705) });
-    const got = await slots(5, "first");
-    expect(got.slots).toEqual({ [day]: ["10:00", "11:40"] });
-    expect((await book(person(day, "11:40", { visit: "first" }, "09077778888"))).status).toBe(201);
-    const after = (await c.get(`/day?date=${day}`)).reservations.filter((r: any) => r.laneId === NURSE).length;
-    expect(after).toBe(2);
-    expect(await mainOn(c, day)).toContainEqual([toIso(day, 700), toIso(day, 715)]);
+    // 次は照射が 10:15、説明は 10:05〜。説明のレーンが埋まっているので、照射のレーンで説明＋照射（10:15〜10:30）をまとめて取る
+    expect((await slots(5, "first")).slots).toEqual({ [day]: ["10:15"] });
+    expect((await book(person(day, "10:15", { visit: "first" }, "09077778888"))).status).toBe(201);
+    expect((await c.get(`/day?date=${day}`)).reservations.filter((r: any) => r.laneId === NURSE).length).toBe(1);
+    expect(await mainOn(c, day)).toContainEqual([toIso(day, 615), toIso(day, 630)]);
   });
 
   it("初診は2か月先まで。再診は開けた日すべて", async () => {
