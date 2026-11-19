@@ -430,17 +430,62 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(out.fat).toEqual(["Fat X（脂肪溶解注射）", "注射・注入"]);
     expect(out.gone).toEqual([]);
   });
-  it("麻酔クリームだけのメニュー（炭酸ガス・ダーマペン系）は、麻酔の注射の時間を0にして、麻酔の注射を選べない", async () => {
+  it("炭酸ガスは範囲で施術の時間（全顔15分・部分10分、麻酔の種類によらない）。4番で麻酔クリーム10分→40〜60分後にメインで施術。ぴったり入らなければ出さない", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    const co2 = presets.find((x: any) => x.id === "co2frac");
+    expect(co2).toMatchObject({ flow: true, injectionMinutes: 0, pickOne: true, pickLabel: "範囲", repeatLaneIds: [MAIN] });
     const out = await h.srv.php(`
-      $co2 = array_values(array_filter(TattooBooking::presets(), fn($x) => $x['id'] === 'co2frac'))[0];
-      $co2 = [...$co2, 'enabled' => true, 'repeatLaneIds' => ['lane-main'], 'repeatMenuId' => 'menu-x', 'anesLaneIds' => ['lane-4'], 'creamMenuId' => 'menu-c', 'neoboMenuId' => 'menu-n'];
+      $co2 = json_decode('${JSON.stringify(co2)}', true);
+      $co2 = [...$co2, 'enabled' => true];
       return [
-        $co2['injectionMinutes'],
         TattooBooking::accepts($co2, false),
+        TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'cream', 'group' => 0, 'parts' => [0]]),
+        TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'self', 'group' => 0, 'parts' => [1]]),
         TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'cream']),
-        TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'injection']),
+        TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'injection', 'group' => 0, 'parts' => [0]]),
+        TattooBooking::pickText($co2, ['status' => 'continue', 'anesthesia' => 'cream', 'group' => 0, 'parts' => [1]]),
       ];
     `);
-    expect(out).toEqual([0, true, 15, null]);
+    expect(out).toEqual([true, 15, 10, null, null, "範囲：部分／今回：継続／コース消化／麻酔：院内の麻酔クリーム"]);
+    await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (x.id === "co2frac" ? { ...x, enabled: true } : x)) });
+    const q = "item=co2frac&visit=repeat&status=continue&anesthesia=cream&group=0&parts=0";
+    expect((await slots(q)).slots[day]).toEqual(["10:00"]);
+    expect((await book(person(day, "10:00", { item: "co2frac", status: "continue", anesthesiaType: "cream", group: 0, parts: [0] }))).status).toBe(201);
+    expect(await lanesOn(c, day, "lane-4")).toEqual([[toIso(day, 600), toIso(day, 610)]]);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 655), toIso(day, 670)]]);
+    // メインが 10:40〜12:00 埋まっていると、麻酔の40〜60分後に施術が入らないので出さない
+    const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 670), endAt: toIso(day, 720) });
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 600), endAt: toIso(day, 655) });
+    expect((await slots(q)).slots[day] ?? []).toEqual([]);
+  });
+  it("どのメニューも、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で", async () => {
+    const day = nextSunday();
+    const c = await open(day);
+    const q = "item=botox01&visit=repeat&status=monitor";
+    expect(await slots(q)).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "撮影のあと施術（施術は約10分）" });
+    const mon = (time: string, phone: string) => person(day, time, { item: "botox01", visit: "", clinicVisit: "returning", status: "monitor" }, phone);
+    expect((await book(mon("10:00", "09040000001"))).status).toBe(201);
+    expect(await lanesOn(c, day, "lane-4")).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 615), toIso(day, 625)]]);
+    const rs = (await c.get(`/day?date=${day}`)).reservations;
+    expect(rs.find((r: any) => r.laneId === "lane-4")).toMatchObject({ menuIds: ["menu-s0000B6B52"] });
+    expect(rs.find((r: any) => r.laneId === MAIN).memo).toContain("モニター");
+    // 継続の方は撮影なし
+    expect((await slots("item=botox01&visit=repeat&status=continue")).slots[day]).toEqual(["10:00", "10:05", "10:25"]);
+    // 4番が予約不可（埋まっている）なら1番で
+    const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
+    await c.post("/reservations", { patientId: p.id, laneId: "lane-4", menuIds: [CONSULT], startAt: toIso(day, 615), endAt: toIso(day, 720) });
+    expect((await slots(q)).slots[day]).toEqual(["10:10"]);
+    expect((await book(mon("10:10", "09040000002"))).status).toBe(201);
+    expect(await lanesOn(c, day, L1)).toEqual([[toIso(day, 610), toIso(day, 625)]]);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 615), toIso(day, 625)], [toIso(day, 625), toIso(day, 635)]]);
+    // タトゥー除去もモニターなら撮影のあと照射
+    const t = await slots(`area=5&visit=repeat&status=monitor`);
+    expect(t.duration).toBe("撮影のあと照射（照射は約5分）");
+    expect(t.slots[day]).toEqual(["10:20"]);
   });
 });

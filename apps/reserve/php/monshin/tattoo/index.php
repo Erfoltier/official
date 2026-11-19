@@ -40,7 +40,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-1';
+$v = '20261120-2';
 ?>
 <!doctype html>
 <html lang="ja">

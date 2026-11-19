@@ -62,16 +62,19 @@ const countVal = () => {
 };
 /** 部位・本数が要るメニューで、それがそろっているか */
 function pickReady(item) {
-  if (item.dataset.flow === '1') return val('visit') !== 'repeat' || (val('status') !== '' && val('anesthesiaType') !== '');
-  if (JSON.parse(item.dataset.groups || '[]').length) return val('group') !== '' && checkedParts().length > 0;
+  const partsOk = !JSON.parse(item.dataset.groups || '[]').length || (val('group') !== '' && checkedParts().length > 0);
+  // 麻酔つきの注入：範囲（炭酸ガスの全顔・部分など）があれば、それも
+  if (item.dataset.flow === '1') return val('visit') !== 'repeat' || (val('status') !== '' && val('anesthesiaType') !== '' && partsOk);
+  if (JSON.parse(item.dataset.groups || '[]').length) return partsOk;
   if (item.dataset.count === '1') return countVal() > 0;
   return true;
 }
 /** 空きを読むときに付ける、部位・本数 */
 function pickQuery(item) {
   if (!item) return '';
-  if (item.dataset.flow === '1') return val('visit') === 'repeat' ? `&status=${encodeURIComponent(val('status'))}&anesthesia=${encodeURIComponent(val('anesthesiaType'))}` : '';
-  if (JSON.parse(item.dataset.groups || '[]').length) return `&group=${encodeURIComponent(val('group'))}&parts=${checkedParts().join(',')}`;
+  const parts = JSON.parse(item.dataset.groups || '[]').length ? `&group=${encodeURIComponent(val('group'))}&parts=${checkedParts().join(',')}` : '';
+  if (item.dataset.flow === '1') return val('visit') === 'repeat' ? `&status=${encodeURIComponent(val('status'))}&anesthesia=${encodeURIComponent(val('anesthesiaType'))}${parts}` : '';
+  if (parts) return parts;
   if (item.dataset.count === '1') return `&count=${countVal()}`;
   return '';
 }
@@ -118,8 +121,9 @@ function syncInputs() {
   itemNote.hidden = itemNote.textContent === '';
   document.querySelector('#anes-box').hidden = !!item;
   // 部位ごとの時間のメニュー（脱毛など）：区分（男性・女性など）と部位。本数で決まるメニュー（針脱毛）：本数
-  const groups = item ? JSON.parse(item.dataset.groups || '[]') : [];
-  const pickKey = item ? item.value : '';
+  // 麻酔つきの注入の範囲（炭酸ガスの全顔・部分など）は、受診したことのある方の施術のときだけ
+  const groups = item && !(flow && val('visit') !== 'repeat') ? JSON.parse(item.dataset.groups || '[]') : [];
+  const pickKey = item ? `${item.value}|${groups.length}` : '';
   if (pickKey !== builtFor) {
     builtFor = pickKey;
     const gl = document.querySelector('#group-list');
@@ -165,7 +169,7 @@ function syncInputs() {
   document.querySelector('#date-card').hidden = !ready;
   const result = document.querySelector('#area-result');
   result.textContent = area > 0 ? `希望照射面積：${fmt(area)}cm²` : '';
-  const key = ready ? `${kind}|${area}|${val('visit')}|${pickQuery(item)}` : '';
+  const key = ready ? `${kind}|${area}|${val('visit')}|${val('status')}|${pickQuery(item)}` : '';
   if (key !== loadedKey) {
     loadedKey = key;
     selected = '';
@@ -184,7 +188,9 @@ async function load() {
   let duration = '';
   try {
     const q = item ? `item=${encodeURIComponent(item.value.slice(2))}${pickQuery(item)}` : `area=${encodeURIComponent(area)}`;
-    const res = await fetch(`./api.php?${q}&visit=${encodeURIComponent(val('visit'))}`, { cache: 'no-store' });
+    // モニターの方は、まずネオボ撮影（＋麻酔クリーム）15分を取るので、今回の治療内容も送る（麻酔つきの注入は pickQuery で送る）
+    const st = val('visit') === 'repeat' && !(item && item.dataset.flow === '1') ? `&status=${encodeURIComponent(val('status'))}` : '';
+    const res = await fetch(`./api.php?${q}${st}&visit=${encodeURIComponent(val('visit'))}`, { cache: 'no-store' });
     const data = await res.json();
     if (key !== loadedKey) return;
     slots = data.slots && typeof data.slots === 'object' ? data.slots : {};
