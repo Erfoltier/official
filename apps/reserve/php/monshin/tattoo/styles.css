@@ -21,3 +21,4 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-visit h3{margin:14px 0 6px;font-size:.95rem}
 .tt-visit p{margin:6px 0;font-size:.88rem;line-height:1.7}
 #done .tt-visit{text-align:left;margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
+.tt-visit p + h2{margin-top:16px}

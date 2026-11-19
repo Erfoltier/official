@@ -24,7 +24,7 @@ try {
     $open = false;
 }
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261117-1';
+$v = '20261119-1';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -144,6 +144,8 @@ $v = '20261117-1';
       </section>
 
       <section class="card tt-visit">
+        <h2>ご来院前のお願い</h2>
+        <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
         <h2>日曜日のご来院について</h2>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
         <p><?= $h($line) ?></p>
@@ -160,6 +162,8 @@ $v = '20261117-1';
       <p id="done-when"></p>
       <p id="done-mail"></p>
       <div class="tt-visit">
+        <h3>ご来院前のお願い</h3>
+        <p><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
         <h3>日曜日のご来院について</h3>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
         <p><?= $h($line) ?></p>
