@@ -36,3 +36,9 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-sub-list .pill input:checked+span{background:#f4eee7;border-color:var(--green);color:var(--ink);font-weight:700}
 .tt-sub-list .pill input:checked+span:before{border-color:var(--green);background:radial-gradient(circle,var(--green) 0 40%,#fff 46%)}
 @media(max-width:420px){.choice-grid.two.tt-cats{grid-template-columns:1fr 1fr}}
+.tt-q{margin-top:14px}
+.tt-q .submit-button{display:block;margin-top:8px;text-align:center;text-decoration:none}
+.tt-pill-sub{display:block;font-size:.66rem;opacity:.8;margin-top:2px}
+.choice-grid.two.tt-two{grid-template-columns:1fr 1fr}
+#status-box .row-choice input{width:auto;flex:none;margin:0}
+#status-box .row-choice{cursor:pointer}

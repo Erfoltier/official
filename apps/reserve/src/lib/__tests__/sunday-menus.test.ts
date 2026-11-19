@@ -28,6 +28,7 @@ async function open(day: string, extra: object = {}) {
   await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooExplainLaneId: "", tattooSlots: [`${day} 10:00-12:00`], sundayMenus: [botox, peel], ...extra });
   return c;
 }
+const addMin = (hm: string, m: number) => { const t = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3)) + m; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
 const slots = async (q: string) => (await (await fetch(`${h.srv.base}/monshin/tattoo/api.php?${q}`)).json()) as any;
 const book = async (body: object) => {
   const res = await fetch(`${h.srv.base}/monshin/tattoo/api.php`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -357,5 +358,44 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     // 期限切れは開かない
     const out = await h.srv.php(`return [TattooBooking::previewValid(TattooBooking::previewToken(time() - 8000)), TattooBooking::previewValid(TattooBooking::previewToken())];`);
     expect(out).toEqual([false, true]);
+  });
+  it("当院の美容皮膚科の初診・再診と今回の治療内容から区分を決め、メモに残す。初診の方には確定の連絡で問診票を案内する", async () => {
+    const day = nextSunday();
+    const c = await open(day);
+    // 初診：保険通院歴・当日施術の希望がないと送れない
+    const base = { ...person(day, "10:00"), item: "botox01", visit: "", email: "shoshin@example.jp" };
+    const bad = await book({ ...base, clinicVisit: "initial" });
+    expect(bad.status).toBe(422);
+    expect(bad.data.fields).toContain("initialInfo");
+    // 再診は今回の治療内容がないと送れない
+    expect((await book({ ...base, clinicVisit: "returning" })).data.fields).toContain("status");
+    const out = await h.srv.php(`
+      Db::i()->setMeta('reminderSettings', [...Reminder::defaults(), 'fromEmail' => 'info@example.jp']);
+      Db::i()->setMeta('lineLink', ['liffId' => '1234567890-QuEsTiOn', 'loginChannelId' => '1234567890']);
+      $sent = [];
+      Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
+      $r = TattooBooking::book(json_decode('${JSON.stringify({ ...base, clinicVisit: "initial", insuranceHistory: "無", sameDayTreatment: "有", referrer: "山田さん" })}', true), '127.0.0.31');
+      $res = array_values(array_filter(Db::i()->all('reservation'), fn($x) => str_contains((string) ($x['memo'] ?? ''), '当院の美容皮膚科')));
+      return ['r' => $r, 'memo' => $res[0]['memo'] ?? '', 'mail' => $sent[0] ?? ''];
+    `);
+    // 初診 → 初めての時間（ボトックスの初診20分）
+    expect(out.r).toMatchObject({ ok: true, time: "10:00", end: "10:20" });
+    expect(out.memo).toContain("当院の美容皮膚科：初診（保険通院歴：無、当日施術の希望：有）");
+    expect(out.memo).toContain("紹介者：山田さん");
+    expect(out.mail).toContain("【問診票のご記入のお願い】");
+    expect(out.mail).toContain("https://liff.line.me/1234567890-QuEsTiOn");
+    expect(out.r.questionnaire).toBe("https://liff.line.me/1234567890-QuEsTiOn");
+    // 再診で継続 → 再診の時間（10分）。問診票の案内は出さない
+    const r2 = await h.srv.php(`
+      $sent = [];
+      Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
+      Db::i()->setMeta('reminderSettings', [...Reminder::defaults(), 'fromEmail' => 'info@example.jp']);
+      $r = TattooBooking::book(json_decode('${JSON.stringify({ ...base, time: "10:20", phone: "09088887777", name: "再診 太郎", kana: "サイシン タロウ", clinicVisit: "returning", status: "continue" })}', true), '127.0.0.32');
+      return ['r' => $r, 'mail' => $sent[0] ?? ''];
+    `);
+    expect(r2.r).toMatchObject({ ok: true, questionnaire: "" });
+    expect(r2.r.end).toBe(addMin(r2.r.time, 10));
+    expect(r2.mail).not.toContain("問診票");
+    void c;
   });
 });

@@ -40,7 +40,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261119-4';
+$v = '20261119-5';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -112,24 +112,46 @@ $v = '20261119-4';
 <?php endif; ?>
           <p class="field-note" id="item-note" hidden></p>
         </fieldset>
+        <!-- 当院の美容皮膚科の初診・再診（水曜・祝日の LINE 予約申請フォームと同じ問い。院長 11/19）。予約の時間はここから決める -->
         <fieldset class="field">
-          <legend id="visit-legend">当院でのこの施術 <em>必須</em></legend>
-          <div class="choice-grid two">
-            <label class="pill" id="visit-first"><input type="radio" name="visit" value="first"><span>はじめて</span></label>
-            <label class="pill" id="visit-repeat"><input type="radio" name="visit" value="repeat"><span>2回目以降</span></label>
+          <legend>当院の美容皮膚科の受診 <em>必須</em></legend>
+          <div class="choice-grid two tt-two">
+            <label class="pill"><input type="radio" name="clinicVisit" value="initial"><span>初診<small class="tt-pill-sub">美容皮膚科がはじめて</small></span></label>
+            <label class="pill"><input type="radio" name="clinicVisit" value="returning"><span>再診<small class="tt-pill-sub">受診したことがある</small></span></label>
           </div>
-          <small class="field-note" id="visit-note">はじめての方は、照射の前にご説明（10分）があります</small>
         </fieldset>
-
-        <div id="flow-box" hidden>
+        <div id="initial-box" hidden>
           <fieldset class="field">
-            <legend>今回の治療内容 <em>必須</em></legend>
-            <div class="choice-grid two">
-<?php foreach (TattooBooking::STATUSES as $k => $label): ?>
-              <label class="pill"><input type="radio" name="status" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
-<?php endforeach; ?>
+            <legend>当院の保険通院歴 <em>必須</em></legend>
+            <div class="choice-grid two tt-two">
+              <label class="pill"><input type="radio" name="insuranceHistory" value="有"><span>有</span></label>
+              <label class="pill"><input type="radio" name="insuranceHistory" value="無"><span>無</span></label>
             </div>
           </fieldset>
+          <fieldset class="field">
+            <legend>当日施術のご希望 <em>必須</em></legend>
+            <div class="choice-grid two tt-two">
+              <label class="pill"><input type="radio" name="sameDayTreatment" value="有"><span>有</span></label>
+              <label class="pill"><input type="radio" name="sameDayTreatment" value="無"><span>無</span></label>
+            </div>
+          </fieldset>
+          <label class="field"><span>紹介者名（任意）</span><input name="referrer" maxlength="60" placeholder="紹介者がいる場合のみ"></label>
+        </div>
+        <fieldset class="field" id="status-box" hidden>
+          <legend>今回の治療内容 <em>必須</em></legend>
+          <div class="choice-stack">
+<?php foreach (TattooBooking::STATUSES as $k => $label): ?>
+            <label class="row-choice"><input type="radio" name="status" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
+<?php endforeach; ?>
+          </div>
+        </fieldset>
+        <div hidden>
+          <input type="radio" name="visit" value="first">
+          <input type="radio" name="visit" value="repeat">
+        </div>
+        <small class="field-note" id="visit-note" hidden></small>
+
+        <div id="flow-box" hidden>
           <fieldset class="field">
             <legend>麻酔 <em>必須</em></legend>
             <div class="choice-grid two">
@@ -246,6 +268,7 @@ $v = '20261119-4';
       <h2>ご予約を承りました</h2>
       <p id="done-when"></p>
       <p id="done-mail"></p>
+      <p class="tt-q" id="done-q" hidden>初めての方は、ご来院前に問診票のご記入をお願いいたします。<a class="submit-button" id="done-q-link" href="#" target="_blank" rel="noopener">問診票を記入する</a></p>
       <div class="tt-visit">
         <div class="shave-notice"<?= $tattooOn ? '' : ' hidden' ?>>
           <h3>ご来院前のお願い</h3>

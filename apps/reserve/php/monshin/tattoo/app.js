@@ -83,24 +83,30 @@ const fmt = (n) => String(Math.round(n * 10) / 10);
 function syncInputs() {
   const kind = val('kind');
   const item = itemInput();
-  // 日曜メニューは、受け付けている区分（初診・再診）だけを出す
+  // 当院の美容皮膚科の初診・再診と今回の治療内容から、予約の区分（はじめて・2回目以降）を決める（院長 11/19）
+  const flow = !!item && item.dataset.flow === '1';
+  const cv = val('clinicVisit');
+  const st = val('status');
+  document.querySelector('#initial-box').hidden = cv !== 'initial';
+  document.querySelector('#status-box').hidden = cv !== 'returning';
+  let visit = cv === 'initial' ? 'first' : cv === 'returning' ? (flow ? 'repeat' : st === '' ? '' : st === 'new' ? 'first' : 'repeat') : '';
+  // 日曜メニューは、受け付けている区分だけ
   const firstOk = !item || item.dataset.first === '1';
   const repeatOk = !item || item.dataset.repeat === '1';
-  document.querySelector('#visit-first').hidden = !firstOk;
-  document.querySelector('#visit-repeat').hidden = !repeatOk;
-  for (const [ok, v] of [[firstOk, 'first'], [repeatOk, 'repeat']]) {
-    const el = form.querySelector(`input[name="visit"][value="${v}"]`);
-    if (!ok && el.checked) el.checked = false;
-  }
   const visitNote = document.querySelector('#visit-note');
-  const hasRemoval = !!form.querySelector('input[name="kind"][value="tattoo"], input[name="kind"][value="artmake"]');
-  visitNote.textContent = !item
-    ? (hasRemoval ? 'はじめての方は、照射の前にご説明（10分）があります' : '')
-    : !firstOk
-      ? 'この施術の日曜日のご予約は、2回目以降の方のみ承っております'
-      : !repeatOk
-        ? 'この施術の日曜日のご予約は、はじめての方のみ承っております'
-        : '';
+  visitNote.textContent = '';
+  if (visit === 'first' && !firstOk) {
+    visitNote.textContent = cv === 'initial'
+      ? 'この施術の日曜日のご予約は、当院の美容皮膚科を受診したことのある方のみ承っております'
+      : 'この施術の日曜日のご予約は、継続・コース消化・モニターの方のみ承っております';
+    visit = '';
+  } else if (visit === 'repeat' && !repeatOk) {
+    visitNote.textContent = 'この施術の日曜日のご予約は、はじめての方のみ承っております';
+    visit = '';
+  } else if (visit === 'first' && isRemoval()) {
+    visitNote.textContent = 'はじめての方は、照射の前にご説明（10分）があります';
+  }
+  form.querySelectorAll('input[name="visit"]').forEach((el) => { el.checked = el.value === visit; });
   visitNote.hidden = visitNote.textContent === '';
   const itemNote = document.querySelector('#item-note');
   itemNote.textContent = item && item.dataset.note ? `ご来院前のお願い：${item.dataset.note}` : '';
@@ -127,10 +133,7 @@ function syncInputs() {
   document.querySelector('#group-box').hidden = groups.length < 2;
   document.querySelector('#parts-box').hidden = groups.length === 0 || val('group') === '';
   document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1');
-  // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は今回の治療内容と麻酔
-  const flow = !!item && item.dataset.flow === '1';
-  document.querySelector('#visit-first span').textContent = flow ? '当院がはじめて' : 'はじめて';
-  document.querySelector('#visit-repeat span').textContent = flow ? '当院を受診したことがある' : '2回目以降';
+  // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は麻酔も（今回の治療内容は上で）
   document.querySelector('#flow-box').hidden = !(flow && val('visit') === 'repeat');
   if (flow && val('visit') === 'first') {
     visitNote.textContent = '当院がはじめての方は、医師の診察（約20分）のご予約です。施術は診察のうえでご相談となります';
@@ -248,7 +251,7 @@ function showErrors(list) {
 }
 
 const LABELS = {
-  kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
+  kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', clinicVisit: '当院の美容皮膚科の初診・再診を選んでください', initialInfo: '保険通院歴と当日施術のご希望を選んでください', status: '今回の治療内容を選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください',
   phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
@@ -256,7 +259,7 @@ const LABELS = {
 form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'part'].includes(e.target.name)) syncInputs(); });
 form.addEventListener('change', (e) => {
   if (e.target.name === 'group') renderParts(JSON.parse(itemInput()?.dataset.groups || '[]'));
-  if (['kind', 'visit', 'group', 'parts', 'count', 'status', 'anesthesiaType'].includes(e.target.name)) syncInputs();
+  if (['kind', 'visit', 'group', 'parts', 'count', 'status', 'anesthesiaType', 'clinicVisit'].includes(e.target.name)) syncInputs();
 });
 
 // LINE の中で開いたとき（LIFF）：本人の LINE を確かめ、確定の連絡を LINE へ（メールは任意）
@@ -306,7 +309,7 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (form.dataset.preview) { showErrors(['プレビューのため、予約は送れません']); return; }
   const fd = new FormData(form);
-  const body = Object.fromEntries(['kind', 'visit', 'color', 'part', 'anesthesia', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
+  const body = Object.fromEntries(['kind', 'visit', 'clinicVisit', 'status', 'insuranceHistory', 'sameDayTreatment', 'referrer', 'color', 'part', 'anesthesia', 'name', 'kana', 'birthDate', 'phone', 'email', 'lineName', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
   const item = itemInput();
   if (item) {
     body.item = item.value.slice(2);
@@ -325,7 +328,10 @@ form.addEventListener('submit', async (event) => {
   if (idToken) body.idToken = idToken;
   const local = [];
   if (!item && !body.kind) local.push(LABELS.kind);
-  if (!body.visit) local.push(LABELS.visit);
+  if (!body.clinicVisit) local.push(LABELS.clinicVisit);
+  else if (body.clinicVisit === 'initial' && (!body.insuranceHistory || !body.sameDayTreatment)) local.push(LABELS.initialInfo);
+  else if (body.clinicVisit === 'returning' && !body.status) local.push(LABELS.status);
+  else if (!body.visit) local.push(document.querySelector('#visit-note').textContent || LABELS.visit);
   if (!item && body.kind && !body.rects.length) local.push(LABELS.area);
   if (item && !pickReady(item)) local.push(item.dataset.flow === '1' ? LABELS.flow : item.dataset.count === '1' ? LABELS.count : LABELS.parts);
   if (!body.date || !body.time) local.push(LABELS.slot);
@@ -356,6 +362,10 @@ form.addEventListener('submit', async (event) => {
         : data.mailed
           ? 'ご入力のメールアドレスに、ご予約の内容をお送りしました。'
           : 'ご予約の内容をお送りできませんでした。ご予約は承っております。';
+      if (data.questionnaire) {
+        document.querySelector('#done-q-link').href = data.questionnaire;
+        document.querySelector('#done-q').hidden = false;
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
