@@ -20,8 +20,6 @@ export function ClinicTab({
   lanes,
   homepageDays,
   onlineCs,
-  tattoo,
-  menus = [],
   canEdit,
   onChanged,
   notify,
@@ -31,8 +29,6 @@ export function ClinicTab({
   lanes: Lane[];
   homepageDays?: HomepageDays;
   onlineCs?: { url: string; mail: boolean };
-  tattoo?: { url: string; lineUrl?: string };
-  menus?: Menu[];
   canEdit: boolean;
   onChanged: () => Promise<void>;
   notify: (text: string) => void;
@@ -112,7 +108,6 @@ export function ClinicTab({
       <DocumentCard clinic={clinic} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <PublicCard clinic={clinic} homepageDays={homepageDays} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       <OnlineCsCard clinic={clinic} lanes={lanes} info={onlineCs} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
-      <TattooCard clinic={clinic} lanes={lanes} menus={menus} info={tattoo} mail={onlineCs?.mail} canEdit={canEdit} onChanged={onChanged} notify={notify} fail={fail} />
       </div>
     </section>
   );
@@ -524,7 +519,7 @@ function OnlineCsCard({
 }
 
 /** タトゥー・アートメイク除去（日曜）の Web 予約：受け付けるか・照射と初診説明のレーンとメニュー・開ける日時（行を消せば閉じる） */
-function TattooCard({
+export function TattooCard({
   clinic,
   lanes,
   menus,
@@ -590,7 +585,7 @@ function TattooCard({
   };
   return (
     <div className={styles.clinicCard}>
-      <h3 className={styles.cardTitle}>日曜の Web 予約（タトゥー・アートメイク除去と日曜メニュー）</h3>
+      <h3 className={styles.cardTitle}>タトゥー・アートメイク除去と日曜メニュー</h3>
       <p className={styles.hint}>
         開ける日時を1行に1つ入れると、患者が予約ページで面積と初診・再診を入れて、その場で予約できます（予約表に入り、確定のメールを送ります）。照射の時間は面積で決まり（〜10cm² 5分、〜30 10分、〜50 15分、〜150 20分、〜300 30分、それ以上は10cm²ごとに1分）、初診は説明10分を足します。選べる時刻は、受付日時の中の空きの最初と、後ろに予約がある空きの最後だけです（空いた日は受付の最初の時刻だけ。予約の間に半端な空きが残らないように）。LIFF ID を入れると、LINE の中で開いた方は本人の LINE が予約と患者に結びつき、確定の連絡が LINE に届きます。閉じるときは行を消して保存します。
       </p>
@@ -693,13 +688,13 @@ function sundayMenuProblem(it: SundayMenu, i: number): string {
   for (const [k, ja] of [["first", "初診"], ["repeat", "再診"]] as const) {
     const min = it[`${k}Minutes`];
     if (!Number.isInteger(min) || min < 0 || min > 180 || min % 5 !== 0) return `「${label}」の${ja}の時間は0〜180分（5分刻み）で入れてください`;
-    if (min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）`;
+    if (it.enabled && min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）`;
   }
-  if (it.firstMinutes === 0 && it.repeatMinutes === 0) return `「${label}」は、初診か再診の時間を入れてください`;
+  if (it.enabled && it.firstMinutes === 0 && it.repeatMinutes === 0) return `「${label}」は、初診か再診の時間を入れてください`;
   return "";
 }
 
-const emptySundayMenu = (): SundayMenu => ({ id: "", name: "", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 0, repeatLaneIds: [], repeatMenuId: "", machine: "", note: "" });
+const emptySundayMenu = (): SundayMenu => ({ id: "", enabled: true, name: "", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 0, repeatLaneIds: [], repeatMenuId: "", machine: "", note: "" });
 
 /**
  * 日曜メニューの表：院が日曜の受付を許可したメニュー（タトゥー以外）。予約ページで患者が選び、その場で予約が入る。
@@ -718,6 +713,13 @@ function SundayMenusEditor({
   menus: Menu[];
   canEdit: boolean;
 }) {
+  // オフのメニューは、名前と時間の要約だけを出す（「設定を開く」で中身を見られる）
+  const [opened, setOpened] = useState<Record<number, boolean>>({});
+  const laneName = (id: string) => lanes.find((l) => l.id === id)?.shortName || lanes.find((l) => l.id === id)?.name || "?";
+  const summary = (it: SundayMenu) =>
+    (["first", "repeat"] as const)
+      .map((k) => `${k === "first" ? "初診" : "再診"} ${it[`${k}Minutes`] > 0 ? `${it[`${k}Minutes`]}分（${it[`${k}LaneIds`].map(laneName).join("・") || "レーン未選択"}）` : "受けない"}`)
+      .join("／");
   const put = (i: number, patch: Partial<SundayMenu>) => setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
   const activeLanes = (ids: string[]) => lanes.filter((l) => l.active || ids.includes(l.id));
   // 選んだレーンのどれかで使えるメニュー（レーンの指定がないメニューも）
@@ -727,12 +729,26 @@ function SundayMenusEditor({
     <>
       <h4 className={styles.subTitle}>日曜メニュー（タトゥー以外に、日曜に患者が自分で予約できるメニュー）</h4>
       <p className={styles.hint}>
-        ここに足したメニューだけが、日曜の予約ページに出ます。初診・再診それぞれの時間を入れ、受けない区分は0にします（予約枠時間一覧の時間に合わせてください。初診は医師の診察の時間）。レーンを2つ以上選ぶと、空いているほうに入ります。選べる時刻の決め方はタトゥーと同じです。機器の名前が同じもの同士は、レーンが違っても同じ時刻に入りません（予約に付けるメニューで見分けるので、「予約（メモに自由記載）」など共通のメニューに機器の名前は付けないでください）。
+        オンにしたメニューだけが、日曜の予約ページに出ます。最初の一覧は、スプレッドシート「予約枠時間一覧」の時間とレーンから作ったもの（すべてオフ）で、レーンと時間は変えられます。初診・再診それぞれの時間を入れ、受けない区分は0にします（予約枠時間一覧の時間に合わせてください。初診は医師の診察の時間）。レーンを2つ以上選ぶと、空いているほうに入ります。選べる時刻の決め方はタトゥーと同じです。機器の名前が同じもの同士は、レーンが違っても同じ時刻に入りません（予約に付けるメニューで見分けるので、「予約（メモに自由記載）」など共通のメニューに機器の名前は付けないでください）。
       </p>
       {items.length === 0 && <p className={styles.hint}>まだありません（タトゥー・アートメイク除去だけを受け付けます）。</p>}
       {items.map((it, i) => (
-        <fieldset key={it.id || `new-${i}`} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6 }}>
+        <fieldset key={it.id || `new-${i}`} className={styles.field} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", display: "grid", gap: 6, opacity: it.enabled ? 1 : 0.85 }}>
           <legend style={{ fontWeight: 700 }}>{it.name.trim() || `日曜メニュー ${i + 1}`}</legend>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+              <input type="checkbox" role="switch" aria-label={`${it.name}を日曜に受け付ける`} checked={it.enabled} onChange={(ev) => put(i, { enabled: ev.target.checked })} disabled={!canEdit} />
+              {it.enabled ? "日曜に受け付ける" : "受け付けない（オフ）"}
+            </label>
+            <span className={styles.hint} style={{ margin: 0 }}>{summary(it)}</span>
+            {!it.enabled && (
+              <button type="button" onClick={() => setOpened({ ...opened, [i]: !opened[i] })}>
+                {opened[i] ? "閉じる" : "設定を開く"}
+              </button>
+            )}
+          </div>
+          {(it.enabled || opened[i]) && (
+          <>
           <label className={styles.field}>
             <span>患者に見せる名前</span>
             <input className={styles.input} value={it.name} maxLength={40} onChange={(ev) => put(i, { name: ev.target.value })} disabled={!canEdit} placeholder="例：ボトックス注射" />
@@ -799,12 +815,14 @@ function SundayMenusEditor({
           </label>
           {canEdit && (
             <button type="button" className={styles.linkDanger} onClick={() => setItems(items.filter((_, j) => j !== i))}>
-              このメニューを日曜の予約ページから外す
+              このメニューを一覧から消す
             </button>
+          )}
+          </>
           )}
         </fieldset>
       ))}
-      {canEdit && items.length < 30 && (
+      {canEdit && items.length < 40 && (
         <div className={styles.actions}>
           <button type="button" onClick={() => setItems([...items, emptySundayMenu()])}>
             日曜メニューを足す

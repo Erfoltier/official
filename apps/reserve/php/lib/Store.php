@@ -1004,6 +1004,12 @@ final class Store
         return $out;
     }
 
+    /** 今あるレーンの id と、使えるメニュー（削除・停止していない）の id（日曜メニューのプリセットを今の設定に合わせるため） */
+    public static function laneAndMenuIds(): array
+    {
+        return [array_keys(self::lanes()), array_column(array_filter(self::sortedMenus(), fn($m) => !empty($m['active']) && empty($m['deleted'])), 'id')];
+    }
+
     /** その日の、どのレーンかを問わず、指定のメニューを含む予約の [開始分, 終了分]（同じ機器を使う予約が重ならないようにするため） */
     public static function busyMinutesForMenus(string $date, array $menuIds): array
     {
@@ -1211,7 +1217,8 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl(), 'lineUrl' => TattooBooking::liffUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
+        // 日曜メニューは、まだ保存していなければプリセット（予約枠時間一覧から。すべてオフ）を出す
+        return ['clinic' => [...self::clinic(), 'sundayMenus' => TattooBooking::settings()['items']], 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl(), 'lineUrl' => TattooBooking::liffUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array

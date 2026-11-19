@@ -762,6 +762,8 @@ export interface ClinicSettings {
  */
 export interface SundayMenu {
   id: string;
+  /** 日曜に受け付けるか（オフなら予約ページに出さない。プリセットは最初すべてオフ） */
+  enabled: boolean;
   /** 患者に見せる名前 */
   name: string;
   firstMinutes: number;

@@ -68,6 +68,34 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect((await c.get("/settings")).clinic.sundayMenus[0].id).toMatch(/^[a-z0-9]{10}$/);
   });
 
+  it("まだ保存していなければ、予約枠時間一覧から作ったプリセット（すべてオフ）を出す。オンにしたものだけが予約ページに出る", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    expect(presets.length).toBeGreaterThan(10);
+    expect(presets.every((x: any) => x.enabled === false)).toBe(true);
+    expect(presets.find((x: any) => x.id === "botox")).toMatchObject({ name: "ボトックス注射", firstMinutes: 20, firstLaneIds: [MAIN], repeatMinutes: 10, repeatMenuId: BOTOX_RE });
+    expect(presets.find((x: any) => x.id === "massagepeel")).toMatchObject({ repeatMinutes: 20, repeatLaneIds: [L1, L3], repeatMenuId: PEEL });
+    let html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).not.toContain('value="m:');
+    expect(html).toContain("タトゥー・アートメイク除去のご予約");
+    // マッサージピールだけオンにして保存（ほかはオフのまま残る。オフのものはレーン・メニューが空でも保存できる）
+    const next = presets.map((x: any) => (x.id === "massagepeel" ? { ...x, enabled: true, repeatMinutes: 25 } : x.id === "botox" ? { ...x, repeatLaneIds: [] } : x));
+    await c.patch("/clinic", { sundayMenus: next });
+    const saved = (await c.get("/settings")).clinic.sundayMenus;
+    expect(saved.length).toBe(presets.length);
+    expect(saved.filter((x: any) => x.enabled).map((x: any) => x.id)).toEqual(["massagepeel"]);
+    html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).toContain('value="m:massagepeel"');
+    expect(html).not.toContain('value="m:botox"');
+    expect(await slots("item=massagepeel&visit=repeat")).toMatchObject({ slots: { [day]: ["10:00"] }, duration: "約25分" });
+    expect((await slots("item=botox&visit=repeat")).slots).toEqual({});
+    expect((await book(person(day, "10:00", { item: "botox" }))).data.fields).toContain("visit");
+    // オンにするなら、レーンとメニューが要る
+    await expect(c.patch("/clinic", { sundayMenus: next.map((x: any) => (x.id === "botox" ? { ...x, enabled: true } : x)) })).rejects.toThrow(/レーンと予約に付けるメニュー/);
+  });
+
   it("予約ページに許可したメニューが出て、受け付ける区分だけを選べる。空きはタトゥーと同じ決め方で、レーンは空いているほうへ", async () => {
     const day = nextSunday();
     const c = await open(day);

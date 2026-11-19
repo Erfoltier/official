@@ -7,7 +7,8 @@
  * 患者向けの画面・文言に「詰める」などの仕組みは出さない。選べる時刻だけを見せる。
  *
  * 日曜メニュー（sundayMenus）：タトゥー以外にも、院が日曜の受付を許可したメニューを同じ予約ページで選べる（院長 11/19）。
- * 1つごとに、患者に見せる名前・初診と再診それぞれの時間（分。0 なら受けない）・レーン（複数なら空いているほう）・予約に付けるメニュー・機器の名前。
+ * 1つごとに、受け付けるか（オン・オフ）・患者に見せる名前・初診と再診それぞれの時間（分。0 なら受けない）・レーン（複数なら空いているほう）・予約に付けるメニュー・機器の名前。
+ * 一度も保存していないときは、予約枠時間一覧（スプレッドシート）から作ったプリセット（PRESETS。すべてオフ）を出す。
  * 選べる時刻の決め方はタトゥーと同じ（空きの最初と、後ろに予約がある空きの最後）。同じ機器の名前のメニュー同士は、レーンが違っても同じ時刻に入れない。
  */
 declare(strict_types=1);
@@ -22,7 +23,7 @@ final class TattooBooking
     /** 1辺の上限（cm）と、1か所の面積の上限（cm²） */
     private const MAX_SIDE = 100.0;
     /** 日曜メニューの数の上限と、1回の時間の上限（分） */
-    public const MAX_ITEMS = 30;
+    public const MAX_ITEMS = 40;
     private const MAX_ITEM_MINUTES = 180;
     /** 日曜のご来院の案内（院長の文面 11/18）。予約ページ・確定メール・リマインド（タトゥー除去のメニューの予約）で同じ文を出す */
     public const VISIT_NOTICE = [
@@ -60,9 +61,59 @@ final class TattooBooking
             // LINE の中でこのページを開く LIFF アプリの ID（LINE Developers で作る。エンドポイントは …/tattoo/）。空なら LINE を使わない
             'liffId' => (string) ($c['tattooLiffId'] ?? ''),
             'machine' => (string) ($c['tattooMachine'] ?? ''),
-            // タトゥー以外に日曜に受け付けるメニュー（normalizeItems の形）
-            'items' => array_values(array_filter((array) ($c['sundayMenus'] ?? []), fn($it) => is_array($it) && !empty($it['id']))),
+            // タトゥー以外に日曜に受け付けるメニュー（normalizeItems の形）。まだ保存していなければプリセット
+            'items' => array_key_exists('sundayMenus', $c)
+                ? array_values(array_filter((array) $c['sundayMenus'], fn($it) => is_array($it) && !empty($it['id'])))
+                : self::presets(),
         ];
+    }
+
+    private const M = 'lane-main';
+    private const N = ['lane-1', 'lane-3'];
+    private const MEMO = 'menu-s000099DC1'; // 予約（メモに自由記載）
+    private const CONSULT = 'menu-s0000BB7B7'; // 完全初診
+    /**
+     * 日曜メニューのプリセット（11/19、スプレッドシート「予約枠時間一覧」のシート1・公開治療メニュー照合_20260820・予約エンジンルールから）。すべてオフ。
+     * [id, 名前, 初診の分, 初診のレーン, 初診のメニュー, 再診の分, 再診のレーン, 再診のメニュー, ご来院前のお願い]
+     * 初診は医師の診察の枠だけ（メイン）。看護師の施術は1番・3番。
+     * 入れていないもの：麻酔の後に施術が続くもの（ダーマペン・ヴェルヴェット・炭酸ガス・モニター）、時間が部位や方式で決まるもの（脱毛・ハイフ・トラネ・ピンクグロー・フィルロード）、
+     * 「要承認」のもの（Qスイッチルビー・リトゥオ／ジュブアセル・たるみ・外用剤）、予約の要らない商品購入
+     */
+    private const PRESETS = [
+        ['botox', 'ボトックス注射', 20, [self::M], 'menu-s0000C1A4E', 10, [self::M], 'menu-s00009A18E', ''],
+        ['hyperhidrosis', '多汗症ボトックス', 20, [self::M], 'menu-s0000C1A4E', 15, [self::M], 'menu-s00009A18E', ''],
+        ['hyaluronic', 'ヒアルロン酸注射', 30, [self::M], 'menu-s00009A0D8', 20, [self::M], 'menu-s00009A0D8', ''],
+        ['juvelook', 'ジュベルックボリューム', 30, [self::M], self::MEMO, 20, [self::M], self::MEMO, ''],
+        ['babycollagen', 'ベビーコラーゲン', 30, [self::M], self::MEMO, 20, [self::M], self::MEMO, ''],
+        ['miraclel', 'ミラクルL注射', 30, [self::M], 'menu-s00009A0D8', 20, [self::M], 'menu-s00009A0D8', ''],
+        ['fatx', 'Fat X（脂肪溶解注射）', 30, [self::M], 'menu-s00009A18F', 15, [self::M], 'menu-s00009A191', ''],
+        ['sunekos', 'スネコス', 30, [self::M], 'menu-s00009E6B7', 15, [self::M], 'menu-s000099E63', ''],
+        ['hokuro', 'ほくろ除去', 20, [self::M], 'menu-s00009A192', 0, [], '', ''],
+        ['dyelaser', '色素レーザー（ダイレーザー）', 20, [self::M], self::CONSULT, 10, [self::M], 'menu-s00009A3AE', ''],
+        ['isotretinoin', 'イソトレチノイン', 15, [self::M], self::MEMO, 10, [self::M], self::MEMO, ''],
+        ['oral', '美白・しわ・ニキビの内服（はじめてのご相談）', 15, [self::M], self::MEMO, 0, [], '', ''],
+        ['tcapeel', 'TCAピーリング', 15, [self::M], self::MEMO, 10, [self::M], self::MEMO, ''],
+        ['amalfi', 'アマルフィーピール', 15, [self::M], self::MEMO, 20, self::N, self::MEMO, ''],
+        ['zoskin', 'ゼオスキンヘルス（カウンセリング）', 15, [self::M], self::MEMO, 15, [self::M], self::MEMO, ''],
+        ['massagepeel', 'マッサージピール', 15, [self::M], self::CONSULT, 20, self::N, 'menu-s00009A18A', ''],
+        ['milano', 'ミラノリピール', 15, [self::M], self::CONSULT, 20, self::N, 'menu-s00009A18B', ''],
+        ['salicylic', 'サリチル酸ピーリング', 15, [self::M], self::CONSULT, 20, self::N, 'menu-s00009A18C', ''],
+    ];
+
+    /** プリセットを今の設定に合わせて出す（ないレーン・使えないメニューは空にする。オフなので、オンにするときに選び直す） */
+    public static function presets(): array
+    {
+        [$lanes, $menus] = Store::laneAndMenuIds();
+        $out = [];
+        foreach (self::PRESETS as [$id, $name, $fm, $fl, $fmenu, $rm, $rl, $rmenu, $note]) {
+            $out[] = [
+                'id' => $id, 'name' => $name, 'enabled' => false,
+                'firstMinutes' => $fm, 'firstLaneIds' => array_values(array_intersect($fl, $lanes)), 'firstMenuId' => in_array($fmenu, $menus, true) ? $fmenu : '',
+                'repeatMinutes' => $rm, 'repeatLaneIds' => array_values(array_intersect($rl, $lanes)), 'repeatMenuId' => in_array($rmenu, $menus, true) ? $rmenu : '',
+                'machine' => '', 'note' => $note,
+            ];
+        }
+        return $out;
     }
 
     /** 予約ページを開けるか（受け付けがオンで、タトゥーか日曜メニューのどちらかを受けられる） */
@@ -88,7 +139,7 @@ final class TattooBooking
     public static function accepts(array $it, bool $first): bool
     {
         $k = $first ? 'first' : 'repeat';
-        return ($it[$k . 'Minutes'] ?? 0) > 0 && ($it[$k . 'LaneIds'] ?? []) !== [] && ($it[$k . 'MenuId'] ?? '') !== '';
+        return ($it['enabled'] ?? true) !== false && ($it[$k . 'Minutes'] ?? 0) > 0 && ($it[$k . 'LaneIds'] ?? []) !== [] && ($it[$k . 'MenuId'] ?? '') !== '';
     }
 
     /** 予約ページに出す日曜メニューの一覧（患者に見せてよい項目だけ） */
@@ -130,7 +181,9 @@ final class TattooBooking
                 $id = bin2hex(random_bytes(5));
             }
             $seen[$id] = true;
-            $row = ['id' => $id, 'name' => $name];
+            // オフのものは、足りない項目があっても残せる（オンにするときにそろえる）
+            $on = ($it['enabled'] ?? true) !== false;
+            $row = ['id' => $id, 'name' => $name, 'enabled' => $on];
             foreach (['first' => '初診', 'repeat' => '再診'] as $k => $label) {
                 $min = (int) ($it[$k . 'Minutes'] ?? 0);
                 if ($min < 0 || $min > self::MAX_ITEM_MINUTES || $min % 5 !== 0) {
@@ -146,12 +199,12 @@ final class TattooBooking
                 if ($menu !== '' && !in_array($menu, $menuIds, true)) {
                     throw new StoreError('invalid', "「{$name}」の{$label}のメニューが見つかりません");
                 }
-                if ($min > 0 && ($lanes === [] || $menu === '')) {
+                if ($on && $min > 0 && ($lanes === [] || $menu === '')) {
                     throw new StoreError('invalid', "「{$name}」の{$label}は、レーンと予約に付けるメニューを選んでください（受けないときは時間を0に）");
                 }
                 $row += [$k . 'Minutes' => $min, $k . 'LaneIds' => $lanes, $k . 'MenuId' => $menu];
             }
-            if ($row['firstMinutes'] === 0 && $row['repeatMinutes'] === 0) {
+            if ($on && $row['firstMinutes'] === 0 && $row['repeatMinutes'] === 0) {
                 throw new StoreError('invalid', "「{$name}」は、初診か再診の時間を入れてください");
             }
             $row['machine'] = mb_substr(js_trim((string) ($it['machine'] ?? '')), 0, 30);
@@ -172,7 +225,7 @@ final class TattooBooking
             $ids[] = $s['menuId'];
         }
         foreach ($s['items'] as $it) {
-            if (($it['machine'] ?? '') === $machine) {
+            if (($it['enabled'] ?? true) !== false && ($it['machine'] ?? '') === $machine) {
                 $ids[] = $it['firstMenuId'];
                 $ids[] = $it['repeatMenuId'];
             }
@@ -201,7 +254,7 @@ final class TattooBooking
             return false;
         }
         $items = [];
-        foreach ($s['items'] as $it) {
+        foreach (array_filter($s['items'], fn($it) => ($it['enabled'] ?? true) !== false) as $it) {
             $items[] = $it['firstMenuId'];
             $items[] = $it['repeatMenuId'];
         }
