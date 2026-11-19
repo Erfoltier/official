@@ -485,8 +485,8 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const rs = (await c.get(`/day?date=${day}`)).reservations;
     expect(rs.find((r: any) => r.laneId === "lane-4")).toMatchObject({ menuIds: ["menu-s0000B6B52"] });
     expect(rs.find((r: any) => r.laneId === MAIN).memo).toContain("モニター");
-    // 継続の方は撮影なし
-    expect((await slots("item=botox01&visit=repeat&status=continue")).slots[day]).toEqual(["10:00", "10:05", "10:25"]);
+    // 継続の方は撮影なし。メインの空き 10:00〜10:15 に10分を入れると5分の半端が残るので、10:25 だけ
+    expect((await slots("item=botox01&visit=repeat&status=continue")).slots[day]).toEqual(["10:25"]);
     // 4番が予約不可（埋まっている）なら1番で
     const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
     await c.post("/reservations", { patientId: p.id, laneId: "lane-4", menuIds: [CONSULT], startAt: toIso(day, 615), endAt: toIso(day, 720) });
@@ -498,5 +498,22 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const t = await slots(`area=5&visit=repeat&status=monitor`);
     expect(t.duration).toBe("撮影のあと照射（照射は約5分）");
     expect(t.slots[day]).toEqual(["10:20"]);
+  });
+  it("前後に10分未満の半端な隙間ができる時刻は出さない（10分以上なら色素10分などが入る）。1つも残らない日は隙間のいちばん小さい時刻を1つ", async () => {
+    const day = nextSunday();
+    const c = await open(day);
+    const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
+    const at = (a: number, b: number) => c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, a), endAt: toIso(day, b) });
+    // メインの空き：10:00〜10:15（15分）、10:30〜10:50（20分）、11:10〜12:00
+    await at(615, 630);
+    await at(650, 670);
+    // 再診10分：10:00（後ろに5分）・10:05（前に5分）は出さない。10:30（後ろに10分残る＝色素10分が入る）・10:40（前に10分）は出す
+    expect((await slots("item=botox01&visit=repeat&status=continue")).slots[day]).toEqual(["10:30", "10:40", "11:10"]);
+    // 初診20分：10:30〜10:50 にぴったり、11:10 から
+    expect((await slots("item=botox01&visit=first")).slots[day]).toEqual(["10:30", "11:10"]);
+    // 残りを埋めて、どこに入れても半端が残る日は、隙間がいちばん小さい時刻を1つだけ（10:00〜10:15 に10分 → 5分残る）
+    await at(630, 650);
+    await at(670, 720);
+    expect((await slots("item=botox01&visit=repeat&status=continue")).slots[day]).toEqual(["10:00"]);
   });
 });

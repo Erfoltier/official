@@ -906,6 +906,69 @@ final class TattooBooking
      * その日の受付時間帯の中で、照射のレーンの空いている区間（[開始分, 終了分]、受付時間帯ごと）
      * @return list<array{0:int,1:int,2:int,3:int}> [空きの開始, 空きの終了, 受付時間帯の開始, 受付時間帯の終了]
      */
+    /** これより短い空きは何も入れられない半端な隙間（院長 11/20：10分あればシミ20分の後でも色素10分が入る） */
+    private const MIN_GAP = 10;
+
+    /**
+     * 選べる時刻の候補から、前後に10分未満の半端な隙間を作らない時刻だけを残す（時刻順）。
+     * 同じ来院の時刻に候補が複数（レーン違い）あれば、隙間の少ないほう。1つも残らない日は、半端な隙間がいちばん小さい時刻を1つだけ（院長 11/20）。
+     * $segsOf：候補 → その予約で埋まる [レーン, 開始分, 終了分] の一覧
+     * @param list<array> $cands
+     */
+    private static function tidy(string $date, array $windows, array $cands, callable $segsOf): array
+    {
+        $busy = [];
+        $best = [];
+        foreach ($cands as $c) {
+            // レーンごとに、続けて取る枠をまとめてから、その前後に残る空きを測る
+            $byLane = [];
+            foreach ($segsOf($c) as [$l, $a, $b]) {
+                $byLane[$l][] = [$a, $b];
+            }
+            $waste = 0;
+            foreach ($byLane as $l => $iv) {
+                usort($iv, fn($x, $y) => $x[0] <=> $y[0]);
+                $blocks = [];
+                foreach ($iv as [$a, $b]) {
+                    if ($blocks && $a <= $blocks[count($blocks) - 1][1]) {
+                        $blocks[count($blocks) - 1][1] = max($blocks[count($blocks) - 1][1], $b);
+                    } else {
+                        $blocks[] = [$a, $b];
+                    }
+                }
+                $busy[$l] ??= Store::busyMinutes($date, $l);
+                $gaps = self::gaps($windows, $busy[$l]);
+                foreach ($blocks as [$a, $b]) {
+                    foreach ($gaps as [$gs, $ge]) {
+                        if ($a >= $gs && $b <= $ge) {
+                            foreach ([$a - $gs, $ge - $b] as $left) {
+                                if ($left > 0 && $left < self::MIN_GAP) {
+                                    $waste += $left;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            $arrive = (int) (substr($c[0], 0, 2)) * 60 + (int) substr($c[0], 3, 2);
+            if (!isset($best[$arrive]) || $waste < $best[$arrive][0]) {
+                $best[$arrive] = [$waste, $c];
+            }
+        }
+        ksort($best);
+        $clean = array_values(array_map(fn($x) => $x[1], array_filter($best, fn($x) => $x[0] === 0)));
+        if ($clean !== [] || $best === []) {
+            return $clean;
+        }
+        $min = min(array_column($best, 0));
+        foreach ($best as $x) {
+            if ($x[0] === $min) {
+                return [$x[1]];
+            }
+        }
+        return [];
+    }
+
     private static function gaps(array $windows, array $busy): array
     {
         $out = [];
@@ -966,8 +1029,8 @@ final class TattooBooking
                             continue;
                         }
                         $nl = self::freeLane($date, $windows, $four, $a0, $start);
-                        if ($nl !== null && !isset($found[$a0])) {
-                            $found[$a0] = [self::hm($a0), $start, false, $nl];
+                        if ($nl !== null) {
+                            $found[] = [self::hm($a0), $start, false, $nl];
                         }
                     }
                     continue;
@@ -982,12 +1045,12 @@ final class TattooBooking
                     if ($date === $now['date'] && $arrive <= $now['minutes']) {
                         continue;
                     }
-                    $found[$arrive] = [self::hm($arrive), $c[1], $c[2]];
+                    $found[] = [self::hm($arrive), $c[1], $c[2]];
                 }
             }
+            $found = self::tidy($date, $windows, $found, fn($c) => array_filter([[$s['laneId'], $c[2] ? $c[1] : $c[1] - ($firstVisit ? self::EXPLAIN_MINUTES : 0), $c[1] + $treat], $c[2] ? [$s['explainLaneId'], $c[1] - self::EXPLAIN_MINUTES, $c[1]] : null, isset($c[3]) ? [$c[3], $c[1] - self::NEOBO_SLOT, $c[1]] : null]));
             if ($found) {
-                ksort($found);
-                $out[$date] = array_values($found);
+                $out[$date] = $found;
             }
         }
         ksort($out);
@@ -1084,16 +1147,16 @@ final class TattooBooking
                             }
                             $segs = [[$nl, $neobo, $arrive, $start, 'ネオボ撮影（＋麻酔クリーム）'], [$lane, $it[$k . 'MenuId'], $start, $start + $len, '施術']];
                         }
-                        if (isset($found[$arrive]) || ($date === $now['date'] && $arrive <= $now['minutes'])) {
+                        if ($date === $now['date'] && $arrive <= $now['minutes']) {
                             continue;
                         }
-                        $found[$arrive] = $segs === null ? [self::hm($arrive), $start, $lane] : [self::hm($arrive), $start, $lane, $segs];
+                        $found[] = $segs === null ? [self::hm($arrive), $start, $lane] : [self::hm($arrive), $start, $lane, $segs];
                     }
                 }
             }
+            $found = self::tidy($date, $windows, $found, fn($c) => isset($c[3]) ? array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]) : [[$c[2], $c[1], $c[1] + $len]]);
             if ($found) {
-                ksort($found);
-                $out[$date] = array_values($found);
+                $out[$date] = $found;
             }
         }
         ksort($out);
@@ -1169,16 +1232,16 @@ final class TattooBooking
                                 continue;
                             }
                         }
-                        if (isset($found[$arrive]) || ($date === $now['date'] && $arrive <= $now['minutes'])) {
+                        if ($date === $now['date'] && $arrive <= $now['minutes']) {
                             continue;
                         }
-                        $found[$arrive] = [self::hm($arrive), $arrive, $lane, $segs];
+                        $found[] = [self::hm($arrive), $arrive, $lane, $segs];
                     }
                 }
             }
+            $found = self::tidy($date, $windows, $found, fn($c) => array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]));
             if ($found) {
-                ksort($found);
-                $out[$date] = array_values($found);
+                $out[$date] = $found;
             }
         }
         ksort($out);
