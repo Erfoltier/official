@@ -183,10 +183,11 @@ final class TattooBooking
         $out[] = $flow('re2o', 'リトゥオ', [self::M], 'menu-s0000D14AA', 30, 30, '');
         // ダーマペン系・炭酸ガス（予約エンジンルール「複合/麻酔施術」：麻酔クリーム10分の40〜60分後に施術。ダーマペン系は共通機器でレーン横断の重複禁止。炭酸ガスの施術はメイン）。
         // 施術時間：ヴェルヴェット・スーパーヴェルヴェットは時間表の20分、ダーマペンは30分（自由10〜90分のため仮。オンにする前に確かめる）、炭酸ガスは全顔15分
-        $out[] = $flow('dermapen', 'ダーマペン', self::N, 'menu-x093', 30, 30, 'ダーマペン');
-        $out[] = $flow('velvet', 'ヴェルヴェットスキン', self::N, 'menu-x036', 20, 20, 'ダーマペン');
-        $out[] = $flow('supervelvet', 'スーパーヴェルヴェットスキン', self::N, 'menu-x037', 20, 20, 'ダーマペン');
-        $out[] = $flow('co2frac', '炭酸ガスフラクショナル', [self::M], 'menu-s0000A7D2D', 15, 15, '炭酸ガス');
+        // 麻酔は麻酔クリームだけなので、麻酔の注射の時間は0（予約ページで麻酔の注射を選べない。院長 11/20）
+        $out[] = $flow('dermapen', 'ダーマペン', self::N, 'menu-x093', 30, 0, 'ダーマペン');
+        $out[] = $flow('velvet', 'ヴェルヴェットスキン', self::N, 'menu-x036', 20, 0, 'ダーマペン');
+        $out[] = $flow('supervelvet', 'スーパーヴェルヴェットスキン', self::N, 'menu-x037', 20, 0, 'ダーマペン');
+        $out[] = $flow('co2frac', '炭酸ガスフラクショナル', [self::M], 'menu-s0000A7D2D', 15, 0, '炭酸ガス');
         // 決まった時間のもの（時間表・公開治療メニュー照合から。初診は医師の診察だけ）
         $fixed = fn(string $id, string $name, int $fm, string $fmenu, int $rm, array $rl, string $rmenu, string $machine = '') => [
             'id' => $id, 'name' => $name, 'enabled' => false,
@@ -341,7 +342,7 @@ final class TattooBooking
     {
         if (!$first && self::isFlow($it)) {
             return ($it['enabled'] ?? true) !== false && ($it['repeatLaneIds'] ?? []) !== [] && ($it['repeatMenuId'] ?? '') !== ''
-                && ($it['creamMinutes'] ?? 0) > 0 && ($it['injectionMinutes'] ?? 0) > 0
+                && ($it['creamMinutes'] ?? 0) > 0
                 && ($it['anesLaneIds'] ?? []) !== [] && ($it['creamMenuId'] ?? '') !== '' && ($it['neoboMenuId'] ?? '') !== '';
         }
         $k = $first ? 'first' : 'repeat';
@@ -389,7 +390,11 @@ final class TattooBooking
         // 麻酔つきの注入：施術の時間（麻酔の注射なら注射の時間、それ以外はクリームの時間）
         if (!$first && self::isFlow($it)) {
             $fp = self::flowPick($pick);
-            return $fp === null ? null : (int) ($fp[1] === 'injection' ? $it['injectionMinutes'] : $it['creamMinutes']);
+            // 麻酔の注射の時間が0のメニュー（炭酸ガス・ダーマペン系は麻酔クリームだけ。院長 11/20）は、麻酔の注射を選べない
+            if ($fp === null || ($fp[1] === 'injection' && (int) ($it['injectionMinutes'] ?? 0) === 0)) {
+                return null;
+            }
+            return (int) ($fp[1] === 'injection' ? $it['injectionMinutes'] : $it['creamMinutes']);
         }
         $min = (int) ($it[($first ? 'first' : 'repeat') . 'Minutes'] ?? 0);
         if (($it['partGroups'] ?? []) !== []) {
@@ -464,6 +469,7 @@ final class TattooBooking
                     'one' => !empty($it['pickOne']),
                     'pickLabel' => self::pickLabel($it),
                     'flow' => self::isFlow($it),
+                    'noInjection' => self::isFlow($it) && (int) ($it['injectionMinutes'] ?? 0) === 0,
                 ];
             }
         }
@@ -591,7 +597,7 @@ final class TattooBooking
                 throw new StoreError('invalid', "「{$name}」の医師の診察のレーンが見つかりません");
             }
             $row['doctorLaneId'] = $dl;
-            if ($on && $flow && ($it['repeatLaneIds'] ?? []) !== [] && ($row['creamMinutes'] === 0 || $row['injectionMinutes'] === 0 || $anes === [] || $row['creamMenuId'] === '' || $row['neoboMenuId'] === '')) {
+            if ($on && $flow && ($it['repeatLaneIds'] ?? []) !== [] && ($row['creamMinutes'] === 0 || $anes === [] || $row['creamMenuId'] === '' || $row['neoboMenuId'] === '')) {
                 throw new StoreError('invalid', "「{$name}」は、施術の時間（クリーム・注射）、麻酔のレーン、麻酔クリームとネオボのメニューを入れてください（受診したことのある方を受けないときは再診のレーンを外す）");
             }
             $variable = $groups !== [] || $cpm > 0 || $flow;

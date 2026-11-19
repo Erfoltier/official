@@ -430,4 +430,17 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(out.fat).toEqual(["Fat X（脂肪溶解注射）", "注射・注入"]);
     expect(out.gone).toEqual([]);
   });
+  it("麻酔クリームだけのメニュー（炭酸ガス・ダーマペン系）は、麻酔の注射の時間を0にして、麻酔の注射を選べない", async () => {
+    const out = await h.srv.php(`
+      $co2 = array_values(array_filter(TattooBooking::presets(), fn($x) => $x['id'] === 'co2frac'))[0];
+      $co2 = [...$co2, 'enabled' => true, 'repeatLaneIds' => ['lane-main'], 'repeatMenuId' => 'menu-x', 'anesLaneIds' => ['lane-4'], 'creamMenuId' => 'menu-c', 'neoboMenuId' => 'menu-n'];
+      return [
+        $co2['injectionMinutes'],
+        TattooBooking::accepts($co2, false),
+        TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'cream']),
+        TattooBooking::itemMinutes($co2, false, ['status' => 'continue', 'anesthesia' => 'injection']),
+      ];
+    `);
+    expect(out).toEqual([0, true, 15, null]);
+  });
 });

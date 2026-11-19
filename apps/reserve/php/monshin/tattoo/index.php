@@ -40,7 +40,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261119-7';
+$v = '20261120-1';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -103,7 +103,7 @@ $v = '20261119-7';
 <?php elseif ($m['key'] === 'artmake'): ?>
             <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
 <?php else: $it = $m['item']; ?>
-            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>" data-noinj="<?= $it['noInjection'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endif; ?>
 <?php endforeach; ?>
           </div>
@@ -156,7 +156,7 @@ $v = '20261119-7';
             <legend>麻酔 <em>必須</em></legend>
             <div class="choice-grid two">
 <?php foreach (TattooBooking::ANESTHESIA as $k => $label): ?>
-              <label class="pill"><input type="radio" name="anesthesiaType" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
+              <label class="pill" id="anes-<?= $h($k) ?>"><input type="radio" name="anesthesiaType" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
 <?php endforeach; ?>
             </div>
             <small class="field-note">院内の麻酔クリームの方は、麻酔のあと約45分お待ちいただいてから施術します（ご来院の時刻は麻酔の時刻です）</small>

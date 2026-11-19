@@ -140,6 +140,13 @@ function syncInputs() {
   document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1');
   // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は麻酔も（今回の治療内容は上で）
   document.querySelector('#flow-box').hidden = !(flow && val('visit') === 'repeat');
+  // 麻酔クリームだけのメニュー（炭酸ガス・ダーマペン系）は「麻酔の注射」を出さない
+  const noInj = flow && item.dataset.noinj === '1';
+  const inj = document.querySelector('#anes-injection');
+  if (inj) {
+    inj.hidden = noInj;
+    if (noInj) inj.querySelector('input').checked = false;
+  }
   if (flow && val('visit') === 'first') {
     visitNote.textContent = '当院がはじめての方は、医師の診察（約20分）のご予約です。施術は診察のうえでご相談となります';
     visitNote.hidden = false;

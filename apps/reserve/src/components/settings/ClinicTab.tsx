@@ -751,7 +751,7 @@ function sundayMenuProblem(it: SundayMenu, i: number): string {
     if (it.enabled && variable && it[`${k}LaneIds`].length > 0 && !it[`${k}MenuId`]) return `「${label}」の${ja}の予約に付けるメニューを選んでください（受けないときは区分のスイッチをオフに）`;
     if (it.enabled && !variable && min > 0 && (it[`${k}LaneIds`].length === 0 || !it[`${k}MenuId`])) return `「${label}」の${ja}は、レーンと予約に付けるメニューを選んでください（受けないときは区分のスイッチをオフに）`;
   }
-  if (it.enabled && it.flow && it.repeatLaneIds.length > 0 && (!it.creamMinutes || !it.injectionMinutes || !(it.anesLaneIds ?? []).length || !it.creamMenuId || !it.neoboMenuId))
+  if (it.enabled && it.flow && it.repeatLaneIds.length > 0 && (!it.creamMinutes || !(it.anesLaneIds ?? []).length || !it.creamMenuId || !it.neoboMenuId))
     return `「${label}」は、施術の時間（クリーム・注射）、麻酔のレーン、麻酔クリームとネオボのメニューを入れてください（受診したことのある方を受けないときは再診のスイッチをオフに）`;
   for (const v of [it.creamMinutes ?? 0, it.injectionMinutes ?? 0]) if (!Number.isInteger(v) || v < 0 || v > 180 || v % 5 !== 0) return `「${label}」の施術の時間は0〜180分（5分刻み）で入れてください`;
   if (it.enabled && variable && it.firstLaneIds.length === 0 && it.repeatLaneIds.length === 0) return `「${label}」は、初診か再診のレーンを選んでください`;
@@ -898,7 +898,7 @@ function SundayMenusEditor({
   const summary = (it: SundayMenu) => {
     const mode = timeMode(it);
     const how =
-      mode === "parts" ? "部位ごとの時間" : mode === "count" ? `本数（${it.countPerMinute}本で1分）` : mode === "flow" ? `麻酔つき（施術 クリーム${it.creamMinutes ?? 0}分・注射${it.injectionMinutes ?? 0}分）` : "";
+      mode === "parts" ? "部位ごとの時間" : mode === "count" ? `本数（${it.countPerMinute}本で1分）` : mode === "flow" ? `麻酔つき（施術 クリーム${it.creamMinutes ?? 0}分${it.injectionMinutes ? `・注射${it.injectionMinutes}分` : ""}）` : "";
     const parts = (["first", "repeat"] as const).map((k) => {
       const on = mode === "fixed" ? it[`${k}Minutes`] > 0 : it[`${k}LaneIds`].length > 0;
       const lanesText = it[`${k}LaneIds`].map(laneName).join("・") || "レーン未選択";
@@ -965,7 +965,7 @@ function SundayMenusEditor({
                     <input className={styles.input} type="number" min={0} max={180} step={5} value={it.creamMinutes ?? 0} onChange={(ev) => put(i, { creamMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
                   </label>
                   <label className={styles.field}>
-                    <span>施術の時間（麻酔の注射）</span>
+                    <span>施術の時間（麻酔の注射。0 なら予約ページで麻酔の注射を選べない）</span>
                     <input className={styles.input} type="number" min={0} max={180} step={5} value={it.injectionMinutes ?? 0} onChange={(ev) => put(i, { injectionMinutes: Number(ev.target.value) || 0 })} disabled={!canEdit} />
                   </label>
                 </div>
