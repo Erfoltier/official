@@ -723,6 +723,8 @@ export interface ClinicSettings {
   /** プライバシーポリシー・ホームページのアドレス（https://） */
   privacyUrl?: string;
   homepageUrl?: string;
+  /** アクセス（地図・道順）のページ（https://）。予約確定の案内で住所の代わりに出す */
+  accessUrl?: string;
   /** 予約申請フォームの見出しに出す受付日時の案内（改行可） */
   intakeHours?: string;
   /** 予約申請フォームで選べる曜日（0=日〜6=土。なければ毎日）と、それ以外に選べる特別診療日 */
@@ -746,6 +748,76 @@ export interface ClinicSettings {
   tattooExplainMenuId?: string;
   /** 受付日時（1つずつ「2026-12-06 10:00-13:00」） */
   tattooSlots?: string[];
+  /** タトゥーの予約ページを LINE の中で開く LIFF アプリの ID。あれば確定の連絡を LINE に送る */
+  tattooLiffId?: string;
+  /** 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか（省くとオン） */
+  tattooKindOn?: boolean;
+  artmakeKindOn?: boolean;
+  /** タトゥーの照射に使う機器の名前。同じ名前の日曜メニューと同じ時刻に入れない */
+  tattooMachine?: string;
+  /** 日曜の予約ページで、タトゥー以外に患者が選べるメニュー（院が日曜の受付を許可したもの） */
+  sundayMenus?: SundayMenu[];
+  /** 日曜の予約ページに出す順（"tattoo"・"artmake"・日曜メニューの id）。分類の順は、いちばん上にあるメニューの分類から */
+  sundayOrder?: string[];
+  /** タトゥー除去・アートメイク除去の分類（空なら「除去・レーザー」） */
+  removalCategory?: string;
+}
+
+/**
+ * 日曜の予約ページで選べるメニュー（タトゥー以外）。初診・再診それぞれに時間（分。0 なら受けない）・レーン（複数なら空いているほう）・予約に付けるメニュー。
+ * 機器の名前が同じもの同士（タトゥーの照射を含む）は、レーンが違っても同じ時刻に入れない
+ */
+export interface SundayMenu {
+  id: string;
+  /** 日曜に受け付けるか（オフなら予約ページに出さない。プリセットは最初すべてオフ） */
+  enabled: boolean;
+  /** 患者に見せる名前 */
+  name: string;
+  firstMinutes: number;
+  firstLaneIds: LaneId[];
+  firstMenuId: MenuId | "";
+  repeatMinutes: number;
+  repeatLaneIds: LaneId[];
+  repeatMenuId: MenuId | "";
+  machine: string;
+  /** ご来院前のお願い（予約ページ・確定の連絡に出す。任意） */
+  note: string;
+  /** 分類（予約ページで、まず分類を選んでもらう。例：注射・注入、ピーリング、脱毛） */
+  category?: string;
+  /**
+   * 部位ごとの時間（区分〈男性・女性など〉→ 部位と分）。患者が選んだ部位の合計＋初診・再診の時間（説明など）。空なら使わない
+   */
+  /** 部位の区分。combos：まとめて選んだときの時間（予約枠時間一覧の 鼻下+顎 など。部位の番号と分） */
+  partGroups?: { name: string; parts: { name: string; minutes: number }[]; combos?: { parts: number[]; minutes: number }[] }[];
+  /** 部位ごとの時間で、1つだけ選ばせる（ほくろの個数など） */
+  pickOne?: boolean;
+  /** その問いの見出し（例：個数）。空なら「部位」 */
+  pickLabel?: string;
+  /** モニターのときネオボ撮影の枠を取るか（顔のメニュー。省くと見本の分け方） */
+  neobo?: boolean;
+  /** 針脱毛の料金の概算を出すか（性別・部位・麻酔を聞く。本数で決まるメニューだけ） */
+  needle?: boolean;
+  /** 麻酔クリームの有無を聞くか（レーザー脱毛） */
+  creamAsk?: boolean;
+  /** 本数で時間が決まるとき、1分あたりの本数（針脱毛は4）。0 なら使わない */
+  countPerMinute?: number;
+  /** 1回の時間の上限（分）。0 なら180分 */
+  maxMinutes?: number;
+  /**
+   * 麻酔つきの注入（フィルロード・ピンクグローなど）。受診したことのある方は、今回の治療内容（この治療は初めて・継続・モニター）と麻酔（院内クリーム・注射・自分で塗る・なし）で、
+   * 麻酔のレーンの麻酔10分／ネオボ撮影＋頬麻酔15分 → 40〜60分後に施術、この治療が初めてなら施術の最初の10分に医師の診察、と枠を分ける
+   */
+  flow?: boolean;
+  /** 施術の時間：麻酔クリーム（院内・自分で塗る・なし）のとき／麻酔の注射のとき */
+  creamMinutes?: number;
+  injectionMinutes?: number;
+  /** 麻酔・撮影のレーン（4番） */
+  anesLaneIds?: LaneId[];
+  creamMenuId?: MenuId | "";
+  neoboMenuId?: MenuId | "";
+  /** この治療が初めての方の医師の診察（レーンが空なら初診のレーン） */
+  doctorMenuId?: MenuId | "";
+  doctorLaneId?: LaneId | "";
 }
 
 /** 画面の配色プリセット（色そのものは globals.css） */

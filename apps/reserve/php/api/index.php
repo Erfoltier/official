@@ -190,6 +190,11 @@ try {
         $in = Http::readJson(8192);
         Http::json(LineLink::learnChat(is_array($in) ? $in : []));
     }
+    // 予約枠時間一覧（スプレッドシート）：シートを直すと Apps Script が送ってくる。レーザー脱毛の時間を合わせる（院長 11/20）
+    if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'time-sheet') {
+        Http::checkIntegrationAuth();
+        Http::json(TattooBooking::receiveTimeSheet(Schema::integrationTimeSheet(Http::readJson(262_144))));
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));
@@ -324,7 +329,8 @@ try {
     }
     if ($route === 'PATCH clinic') {
         $s = $manager();
-        Http::json(Store::updateClinic(Schema::clinic(Http::readJson()), $actor($s)));
+        // 日曜メニュー（60件まで・部位つき）を並べ替えて保存すると16KBを超えるので、院の情報だけ256KBまで受ける（院長 11/20）
+        Http::json(Store::updateClinic(Schema::clinic(Http::readJson(262_144)), $actor($s)));
     }
     if ($route === 'GET settings/restore') {
         $me(STAFF_ADMIN);

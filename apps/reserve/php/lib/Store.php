@@ -283,6 +283,8 @@ final class Store
             'department' => (string) ($c['department'] ?? ''),
             'privacyUrl' => (string) ($c['privacyUrl'] ?? ''),
             'homepageUrl' => (string) ($c['homepageUrl'] ?? ''),
+            // アクセス（地図・道順）のページ。予約確定の案内で住所の代わりに出す（空なら住所）
+            'accessUrl' => (string) ($c['accessUrl'] ?? ''),
             'intakeHours' => (string) ($c['intakeHours'] ?? ''),
             'address' => (string) ($c['address'] ?? ''),
             'intakeWeekdays' => array_values(array_map('intval', (array) ($c['intakeWeekdays'] ?? [0, 1, 2, 3, 4, 5, 6]))),
@@ -334,7 +336,7 @@ final class Store
                 unset($next['intakeHours']);
             }
         }
-        foreach ([['privacyUrl', 'プライバシーポリシーのアドレス'], ['homepageUrl', 'ホームページのアドレス']] as [$k, $label]) {
+        foreach ([['privacyUrl', 'プライバシーポリシーのアドレス'], ['homepageUrl', 'ホームページのアドレス'], ['accessUrl', 'アクセスのページのアドレス']] as [$k, $label]) {
             if (isset($input[$k])) {
                 $v = trim((string) $input[$k]);
                 if ($v === '') {
@@ -390,8 +392,43 @@ final class Store
                 $next[$k] = $menu;
             }
         }
+        // LINE の中でタトゥーの予約ページを開く LIFF アプリの ID（例：1234567890-AbCdEfGh）。空で消す
+        if (array_key_exists('tattooLiffId', $input)) {
+            $v = trim((string) $input['tattooLiffId']);
+            if ($v !== '' && !preg_match('/^\d{6,20}-[A-Za-z0-9]{4,40}$/', $v)) {
+                throw new StoreError('invalid', 'LIFF ID の形が正しくありません（例：1234567890-AbCdEfGh）');
+            }
+            $next['tattooLiffId'] = $v;
+        }
         if (isset($input['tattooSlots'])) {
             $next['tattooSlots'] = TattooBooking::normalizeWindows($input['tattooSlots']);
+        }
+        // 照射が使う機器の名前（同じ名前の日曜メニューと時間が重ならないようにする）
+        // 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか
+        foreach (['tattooKindOn', 'artmakeKindOn'] as $k) {
+            if (array_key_exists($k, $input)) {
+                $next[$k] = (bool) $input[$k];
+            }
+        }
+        // 日曜の予約ページの並び順と、タトゥー・アートメイク除去の分類（院長 11/19：まず分類を選び、次にメニュー）
+        if (isset($input['sundayOrder'])) {
+            $order = [];
+            foreach ((array) $input['sundayOrder'] as $k) {
+                if (is_string($k) && preg_match('/^(tattoo|artmake|[a-z0-9]{4,20})$/', $k) && !in_array($k, $order, true)) {
+                    $order[] = $k;
+                }
+            }
+            $next['sundayOrder'] = array_slice($order, 0, 80);
+        }
+        if (array_key_exists('removalCategory', $input)) {
+            $next['removalCategory'] = mb_substr(js_trim(normalize_width((string) $input['removalCategory'])), 0, 20);
+        }
+        if (array_key_exists('tattooMachine', $input)) {
+            $next['tattooMachine'] = mb_substr(js_trim((string) $input['tattooMachine']), 0, 30);
+        }
+        // 日曜の予約ページで、タトゥー以外に患者が選べるメニュー（院が受付を許可したものだけ）
+        if (isset($input['sundayMenus'])) {
+            $next['sundayMenus'] = TattooBooking::normalizeItems($input['sundayMenus'], array_keys(self::lanes()), array_column(self::sortedMenus(), 'id'));
         }
         // 以前の受付枠の項目（11/17 に取りやめ）は残さない
         unset($next['counselingLaneId'], $next['counselingSlots']);
@@ -986,6 +1023,27 @@ final class Store
         return $out;
     }
 
+    /** 今あるレーンの id と、使えるメニュー（削除・停止していない）の id（日曜メニューのプリセットを今の設定に合わせるため） */
+    public static function laneAndMenuIds(): array
+    {
+        return [array_keys(self::lanes()), array_column(array_filter(self::sortedMenus(), fn($m) => !empty($m['active']) && empty($m['deleted'])), 'id')];
+    }
+
+    /** その日の、どのレーンかを問わず、指定のメニューを含む予約の [開始分, 終了分]（同じ機器を使う予約が重ならないようにするため） */
+    public static function busyMinutesForMenus(string $date, array $menuIds): array
+    {
+        if ($menuIds === []) {
+            return [];
+        }
+        $out = [];
+        foreach (self::reservationsOn($date) as $r) {
+            if (!self::inactive($r) && array_intersect($menuIds, $r['menuIds'] ?? []) !== []) {
+                $out[] = [minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt'])];
+            }
+        }
+        return $out;
+    }
+
     private static function reservationsOn(string $date): array
     {
         return array_filter(Db::i()->where('reservation', 'k1', $date), fn($r) => clinic_date_of($r['startAt']) === $date);
@@ -1178,7 +1236,8 @@ final class Store
 
     public static function getSettings(): array
     {
-        return ['clinic' => self::clinic(), 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
+        // 日曜メニューは、まだ保存していなければプリセット（予約枠時間一覧から。すべてオフ）を出す
+        return ['clinic' => [...self::clinic(), 'sundayMenus' => TattooBooking::settings()['items']], 'homepageDays' => [...HomepageDays::status(), 'upcoming' => HomepageDays::dates()], 'onlineCs' => ['url' => OnlineCs::pageUrl(), 'mail' => OnlineCs::mailReady()], 'tattoo' => ['url' => TattooBooking::pageUrl(), 'lineUrl' => TattooBooking::liffUrl(), 'preview' => TattooBooking::pageUrl() !== '' ? TattooBooking::pageUrl() . '?preview=' . TattooBooking::previewToken() : '', 'sheet' => TattooBooking::sheetStatus()], 'lanes' => self::sortedLanes(), 'menus' => self::sortedMenus(), 'products' => self::sortedProducts(), 'stages' => self::liveStages()];
     }
 
     public static function searchPatients(string $query, int $limit = 20): array
@@ -1271,6 +1330,10 @@ final class Store
         }
         if (!empty($input['requestId'])) {
             $r['requestId'] = $input['requestId'];
+        }
+        // LINE の中で開いた予約ページ（タトゥー除去）から入った予約：申し込んだ LINE（ID トークンで確かめたもの）。リマインドもここへ送る
+        if (is_string($input['lineUserId'] ?? null) && preg_match('/^U[0-9a-f]{32}$/', $input['lineUserId'])) {
+            $r['lineUserId'] = $input['lineUserId'];
         }
         $r['reminder'] = ['status' => 'pending'];
         if ($by) {
@@ -5643,6 +5706,22 @@ final class Store
         }
         $m = self::createMenu($in, $by);
         return array_filter(['id' => $m['id'], 'name' => $m['name'], 'duration' => $m['duration'] ?? null], fn($v) => $v !== null);
+    }
+
+    /**
+     * LINE で確かめた予約者の LINE を、まだ LINE のない患者に紐付ける（LINE の中で開いた予約ページから）。
+     * 別の LINE が紐付いている患者はそのまま（予約ごとの LINE には送る）。紐付けたら true
+     */
+    public static function bookingLinkLine(string $patientId, string $uid, string $why, array $by): bool
+    {
+        $p = self::patients()[$patientId] ?? null;
+        if (!$p || !empty($p['deleted']) || !empty($p['lineUserId']) || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            return false;
+        }
+        $now = now_iso();
+        self::putPatient([...$p, 'lineUserId' => $uid, 'version' => $p['version'] + 1, 'updatedAt' => $now]);
+        self::recordChange($patientId, [$why], $now, $by);
+        return true;
     }
 
     /** 取り消す（記録は残る。カレンダーでは取り消しとして見える） */

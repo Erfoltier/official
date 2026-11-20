@@ -8,6 +8,7 @@ import { ApiError, deleteLane, deleteMenu, fetchMe, fetchSettings, reorder, save
 import type { StaffPublic } from "@/lib/domain/types";
 import { AuditTab, StaffTab } from "./StaffTab";
 import { ClinicTab, ThemeCard } from "./ClinicTab";
+import { WebBookingTab } from "./WebBookingTab";
 import { DisplayPrefsCard } from "./DisplayPrefsCard";
 import { DevicesTab } from "./DevicesTab";
 import { PricesTab } from "./PricesTab";
@@ -25,7 +26,7 @@ import { MenuEditor } from "./MenuEditor";
 import { ManualTab } from "./ManualTab";
 import styles from "./settings.module.css";
 
-const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "reminders", "appearance", "staff", "audit", "restore", "manual"] as const;
+const TABS = ["lanes", "menus", "stages", "products", "prices", "consents", "questionnaires", "imports", "devices", "clinic", "webBooking", "reminders", "appearance", "staff", "audit", "restore", "manual"] as const;
 type Tab = (typeof TABS)[number];
 
 const MIN_LANES = 1;
@@ -109,6 +110,9 @@ export function SettingsApp() {
           <button role="tab" aria-selected={tab === "clinic"} onClick={() => setTab("clinic")}>
             院の情報・診療時間
           </button>
+          <button role="tab" aria-selected={tab === "webBooking"} onClick={() => setTab("webBooking")}>
+            Web予約設定
+          </button>
           {(isAdmin || canEdit) && (
             <button role="tab" aria-selected={tab === "reminders"} onClick={() => setTab("reminders")}>
               リマインド
@@ -143,7 +147,7 @@ export function SettingsApp() {
         </div>
       )}
 
-      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic") && (
+      {me && !canEdit && (tab === "lanes" || tab === "menus" || tab === "stages" || tab === "products" || tab === "clinic" || tab === "webBooking") && (
         <p className={styles.lead}>このログインでは閲覧のみできます。変更・削除できるのは院長・管理者・受付と、「設定 → スタッフ」で許可されたスタッフです。</p>
       )}
       {tab === "staff" && isAdmin ? (
@@ -179,7 +183,9 @@ export function SettingsApp() {
       ) : tab === "products" ? (
         <ProductsTab products={data.products} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "clinic" ? (
-        <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} lanes={data.lanes} homepageDays={data.homepageDays} onlineCs={data.onlineCs} tattoo={data.tattoo} menus={data.menus} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+        <ClinicTab key={JSON.stringify(data.clinic)} clinic={data.clinic} lanes={data.lanes} homepageDays={data.homepageDays} onlineCs={data.onlineCs} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
+      ) : tab === "webBooking" ? (
+        <WebBookingTab key={JSON.stringify(data.clinic)} clinic={data.clinic} lanes={data.lanes} menus={data.menus} tattoo={data.tattoo} mail={data.onlineCs?.mail} canEdit={canEdit} onChanged={load} notify={notify} fail={fail} />
       ) : tab === "reminders" ? (
         <section>
           <p className={styles.lead}>リマインドの配信の設定と、要確認の患者の確認です。</p>

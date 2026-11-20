@@ -202,7 +202,7 @@ final class Reminder
                 continue;
             }
             $key = $date . '|' . ($r['visitId'] ?? $r['patientId']);
-            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'arrivalAt' => null, 'createdAt' => null];
+            $v = $visits[$key] ?? ['key' => $key, 'date' => $date, 'patient' => $p, 'reservations' => [], 'menuNames' => [], 'menuIds' => [], 'arrivalAt' => null, 'createdAt' => null];
             $v['reservations'][] = $r;
             // LINE 予約フォームから入った予約は、申し込んだ LINE（予約ごとに記録）へ返す。名前での照合はしない
             if (empty($v['lineTo']) && !empty($r['lineUserId'])) {
@@ -226,6 +226,7 @@ final class Reminder
                 $v['createdAt'] = $r['createdAt'];
             }
             foreach ($r['menuIds'] as $mid) {
+                $v['menuIds'][] = $mid;
                 $n = trim((string) ($menus[$mid]['publicName'] ?? '')) ?: (string) ($menus[$mid]['name'] ?? '');
                 if ($n !== '' && !in_array($n, $v['menuNames'], true)) {
                     $v['menuNames'][] = $n;
@@ -548,6 +549,10 @@ final class Reminder
             '{問診票}' => self::questionnaireLine($v, $channel),
         ];
         $text = strtr((string) $s['template'], $vars);
+        // タトゥー除去（日曜）の予約には、日曜のご来院の案内（入口・到着の連絡・呼び出し）を最後に足す
+        if (TattooBooking::inVisit($v)) {
+            $text = rtrim($text) . "\n\n【ご来院前のお願い】\n" . TattooBooking::NO_MAKEUP . "\n\n【日曜日のご来院について】\n" . implode("\n", TattooBooking::VISIT_NOTICE);
+        }
         $text = (string) preg_replace("/\n{3,}/", "\n\n", $text);
         return ['subject' => '【' . $vars['{院名}'] . '】' . $vars['{いつ}'] . 'のご予約のお知らせ', 'text' => $text];
     }
@@ -625,6 +630,46 @@ final class Reminder
     public static function sendAttachment(string $to, string $subject, string $text, string $filename, string $bytes, string $type): array
     {
         return self::sendMail($to, $subject, $text, ['name' => $filename, 'bytes' => $bytes, 'type' => $type]);
+    }
+
+    /** LINE で文面を1通送る（LINE の中で開いた予約ページの確定の連絡）。送れれば [true, null]、だめなら [false, 理由] */
+    public static function pushText(string $to, string $text): array
+    {
+        if (self::lineToken() === '' || !preg_match('/^U[0-9a-f]{32}$/', $to)) {
+            return [false, 'line_unavailable'];
+        }
+        return self::pushLine($to, $text);
+    }
+
+    /**
+     * 公式アカウントの友だち追加のアドレス（https://line.me/R/ti/p/@…）。Messaging API の bot/info の basicId から作り、1日覚えておく。わからなければ空
+     */
+    public static function friendUrl(): string
+    {
+        if (self::lineToken() === '') {
+            return '';
+        }
+        $cache = Db::i()->meta('lineBotInfo');
+        if (is_array($cache) && ($cache['basicId'] ?? '') !== '' && (time() - strtotime((string) $cache['at'])) < 86400) {
+            return 'https://line.me/R/ti/p/' . rawurlencode($cache['basicId']);
+        }
+        [$code, $raw] = self::http('GET', self::LINE_API . '/info', ['Authorization: Bearer ' . self::lineToken()], '');
+        $id = $code === 200 ? (string) (json_decode($raw, true)['basicId'] ?? '') : '';
+        if (!preg_match('/^@[0-9a-z_.-]{2,40}$/i', $id)) {
+            return is_array($cache) && ($cache['basicId'] ?? '') !== '' ? 'https://line.me/R/ti/p/' . rawurlencode($cache['basicId']) : '';
+        }
+        Db::i()->setMeta('lineBotInfo', ['basicId' => $id, 'at' => now_iso()]);
+        return 'https://line.me/R/ti/p/' . rawurlencode($id);
+    }
+
+    /** その LINE の人が公式アカウントを友だち追加しているか（true／false。わからなければ null） */
+    public static function isFriend(string $uid): ?bool
+    {
+        if (self::lineToken() === '' || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            return null;
+        }
+        [$code] = self::http('GET', self::LINE_API . '/profile/' . $uid, ['Authorization: Bearer ' . self::lineToken()], '');
+        return $code === 200 ? true : ($code === 404 ? false : null);
     }
 
     /** 文面だけのメールを1通送る（オンラインカウンセリングの予約の確定など） */

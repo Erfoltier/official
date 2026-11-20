@@ -500,6 +500,7 @@ final class Schema
             'publicNameEn?' => fn($x) => V::str($x, 100),
             'department?' => fn($x) => V::str($x, 40),
             'privacyUrl?' => fn($x) => V::str($x, 300),
+            'accessUrl?' => fn($x) => V::str($x, 300),
             'homepageUrl?' => fn($x) => V::str($x, 300),
             'intakeHours?' => fn($x) => V::str($x, 200),
             'intakeWeekdays?' => function ($x) {
@@ -518,6 +519,7 @@ final class Schema
                 return array_map(fn($s) => V::str($s, 40), $x);
             },
             'tattooEnabled?' => fn($x) => V::bool($x),
+            'tattooLiffId?' => fn($x) => V::str($x, 80),
             'tattooLaneId?' => fn($x) => V::str($x, 80),
             'tattooMenuId?' => fn($x) => V::str($x, 80),
             'tattooExplainLaneId?' => fn($x) => V::str($x, 80),
@@ -527,6 +529,28 @@ final class Schema
                     throw new InputError();
                 }
                 return array_map(fn($s) => V::str($s, 40), $x);
+            },
+            'tattooMachine?' => fn($x) => V::str($x, 30),
+            'tattooKindOn?' => fn($x) => V::bool($x),
+            'removalCategory?' => fn($x) => V::str($x, 20),
+            'sundayOrder?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > 80) {
+                    throw new InputError();
+                }
+                return array_map(fn($s) => V::str($s, 20), $x);
+            },
+            'artmakeKindOn?' => fn($x) => V::bool($x),
+            // 中身の確かめ（レーン・メニューがあるか、分の範囲）は TattooBooking::normalizeItems
+            'sundayMenus?' => function ($x) {
+                if (!is_array($x) || !array_is_list($x) || count($x) > TattooBooking::MAX_ITEMS) {
+                    throw new InputError();
+                }
+                foreach ($x as $it) {
+                    if (!is_array($it)) {
+                        throw new InputError();
+                    }
+                }
+                return $x;
             },
             'intakeSpecialDates?' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 400) {
@@ -643,6 +667,21 @@ final class Schema
             throw new InputError();
         }
         return $c;
+    }
+
+    /** 予約枠時間一覧のセルの値：{ rows: [[セル, ...], ...] }（300行・1行20セル・1セル500文字まで） */
+    public static function integrationTimeSheet(mixed $v): array
+    {
+        $rows = is_array($v) ? ($v['rows'] ?? null) : null;
+        if (!is_array($rows) || !array_is_list($rows) || count($rows) > 300) {
+            throw new InputError();
+        }
+        return array_map(function ($r) {
+            if (!is_array($r) || !array_is_list($r) || count($r) > 20) {
+                throw new InputError();
+            }
+            return array_map(fn($c) => is_string($c) || is_int($c) || is_float($c) ? mb_substr((string) $c, 0, 500) : '', $r);
+        }, $rows);
     }
 
     public static function integrationPrices(mixed $v): array

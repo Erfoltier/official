@@ -414,7 +414,7 @@ function GoogleKeysCard(props: {
   const api = `${serverUrl}/api/v1/integration`;
   return (
     <details className={`${styles.clinicCard} ${styles.fold}`}>
-      <summary className={styles.cardTitle}>Google 連携の接続キー（同意書・料金表）</summary>
+      <summary className={styles.cardTitle}>Google 連携の接続キー（同意書・料金表・予約枠時間一覧）</summary>
       <p className={styles.hint}>
         同意書のひな形・料金表（スプレッドシート）の Apps Script が、LANE RESERVE へ送信するときに使う接続キーです。
         各スクリプトの「プロジェクトの設定 → スクリプト プロパティ」の <code>TOKEN</code> に設定してください。
@@ -457,10 +457,10 @@ function GoogleKeysCard(props: {
         <summary>スクリプト プロパティの設定内容</summary>
         <ul className={styles.steps}>
           <li>
-            <code>TOKEN</code>：上で発行した接続キー（3つのスクリプトで同じキーを使えます）
+            <code>TOKEN</code>：上で発行した接続キー（どのスクリプトでも同じキーを使えます）
           </li>
           <li>
-            <code>RESERVE_URL</code>：問診票は <code>{api}/questionnaires</code>、同意書は <code>{api}/consent-templates</code>、料金表は <code>{api}/prices</code>
+            <code>RESERVE_URL</code>：問診票は <code>{api}/questionnaires</code>、同意書は <code>{api}/consent-templates</code>、料金表は <code>{api}/prices</code>、予約枠時間一覧（日曜の予約のレーザー脱毛の時間）は <code>{api}/time-sheet</code>
           </li>
           <li>
             <code>BASIC_USER</code>・<code>BASIC_PASS</code>：LANE RESERVE をブラウザで開くときに求められる ID・パスワード

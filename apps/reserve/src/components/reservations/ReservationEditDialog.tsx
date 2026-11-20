@@ -7,6 +7,7 @@ import { searchKey } from "@/lib/domain/text";
 import { ApiError, fetchSettings, patchReservation } from "@/components/calendar/api";
 import { MenuManagerDialog } from "@/components/settings/MenuManagerDialog";
 import styles from "./reservations.module.css";
+import { durationChoices, MAX_RESERVATION_MINUTES, minutesLabel } from "@/components/calendar/menuFormat";
 
 /** 変更に必要な予約の情報（カレンダーの予約・患者画面の予約のどちらからでも作れる） */
 export interface EditableReservation {
@@ -79,17 +80,16 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
     if (!out.includes(start)) out.push(start);
     return out.sort((a, b) => a - b);
   }, [clinic, slot, start0, start]);
-  const durOptions = useMemo(() => {
-    const out: number[] = [];
-    for (let m = 5; m <= 240; m += 5) out.push(m);
-    if (!out.includes(dur)) out.push(dur);
-    return out.sort((a, b) => a - b);
-  }, [dur]);
+  // 予約不可（360分など）や長いメニューは、そのメニューの最大まで選べる（12時間まで）
+  const durOptions = useMemo(
+    () => durationChoices(5, 240, dur, menuIds.map((id) => menuOf.get(id)).filter((m): m is NonNullable<typeof m> => !!m)),
+    [dur, menuIds, menuOf],
+  );
 
   /** メニューを足したらその標準時間を足し、外したら引く（時間を手で変えていなければ） */
   const setMenusAndDuration = (ids: string[]) => {
     const minutes = (xs: string[]) => xs.reduce((sum, id) => sum + (menuOf.get(id)?.defaultMinutes ?? 0), 0);
-    if (!durTouched) setDur((d) => Math.min(240, Math.max(5, d + minutes(ids) - minutes(menuIds))));
+    if (!durTouched) setDur((d) => Math.min(MAX_RESERVATION_MINUTES, Math.max(5, d + minutes(ids) - minutes(menuIds))));
     setMenuIds(ids);
   };
 
@@ -186,7 +186,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
             >
               {durOptions.map((m) => (
                 <option key={m} value={m}>
-                  {m}分
+                  {minutesLabel(m)}
                 </option>
               ))}
             </select>
@@ -258,7 +258,7 @@ export function ReservationEditDialog({ reservation: r, patientName, canCancel, 
               await loadSettings();
               // 新しく作ったメニューはこの予約に入れる（時間もそのメニューの分だけ足す）
               if (created?.active && menuIds.length < MAX_MENUS && !menuIds.includes(created.id)) {
-                if (!durTouched) setDur((d) => Math.min(240, d + created.defaultMinutes));
+                if (!durTouched) setDur((d) => Math.min(MAX_RESERVATION_MINUTES, d + created.defaultMinutes));
                 setMenuIds([...menuIds, created.id]);
               }
             }}
