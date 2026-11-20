@@ -610,16 +610,20 @@ describe("日曜の予約：希望施術を複数・当日施術なし（相談�
     expect(b.length).toBe(1);
     expect(b[0].memo).toContain("ほかにご相談（当日施術なし。施術の間に伺う）：医療レーザー脱毛");
   });
-  it("同じ機器は、レーンが違っても同じ時刻に入れない。続けて取れなければ15分までの待ちを入れる", async () => {
+  it("同じ機器は、レーンが違っても同じ時刻に入れない。続けて取れなければ20分までの待ちを入れる", async () => {
     const day = nextSunday();
     const c = await open(day, { sundayMenus: [botox, laser, { ...peel, category: "ピーリング" }] });
     const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
+    const entries = [{ kind: "m:botox01", sameDay: "有" }, { kind: "m:laser01", sameDay: "有" }];
     // 3番で 10:15〜10:30 に同じ機器（レーザーの施術）を使う予約
     await c.post("/reservations", { patientId: p.id, laneId: L3, menuIds: [PEEL_LASER], startAt: toIso(day, 615), endAt: toIso(day, 630) });
-    // ボトックス 10:00〜10:10 → レーザーは 10:10 からだと機器が重なるので、10:30 まで待つ（20分）は不可 → この並びでは 10:00 は出ない
-    const r = await plan({ clinicVisit: "returning", status: "continue", entries: [{ kind: "m:botox01", sameDay: "有" }, { kind: "m:laser01", sameDay: "有" }] });
-    expect(r.slots[day] ?? []).not.toContain("10:00");
-    // ボトックスのあと 10:30 から：メインで 10:00 → 待ちが 20分になるので、10:10〜 の開始なら 10:20 ボトックス→10:30 レーザー
-    void c;
+    // ボトックス 10:00〜10:10 → レーザーは機器が空く 10:30 から（待ち20分まではよい）
+    expect((await plan({ clinicVisit: "returning", status: "continue", entries })).slots[day]).toContain("10:00");
+    expect((await book(multi(day, "10:00", entries))).status).toBe(201);
+    expect(await lanesOn(c, day, L1)).toEqual([[toIso(day, 630), toIso(day, 645)]]);
+    // さらに 1番が 10:45〜11:10 埋まると、ボトックスの後の待ちが20分を超えるので、その組み合わせは取らない
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 610), endAt: toIso(day, 720) });
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [PEEL], startAt: toIso(day, 645), endAt: toIso(day, 720) });
+    expect((await plan({ clinicVisit: "returning", status: "continue", entries })).slots[day] ?? []).toEqual([]);
   });
 });
