@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-7';
+$v = '20261120-8';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -121,7 +121,7 @@ $v = '20261120-7';
         <template id="entry-tpl">
           <div class="tt-entry">
         <fieldset class="field">
-          <legend><span data-r="entry-title"><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?></span> <em>必須</em><button type="button" class="tt-entry-remove" data-r="remove" hidden>この施術を外す</button></legend>
+          <legend><span data-r="entry-title"><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?></span> <em>必須</em><button type="button" class="tt-entry-remove" data-r="remove" hidden>この施術を削除</button></legend>
 <?php if ($useCat): ?>
           <div class="choice-grid two tt-cats" data-r="cats">
 <?php foreach ($cats as $c): ?>
