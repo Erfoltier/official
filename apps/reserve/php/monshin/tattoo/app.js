@@ -97,7 +97,7 @@ function renderParts(en) {
 /** その施術の区分（初診の時間 first・再診の時間 repeat）。当院の初診 → first、再診は今回の治療内容で（麻酔つきの注入は再診なら repeat） */
 function visitOf(en) {
   const cv = val('clinicVisit');
-  const st = val('status');
+  const st = ev(en, 'status');
   const flow = itemOf(en)?.dataset.flow === '1';
   return cv === 'initial' ? 'first' : cv === 'returning' ? (flow ? 'repeat' : st === '' ? '' : st === 'new' ? 'first' : 'repeat') : '';
 }
@@ -105,14 +105,15 @@ const sameDay = (en) => ev(en, 'sameDay');
 
 /** 施術ごとの内容がそろっているか（当日施術なしなら施術を選ぶだけ） */
 function entryReady(en) {
-  if (!kindOf(en) || !sameDay(en) || !visitOf(en)) return false;
-  if (en.dataset.ok !== '1') return false;
-  if (sameDay(en) === '無') return true;
+  if (!kindOf(en) || !sameDay(en)) return false;
+  if (sameDay(en) === '無') return !!val('clinicVisit');
+  if (!visitOf(en) || en.dataset.ok !== '1') return false;
+  if (val('clinicVisit') === 'returning' && !ev(en, 'status')) return false;
   const item = itemOf(en);
   if (!item) return rects(en).length > 0;
   const partsOk = !groupsOf(item).length || (ev(en, 'group') !== '' && checkedParts(en).length > 0);
   // 麻酔つきの注入：範囲（炭酸ガスの全顔・部分など）があれば、それも
-  if (item.dataset.flow === '1') return visitOf(en) !== 'repeat' || (val('status') !== '' && ev(en, 'anesthesiaType') !== '' && partsOk);
+  if (item.dataset.flow === '1') return visitOf(en) !== 'repeat' || (ev(en, 'status') !== '' && ev(en, 'anesthesiaType') !== '' && partsOk);
   // レーザー脱毛：麻酔クリームの有無も
   if (item.dataset.cream === '1' && !ev(en, 'cream')) return false;
   if (groupsOf(item).length) return partsOk;
@@ -125,7 +126,7 @@ function entryReady(en) {
 /** 送るときの施術1つの内容 */
 function entryBody(en) {
   const item = itemOf(en);
-  const b = { kind: kindOf(en), sameDay: sameDay(en), part: ev(en, 'part') };
+  const b = { kind: kindOf(en), sameDay: sameDay(en), status: ev(en, 'status'), part: ev(en, 'part') };
   if (sameDay(en) !== '有') return b;
   if (!item) return { ...b, rects: rects(en), color: ev(en, 'color'), anesthesia: ev(en, 'anesthesia') };
   return {
@@ -145,6 +146,8 @@ function syncEntry(en, index, total) {
   // 施術を選んだら、当日施術のご希望を聞く
   R(en, 'sameday-box').hidden = !kind;
   const sd = sameDay(en);
+  // 再診の方は、施術ごとに今回の治療内容（当日施術ありのとき。院長 11/20）
+  R(en, 'status-box').hidden = !(kind && sd === '有' && cv === 'returning');
   let visit = visitOf(en);
   // 日曜メニューは、受け付けている区分だけ（当日施術なしの相談は、どちらでも）
   const firstOk = !item || item.dataset.first === '1';
@@ -228,11 +231,11 @@ const singleMode = () => entries().length === 1 && sameDay(entries()[0]) === '�
 function singleQuery(en) {
   const item = itemOf(en);
   const visit = visitOf(en);
-  if (!item) return `area=${encodeURIComponent(areaOf(rects(en)))}&visit=${visit}${visit === 'repeat' ? `&status=${encodeURIComponent(val('status'))}` : ''}`;
+  if (!item) return `area=${encodeURIComponent(areaOf(rects(en)))}&visit=${visit}${visit === 'repeat' ? `&status=${encodeURIComponent(ev(en, 'status'))}` : ''}`;
   let q = `item=${encodeURIComponent(item.value.slice(2))}&visit=${visit}`;
   const parts = groupsOf(item).length ? `&group=${encodeURIComponent(ev(en, 'group'))}&parts=${checkedParts(en).join(',')}` : '';
-  if (item.dataset.flow === '1') return visit === 'repeat' ? `${q}&status=${encodeURIComponent(val('status'))}&anesthesia=${encodeURIComponent(ev(en, 'anesthesiaType'))}${parts}` : q;
-  if (visit === 'repeat') q += `&status=${encodeURIComponent(val('status'))}`;
+  if (item.dataset.flow === '1') return visit === 'repeat' ? `${q}&status=${encodeURIComponent(ev(en, 'status'))}&anesthesia=${encodeURIComponent(ev(en, 'anesthesiaType'))}${parts}` : q;
+  if (visit === 'repeat') q += `&status=${encodeURIComponent(ev(en, 'status'))}`;
   if (item.dataset.cream === '1') q += `&cream=${encodeURIComponent(ev(en, 'cream'))}`;
   if (parts) return q + parts;
   if (item.dataset.needle === '1') return `${q}&countVio=${intOf(en, 'countVio')}&countOther=${intOf(en, 'countOther')}&sex=${encodeURIComponent(ev(en, 'sex'))}&needleAnes=${encodeURIComponent(ev(en, 'needleAnes'))}`;
@@ -240,19 +243,18 @@ function singleQuery(en) {
   return q;
 }
 /** 続けて取る予約のときの空きを読む条件 */
-const planBody = () => ({ clinicVisit: val('clinicVisit'), status: val('status'), entries: entries().map(entryBody) });
+const planBody = () => ({ clinicVisit: val('clinicVisit'), entries: entries().map(entryBody) });
 
 function syncInputs() {
   const cv = val('clinicVisit');
   document.querySelector('#initial-box').hidden = cv !== 'initial';
-  document.querySelector('#status-box').hidden = cv !== 'returning';
   const list = entries();
   list.forEach((en, i) => syncEntry(en, i, list.length));
   addButton.disabled = list.length >= MAX_ENTRIES;
   // 当日施術なし（相談のみ）の施術があるときは、カウンセリング料と最大15分の注意（当日施術の希望が1つもないとき）
   const consultOnly = list.length > 0 && list.every((en) => sameDay(en) === '無');
   document.querySelector('#consult-note').hidden = !consultOnly;
-  const ready = !!cv && (cv !== 'returning' || !!val('status')) && list.length > 0 && list.every(entryReady);
+  const ready = !!cv && list.length > 0 && list.every(entryReady);
   document.querySelector('#date-card').hidden = !ready;
   const key = !ready ? '' : singleMode() ? `s|${singleQuery(list[0])}` : `m|${JSON.stringify(planBody())}`;
   if (key !== loadedKey) {
@@ -490,7 +492,7 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (form.dataset.preview) { showErrors(['プレビューのため、予約は送れません']); return; }
   const fd = new FormData(form);
-  const body = Object.fromEntries(['clinicVisit', 'status', 'insuranceHistory', 'referrer', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
+  const body = Object.fromEntries(['clinicVisit', 'insuranceHistory', 'referrer', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
   body.lineName = lineName;
   body.agree = !!fd.get('agree');
   const list = entries();
@@ -520,12 +522,12 @@ form.addEventListener('submit', async (event) => {
   const local = [];
   if (!body.clinicVisit) local.push(LABELS.clinicVisit);
   else if (body.clinicVisit === 'initial' && !body.insuranceHistory) local.push(LABELS.initialInfo);
-  else if (body.clinicVisit === 'returning' && !body.status) local.push(LABELS.status);
   list.forEach((en, i) => {
     const head = list.length > 1 ? `施術${i + 1}：` : '';
     const item = itemOf(en);
     if (!kindOf(en)) { local.push(head + LABELS.kind); return; }
     if (!sameDay(en)) { local.push(head + LABELS.sameDay); return; }
+    if (sameDay(en) === '有' && body.clinicVisit === 'returning' && !ev(en, 'status')) { local.push(head + LABELS.status); return; }
     if (en.dataset.ok !== '1') { local.push(head + (R(en, 'visit-note').textContent || LABELS.visit)); return; }
     if (sameDay(en) === '無' || !body.clinicVisit) return;
     if (!item && !rects(en).length) local.push(head + LABELS.area);

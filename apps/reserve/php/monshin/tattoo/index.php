@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-6';
+$v = '20261120-7';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -116,14 +116,6 @@ $v = '20261120-6';
           </fieldset>
           <label class="field"><span>紹介者名（任意）</span><input name="referrer" maxlength="60" placeholder="紹介者がいる場合のみ"></label>
         </div>
-        <fieldset class="field" id="status-box" hidden>
-          <legend>今回の治療内容 <em>必須</em></legend>
-          <div class="choice-stack">
-<?php foreach (TattooBooking::STATUSES as $k => $label): ?>
-            <label class="row-choice"><input type="radio" name="status" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
-<?php endforeach; ?>
-          </div>
-        </fieldset>
 
         <div id="entries"></div>
         <template id="entry-tpl">
@@ -163,6 +155,14 @@ $v = '20261120-6';
           <div class="choice-grid two tt-two">
             <label class="pill"><input type="radio" name="sameDay" value="有"><span>有</span></label>
             <label class="pill"><input type="radio" name="sameDay" value="無"><span>無（ご相談のみ）</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="field" data-r="status-box" hidden>
+          <legend>この施術の今回の治療内容 <em>必須</em></legend>
+          <div class="choice-stack">
+<?php foreach (TattooBooking::STATUSES as $k => $label): ?>
+            <label class="row-choice"><input type="radio" name="status" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
+<?php endforeach; ?>
           </div>
         </fieldset>
         <small class="field-note" data-r="visit-note" hidden></small>

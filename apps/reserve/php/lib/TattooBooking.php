@@ -756,6 +756,7 @@ final class TattooBooking
         }
         if ($it === null) {
             return implode('／', array_filter([
+                isset(self::STATUSES[(string) ($pick['status'] ?? '')]) ? '今回の治療内容：' . self::STATUSES[$pick['status']] : null,
                 '面積：' . self::num((float) $e['area']) . 'cm²（照射' . self::treatMinutes((float) $e['area']) . '分）',
                 $e['kind'] === 'tattoo' && ($pick['color'] ?? '') !== '' ? '色：' . ($pick['color'] === 'black' ? '黒のみ' : 'カラーあり') : null,
                 '料金の目安：' . number_format(self::price((float) $e['area'])) . '円（税込・麻酔代別）',
@@ -765,6 +766,7 @@ final class TattooBooking
         }
         $what = self::pickText($it, $pick);
         return implode('／', array_filter([
+            !self::isFlow($it) && isset(self::STATUSES[(string) ($pick['status'] ?? '')]) ? '今回の治療内容：' . self::STATUSES[$pick['status']] : null,
             $what !== '' ? ((($it['countPerMinute'] ?? 0) > 0 && !self::isFlow($it)) ? '本数：' : (self::isFlow($it) ? '' : self::pickLabel($it) . '：')) . $what : null,
             ...self::needleLines($it, $pick),
             ...self::creamLines($it, $pick),
@@ -1656,6 +1658,9 @@ final class TattooBooking
                 }
                 $ref = mb_substr(js_trim(normalize_width((string) ($in['referrer'] ?? ''))), 0, 60);
                 $clinicLines = ['当院の美容皮膚科：初診（保険通院歴：' . $yn('insuranceHistory') . '、当日施術の希望：' . $yn('sameDayTreatment') . '）', $ref !== '' ? '紹介者：' . $ref : null];
+            } elseif ($multi) {
+                // 希望施術が複数：今回の治療内容は施術ごと（entriesOf で確かめ、予約メモは施術ごと）
+                $clinicLines = ['当院の美容皮膚科：再診'];
             } else {
                 if ($st === '') {
                     $badClinic[] = 'status';
@@ -1967,10 +1972,18 @@ final class TattooBooking
             if (!in_array($sameDay, ['有', '無'], true)) {
                 throw new StoreError('invalid', 'sameDay');
             }
-            $first = $clinicVisit === 'initial' || ($clinicVisit === 'returning' && !($item !== null && self::isFlow($item)) && $status === 'new');
+            // 今回の治療内容は施術ごと（院長 11/20）。再診で当日施術ありなら必須
+            $st = (string) ($e['status'] ?? $status);
+            if ($clinicVisit === 'returning' && $sameDay === '有' && !isset(self::STATUSES[$st])) {
+                throw new StoreError('invalid', 'status');
+            }
+            if (!in_array($clinicVisit, ['initial', 'returning'], true)) {
+                throw new StoreError('invalid', 'clinicVisit');
+            }
+            $first = $clinicVisit === 'initial' || ($clinicVisit === 'returning' && !($item !== null && self::isFlow($item)) && $st === 'new');
             $pick = [
                 'group' => $e['group'] ?? null, 'parts' => is_array($e['parts'] ?? null) ? $e['parts'] : [], 'count' => $e['count'] ?? null,
-                'status' => $status, 'anesthesia' => $e['anesthesiaType'] ?? null, 'sex' => $e['sex'] ?? null, 'needleAnes' => $e['needleAnes'] ?? null,
+                'status' => $clinicVisit === 'returning' ? $st : '', 'anesthesia' => $e['anesthesiaType'] ?? null, 'sex' => $e['sex'] ?? null, 'needleAnes' => $e['needleAnes'] ?? null,
                 'cream' => $e['cream'] ?? null, 'countVio' => $e['countVio'] ?? null, 'countOther' => $e['countOther'] ?? null,
             ];
             $area = null;
