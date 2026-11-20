@@ -135,6 +135,13 @@ function entryBody(en) {
   };
 }
 
+/** 針脱毛の料金の概算を出す（1行に1つずつ。「＋」「＝」の前で改行） */
+function showEstimate(en, t) {
+  const est = R(en, 'needle-est');
+  est.textContent = t ? `料金の概算\n${t.replace(/＋/g, '\n＋').replace('＝', '\n＝').replace('（料金は', '\n（料金は')}` : '';
+  est.hidden = !t;
+}
+
 /** 1つの囲みの表示を、選んだ施術に合わせる */
 function syncEntry(en, index, total) {
   const kind = kindOf(en);
@@ -196,12 +203,28 @@ function syncEntry(en, index, total) {
     renderParts(en);
   }
   R(en, 'group-box').hidden = groups.length < 2;
-  R(en, 'parts-box').hidden = groups.length === 0 || ev(en, 'group') === '';
+  // 選んだ区分の部位が1つだけ（ハイフの「頬または顎下の脂肪集中」など）なら、選んだことにして部位の問いは出さない
+  const g = groups[Number(ev(en, 'group'))];
+  const onlyOne = !!g && g.parts.length === 1;
+  if (onlyOne) inputs(en, 'parts').forEach((x) => { x.checked = true; });
+  R(en, 'parts-box').hidden = groups.length === 0 || ev(en, 'group') === '' || onlyOne;
   // 針脱毛は VIO・VIO以外の本数を別々に入れる（ふつうの本数の欄は出さない）
   R(en, 'count-box').hidden = !(item && item.dataset.count === '1' && item.dataset.needle !== '1');
   R(en, 'needle-box').hidden = !(item && item.dataset.needle === '1');
   R(en, 'cream-box').hidden = !(item && item.dataset.cream === '1');
-  if (!(item && item.dataset.needle === '1')) R(en, 'needle-est').hidden = true;
+  // 針脱毛の料金の概算：性別・本数・局所麻酔注射がそろったら、日時を選べるかに関係なくすぐ出す（院長 11/20）
+  const needleReady = !!item && item.dataset.needle === '1' && sd === '有' && needleTotal(en) > 0 && !!ev(en, 'sex') && !!ev(en, 'needleAnes');
+  const estKey = needleReady ? `item=${encodeURIComponent(item.value.slice(2))}&visit=repeat&countVio=${intOf(en, 'countVio')}&countOther=${intOf(en, 'countOther')}&sex=${encodeURIComponent(ev(en, 'sex'))}&needleAnes=${encodeURIComponent(ev(en, 'needleAnes'))}` : '';
+  if (estKey !== (en.dataset.estKey || '')) {
+    en.dataset.estKey = estKey;
+    showEstimate(en, '');
+    if (estKey) {
+      fetch(`./api.php?${estKey}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (en.dataset.estKey === estKey) showEstimate(en, typeof d.estimate === 'string' ? d.estimate : ''); })
+        .catch(() => {});
+    }
+  }
   // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は麻酔も
   R(en, 'flow-box').hidden = !(flow && visit === 'repeat');
   // 麻酔クリームだけのメニュー（炭酸ガス・ダーマペン系）は「麻酔の注射」を出さない
@@ -280,14 +303,6 @@ async function load() {
     slots = data.slots && typeof data.slots === 'object' ? data.slots : {};
     price = Number(data.price) || 0;
     duration = typeof data.duration === 'string' ? data.duration : '';
-    // 針脱毛：料金の概算（税込。1行に1つずつ）
-    const ests = singleMode() ? [data.estimate || ''] : Array.isArray(data.estimates) ? data.estimates : [];
-    list.forEach((en, i) => {
-      const est = R(en, 'needle-est');
-      const t = ests[i] || '';
-      est.textContent = t ? `料金の概算\n${t.replace(/＋/g, '\n＋').replace('＝', '\n＝').replace('（料金は', '\n（料金は')}` : '';
-      est.hidden = !t;
-    });
   } catch (_) {
     slots = {};
   }

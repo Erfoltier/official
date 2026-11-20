@@ -681,6 +681,10 @@ final class TattooBooking
                     $names[] = $g['parts'][$i]['name'];
                 }
             }
+            // 部位が1つだけの区分（ハイフの「頬または顎下の脂肪集中」など）は区分の名前だけ
+            if (count($g['parts']) === 1 && count($it['partGroups']) > 1) {
+                return $g['name'];
+            }
             return (count($it['partGroups']) > 1 ? $g['name'] . '：' : '') . implode('・', $names);
         }
         if (($it['countPerMinute'] ?? 0) > 0) {
