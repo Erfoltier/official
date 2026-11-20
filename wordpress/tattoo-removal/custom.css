@@ -319,7 +319,7 @@
 }
 .tt-guide .tt-summary-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
 .tt-guide .tt-summary dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
-.tt-guide .tt-summary dl > div { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; line-height: 1.75; }
+.tt-guide .tt-summary dl div { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; line-height: 1.75; }
 .tt-guide .tt-summary dt { font-weight: 700; color: var(--cyan); }
 .tt-guide .tt-summary dd { color: var(--tx2); }
 
@@ -453,7 +453,7 @@
 .tt-guide .tt-wide { margin: 26px 0; padding: 22px 26px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 255, 255, .04); }
 .tt-guide .tt-wide-title { font-weight: 700; color: #fff; margin-bottom: 12px; }
 .tt-guide .tt-wide dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.tt-guide .tt-wide dl > div { padding: 14px 16px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
+.tt-guide .tt-wide dl div { padding: 14px 16px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
 .tt-guide .tt-wide dt { font-family: var(--en); font-weight: 700; font-size: 18px; color: #fff; }
 .tt-guide .tt-wide dt small { display: block; font-family: inherit; font-weight: 500; font-size: 12px; color: #A9B6D6; margin-top: 2px; }
 .tt-guide .tt-wide dd { margin: 6px 0 0; font-family: var(--en); font-weight: 700; font-size: 22px; color: #5BD8FF; }
@@ -630,8 +630,8 @@
   border: 1px solid var(--line);
   font-size: 13.5px;
 }
-.tt-guide .tt-case-detail > div { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
-.tt-guide .tt-case-detail > div:last-child { border-bottom: 0; }
+.tt-guide .tt-case-detail div { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.tt-guide .tt-case-detail div:last-child { border-bottom: 0; }
 .tt-guide .tt-case-detail dt { font-weight: 700; color: #fff; }
 .tt-guide .tt-case-detail dd { color: var(--tx2); }
 
@@ -700,7 +700,7 @@
 .tt-guide .tt-over-rule { font-size: 15px; color: var(--tx2); }
 .tt-guide .tt-over-rule strong { margin-left: 6px; font-family: var(--en); font-size: 24px; color: var(--cyan); }
 .tt-guide .tt-over dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.tt-guide .tt-over dl > div { padding: 14px 18px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+.tt-guide .tt-over dl div { padding: 14px 18px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
 .tt-guide .tt-over dt { font-family: var(--en); font-size: 15px; font-weight: 500; }
 .tt-guide .tt-over dt small { margin-left: 6px; font-family: var(--jp); font-size: 11px; color: var(--tx3); }
 .tt-guide .tt-over dd { font-family: var(--en); font-weight: 700; font-size: 24px; color: #fff; white-space: nowrap; }
@@ -871,7 +871,7 @@
   .tt-guide .tt-summary { margin: 36px 16px 0; padding: 24px 20px; }
   .tt-guide .tt-summary::before { left: 20px; right: 20px; }
   .tt-guide .tt-summary dl { grid-template-columns: 1fr; }
-  .tt-guide .tt-summary dl > div { grid-template-columns: 1fr; gap: 2px; }
+  .tt-guide .tt-summary dl div { grid-template-columns: 1fr; gap: 2px; }
   .tt-guide .tt-summary dd { text-wrap: wrap; }
   .tt-guide .tt-toc { margin: 16px 16px 0; padding: 22px 20px; }
   .tt-guide .tt-toc ol { columns: 1; }
@@ -905,7 +905,7 @@
   .tt-guide .tt-ray b { left: 50%; bottom: auto; top: 6px; transform: translateX(-50%); font-size: 10px; padding: 1px 6px; }
   .tt-guide .tt-layer span { right: 10px; font-size: 11px; }
   .tt-guide .tt-case-detail { padding: 14px 18px; }
-  .tt-guide .tt-case-detail > div { grid-template-columns: 1fr; gap: 0; }
+  .tt-guide .tt-case-detail div { grid-template-columns: 1fr; gap: 0; }
   .tt-guide .tt-tl { grid-template-columns: 1fr; gap: 4px; padding: 18px 18px; }
   .tt-guide .tt-faq dt { padding: 18px 18px 6px 56px; }
   .tt-guide .tt-faq dd { padding: 8px 18px 18px 56px; }
@@ -947,3 +947,11 @@
 }
 /* ===== 見出し：英語の飾りは文字を CSS で出す（見出しの文字に混ぜない） ===== */
 .tt-guide .tt-h-en::after { content: attr(data-en); }
+/* ===== スマホ：まとめ・症例の詳細は見出しを左に、料金例は1行に（縦に長くしない） ===== */
+@media (max-width: 767px) {
+  .tt-guide .tt-summary dl div { grid-template-columns: 1fr; gap: 0; padding: 6px 0; line-height: 1.7; }
+  .tt-guide .tt-case-detail div { grid-template-columns: 6.2em minmax(0, 1fr); gap: 10px; padding: 7px 0; }
+  .tt-guide .tt-wide dl, .tt-guide .tt-over dl { gap: 8px; }
+  .tt-guide .tt-wide dl div, .tt-guide .tt-over dl div { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; }
+  .tt-guide .tt-wide dd, .tt-guide .tt-over dd { margin: 0; white-space: nowrap; }
+}
