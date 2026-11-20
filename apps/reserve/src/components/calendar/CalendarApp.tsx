@@ -438,7 +438,11 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               onClick={() => setCsOpen((v) => !v)}
               title={csOpen ? "オンラインカウンセリングの列を畳む" : "オンラインカウンセリングの列を開く"}
             >
-              オンライン{csCount > 0 ? `（${csCount}）` : ""}
+              <span className={styles.long}>オンライン{csCount > 0 ? `（${csCount}）` : ""}</span>
+              <span className={`${styles.short} ${styles.twoLine}`}>
+                オン
+                <span>ライン{csCount > 0 ? `（${csCount}）` : ""}</span>
+              </span>
             </button>
           )}
           <button className={styles.iconBtn} onClick={() => gridRef.current?.zoomBy(1 / 1.25)} aria-label="縮小">
@@ -473,7 +477,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             }}
             title={fitted ? "前の拡大率に戻す" : "1日全体を画面に収める"}
           >
-            全体表示
+            <span className={styles.long}>全体表示</span>
+            <span className={`${styles.short} ${styles.twoLine}`}>
+              全体<span>表示</span>
+            </span>
           </button>
           <button
             className={styles.btn}
@@ -556,7 +563,10 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
             {inboxCount > 0 && <span className={styles.countBadge}>{inboxCount > 99 ? "99+" : inboxCount}</span>}
           </button>
           <Link href="/patients" className={styles.btn} title="患者の検索・編集">
-            患者検索
+            <span className={styles.long}>患者検索</span>
+            <span className={`${styles.short} ${styles.twoLine}`}>
+              患者<span>検索</span>
+            </span>
           </Link>
           <Link href="/questionnaires" className={styles.iconBtn} aria-label="問診票" title="問診票の一覧">
             📋<span className={styles.cap}>問診票</span>

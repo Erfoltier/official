@@ -2938,6 +2938,21 @@ button.stagePill[data-clickable]:disabled {
   .tbView > .btn {
     font-size: 13px;
   }
+  /* 文字だけのボタン（オンライン・全体表示・患者検索）は、「文字／標準」と同じく2行に分けて収める */
+  .tbView > .btn,
+  .tbTools > a.btn {
+    min-width: 0;
+    padding-inline: 2px;
+  }
+  .twoLine {
+    font-size: 12px;
+    line-height: 1.15;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .twoLine > span {
+    display: block;
+  }
   .tbView .uiSizeLabel {
     display: block;
     margin-left: 0;

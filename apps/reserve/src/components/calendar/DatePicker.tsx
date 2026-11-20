@@ -51,6 +51,22 @@ export function DatePicker({
   const [year, setYear] = useState(Number(value.slice(0, 4)));
   const [counts, setCounts] = useState<Record<string, Record<string, number>>>({});
   const ref = useRef<HTMLDivElement>(null);
+  // スマホ：日付の面を左右にフリックすると月を移る（左へ払うと次の月）
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipe.current = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const s = swipe.current;
+    swipe.current = null;
+    const t = e.changedTouches[0];
+    if (!s || !t) return;
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    setMonth((cur) => shiftMonth(cur, dx < 0 ? 1 : -1));
+  };
 
   // 表示中の月の予約数（前後の月の端の日も出すので3か月分）
   useEffect(() => {
@@ -138,7 +154,7 @@ export function DatePicker({
               </span>
             ))}
           </div>
-          <div className={styles.grid}>
+          <div className={styles.grid} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             {gridOf(month).map((d) => {
               const wd = weekdayOf(d);
               const hol = holidayName(d);
