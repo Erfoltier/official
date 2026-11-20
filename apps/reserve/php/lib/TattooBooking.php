@@ -176,6 +176,24 @@ final class TattooBooking
         'VIO' => ['V', 'IO'],
     ];
 
+    /** 部位の名前をくらべるときの形（全角・半角と、波線 ～ 〜 ~ の違いをそろえる） */
+    private static function sheetKey(string $name): string
+    {
+        return str_replace(['~', '〜', '∼'], '～', normalize_width(js_trim($name)));
+    }
+
+    /** ホームページの部位の名前 → 予約枠時間一覧の名前 */
+    private static function sheetNameOf(string $name): string
+    {
+        $k = self::sheetKey($name);
+        foreach (self::LASER_SHEET_NAME as $from => $to) {
+            if (self::sheetKey($from) === $k) {
+                return self::sheetKey($to);
+            }
+        }
+        return $k;
+    }
+
     /**
      * 予約枠時間一覧のセルの値（行ごとの配列）から、レーザー脱毛の時間を読む。
      * ['女' => [名前 => 分], '男' => [...], 'explain' => 初診説明の分]。読めなければ null
@@ -189,7 +207,7 @@ final class TattooBooking
             if (!is_array($r)) {
                 continue;
             }
-            $a = normalize_width(js_trim((string) ($r[0] ?? '')));
+            $a = self::sheetKey((string) ($r[0] ?? ''));
             $b = $num($r[1] ?? '');
             if ($a === '男' || $a === '女') {
                 $sex = $a;
@@ -214,10 +232,11 @@ final class TattooBooking
             if (!is_array($times)) {
                 continue;
             }
+            // 前に受け取った時間も、名前の形をそろえて使う
+            $times = array_combine(array_map(fn($k) => self::sheetKey((string) $k), array_keys($times)), array_values($times));
             $idx = [];
             foreach ($g['parts'] as $i => &$pt) {
-                $n = normalize_width($pt['name']);
-                $key = self::LASER_SHEET_NAME[$n] ?? $n;
+                $key = self::sheetNameOf($pt['name']);
                 $idx[$key] = $i;
                 if (isset($times[$key])) {
                     $pt['minutes'] = $times[$key];
@@ -226,6 +245,8 @@ final class TattooBooking
             unset($pt);
             $g['combos'] = [];
             foreach (self::LASER_SHEET_COMBOS as $name => $parts) {
+                $name = self::sheetKey($name);
+                $parts = array_map(fn($p) => self::sheetKey($p), $parts);
                 if (isset($times[$name]) && array_diff($parts, array_keys($idx)) === []) {
                     $g['combos'][] = ['parts' => array_map(fn($p) => $idx[$p], $parts), 'minutes' => $times[$name]];
                 }
@@ -238,14 +259,26 @@ final class TattooBooking
         return $it;
     }
 
-    /** 予約枠時間一覧を受け取る（スプレッドシートの Apps Script から）。保存して、日曜メニューのレーザー脱毛の時間を合わせる */
+    /**
+     * 予約枠時間一覧を受け取る（スプレッドシートの Apps Script から）。保存して、日曜メニューのレーザー脱毛の時間を合わせる。
+     * シートが消された・壊れた（部位やまとめの行・初診説明が足りない、時間が数字でない）ときは何も変えず、前に受け取った時間のまま動く。
+     * 断った理由は meta laserHairSheetError に残し、Apps Script には失敗を返す（院長 11/20）
+     */
     public static function receiveTimeSheet(array $rows): array
     {
         $sheet = self::parseTimeSheet($rows);
-        if ($sheet === null) {
-            throw new StoreError('invalid', 'レーザー脱毛の時間（男・女）が読めませんでした。シートの形を確認してください');
+        $missing = $sheet === null ? ['男・女の表'] : self::sheetMissing($sheet);
+        if ($missing !== []) {
+            $reason = '予約枠時間一覧が足りないため、取り込みませんでした（前の時間のまま）：' . implode('、', array_slice($missing, 0, 10)) . (count($missing) > 10 ? ' ほか' : '');
+            Db::i()->setMeta('laserHairSheetError', ['at' => now_iso(), 'reason' => $reason]);
+            throw new StoreError('invalid', $reason);
+        }
+        $prev = Db::i()->meta('laserHairSheet');
+        if (is_array($prev)) {
+            Db::i()->setMeta('laserHairSheetPrev', $prev);
         }
         Db::i()->setMeta('laserHairSheet', [...$sheet, 'at' => now_iso()]);
+        Db::i()->setMeta('laserHairSheetError', null);
         $c = Store::clinic();
         $changed = 0;
         if (array_key_exists('sundayMenus', $c)) {
@@ -263,6 +296,42 @@ final class TattooBooking
             }
         }
         return ['ok' => true, 'female' => count($sheet['女']), 'male' => count($sheet['男']), 'changed' => $changed];
+    }
+
+    /** 受け取ったシートに足りないもの（予約ページの部位・まとめの行・初診説明）。全部そろっていれば空 */
+    private static function sheetMissing(array $sheet): array
+    {
+        $missing = [];
+        if (($sheet['explain'] ?? 0) < 5) {
+            $missing[] = '初診説明';
+        }
+        foreach ([1 => '女', 2 => '男'] as $col => $sex) {
+            $need = [];
+            foreach (self::LASER_HAIR_PARTS as $r) {
+                if ($r[$col] !== null) {
+                    $need[] = self::sheetNameOf($r[0]);
+                }
+            }
+            foreach (self::LASER_SHEET_COMBOS as $name => $parts) {
+                if (array_diff(array_map(fn($p) => self::sheetKey($p), $parts), $need) === []) {
+                    $need[] = self::sheetKey($name);
+                }
+            }
+            foreach ($need as $n) {
+                if (!isset($sheet[$sex][$n])) {
+                    $missing[] = "{$sex}の{$n}";
+                }
+            }
+        }
+        return $missing;
+    }
+
+    /** 予約枠時間一覧の取り込みの状況（設定の画面に出す） */
+    public static function sheetStatus(): array
+    {
+        $ok = Db::i()->meta('laserHairSheet');
+        $err = Db::i()->meta('laserHairSheetError');
+        return ['at' => is_array($ok) ? (string) ($ok['at'] ?? '') : '', 'errorAt' => is_array($err) ? (string) $err['at'] : '', 'error' => is_array($err) ? (string) $err['reason'] : ''];
     }
 
     /** プリセットを今の設定に合わせて出す（ないレーン・使えないメニューは空にする。オフなので、オンにするときに選び直す） */

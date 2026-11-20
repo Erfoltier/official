@@ -533,7 +533,7 @@ export function TattooCard({
   clinic: ClinicSettings;
   lanes: Lane[];
   menus: Menu[];
-  info?: { url: string; lineUrl?: string; preview?: string };
+  info?: { url: string; lineUrl?: string; preview?: string; sheet?: { at: string; errorAt: string; error: string } };
   mail?: boolean;
   canEdit: boolean;
   onChanged: () => Promise<void>;
@@ -631,6 +631,12 @@ export function TattooCard({
         )}
       </div>
       {info?.preview && <p className={styles.hint}>プレビューは保存した設定で出ます（変えたら先に保存）。プレビューからは予約できません。</p>}
+      {info?.sheet && (info.sheet.at || info.sheet.error) && (
+        <p className={styles.hint} data-invalid={info.sheet.error ? true : undefined}>
+          予約枠時間一覧（スプレッドシート）：{info.sheet.at ? `最後に取り込んだ日時 ${new Date(info.sheet.at).toLocaleString("ja-JP")}。` : ""}
+          {info.sheet.error ? `${new Date(info.sheet.errorAt).toLocaleString("ja-JP")} に届いたシートは取り込みませんでした。${info.sheet.error.replace(/^予約枠時間一覧が足りないため、取り込みませんでした（前の時間のまま）：/, "足りないもの：")}（レーザー脱毛の時間は前のまま）` : ""}
+        </p>
+      )}
       <SundayMenusEditor items={items} setItems={setItems} lanes={lanes} menus={menus} canEdit={canEdit} order={order} setOrder={setOrder} fixed={[
         {
           key: "tattoo",

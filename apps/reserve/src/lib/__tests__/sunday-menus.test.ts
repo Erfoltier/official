@@ -122,6 +122,22 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const saved = (await c.get("/settings")).clinic.sundayMenus.find((x: any) => x.id === "laserhair");
     const minOf = (g: number, name: string) => saved.partGroups[g].parts.find((x: any) => x.name === name).minutes;
     expect([minOf(0, "鼻下"), minOf(1, "鼻下"), minOf(1, "両頬"), minOf(0, "太もも"), minOf(1, "太もも")]).toEqual([5, 10, 5, 30, 40]);
+    // シートが消された・壊れたときは取り込まず、前の時間のまま（院長 11/20）
+    const send = (r: unknown) => h.srv.client().raw("POST", "/api/v1/integration/time-sheet", { rows: r }, { "X-Integration-Token": token });
+    const emptied = await send([["主に看護師レーン"], [""], ["レーザー脱毛"]]);
+    expect(emptied.status).toBeGreaterThanOrEqual(400);
+    const broken = rows.map((r: string[]) => (r[0] === "鼻下" ? ["鼻下", ""] : r));
+    expect((await send(broken)).status).toBeGreaterThanOrEqual(400);
+    const noCombo = rows.filter((r: string[]) => r[0] !== "鼻下+顎");
+    expect((await send(noCombo)).status).toBeGreaterThanOrEqual(400);
+    const after = (await c.get("/settings")).clinic.sundayMenus.find((x: any) => x.id === "laserhair");
+    expect(after.partGroups).toEqual(saved.partGroups);
+    expect(after.firstMinutes).toBe(saved.firstMinutes);
+    const st = (await c.get("/settings")).tattoo.sheet;
+    expect(st.error).toContain("女の鼻下");
+    // 直したシートが届けば取り込み、断った記録は消す
+    expect((await send(rows)).status).toBe(200);
+    expect((await c.get("/settings")).tattoo.sheet.error).toBe("");
     const idx = (g: number, name: string) => saved.partGroups[g].parts.findIndex((x: any) => x.name === name);
     const q = (g: number, names: string[]) => `item=laserhair&visit=repeat&cream=no&group=${g}&parts=${names.map((n) => idx(g, n)).join(",")}`;
     // 女性 鼻下＋顎＋顎下：ばらなら15分だが、まとめの10分。男性 鼻下＋顎：20分 → まとめの10分。男性 V＋IO：25分 → VIO の30分
