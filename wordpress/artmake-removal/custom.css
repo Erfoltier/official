@@ -951,6 +951,8 @@
   .tt-guide .tt-chips { flex-wrap: wrap; gap: 5px; margin-top: 10px; }
   .tt-guide .tt-chip { width: 12px; height: 12px; }
 }
+/* ===== 見出し：英語の飾りは文字を CSS で出す（見出しの文字に混ぜない） ===== */
+.tt-guide .tt-h-en::after { content: attr(data-en); }
 
 /* ===== 筆記体（タトゥーのレタリング風）：装飾の英数字のみ。料金などの数字は読みやすい欧文セリフのまま ===== */
 .tt-guide { --script: "Pinyon Script", "Cormorant Garamond", serif; }
