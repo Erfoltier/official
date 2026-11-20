@@ -588,7 +588,7 @@ describe("日曜の予約：希望施術を複数・当日施術なし（相談�
     const c = await open(day, { sundayMenus: [botox, hair] });
     const r = await plan({ clinicVisit: "initial", entries: [{ kind: "m:botox01", sameDay: "無" }] });
     expect(r.slots[day]).toEqual(["10:00"]);
-    expect(r.duration).toContain("ご相談15分");
+    expect(r.duration).toBe("約15分（ご相談15分）");
     expect((await book(multi(day, "10:00", [{ kind: "m:botox01", sameDay: "無" }], { clinicVisit: "initial", insuranceHistory: "無", sameDayTreatment: "無" }))).status).toBe(201);
     expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
     // 脱毛とボトックスの相談 → 看護師レーンに15分だけ

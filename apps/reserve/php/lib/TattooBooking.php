@@ -2215,7 +2215,9 @@ final class TattooBooking
             $total += $m;
             $parts[] = ($job['consult'] ? 'ご相談' : $job['label']) . "{$m}分";
         }
-        return '約' . $total . '分〜（' . implode('・', $parts) . '。混雑により施術の間に少しお待ちいただく場合があります）';
+        return count($jobs) > 1
+            ? '約' . $total . '分〜（' . implode('・', $parts) . '。混雑により施術の間に少しお待ちいただく場合があります）'
+            : '約' . $total . '分（' . $parts[0] . '）';
     }
 
     private static function num(float $a): string
