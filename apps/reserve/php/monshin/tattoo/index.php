@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-10';
+$v = '20261120-11';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -66,6 +66,7 @@ $v = '20261120-10';
       <p class="eyebrow">SUNDAY RESERVATION</p>
       <h1>日曜日のご予約</h1>
       <p>このページは<strong>日曜日の診療</strong>のご予約です。ほかの美容皮膚科の診療日（水曜・祝日）とは異なります。</p>
+      <p class="tt-limited">日曜日は<strong>メニューを限定</strong>しています。ご予約いただけるのは、下に表示しているメニューのみです。</p>
 <?php else: ?>
       <p class="eyebrow">TATTOO / ART MAKE REMOVAL</p>
       <h1>タトゥー・アートメイク除去のご予約</h1>

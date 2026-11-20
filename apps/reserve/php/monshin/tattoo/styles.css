@@ -70,3 +70,6 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-add{width:100%;padding:12px;margin:4px 0 8px;border:1px dashed #a4473f;border-radius:12px;background:transparent;color:#a4473f;font:inherit;font-weight:700;cursor:pointer}
 .tt-add[disabled]{opacity:.4;cursor:default}
 .tt-consult{margin-top:6px;font-weight:600}
+/* 冒頭の説明文は横幅いっぱいに（右の余白を使う。石の写真の上でも読めるよう、文字の後ろを少し明るく。院長 11/20） */
+.clinic-header p:not(.eyebrow){max-width:none;text-shadow:0 0 6px rgba(252,247,240,.95),0 0 2px rgba(252,247,240,.95)}
+.clinic-header .tt-limited{margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(252,247,240,.82);color:#4f433b;line-height:1.6;text-shadow:none}
