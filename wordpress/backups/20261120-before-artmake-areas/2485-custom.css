@@ -961,6 +961,8 @@
   .tt-guide .tt-wide dl div, .tt-guide .tt-over dl div { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; }
   .tt-guide .tt-wide dd, .tt-guide .tt-over dd { margin: 0; white-space: nowrap; }
 }
+/* 承認番号の横の PMDA 添付文書へのリンク */
+.tt-guide .tt-approved-no a { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ===== 筆記体（タトゥーのレタリング風）：装飾の英数字のみ。料金などの数字は読みやすい欧文セリフのまま ===== */
 .tt-guide { --script: "Pinyon Script", "Cormorant Garamond", serif; }
