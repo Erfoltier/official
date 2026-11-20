@@ -20,6 +20,21 @@ try {
     if ($method === 'GET') {
         $area = is_numeric($_GET['area'] ?? null) ? (float) $_GET['area'] : 0.0;
         $first = ($_GET['visit'] ?? '') === 'first';
+        // 希望施術が複数・当日施術なし（相談のみ）：plan に施術ごとの一覧（JSON）。続けて取れる来院の時刻（院長 11/20）
+        if (isset($_GET['plan'])) {
+            $plan = json_decode(substr((string) $_GET['plan'], 0, 8000), true, 8);
+            $sNow = TattooBooking::settings();
+            try {
+                $entries = TattooBooking::entriesOf(is_array($plan['entries'] ?? null) ? $plan['entries'] : [], (string) ($plan['clinicVisit'] ?? ''), (string) ($plan['status'] ?? ''), $sNow);
+            } catch (StoreError $e) {
+                $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) [], 'error' => $e->getMessage(), 'today' => now_in_clinic()['date']]);
+            }
+            $jobs = TattooBooking::jobsOf($entries, $sNow);
+            $chain = TattooBooking::planChain($jobs, (bool) array_filter($entries, fn($e) => $e['first']), $sNow);
+            // 針脱毛の料金の概算（施術ごと）
+            $est = array_map(fn($e) => $e['sameDay'] && $e['item'] !== null && !empty($e['item']['needle']) ? ((TattooBooking::needleEstimate($e['pick'])['text'] ?? '') !== '' ? TattooBooking::needleEstimate($e['pick'])['text'] . '（' . TattooBooking::ESTIMATE_NOTE . '）' : '') : '', $entries);
+            $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) array_map(fn($l) => array_map(fn($c) => $c[0], $l), $chain), 'duration' => TattooBooking::chainDurationText($jobs), 'estimates' => $est, 'today' => now_in_clinic()['date']]);
+        }
         // 日曜メニュー（タトゥー以外）：item で選んだメニューの空き
         $itemId = (string) ($_GET['item'] ?? '');
         if ($itemId !== '') {

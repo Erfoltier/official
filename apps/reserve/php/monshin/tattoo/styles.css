@@ -23,7 +23,7 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 #done .tt-visit{text-align:left;margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
 .tt-visit p + h2{margin-top:16px}
 .tt-cats{margin-bottom:10px}
-#kinds{margin-top:4px}
+[data-r="kinds"]{margin-top:4px}
 /* 分類は丸いタブ、選んだ分類の施術は下の囲みにリストで（同じ見た目だと展開されたと分からない。院長 11/19） */
 .tt-cats{gap:7px}
 .tt-cats .pill span{border-radius:999px;padding:9px 6px;font-size:.8rem;font-weight:700}
@@ -50,10 +50,11 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-rect{gap:6px 8px}
 .tt-rect label span{white-space:nowrap;font-size:.86rem}
 .tt-rect input{min-width:5em}
-/* ご来院前のお願い〜料金規定を読んだことの確認（必須。院長 11/20） */
-.tt-agree{display:flex;gap:10px;align-items:flex-start;margin:18px 0 0;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:var(--surface,#fff);font-weight:600;line-height:1.6;cursor:pointer}
-.tt-agree input{width:22px;height:22px;flex:none;margin:2px 0 0}
-.tt-agree em{font-style:normal;font-size:.75rem;color:#a4473f;margin-left:4px}
+/* ご来院前のお願い〜料金規定を読んだことの確認（必須。チェックの横に必須、改行して文。院長 11/20） */
+.tt-agree{display:grid;gap:8px;margin:18px 0 0;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:var(--surface,#fff);font-weight:600;line-height:1.6;cursor:pointer}
+.tt-agree-head{display:flex;align-items:center;gap:8px}
+.tt-agree input{width:24px;height:24px;flex:none;margin:0}
+.tt-agree em{font-style:normal;font-size:.75rem;color:#a4473f;border:1px solid currentColor;border-radius:6px;padding:1px 6px}
 /* LINE の友だち追加のお願い（友だち追加してから予約の画面へ。院長 11/20） */
 .tt-gate{text-align:center}
 .tt-gate h2{margin:0 0 10px}
@@ -61,4 +62,11 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-gate .submit-button{display:block;text-decoration:none;margin:0 0 10px}
 .tt-gate-again{width:100%;padding:12px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:transparent;font:inherit;font-weight:600;cursor:pointer;margin:0 0 10px}
 .tt-gate small{display:block}
-#needle-est{white-space:pre-line}
+[data-r="needle-est"]{white-space:pre-line}
+/* 希望施術を複数（院長 11/20） */
+.tt-entry{margin:0 0 18px;padding:14px 0 0;border-top:1px dashed var(--line,#d8cfc6)}
+.tt-entry:first-child{border-top:0;padding-top:0}
+.tt-entry-remove{float:right;margin-left:8px;padding:2px 10px;border:1px solid var(--line,#d8cfc6);border-radius:999px;background:transparent;font:inherit;font-size:.8rem;cursor:pointer}
+.tt-add{width:100%;padding:12px;margin:4px 0 8px;border:1px dashed #a4473f;border-radius:12px;background:transparent;color:#a4473f;font:inherit;font-weight:700;cursor:pointer}
+.tt-add[disabled]{opacity:.4;cursor:default}
+.tt-consult{margin-top:6px;font-weight:600}

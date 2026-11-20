@@ -558,3 +558,68 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect((await slots("item=botox01&visit=first")).slots[day]).toEqual(["10:30"]);
   });
 });
+
+describe("日曜の予約：希望施術を複数・当日施術なし（相談のみ）", () => {
+  const PEEL_LASER = "menu-s0000A1344"; // レーザー脱毛（機器を使う施術として）
+  const laser = { id: "laser01", name: "顔のレーザー", category: "除去・レーザー", firstMinutes: 20, firstLaneIds: [MAIN], firstMenuId: CONSULT, repeatMinutes: 15, repeatLaneIds: [L1], repeatMenuId: PEEL_LASER, machine: "ジェントルマックスプロ", note: "" };
+  const plan = async (body: object) => (await (await fetch(`${h.srv.base}/monshin/tattoo/api.php?plan=${encodeURIComponent(JSON.stringify(body))}`)).json()) as any;
+  const multi = (day: string, time: string, entries: object[], extra: object = {}, phone = "09050000001") => ({
+    ...person(day, time, {}, phone), item: undefined, visit: "", clinicVisit: "returning", status: "continue", entries, ...extra,
+  });
+  it("選んだ順に続けて取る（レーンをまたいでよい）。ピーリングは同じ日のレーザーの後", async () => {
+    const day = nextSunday();
+    const c = await open(day, { sundayMenus: [botox, { ...peel, category: "ピーリング" }, laser] });
+    // ピーリング → ボトックス：1番でピーリング 10:00〜10:20、続けてメインでボトックス 10:20〜10:30
+    const r1 = await plan({ clinicVisit: "returning", status: "continue", entries: [{ kind: "m:peel0001", sameDay: "有" }, { kind: "m:botox01", sameDay: "有" }] });
+    expect(r1.slots[day]).toEqual(["10:00"]);
+    expect(r1.duration).toContain("約30分");
+    expect((await book(multi(day, "10:00", [{ kind: "m:peel0001", sameDay: "有" }, { kind: "m:botox01", sameDay: "有" }]))).status).toBe(201);
+    expect(await lanesOn(c, day, L1)).toEqual([[toIso(day, 600), toIso(day, 620)]]);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 620), toIso(day, 630)]]);
+    const rs = (await c.get(`/day?date=${day}`)).reservations;
+    expect(rs.find((x: any) => x.laneId === MAIN).memo).toContain("この日のご予約：マッサージピール／ボトックス注射");
+    // ピーリングを先に選んでも、顔のレーザーが先（レーザー 15分 → ピーリング 20分）
+    const r2 = await plan({ clinicVisit: "returning", status: "continue", entries: [{ kind: "m:peel0001", sameDay: "有" }, { kind: "m:laser01", sameDay: "有" }] });
+    expect(r2.duration).toMatch(/^約35分〜（顔のレーザー15分・マッサージピール20分/);
+  });
+  it("当日施術なしの相談は、いくつあってもまとめて15分（脱毛の相談があれば看護師レーン、なければ医師レーン）", async () => {
+    const day = nextSunday();
+    const hair = { id: "laserhair", name: "医療レーザー脱毛", category: "脱毛", firstMinutes: 15, firstLaneIds: [L1], firstMenuId: PEEL, repeatMinutes: 0, repeatLaneIds: [L1], repeatMenuId: PEEL, machine: "", note: "", partGroups: [{ name: "女性", parts: [{ name: "両ワキ", minutes: 5 }] }] };
+    const c = await open(day, { sundayMenus: [botox, hair] });
+    const r = await plan({ clinicVisit: "initial", entries: [{ kind: "m:botox01", sameDay: "無" }] });
+    expect(r.slots[day]).toEqual(["10:00"]);
+    expect(r.duration).toContain("ご相談15分");
+    expect((await book(multi(day, "10:00", [{ kind: "m:botox01", sameDay: "無" }], { clinicVisit: "initial", insuranceHistory: "無", sameDayTreatment: "無" }))).status).toBe(201);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+    // 脱毛とボトックスの相談 → 看護師レーンに15分だけ
+    expect((await book(multi(day, "10:00", [{ kind: "m:botox01", sameDay: "無" }, { kind: "m:laserhair", sameDay: "無" }], { clinicVisit: "initial", insuranceHistory: "無", sameDayTreatment: "無" }, "09050000002"))).status).toBe(201);
+    const n = (await c.get(`/day?date=${day}`)).reservations.filter((x: any) => x.laneId === L1 || x.laneId === L3);
+    expect(n.map((x: any) => [x.startAt, x.endAt])).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+    expect(n[0].memo).toContain("ご相談のみ（当日施術なし）：ボトックス注射・医療レーザー脱毛");
+    // 当日施術の希望が1つでもあれば、相談の枠は別に取らず、施術の予約のメモにだけ書く（患者への連絡には出さない）
+    const out = await h.srv.php(`
+      Db::i()->setMeta('reminderSettings', [...Reminder::defaults(), 'fromEmail' => 'info@example.jp']);
+      $sent = [];
+      Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
+      $r = TattooBooking::book(json_decode('${JSON.stringify(multi(day, "10:15", [{ kind: "m:botox01", sameDay: "有" }, { kind: "m:laserhair", sameDay: "無" }], {}, "09050000003"))}', true), '127.0.0.41');
+      return ['r' => $r, 'mail' => $sent[0] ?? ''];
+    `);
+    expect(out.r).toMatchObject({ ok: true, time: "10:15", end: "10:25" });
+    expect(out.mail).not.toContain("相談");
+    const b = (await c.get(`/day?date=${day}`)).reservations.filter((x: any) => x.startAt === toIso(day, 615));
+    expect(b.length).toBe(1);
+    expect(b[0].memo).toContain("ほかにご相談（当日施術なし。施術の間に伺う）：医療レーザー脱毛");
+  });
+  it("同じ機器は、レーンが違っても同じ時刻に入れない。続けて取れなければ15分までの待ちを入れる", async () => {
+    const day = nextSunday();
+    const c = await open(day, { sundayMenus: [botox, laser, { ...peel, category: "ピーリング" }] });
+    const p = await c.post("/patients", { name: "院内 太郎", kana: "インナイ タロウ", birthDate: "1980-01-01" });
+    // 3番で 10:15〜10:30 に同じ機器（レーザーの施術）を使う予約
+    await c.post("/reservations", { patientId: p.id, laneId: L3, menuIds: [PEEL_LASER], startAt: toIso(day, 615), endAt: toIso(day, 630) });
+    // ボトックス 10:00〜10:10 → レーザーは 10:10 からだと機器が重なるので、10:30 まで待つ（20分）は不可 → この並びでは 10:00 は出ない
+    const r = await plan({ clinicVisit: "returning", status: "continue", entries: [{ kind: "m:botox01", sameDay: "有" }, { kind: "m:laser01", sameDay: "有" }] });
+    expect(r.slots[day] ?? []).not.toContain("10:00");
+    // ボトックスのあと 10:30 から：メインで 10:00 → 待ちが 20分になるので、10:10〜 の開始なら 10:20 ボトックス→10:30 レーザー
+    void c;
+  });
+});

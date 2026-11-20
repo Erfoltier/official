@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-5';
+$v = '20261120-6';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -98,36 +98,6 @@ $v = '20261120-5';
           <span class="step">1</span>
           <div><h2>ご希望の内容</h2><p><?= $tattooOn ? '除去の場合は、照射する面積によってご予約いただける時間が変わります' : 'ご希望の施術を選んでください' ?></p></div>
         </div>
-        <fieldset class="field">
-          <legend><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?> <em>必須</em></legend>
-<?php if ($useCat): ?>
-          <div class="choice-grid two tt-cats" id="cats">
-<?php foreach ($cats as $c): ?>
-            <label class="pill"><input type="radio" name="cat" value="<?= $h($c) ?>"><span><?= $h($c) ?></span></label>
-<?php endforeach; ?>
-          </div>
-          <p class="field-note" id="cat-note">分類を選ぶと、施術が出ます</p>
-<?php endif; ?>
-<?php if ($useCat): ?>
-          <div class="tt-sub" id="sub" hidden>
-            <p class="tt-sub-title" id="sub-title"></p>
-<?php endif; ?>
-          <div class="<?= $useCat ? 'tt-sub-list' : 'choice-grid two' ?>" id="kinds">
-<?php foreach ($menus as $m): ?>
-<?php if ($m['key'] === 'tattoo'): ?>
-            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
-<?php elseif ($m['key'] === 'artmake'): ?>
-            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
-<?php else: $it = $m['item']; ?>
-            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>" data-noinj="<?= $it['noInjection'] ? '1' : '' ?>" data-needle="<?= $it['needle'] ? '1' : '' ?>" data-cream="<?= $it['creamAsk'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
-<?php endif; ?>
-<?php endforeach; ?>
-          </div>
-<?php if ($useCat): ?>
-          </div>
-<?php endif; ?>
-          <p class="field-note" id="item-note" hidden></p>
-        </fieldset>
         <!-- 当院の美容皮膚科の初診・再診（水曜・祝日の LINE 予約申請フォームと同じ問い。院長 11/19）。予約の時間はここから決める -->
         <fieldset class="field">
           <legend>当院の美容皮膚科の受診 <em>必須</em></legend>
@@ -144,13 +114,6 @@ $v = '20261120-5';
               <label class="pill"><input type="radio" name="insuranceHistory" value="無"><span>無</span></label>
             </div>
           </fieldset>
-          <fieldset class="field">
-            <legend>当日施術のご希望 <em>必須</em></legend>
-            <div class="choice-grid two tt-two">
-              <label class="pill"><input type="radio" name="sameDayTreatment" value="有"><span>有</span></label>
-              <label class="pill"><input type="radio" name="sameDayTreatment" value="無"><span>無</span></label>
-            </div>
-          </fieldset>
           <label class="field"><span>紹介者名（任意）</span><input name="referrer" maxlength="60" placeholder="紹介者がいる場合のみ"></label>
         </div>
         <fieldset class="field" id="status-box" hidden>
@@ -161,32 +124,69 @@ $v = '20261120-5';
 <?php endforeach; ?>
           </div>
         </fieldset>
-        <div hidden>
-          <input type="radio" name="visit" value="first">
-          <input type="radio" name="visit" value="repeat">
-        </div>
-        <small class="field-note" id="visit-note" hidden></small>
 
-        <div id="flow-box" hidden>
+        <div id="entries"></div>
+        <template id="entry-tpl">
+          <div class="tt-entry">
+        <fieldset class="field">
+          <legend><span data-r="entry-title"><?= $items !== [] ? 'ご希望の施術' : '除去したいもの' ?></span> <em>必須</em><button type="button" class="tt-entry-remove" data-r="remove" hidden>この施術を外す</button></legend>
+<?php if ($useCat): ?>
+          <div class="choice-grid two tt-cats" data-r="cats">
+<?php foreach ($cats as $c): ?>
+            <label class="pill"><input type="radio" name="cat" value="<?= $h($c) ?>"><span><?= $h($c) ?></span></label>
+<?php endforeach; ?>
+          </div>
+          <p class="field-note" data-r="cat-note">分類を選ぶと、施術が出ます</p>
+<?php endif; ?>
+<?php if ($useCat): ?>
+          <div class="tt-sub" data-r="sub" hidden>
+            <p class="tt-sub-title" data-r="sub-title"></p>
+<?php endif; ?>
+          <div class="<?= $useCat ? 'tt-sub-list' : 'choice-grid two' ?>" data-r="kinds">
+<?php foreach ($menus as $m): ?>
+<?php if ($m['key'] === 'tattoo'): ?>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="tattoo"><span>タトゥー・刺青<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php elseif ($m['key'] === 'artmake'): ?>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
+<?php else: $it = $m['item']; ?>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>" data-noinj="<?= $it['noInjection'] ? '1' : '' ?>" data-needle="<?= $it['needle'] ? '1' : '' ?>" data-cream="<?= $it['creamAsk'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
+<?php endif; ?>
+<?php endforeach; ?>
+          </div>
+<?php if ($useCat): ?>
+          </div>
+<?php endif; ?>
+          <p class="field-note" data-r="item-note" hidden></p>
+        </fieldset>
+        <fieldset class="field" data-r="sameday-box">
+          <legend>この施術の当日施術のご希望 <em>必須</em></legend>
+          <div class="choice-grid two tt-two">
+            <label class="pill"><input type="radio" name="sameDay" value="有"><span>有</span></label>
+            <label class="pill"><input type="radio" name="sameDay" value="無"><span>無（ご相談のみ）</span></label>
+          </div>
+        </fieldset>
+        <small class="field-note" data-r="visit-note" hidden></small>
+        <div data-r="options">
+        <div data-r="flow-box" hidden>
           <fieldset class="field">
             <legend>麻酔 <em>必須</em></legend>
             <div class="choice-grid two">
 <?php foreach (TattooBooking::ANESTHESIA as $k => $label): ?>
-              <label class="pill" id="anes-<?= $h($k) ?>"><input type="radio" name="anesthesiaType" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
+              <label class="pill" data-r="anes-<?= $h($k) ?>"><input type="radio" name="anesthesiaType" value="<?= $h($k) ?>"><span><?= $h($label) ?></span></label>
 <?php endforeach; ?>
             </div>
             <small class="field-note">院内の麻酔クリームの方は、麻酔のあと約45分お待ちいただいてから施術します（ご来院の時刻は麻酔の時刻です）</small>
           </fieldset>
         </div>
-        <fieldset class="field" id="group-box" hidden>
+        <fieldset class="field" data-r="group-box" hidden>
           <legend>区分 <em>必須</em></legend>
-          <div class="choice-grid two" id="group-list"></div>
+          <div class="choice-grid two" data-r="group-list"></div>
         </fieldset>
-        <fieldset class="field" id="parts-box" hidden>
-          <legend id="parts-legend">ご希望の部位 <em>必須</em>（いくつでも選べます）</legend>
-          <div class="choice-grid two" id="parts-list"></div>
+        <fieldset class="field" data-r="parts-box" hidden>
+          <legend data-r="parts-legend">ご希望の部位 <em>必須</em>（いくつでも選べます）</legend>
+          <div class="choice-grid two" data-r="parts-list"></div>
         </fieldset>
-        <div id="cream-box" hidden>
+        <div data-r="cream-box" hidden>
           <fieldset class="field">
             <legend>麻酔クリーム <em>必須</em></legend>
             <div class="choice-grid two tt-two">
@@ -197,7 +197,7 @@ $v = '20261120-5';
             <small class="field-note">約両手面積あたり<?= number_format(TattooBooking::CREAM_YEN) ?>円（税込）。効果が出るまで約1時間かかります</small>
           </fieldset>
         </div>
-        <div id="needle-box" hidden>
+        <div data-r="needle-box" hidden>
           <fieldset class="field">
             <legend>性別 <em>必須</em></legend>
             <div class="choice-grid two tt-two">
@@ -220,26 +220,26 @@ $v = '20261120-5';
           </fieldset>
           <p class="field-note">針は1本分の料金を含みます。毛の太さ・深さが異なる部位を施術する場合は、それに合わせた別の針を別途ご購入いただく必要がございます。</p>
         </div>
-        <label class="field" id="count-box" hidden><span>本数 <em>必須</em></span><input name="count" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="前回お伝えした本数（例：300）"><small class="field-note">本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</small></label>
-        <p class="tt-area-result" id="needle-est" aria-live="polite" hidden></p>
+        <label class="field" data-r="count-box" hidden><span>本数 <em>必須</em></span><input name="count" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="前回お伝えした本数（例：300）"><small class="field-note">本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</small></label>
+        <p class="tt-area-result" data-r="needle-est" aria-live="polite" hidden></p>
 
-        <div class="tt-area" id="area-box" hidden>
+        <div class="tt-area" data-r="area-box" hidden>
           <p class="tt-area-title">希望照射面積 <em>必須</em></p>
-          <p class="field-note" id="area-help">タトゥーをすべて含めることのできる長方形を考え、その長い辺と短い辺をcmで入力してください。</p>
+          <p class="field-note" data-r="area-help">タトゥーをすべて含めることのできる長方形を考え、その長い辺と短い辺をcmで入力してください。</p>
           <div class="tt-rect" data-rect="0">
-            <span class="tt-rect-label" id="rect0-label">長方形</span>
+            <span class="tt-rect-label" data-r="rect0-label">長方形</span>
             <label><input name="r0a" type="number" inputmode="decimal" min="0.1" max="100" step="0.1" placeholder="長い辺"><span>cm ×</span></label>
             <label><input name="r0b" type="number" inputmode="decimal" min="0.1" max="100" step="0.1" placeholder="短い辺"><span>cm</span></label>
           </div>
-          <div class="tt-rect" data-rect="1" id="rect1" hidden>
+          <div class="tt-rect" data-rect="1" data-r="rect1" hidden>
             <span class="tt-rect-label">右眉</span>
             <label><input name="r1a" type="number" inputmode="decimal" min="0.1" max="100" step="0.1" placeholder="長い辺"><span>cm ×</span></label>
             <label><input name="r1b" type="number" inputmode="decimal" min="0.1" max="100" step="0.1" placeholder="短い辺"><span>cm</span></label>
           </div>
-          <p class="tt-area-result" id="area-result" aria-live="polite"></p>
+          <p class="tt-area-result" data-r="area-result" aria-live="polite"></p>
         </div>
 
-        <fieldset class="field" id="color-box" hidden>
+        <fieldset class="field" data-r="color-box" hidden>
           <legend>インクの色（任意）</legend>
           <div class="choice-grid two">
             <label class="pill"><input type="radio" name="color" value="black"><span>黒のみ</span></label>
@@ -247,7 +247,7 @@ $v = '20261120-5';
           </div>
         </fieldset>
         <label class="field"><span>部位（任意）</span><input name="part" maxlength="60" placeholder="例：左腕・眉"></label>
-        <fieldset class="field" id="anes-box">
+        <fieldset class="field" data-r="anes-box">
           <legend>局所麻酔注射（任意）</legend>
           <div class="choice-grid two">
             <label class="pill"><input type="radio" name="anesthesia" value="no" checked><span>希望しない</span></label>
@@ -255,6 +255,11 @@ $v = '20261120-5';
           </div>
           <small class="field-note">極細の針による麻酔注射です（1ccあたり5,500円・税込）</small>
         </fieldset>
+        </div>
+          </div>
+        </template>
+        <button type="button" class="tt-add" id="add-entry">＋ 希望施術を追加</button>
+        <p class="field-note tt-consult" id="consult-note" hidden><?= $h(TattooBooking::CONSULT_NOTICE) ?></p>
       </section>
 
       <section class="card" id="date-card" hidden>
@@ -270,6 +275,7 @@ $v = '20261120-5';
         <div class="calendar-weekdays" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
         <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="ご希望の日"></div>
         <p class="selected-date" id="selected-date">日付を選んでください</p>
+        <p class="field-note" id="duration-note" hidden></p>
         <div class="choice-grid four" id="times" role="radiogroup" aria-label="ご来院の時刻"></div>
         <p class="tt-empty" id="no-slots" hidden>ただいま、この内容でご予約いただける日時がありません。お手数ですが、LINE でご相談ください。</p>
       </section>
@@ -296,6 +302,7 @@ $v = '20261120-5';
         <div class="shave-notice">
           <h2>ご来院前のお願い</h2>
           <p><?= $h(TattooBooking::NO_MAKEUP) ?></p>
+          <p><?= $h(TattooBooking::CONSULT_NOTICE) ?></p>
 <?php if ($tattooOn): ?>
           <p><?= $items !== [] ? 'タトゥー・アートメイク除去の方：' : '' ?><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
 <?php endif; ?>
@@ -308,7 +315,7 @@ $v = '20261120-5';
 <?php foreach (TattooBooking::CANCEL_POLICY as $line): ?>
         <p><?= $h($line) ?></p>
 <?php endforeach; ?>
-        <label class="tt-agree"><input type="checkbox" name="agree" value="1"><span>上の「ご来院前のお願い」から「キャンセル・日程変更にかかる料金規定」までの各項目を読み、了承しました <em>必須</em></span></label>
+        <label class="tt-agree"><span class="tt-agree-head"><input type="checkbox" name="agree" value="1"><em>必須</em></span><span>上の「ご来院前のお願い」から「キャンセル・日程変更にかかる料金規定」までの各項目を読み、了承しました</span></label>
       </section>
 
       <div class="error-summary" id="error-summary" role="alert" hidden></div>
@@ -325,7 +332,7 @@ $v = '20261120-5';
         <div class="shave-notice">
           <h3>ご来院前のお願い</h3>
           <p><?= $h(TattooBooking::NO_MAKEUP) ?></p>
-          <p id="done-before"<?= $tattooOn ? '' : ' hidden' ?>><?= $tattooOn ? $h(TattooBooking::SHAVE_NOTICE_PAGE) : '' ?></p>
+          <p id="done-before" style="white-space:pre-line" data-shave="<?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?>"<?= $tattooOn ? '' : ' hidden' ?>><?= $tattooOn ? $h(TattooBooking::SHAVE_NOTICE_PAGE) : '' ?></p>
         </div>
         <h3>日曜日のご来院について</h3>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
