@@ -70,6 +70,10 @@ try {
     if (!is_array($in)) {
         $out(400, ['ok' => false, 'error' => 'invalid_json']);
     }
+    // 友だち追加しているか（LINE の中で友だちかどうかを確かめられないとき、ページが本人の ID トークンで聞く）
+    if (($in['action'] ?? '') === 'friend') {
+        $out(200, ['ok' => true, 'friend' => TattooBooking::friendOf((string) ($in['idToken'] ?? ''))]);
+    }
     $r = TattooBooking::book($in, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
     $status = $r['ok'] ? 201 : match ($r['error']) {
         'invalid' => 422, 'slot_taken' => 409, 'rate_limited' => 429, 'closed' => 403, 'line_auth' => 401, default => 409,

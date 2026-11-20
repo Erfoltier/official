@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-9';
+$v = '20261120-10';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -90,9 +90,6 @@ $v = '20261120-9';
     </section>
 <?php endif; ?>
     <form id="tt-form" novalidate<?= $preview ? ' data-preview="1"' : '' ?><?= $liffId !== '' && !$preview ? ' data-gate="1" hidden' : '' ?>>
-<?php if ($liffId !== '' && $friendUrl !== ''): ?>
-      <p class="tt-line" id="friend-note" hidden>ご予約確定のご連絡や、ご予約の変更・キャンセルを LINE で行うため、<a href="<?= $h($friendUrl) ?>">当院の LINE 公式アカウントの友だち追加</a>をお願いします。</p>
-<?php endif; ?>
       <section class="card">
         <div class="section-heading">
           <span class="step">1</span>

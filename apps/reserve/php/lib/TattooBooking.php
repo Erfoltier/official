@@ -350,7 +350,7 @@ final class TattooBooking
         $lane = fn(array $ids) => array_values(array_intersect($ids, $lanes));
         $menu = fn(string $id) => in_array($id, $menus, true) ? $id : '';
         // 医療脱毛（シート1・予約エンジンルール「複合/脱毛初回」）：初回は看護師レーンで説明15分を先に取り、続けて部位の照射。
-        // 針脱毛は4本で1分。本数が分からない初回は受けない（再診だけ。1件の上限は90分：一人の看護師が続けて行うのは1時間半を超えるなら1件まで）
+        // 針脱毛は4本で1分。初診は説明15分を足す（1件の上限は90分：一人の看護師が続けて行うのは1時間半を超えるなら1件まで）
         $out[] = [
             'id' => 'laserhair', 'name' => '医療レーザー脱毛', 'enabled' => false,
             // 機器（ジェントルマックスプロ）は1台で1番レーンだけ（院長 11/20）
@@ -422,8 +422,9 @@ final class TattooBooking
             'countPerMinute' => 0, 'maxMinutes' => 0,
         ];
         $out[] = [
-            'id' => 'needlehair', 'name' => '針脱毛（2回目以降）', 'enabled' => false,
-            'firstMinutes' => 15, 'firstLaneIds' => [], 'firstMenuId' => '',
+            // 初診も受ける（院長 11/20）：説明15分に続けて本数の施術（3番レーン）
+            'id' => 'needlehair', 'name' => '針脱毛', 'enabled' => false,
+            'firstMinutes' => 15, 'firstLaneIds' => $lane(['lane-3']), 'firstMenuId' => $menu('menu-s0000A43A3'),
             // 針脱毛の機器は1台で3番レーンだけ（院長 11/20）
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(['lane-3']), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
             'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90, 'needle' => true,
@@ -1668,6 +1669,21 @@ final class TattooBooking
             return '約' . ($m + self::NEOBO_SLOT) . '分（ネオボ撮影' . self::NEOBO_SLOT . "分・施術{$m}分）";
         }
         return $m === null ? '' : "約{$m}分";
+    }
+
+    /** 本人の LINE（ID トークン）が公式アカウントを友だち追加しているか。true／false、確かめられなければ null */
+    public static function friendOf(string $idToken): ?bool
+    {
+        $s = self::settings();
+        if ($idToken === '' || $s['liffId'] === '') {
+            return null;
+        }
+        try {
+            $uid = LineLink::verifyIdToken($idToken, explode('-', $s['liffId'], 2)[0]);
+        } catch (StoreError) {
+            return null;
+        }
+        return Reminder::isFriend($uid);
     }
 
     /**

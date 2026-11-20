@@ -190,9 +190,13 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
       $r = TattooBooking::book([...$base, 'idToken' => 'good', 'email' => 'sen@example.jp'], '127.0.0.23');
       $res = array_values(array_filter(Db::i()->all('reservation'), fn($x) => ($x['lineUserId'] ?? '') === '${uid}'));
       $pat = Db::i()->get('patient', $res[0]['patientId'] ?? '') ?? [];
-      return ['noLine' => $noLine, 'bad' => $bad, 'r' => $r, 'sent' => $sent, 'resCount' => count($res), 'patLine' => $pat['lineUserId'] ?? null];
+      // ページが聞く「友だち追加しているか」：本人の ID トークンで確かめる（確かめられなければ null）
+      $friendGood = TattooBooking::friendOf('good');
+      $friendBad = TattooBooking::friendOf('bad');
+      return ['noLine' => $noLine, 'bad' => $bad, 'r' => $r, 'sent' => $sent, 'resCount' => count($res), 'patLine' => $pat['lineUserId'] ?? null, 'friend' => [$friendGood, $friendBad]];
     `);
     expect(out.noLine).toMatchObject({ ok: false, error: "line_required" });
+    expect(out.friend).toEqual([true, null]);
     expect(out.bad).toMatchObject({ ok: false, error: "line_auth" });
     expect(out.r).toMatchObject({ ok: true, lined: true, mailed: false, time: "10:00" });
     expect(out.resCount).toBe(1);

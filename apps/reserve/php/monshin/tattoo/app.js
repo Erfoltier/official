@@ -440,7 +440,14 @@ async function friendOk() {
   try {
     return (await window.liff.getFriendship()).friendFlag === true;
   } catch (_) {
-    return null;
+    // LINE の中で確かめられないときは、予約アプリが本人の LINE で確かめる
+    try {
+      const r = await fetch('./api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'friend', idToken }) });
+      const d = await r.json();
+      return typeof d.friend === 'boolean' ? d.friend : null;
+    } catch (_) {
+      return null;
+    }
   }
 }
 async function startLine() {
@@ -463,12 +470,8 @@ async function startLine() {
     lineName = '';
   }
   // 友だち追加がまだなら、追加してもらってから予約の画面へ（戻ってきたら確かめ直す）
+  // 友だち追加がまだなら案内の画面だけを出す（友だちの方には何も出さない。送るときにサーバーでも確かめる）
   const friend = await friendOk();
-  // 友だちかどうかを LINE で確かめられないときは、予約の画面の上に友だち追加のお願いを小さく出す（送るときにサーバーでも確かめる）
-  if (friend === null) {
-    const note = document.querySelector('#friend-note');
-    if (note) note.hidden = false;
-  }
   if (friend === false) {
     showGate('friend');
     const recheck = async () => { if ((await friendOk()) !== false) { showGate(''); syncInputs(); } };

@@ -111,7 +111,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(laser.partGroups[1].parts.map((x: any) => x.name)).toContain("両頬");
     expect(women.some((x: string) => x.includes("+顎"))).toBe(false);
     expect(laser).toMatchObject({ neobo: false, creamAsk: true });
-    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ countPerMinute: 4, maxMinutes: 90, firstLaneIds: [], needle: true });
+    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ name: "針脱毛", countPerMinute: 4, maxMinutes: 90, firstMinutes: 15, firstLaneIds: [L3], firstMenuId: "menu-s0000A43A3", needle: true });
     await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (["laserhair", "needlehair"].includes(x.id) ? { ...x, enabled: true } : x)) });
     // 予約枠時間一覧（スプレッドシート）を Google 連携の鍵で受け取ると、保存済みのレーザー脱毛の時間が入れ替わる
     const rows = [["主に看護師レーン", ""], ["", ""], ["レーザー脱毛", "施術後の掃除とカルテ記載込み"], ["初診説明", "15分"], ["男", ""], ["下肢全部", "90"], ["大腿", "40"], ["下腿～足先", "40"], ["膝", "10"], ["下腿", "30"], ["両頬", "5"], ["鼻下", "10"], ["顎", "10"], ["顎下", "10"], ["鼻下+顎+顎下", "15"], ["鼻下+顎", "10"], ["眉", "10"], ["前腕", "20"], ["前腕～手先", "25"], ["へそ回り", "5"], ["V", "5"], ["IO", "20"], ["VIO", "30"], ["両ワキ", "5"], ["乳輪", "5"], ["肘上10cm", "5"], ["手＋指", "5"], ["足甲～指先", "5"], ["", ""], ["", ""], ["女", ""], ["下肢全部", "60"], ["大腿", "30"], ["下腿～足先", "30"], ["膝", "10"], ["下腿", "20"], ["", ""], ["鼻下", "5"], ["顎", "5"], ["顎下", "5"], ["鼻下+顎+顎下", "10"], ["鼻下+顎", "10"], ["眉", "10"], ["前腕", "20"], ["前腕～手先", "25"], ["へそ回り", "5"], ["V", "5"], ["IO", "15"], ["VIO", "20"], ["両ワキ", "5"], ["乳輪", "5"], ["肘上10cm", "5"], ["手＋指", "5"], ["足甲～指先", "5"]];
@@ -170,6 +170,8 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       return true;
     `);
     // 針：VIO 200本＋VIO以外 100本 → 300本で75分。料金は VIO・VIO以外を別々に計算（20本までの料金＋21本目から）
+    // 初診も受ける：説明15分＋本数（VIO 20本＋VIO以外 20本 → 10分）で25分
+    expect((await slots("item=needlehair&visit=first&countVio=20&countOther=20&sex=female&needleAnes=no")).duration).toBe("約25分");
     const nq = "item=needlehair&visit=repeat&countVio=200&countOther=100&sex=male&needleAnes=yes";
     expect(await slots(nq)).toMatchObject({
       duration: "約75分",
