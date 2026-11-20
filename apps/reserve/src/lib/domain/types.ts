@@ -787,7 +787,8 @@ export interface SundayMenu {
   /**
    * 部位ごとの時間（区分〈男性・女性など〉→ 部位と分）。患者が選んだ部位の合計＋初診・再診の時間（説明など）。空なら使わない
    */
-  partGroups?: { name: string; parts: { name: string; minutes: number }[] }[];
+  /** 部位の区分。combos：まとめて選んだときの時間（予約枠時間一覧の 鼻下+顎 など。部位の番号と分） */
+  partGroups?: { name: string; parts: { name: string; minutes: number }[]; combos?: { parts: number[]; minutes: number }[] }[];
   /** 部位ごとの時間で、1つだけ選ばせる（ほくろの個数など） */
   pickOne?: boolean;
   /** その問いの見出し（例：個数）。空なら「部位」 */
@@ -796,6 +797,8 @@ export interface SundayMenu {
   neobo?: boolean;
   /** 針脱毛の料金の概算を出すか（性別・部位・麻酔を聞く。本数で決まるメニューだけ） */
   needle?: boolean;
+  /** 麻酔クリームの有無を聞くか（レーザー脱毛） */
+  creamAsk?: boolean;
   /** 本数で時間が決まるとき、1分あたりの本数（針脱毛は4）。0 なら使わない */
   countPerMinute?: number;
   /** 1回の時間の上限（分）。0 なら180分 */

@@ -54,3 +54,11 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-agree{display:flex;gap:10px;align-items:flex-start;margin:18px 0 0;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:var(--surface,#fff);font-weight:600;line-height:1.6;cursor:pointer}
 .tt-agree input{width:22px;height:22px;flex:none;margin:2px 0 0}
 .tt-agree em{font-style:normal;font-size:.75rem;color:#a4473f;margin-left:4px}
+/* LINE の友だち追加のお願い（友だち追加してから予約の画面へ。院長 11/20） */
+.tt-gate{text-align:center}
+.tt-gate h2{margin:0 0 10px}
+.tt-gate p{margin:0 0 16px;line-height:1.7;text-align:left}
+.tt-gate .submit-button{display:block;text-decoration:none;margin:0 0 10px}
+.tt-gate-again{width:100%;padding:12px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:transparent;font:inherit;font-weight:600;cursor:pointer;margin:0 0 10px}
+.tt-gate small{display:block}
+#needle-est{white-space:pre-line}

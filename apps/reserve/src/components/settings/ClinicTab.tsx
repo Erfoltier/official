@@ -1036,6 +1036,12 @@ function SundayMenusEditor({
             )}
             {timeMode(it) === "parts" && <PartsEditor it={it} onChange={(partGroups) => put(i, { partGroups })} canEdit={canEdit} />}
             {timeMode(it) === "parts" && (
+              <label className={styles.field} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Switch on={!!it.creamAsk} onChange={(on) => put(i, { creamAsk: on })} label="麻酔クリームの有無を聞く" disabled={!canEdit} />
+                <span>麻酔クリームの有無を聞く（レーザー脱毛。約両手面積あたり2,750円）</span>
+              </label>
+            )}
+            {timeMode(it) === "parts" && (
               <div className={styles.timeRow}>
                 <label className={styles.field}>
                   <span>患者に聞く見出し（例：個数。空なら「部位」）</span>

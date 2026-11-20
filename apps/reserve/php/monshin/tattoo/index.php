@@ -27,9 +27,12 @@ try {
     $items = TattooBooking::publicItems($s);
     $menus = TattooBooking::publicMenus($s);
     $liffId = TattooBooking::settings()['liffId'];
+    // 友だち追加のアドレス（LINE で開く設定のときだけ）
+    $friendUrl = $liffId !== '' ? Reminder::friendUrl() : '';
 } catch (Throwable $e) {
     $p = ['publicName' => '', 'publicNameEn' => '', 'privacyUrl' => '', 'address' => '', 'accessUrl' => ''];
     $liffId = '';
+    $friendUrl = '';
     $open = $tattooOn = $kindTattoo = $kindArtmake = false;
     $items = [];
     $menus = [];
@@ -40,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-3';
+$v = '20261120-5';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -76,7 +79,20 @@ $v = '20261120-3';
 <?php if ($preview): ?>
     <div class="notice tt-preview" role="note"><strong>プレビュー（院のスタッフ用）</strong><span>患者さんに見える画面です。ここからは予約できません。<?= ($_GET['all'] ?? '') === '1' ? 'オフのメニューも出しています。' : 'オンのメニューだけを出しています。' ?>日時は、受付日時と今の空きのとおりに出ます。</span></div>
 <?php endif; ?>
-    <form id="tt-form" novalidate<?= $preview ? ' data-preview="1"' : '' ?>>
+<?php if ($liffId !== '' && !$preview): ?>
+    <section class="card tt-gate" id="line-gate" hidden>
+      <h2 id="gate-title">LINE の友だち追加をお願いします</h2>
+      <p id="gate-text">ご予約確定のご連絡や、ご予約の変更・キャンセルを LINE で行うため、当院の LINE 公式アカウントの友だち追加が必要です。</p>
+      <a class="submit-button" id="gate-add" href="<?= $h($friendUrl) ?>"<?= $friendUrl === '' ? ' hidden' : '' ?>>友だち追加する</a>
+      <a class="submit-button" id="gate-open" href="https://liff.line.me/<?= $h($liffId) ?>" hidden>LINE で開く</a>
+      <button type="button" class="tt-gate-again" id="gate-again" hidden>友だち追加しました</button>
+      <small class="field-note" id="gate-note">友だち追加が済むと、そのままご予約の画面に進みます。</small>
+    </section>
+<?php endif; ?>
+    <form id="tt-form" novalidate<?= $preview ? ' data-preview="1"' : '' ?><?= $liffId !== '' && !$preview ? ' data-gate="1" hidden' : '' ?>>
+<?php if ($liffId !== '' && $friendUrl !== ''): ?>
+      <p class="tt-line" id="friend-note" hidden>ご予約確定のご連絡や、ご予約の変更・キャンセルを LINE で行うため、<a href="<?= $h($friendUrl) ?>">当院の LINE 公式アカウントの友だち追加</a>をお願いします。</p>
+<?php endif; ?>
       <section class="card">
         <div class="section-heading">
           <span class="step">1</span>
@@ -103,7 +119,7 @@ $v = '20261120-3';
 <?php elseif ($m['key'] === 'artmake'): ?>
             <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="artmake"><span>アートメイク（眉）<?= $items !== [] ? 'の除去' : '' ?></span></label>
 <?php else: $it = $m['item']; ?>
-            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>" data-noinj="<?= $it['noInjection'] ? '1' : '' ?>" data-needle="<?= $it['needle'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
+            <label class="pill" data-cat="<?= $h($m['category']) ?>"><input type="radio" name="kind" value="m:<?= $h($it['id']) ?>" data-first="<?= $it['first'] ? '1' : '' ?>" data-repeat="<?= $it['repeat'] ? '1' : '' ?>" data-note="<?= $h($it['note']) ?>" data-groups="<?= $h(json_encode($it['groups'], JSON_UNESCAPED_UNICODE)) ?>" data-count="<?= $it['count'] ? '1' : '' ?>" data-one="<?= $it['one'] ? '1' : '' ?>" data-pick-label="<?= $h($it['pickLabel']) ?>" data-flow="<?= $it['flow'] ? '1' : '' ?>" data-noinj="<?= $it['noInjection'] ? '1' : '' ?>" data-needle="<?= $it['needle'] ? '1' : '' ?>" data-cream="<?= $it['creamAsk'] ? '1' : '' ?>"><span><?= $h($it['name']) ?></span></label>
 <?php endif; ?>
 <?php endforeach; ?>
           </div>
@@ -170,30 +186,41 @@ $v = '20261120-3';
           <legend id="parts-legend">ご希望の部位 <em>必須</em>（いくつでも選べます）</legend>
           <div class="choice-grid two" id="parts-list"></div>
         </fieldset>
-        <div id="needle-box" hidden>
-<?php foreach ([['sex', '性別', TattooBooking::NEEDLE_SEX], ['zone', '部位', TattooBooking::NEEDLE_ZONE]] as [$nk, $nl, $opts]): ?>
+        <div id="cream-box" hidden>
           <fieldset class="field">
-            <legend><?= $h($nl) ?> <em>必須</em></legend>
-            <div class="choice-grid two<?= $nk === 'sex' ? ' tt-two' : '' ?>">
-<?php foreach ($opts as $ok => $olabel): ?>
-              <label class="pill"><input type="radio" name="<?= $h($nk) ?>" value="<?= $h($ok) ?>"><span><?= $h($olabel) ?></span></label>
+            <legend>麻酔クリーム <em>必須</em></legend>
+            <div class="choice-grid two tt-two">
+<?php foreach (TattooBooking::YES_NO as $ok => $olabel): ?>
+              <label class="pill"><input type="radio" name="cream" value="<?= $h($ok) ?>"><span><?= $h($olabel) ?></span></label>
+<?php endforeach; ?>
+            </div>
+            <small class="field-note">約両手面積あたり<?= number_format(TattooBooking::CREAM_YEN) ?>円（税込）。効果が出るまで約1時間かかります</small>
+          </fieldset>
+        </div>
+        <div id="needle-box" hidden>
+          <fieldset class="field">
+            <legend>性別 <em>必須</em></legend>
+            <div class="choice-grid two tt-two">
+<?php foreach (TattooBooking::NEEDLE_SEX as $ok => $olabel): ?>
+              <label class="pill"><input type="radio" name="sex" value="<?= $h($ok) ?>"><span><?= $h($olabel) ?></span></label>
 <?php endforeach; ?>
             </div>
           </fieldset>
-<?php endforeach; ?>
-        </div>
-        <label class="field" id="count-box" hidden><span>本数 <em>必須</em></span><input name="count" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="前回お伝えした本数（例：300）"><small class="field-note">本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</small></label>
-        <div id="needle-box2" hidden>
+          <label class="field"><span>VIO の本数</span><input name="countVio" type="number" inputmode="numeric" min="0" max="5000" step="1" placeholder="受けない場合は空のまま"></label>
+          <label class="field"><span>VIO以外（体毛・眉など）の本数</span><input name="countOther" type="number" inputmode="numeric" min="0" max="5000" step="1" placeholder="受けない場合は空のまま"></label>
+          <p class="field-note">同じ日に両方受ける場合は、それぞれの本数を入力してください（どちらか一方は必須）。本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</p>
           <fieldset class="field">
-            <legend>麻酔 <em>必須</em></legend>
-            <div class="choice-grid two">
-<?php foreach (TattooBooking::NEEDLE_ANES as $ok => $olabel): ?>
+            <legend>局所麻酔注射 <em>必須</em></legend>
+            <div class="choice-grid two tt-two">
+<?php foreach (TattooBooking::YES_NO as $ok => $olabel): ?>
               <label class="pill"><input type="radio" name="needleAnes" value="<?= $h($ok) ?>"><span><?= $h($olabel) ?></span></label>
 <?php endforeach; ?>
             </div>
+            <small class="field-note">約両手面積あたり<?= number_format(TattooBooking::INJECTION_YEN) ?>円（税込）</small>
           </fieldset>
-          <p class="field-note">針は1本分の料金を含みます。毛の太さ・深さが異なる部位を施術する場合は、それに合わせた別の針を別途ご購入いただく必要がございます。麻酔は約両手面積1つ分の料金です。</p>
+          <p class="field-note">針は1本分の料金を含みます。毛の太さ・深さが異なる部位を施術する場合は、それに合わせた別の針を別途ご購入いただく必要がございます。</p>
         </div>
+        <label class="field" id="count-box" hidden><span>本数 <em>必須</em></span><input name="count" type="number" inputmode="numeric" min="1" max="5000" step="1" placeholder="前回お伝えした本数（例：300）"><small class="field-note">本数によってご予約いただける時間が変わります。わからない場合は LINE でご相談ください</small></label>
         <p class="tt-area-result" id="needle-est" aria-live="polite" hidden></p>
 
         <div class="tt-area" id="area-box" hidden>

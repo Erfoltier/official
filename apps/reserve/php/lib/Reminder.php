@@ -641,6 +641,37 @@ final class Reminder
         return self::pushLine($to, $text);
     }
 
+    /**
+     * 公式アカウントの友だち追加のアドレス（https://line.me/R/ti/p/@…）。Messaging API の bot/info の basicId から作り、1日覚えておく。わからなければ空
+     */
+    public static function friendUrl(): string
+    {
+        if (self::lineToken() === '') {
+            return '';
+        }
+        $cache = Db::i()->meta('lineBotInfo');
+        if (is_array($cache) && ($cache['basicId'] ?? '') !== '' && (time() - strtotime((string) $cache['at'])) < 86400) {
+            return 'https://line.me/R/ti/p/' . rawurlencode($cache['basicId']);
+        }
+        [$code, $raw] = self::http('GET', self::LINE_API . '/info', ['Authorization: Bearer ' . self::lineToken()], '');
+        $id = $code === 200 ? (string) (json_decode($raw, true)['basicId'] ?? '') : '';
+        if (!preg_match('/^@[0-9a-z_.-]{2,40}$/i', $id)) {
+            return is_array($cache) && ($cache['basicId'] ?? '') !== '' ? 'https://line.me/R/ti/p/' . rawurlencode($cache['basicId']) : '';
+        }
+        Db::i()->setMeta('lineBotInfo', ['basicId' => $id, 'at' => now_iso()]);
+        return 'https://line.me/R/ti/p/' . rawurlencode($id);
+    }
+
+    /** その LINE の人が公式アカウントを友だち追加しているか（true／false。わからなければ null） */
+    public static function isFriend(string $uid): ?bool
+    {
+        if (self::lineToken() === '' || !preg_match('/^U[0-9a-f]{32}$/', $uid)) {
+            return null;
+        }
+        [$code] = self::http('GET', self::LINE_API . '/profile/' . $uid, ['Authorization: Bearer ' . self::lineToken()], '');
+        return $code === 200 ? true : ($code === 404 ? false : null);
+    }
+
     /** 文面だけのメールを1通送る（オンラインカウンセリングの予約の確定など） */
     public static function sendText(string $to, string $subject, string $text): array
     {

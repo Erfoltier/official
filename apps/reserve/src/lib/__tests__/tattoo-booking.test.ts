@@ -192,7 +192,7 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
       $pat = Db::i()->get('patient', $res[0]['patientId'] ?? '') ?? [];
       return ['noLine' => $noLine, 'bad' => $bad, 'r' => $r, 'sent' => $sent, 'resCount' => count($res), 'patLine' => $pat['lineUserId'] ?? null];
     `);
-    expect(out.noLine).toMatchObject({ ok: false, fields: ["email"] });
+    expect(out.noLine).toMatchObject({ ok: false, error: "line_required" });
     expect(out.bad).toMatchObject({ ok: false, error: "line_auth" });
     expect(out.r).toMatchObject({ ok: true, lined: true, mailed: false, time: "10:00" });
     expect(out.resCount).toBe(1);

@@ -135,13 +135,14 @@ final class TattooBooking
     /** レーザー脱毛の部位ごとの時間（シート1「レーザー脱毛」。施術後の掃除とカルテ記載込み）。[部位, 男性の分, 女性の分] */
     /**
      * レーザー脱毛の部位（ホームページ「医療脱毛」の料金表の部位分け・並び。院長 11/20）。[部位, 女性の分, 男性の分]。男性だけの部位は女性を null。
-     * 鼻下＋顎・鼻下＋顎＋顎下のセットは入れない（ばらの部位を複数選ぶ）。時間は予約枠時間一覧から。両ワキ・乳輪・肘上10cm・手＋指・足甲～指先・両頬は一覧になく仮の10分
+     * 鼻下＋顎・鼻下＋顎＋顎下のセットは入れない（ばらの部位を複数選ぶ。まとめて選んだときは予約枠時間一覧のまとめの時間）。
+     * 時間は予約枠時間一覧（11/20 時点）。スプレッドシートから受け取ったら、そちらに合わせる（applyLaserSheet）
      */
     private const LASER_HAIR_PARTS = [
-        ['眉上・眉間', 10, 10], ['鼻下', 10, 10], ['顎', 10, 10], ['顎下', 10, 10], ['両頬', null, 10],
-        ['両ワキ', 10, 10], ['乳輪(太い毛のみ)', 10, 10], ['へそ周り(濃い毛のみ)', 10, 10],
-        ['肘上10cm', 10, 10], ['肘～指先', 25, 25], ['Vライン前面', 10, 10], ['I＋Oライン', 15, 20], ['手＋指', 10, 10],
-        ['太もも', 30, 40], ['膝', 10, 10], ['スネ', 20, 30], ['足甲～指先', 10, 10],
+        ['眉上・眉間', 10, 10], ['鼻下', 5, 10], ['顎', 5, 10], ['顎下', 5, 10], ['両頬', null, 5],
+        ['両ワキ', 5, 5], ['乳輪(太い毛のみ)', 5, 5], ['へそ周り(濃い毛のみ)', 5, 5],
+        ['肘上10cm', 5, 5], ['肘～指先', 25, 25], ['Vライン前面', 5, 5], ['I+Oライン', 15, 20], ['手+指', 5, 5],
+        ['太もも', 30, 40], ['膝', 10, 10], ['スネ', 20, 30], ['足甲～指先', 5, 5],
     ];
 
     /** レーザー脱毛の部位（$col 1：女性、2：男性） */
@@ -150,10 +151,115 @@ final class TattooBooking
         return array_values(array_map(fn($r) => ['name' => $r[0], 'minutes' => $r[$col]], array_filter(self::LASER_HAIR_PARTS, fn($r) => $r[$col] !== null)));
     }
 
-    /** 保存済みのレーザー脱毛を、ホームページの部位分けに置き換える（本番の一覧の入れ替え用） */
+    /** 保存済みのレーザー脱毛を、ホームページの部位分けに置き換える（本番の一覧の入れ替え用）。予約枠時間一覧を受け取っていれば、その時間 */
     public static function laserHairParts(array $it): array
     {
-        return [...$it, 'partGroups' => [['name' => '女性', 'parts' => self::laserParts(1)], ['name' => '男性', 'parts' => self::laserParts(2)]], 'pickOne' => false];
+        return self::applyLaserSheet([...$it, 'partGroups' => [['name' => '女性', 'parts' => self::laserParts(1)], ['name' => '男性', 'parts' => self::laserParts(2)]], 'pickOne' => false]);
+    }
+
+    /**
+     * 予約枠時間一覧（スプレッドシート「シート1」のA・B列）の名前と、ホームページの部位の対応。
+     * まとめの行（鼻下+顎 など）は、その部位をすべて選んだときにまとめの時間を使う（院長 11/20）
+     */
+    private const LASER_SHEET_NAME = [
+        '眉上・眉間' => '眉', '乳輪(太い毛のみ)' => '乳輪', 'へそ周り(濃い毛のみ)' => 'へそ回り', '肘～指先' => '前腕～手先',
+        'Vライン前面' => 'V', 'I+Oライン' => 'IO', '太もも' => '大腿', 'スネ' => '下腿',
+    ];
+    private const LASER_SHEET_COMBOS = [
+        '下肢全部' => ['大腿', '膝', '下腿', '足甲～指先'],
+        '鼻下+顎+顎下' => ['鼻下', '顎', '顎下'],
+        '下腿～足先' => ['下腿', '足甲～指先'],
+        '鼻下+顎' => ['鼻下', '顎'],
+        'VIO' => ['V', 'IO'],
+    ];
+
+    /**
+     * 予約枠時間一覧のセルの値（行ごとの配列）から、レーザー脱毛の時間を読む。
+     * ['女' => [名前 => 分], '男' => [...], 'explain' => 初診説明の分]。読めなければ null
+     */
+    public static function parseTimeSheet(array $rows): ?array
+    {
+        $out = ['女' => [], '男' => [], 'explain' => 0];
+        $sex = '';
+        $num = fn($v) => preg_match('/^(\d{1,3})\s*分?$/u', normalize_width(js_trim((string) $v)), $m) ? (int) $m[1] : null;
+        foreach ($rows as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            $a = normalize_width(js_trim((string) ($r[0] ?? '')));
+            $b = $num($r[1] ?? '');
+            if ($a === '男' || $a === '女') {
+                $sex = $a;
+            } elseif ($a === '初診説明' && $b !== null) {
+                $out['explain'] = $b;
+            } elseif ($sex !== '' && $a !== '' && $b !== null && $b >= 5 && $b <= self::MAX_ITEM_MINUTES && $b % 5 === 0) {
+                $out[$sex][$a] = $b;
+            }
+        }
+        return $out['女'] !== [] && $out['男'] !== [] ? $out : null;
+    }
+
+    /** レーザー脱毛の部位の時間と、まとめの時間・初診説明を、受け取った予約枠時間一覧に合わせる（なければそのまま） */
+    public static function applyLaserSheet(array $it, ?array $sheet = null): array
+    {
+        $sheet ??= Db::i()->meta('laserHairSheet');
+        if (!is_array($sheet) || ($it['partGroups'] ?? []) === []) {
+            return $it;
+        }
+        foreach ($it['partGroups'] as &$g) {
+            $times = $sheet[$g['name'] === '男性' ? '男' : ($g['name'] === '女性' ? '女' : '')] ?? null;
+            if (!is_array($times)) {
+                continue;
+            }
+            $idx = [];
+            foreach ($g['parts'] as $i => &$pt) {
+                $n = normalize_width($pt['name']);
+                $key = self::LASER_SHEET_NAME[$n] ?? $n;
+                $idx[$key] = $i;
+                if (isset($times[$key])) {
+                    $pt['minutes'] = $times[$key];
+                }
+            }
+            unset($pt);
+            $g['combos'] = [];
+            foreach (self::LASER_SHEET_COMBOS as $name => $parts) {
+                if (isset($times[$name]) && array_diff($parts, array_keys($idx)) === []) {
+                    $g['combos'][] = ['parts' => array_map(fn($p) => $idx[$p], $parts), 'minutes' => $times[$name]];
+                }
+            }
+        }
+        unset($g);
+        if (($sheet['explain'] ?? 0) >= 5) {
+            $it['firstMinutes'] = $sheet['explain'];
+        }
+        return $it;
+    }
+
+    /** 予約枠時間一覧を受け取る（スプレッドシートの Apps Script から）。保存して、日曜メニューのレーザー脱毛の時間を合わせる */
+    public static function receiveTimeSheet(array $rows): array
+    {
+        $sheet = self::parseTimeSheet($rows);
+        if ($sheet === null) {
+            throw new StoreError('invalid', 'レーザー脱毛の時間（男・女）が読めませんでした。シートの形を確認してください');
+        }
+        Db::i()->setMeta('laserHairSheet', [...$sheet, 'at' => now_iso()]);
+        $c = Store::clinic();
+        $changed = 0;
+        if (array_key_exists('sundayMenus', $c)) {
+            $items = self::settings()['items'];
+            foreach ($items as &$it) {
+                if (($it['id'] ?? '') === 'laserhair') {
+                    $next = self::applyLaserSheet($it, $sheet);
+                    $changed += (int) ($next !== $it);
+                    $it = $next;
+                }
+            }
+            unset($it);
+            if ($changed) {
+                Store::updateClinic(['sundayMenus' => $items], ['id' => 'system', 'name' => '予約枠時間一覧（スプレッドシート）']);
+            }
+        }
+        return ['ok' => true, 'female' => count($sheet['女']), 'male' => count($sheet['男']), 'changed' => $changed];
     }
 
     /** プリセットを今の設定に合わせて出す（ないレーン・使えないメニューは空にする。オフなので、オンにするときに選び直す） */
@@ -182,8 +288,9 @@ final class TattooBooking
                 ['name' => '女性', 'parts' => self::laserParts(1)],
                 ['name' => '男性', 'parts' => self::laserParts(2)],
             ],
-            'countPerMinute' => 0, 'maxMinutes' => 0,
+            'countPerMinute' => 0, 'maxMinutes' => 0, 'creamAsk' => true,
         ];
+        $out[count($out) - 1] = self::applyLaserSheet($out[count($out) - 1]);
         // 麻酔つきの注入（院長 11/19：スタンプ系〈フィルロード・TAピンク・ピンクグロー・トラネキサム酸スタンプ〉の施術は麻酔によらず20分、ジュブアセル・リトゥオは30分。リトゥオは医師のみ）
         $flow = fn(string $id, string $name, array $treatLanes, string $treatMenu, int $cream, int $inj, string $machine) => [
             'id' => $id, 'name' => $name, 'enabled' => false,
@@ -442,6 +549,18 @@ final class TattooBooking
                 if (!isset($g['parts'][$i])) {
                     return null;
                 }
+            }
+            // まとめの時間（鼻下＋顎 など）：その部位をすべて選んだら、ばらの合計の代わりにまとめの時間（大きいまとめから）
+            $left = $idx;
+            $combos = $g['combos'] ?? [];
+            usort($combos, fn($x, $y) => count($y['parts']) <=> count($x['parts']));
+            foreach ($combos as $cb) {
+                if (array_diff($cb['parts'], $left) === []) {
+                    $min += (int) $cb['minutes'];
+                    $left = array_diff($left, $cb['parts']);
+                }
+            }
+            foreach ($left as $i) {
                 $min += (int) $g['parts'][$i]['minutes'];
             }
         } elseif (($it['countPerMinute'] ?? 0) > 0) {
@@ -492,24 +611,31 @@ final class TattooBooking
         return '';
     }
 
-    /** 針脱毛の料金の概算に使う、性別・部位・麻酔（院長 11/20） */
+    /** 針脱毛の料金の概算に使う、性別と局所麻酔注射の有無（院長 11/20。針脱毛の麻酔は局所麻酔注射だけ） */
     public const NEEDLE_SEX = ['female' => '女性', 'male' => '男性'];
-    public const NEEDLE_ZONE = ['general' => 'VIO以外（顔・ワキ・腕など）', 'vio' => 'VIO'];
-    public const NEEDLE_ANES = ['none' => '麻酔なし', 'cream' => '麻酔クリーム', 'injection' => '局所麻酔注射'];
-    /** 麻酔は約両手面積あたり（ホームページ「医療脱毛」：クリーム税抜2,500円・局所麻酔注射税抜5,000円）。税込 */
-    private const NEEDLE_ANES_YEN = ['none' => 0, 'cream' => 2750, 'injection' => 5500];
+    public const YES_NO = ['no' => '希望しない', 'yes' => '希望する'];
+    /** 麻酔は約両手面積あたり（ホームページ「医療脱毛」：麻酔クリーム〈レーザー脱毛のみ〉税抜2,500円・局所麻酔注射〈針脱毛のみ〉税抜5,000円）。税込 */
+    public const CREAM_YEN = 2750;
+    public const INJECTION_YEN = 5500;
+    public const ESTIMATE_NOTE = '料金は仮の概算です。当日の診察によって異なる場合があります。';
+
+    /** 針脱毛の本数（VIO・VIO以外。同じ日に両方受ける方もいる）。[VIO, VIO以外]。数でなければ 0 */
+    public static function needleCounts(array $pick): array
+    {
+        $n = fn($k) => is_numeric($pick[$k] ?? null) ? max(0, (int) $pick[$k]) : 0;
+        return [$n('countVio'), $n('countOther')];
+    }
 
     /**
-     * 針脱毛の料金の概算（税込）。ホームページの料金表（取り込み済みの「医療ニードル脱毛」）から：20本までの料金＋21本目からの1本ごと＋針代1本＋麻酔（約両手面積1つ分）。
+     * 針脱毛の料金の概算（税込）。ホームページの料金表（取り込み済みの「医療ニードル脱毛」）から：VIO・VIO以外それぞれ 20本までの料金＋21本目からの1本ごと、針代1本、局所麻酔注射（約両手面積1つ分）。
      * 選び方が足りない・料金表にないときは null。['lines' => [[名前, 円], ...], 'total' => 円, 'text' => 1行の文]
      */
     public static function needleEstimate(array $pick): ?array
     {
         $sex = (string) ($pick['sex'] ?? '');
-        $zone = (string) ($pick['zone'] ?? '');
         $anes = (string) ($pick['needleAnes'] ?? '');
-        $n = is_numeric($pick['count'] ?? null) ? (int) $pick['count'] : 0;
-        if (!isset(self::NEEDLE_SEX[$sex], self::NEEDLE_ZONE[$zone], self::NEEDLE_ANES[$anes]) || $n < 1 || $n > self::MAX_COUNT) {
+        [$vio, $other] = self::needleCounts($pick);
+        if (!isset(self::NEEDLE_SEX[$sex], self::YES_NO[$anes]) || $vio + $other < 1 || $vio + $other > self::MAX_COUNT) {
             return null;
         }
         $yen = [];
@@ -518,16 +644,24 @@ final class TattooBooking
                 $yen[(string) $x['name']] = $x['priceYen'];
             }
         }
-        $row = $zone === 'vio' ? ($sex === 'male' ? '男性VIO' : '女性VIO') : '一般部位（男女共通）';
-        $base = $yen["{$row} 20本まで"] ?? null;
-        $per = $yen["{$row} 21本以上"] ?? null;
-        $needle = $yen['針代'] ?? null;
-        if ($base === null || $per === null || $needle === null) {
+        $lines = [];
+        foreach ([['VIO以外', $other, '一般部位（男女共通）'], ['VIO', $vio, $sex === 'male' ? '男性VIO' : '女性VIO']] as [$label, $n, $row]) {
+            if ($n < 1) {
+                continue;
+            }
+            $base = $yen["{$row} 20本まで"] ?? null;
+            $per = $yen["{$row} 21本以上"] ?? null;
+            if ($base === null || $per === null) {
+                return null;
+            }
+            $lines[] = ["{$label}（{$n}本）", $base + max(0, $n - 20) * $per];
+        }
+        if (!isset($yen['針代'])) {
             return null;
         }
-        $lines = [["施術（{$n}本）", $base + max(0, $n - 20) * $per], ['針代（1本）', $needle]];
-        if ($anes !== 'none') {
-            $lines[] = [self::NEEDLE_ANES[$anes] . '（約両手面積1つ分）', self::NEEDLE_ANES_YEN[$anes]];
+        $lines[] = ['針代（1本）', $yen['針代']];
+        if ($anes === 'yes') {
+            $lines[] = ['局所麻酔注射（約両手面積1つ分）', self::INJECTION_YEN];
         }
         $total = array_sum(array_column($lines, 1));
         $text = implode('＋', array_map(fn($l) => $l[0] . ' ' . number_format($l[1]) . '円', $lines)) . '＝合計 ' . number_format($total) . '円（税込）';
@@ -541,10 +675,21 @@ final class TattooBooking
             return [];
         }
         $e = self::needleEstimate($pick);
+        [$vio, $other] = self::needleCounts($pick);
         return [
-            '性別：' . (self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')] ?? '') . '／部位：' . (self::NEEDLE_ZONE[(string) ($pick['zone'] ?? '')] ?? '') . '／麻酔：' . (self::NEEDLE_ANES[(string) ($pick['needleAnes'] ?? '')] ?? ''),
-            $e !== null ? '料金の概算：' . $e['text'] : null,
+            '性別：' . (self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')] ?? '') . "／VIO：{$vio}本／VIO以外：{$other}本／局所麻酔注射：" . (self::YES_NO[(string) ($pick['needleAnes'] ?? '')] ?? ''),
+            $e !== null ? '料金の概算：' . $e['text'] . '（' . self::ESTIMATE_NOTE . '）' : null,
         ];
+    }
+
+    /** 予約メモ・確定の連絡に書く、レーザー脱毛の麻酔クリームの希望 */
+    private static function creamLines(array $it, array $pick): array
+    {
+        if (empty($it['creamAsk'])) {
+            return [];
+        }
+        $yes = ($pick['cream'] ?? '') === 'yes';
+        return ['麻酔クリーム：' . ($yes ? '希望する（約両手面積あたり' . number_format(self::CREAM_YEN) . '円・税込）' : '希望しない')];
     }
 
     /** 予約ページに出す日曜メニューの一覧（患者に見せてよい項目だけ） */
@@ -567,6 +712,7 @@ final class TattooBooking
                     'flow' => self::isFlow($it),
                     'noInjection' => self::isFlow($it) && (int) ($it['injectionMinutes'] ?? 0) === 0,
                     'needle' => !empty($it['needle']),
+                    'creamAsk' => !empty($it['creamAsk']),
                 ];
             }
         }
@@ -649,8 +795,17 @@ final class TattooBooking
                     }
                     $parts[] = ['name' => $pname, 'minutes' => $pm];
                 }
+                // まとめの時間（予約枠時間一覧の 鼻下+顎 など。部位の番号と分）
+                $combos = [];
+                foreach (array_slice(array_values((array) ($g['combos'] ?? [])), 0, 20) as $cb) {
+                    $ci = array_values(array_unique(array_map('intval', array_filter((array) ($cb['parts'] ?? []), 'is_numeric'))));
+                    $cm = (int) ($cb['minutes'] ?? 0);
+                    if (count($ci) >= 2 && max($ci) < count($parts) && min($ci) >= 0 && $cm >= 5 && $cm <= self::MAX_ITEM_MINUTES && $cm % 5 === 0) {
+                        $combos[] = ['parts' => $ci, 'minutes' => $cm];
+                    }
+                }
                 if ($parts !== []) {
-                    $groups[] = ['name' => $gname !== '' ? $gname : '部位', 'parts' => $parts];
+                    $groups[] = ['name' => $gname !== '' ? $gname : '部位', 'parts' => $parts] + ($combos !== [] ? ['combos' => $combos] : []);
                 }
             }
             $cpm = $groups === [] ? (int) ($it['countPerMinute'] ?? 0) : 0;
@@ -734,6 +889,8 @@ final class TattooBooking
             // モニターのときネオボ撮影の枠を取るか（顔のメニュー）。針脱毛の料金の概算を出すか（本数で決まるメニューだけ）
             $row['neobo'] = self::face([...$it, 'id' => $id]);
             $row['needle'] = $cpm > 0 && !empty($it['needle']);
+            // 麻酔クリームの有無を聞くか（レーザー脱毛。院長 11/20）
+            $row['creamAsk'] = !empty($it['creamAsk']);
             $out[] = $row;
         }
         return $out;
@@ -1429,6 +1586,13 @@ final class TattooBooking
                 return ['ok' => false, 'error' => 'line_auth'];
             }
         }
+        // LINE で開く設定のときは、LINE で開いて公式アカウントを友だち追加した方だけ（確定の連絡・予約の変更を LINE で行うため。院長 11/20）
+        if ($s['liffId'] !== '' && $uid === null) {
+            return ['ok' => false, 'error' => 'line_required'];
+        }
+        if ($uid !== null && Reminder::isFriend($uid) === false) {
+            return ['ok' => false, 'error' => 'friend_required'];
+        }
         // メールアドレスは LINE で開いたときも必須（院長 11/20。LINE が届かないときの確定の連絡）
         if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) $bad[] = 'email';
         if (!is_date_string($f['date']) || !preg_match('/^\d{2}:\d{2}$/', $f['time'])) $bad[] = 'slot';
@@ -1447,13 +1611,22 @@ final class TattooBooking
         }
         if ($item !== null) {
             $pick = ['group' => $in['group'] ?? null, 'parts' => is_array($in['parts'] ?? null) ? $in['parts'] : [], 'count' => $in['count'] ?? null, 'status' => $in['status'] ?? null, 'anesthesia' => $in['anesthesiaType'] ?? null,
-                'sex' => $in['sex'] ?? null, 'zone' => $in['zone'] ?? null, 'needleAnes' => $in['needleAnes'] ?? null];
+                'sex' => $in['sex'] ?? null, 'needleAnes' => $in['needleAnes'] ?? null, 'cream' => $in['cream'] ?? null,
+                'countVio' => $in['countVio'] ?? null, 'countOther' => $in['countOther'] ?? null];
+            // 針脱毛は VIO・VIO以外の本数の合計で時間を決める
+            if (!empty($item['needle'])) {
+                $pick['count'] = array_sum(self::needleCounts($pick));
+            }
             if (self::itemMinutes($item, $visit === 'first', $pick) === null) {
                 return ['ok' => false, 'error' => 'invalid', 'fields' => self::isFlow($item) ? ['flow'] : [($item['countPerMinute'] ?? 0) > 0 ? 'count' : 'parts']];
             }
             // 針脱毛は性別・部位・麻酔も（料金の概算のため）
-            if (!empty($item['needle']) && (!isset(self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')], self::NEEDLE_ZONE[(string) ($pick['zone'] ?? '')], self::NEEDLE_ANES[(string) ($pick['needleAnes'] ?? '')]))) {
+            if (!empty($item['needle']) && (!isset(self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')], self::YES_NO[(string) ($pick['needleAnes'] ?? '')]))) {
                 return ['ok' => false, 'error' => 'invalid', 'fields' => ['needle']];
+            }
+            // レーザー脱毛は麻酔クリームの有無も
+            if (!empty($item['creamAsk']) && !isset(self::YES_NO[(string) ($pick['cream'] ?? '')])) {
+                return ['ok' => false, 'error' => 'invalid', 'fields' => ['cream']];
             }
             return self::bookItem($item, $visit === 'first', $f, $s, $uid, $pick);
         }
@@ -1560,6 +1733,7 @@ final class TattooBooking
                 ...($f['clinicLines'] ?? []),
                 $what !== '' ? (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：') . $what : null,
                 ...self::needleLines($it, $pick),
+                ...self::creamLines($it, $pick),
                 $first && self::variable($it) && (int) $it['firstMinutes'] > 0 ? "初診の説明：{$it['firstMinutes']}分（この予約の最初）" : null,
                 $f['part'] !== '' ? '部位（患者の記入）：' . $f['part'] : null,
                 $f['email'] !== '' ? 'メール：' . $f['email'] : null,
@@ -1667,6 +1841,7 @@ final class TattooBooking
                 '区分：' . ($first ? '初診' : '再診'),
                 self::pickText($it, $f['pick'] ?? []) !== '' ? ((self::isFlow($it) ? '' : (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：')) . self::pickText($it, $f['pick'] ?? [])) : null,
                 ...self::needleLines($it, $f['pick'] ?? []),
+                ...self::creamLines($it, $f['pick'] ?? []),
                 $p['accessUrl'] !== '' ? 'アクセス：' . $p['accessUrl'] : ($p['address'] !== '' ? '場所：' . $p['address'] : null),
                 '',
                 '【ご来院前のお願い】',

@@ -669,6 +669,21 @@ final class Schema
         return $c;
     }
 
+    /** 予約枠時間一覧のセルの値：{ rows: [[セル, ...], ...] }（300行・1行20セル・1セル500文字まで） */
+    public static function integrationTimeSheet(mixed $v): array
+    {
+        $rows = is_array($v) ? ($v['rows'] ?? null) : null;
+        if (!is_array($rows) || !array_is_list($rows) || count($rows) > 300) {
+            throw new InputError();
+        }
+        return array_map(function ($r) {
+            if (!is_array($r) || !array_is_list($r) || count($r) > 20) {
+                throw new InputError();
+            }
+            return array_map(fn($c) => is_string($c) || is_int($c) || is_float($c) ? mb_substr((string) $c, 0, 500) : '', $r);
+        }, $rows);
+    }
+
     public static function integrationPrices(mixed $v): array
     {
         return V::shape($v, [

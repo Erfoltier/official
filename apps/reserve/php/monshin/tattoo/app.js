@@ -57,6 +57,11 @@ function renderParts(groups) {
   });
 }
 const checkedParts = () => [...form.querySelectorAll('input[name="parts"]:checked')].map((x) => x.value);
+const intOf = (name) => {
+  const n = Number(String(form.elements[name].value).replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
+  return Number.isInteger(n) && n >= 0 && n <= 5000 ? n : 0;
+};
+const needleTotal = () => intOf('countVio') + intOf('countOther');
 const countVal = () => {
   const n = Number(String(form.elements.count.value).replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
   return Number.isInteger(n) && n >= 1 && n <= 5000 ? n : 0;
@@ -66,9 +71,11 @@ function pickReady(item) {
   const partsOk = !JSON.parse(item.dataset.groups || '[]').length || (val('group') !== '' && checkedParts().length > 0);
   // 麻酔つきの注入：範囲（炭酸ガスの全顔・部分など）があれば、それも
   if (item.dataset.flow === '1') return val('visit') !== 'repeat' || (val('status') !== '' && val('anesthesiaType') !== '' && partsOk);
+  // レーザー脱毛：麻酔クリームの有無も
+  if (item.dataset.cream === '1' && !val('cream')) return false;
   if (JSON.parse(item.dataset.groups || '[]').length) return partsOk;
-  // 針脱毛：本数に加えて、料金の概算のための性別・部位・麻酔
-  if (item.dataset.needle === '1') return countVal() > 0 && !!val('sex') && !!val('zone') && !!val('needleAnes');
+  // 針脱毛：VIO・VIO以外の本数（どちらか）と、料金の概算のための性別・局所麻酔注射の有無
+  if (item.dataset.needle === '1') return needleTotal() > 0 && !!val('sex') && !!val('needleAnes');
   if (item.dataset.count === '1') return countVal() > 0;
   return true;
 }
@@ -78,7 +85,7 @@ function pickQuery(item) {
   const parts = JSON.parse(item.dataset.groups || '[]').length ? `&group=${encodeURIComponent(val('group'))}&parts=${checkedParts().join(',')}` : '';
   if (item.dataset.flow === '1') return val('visit') === 'repeat' ? `&status=${encodeURIComponent(val('status'))}&anesthesia=${encodeURIComponent(val('anesthesiaType'))}${parts}` : '';
   if (parts) return parts;
-  if (item.dataset.needle === '1') return `&count=${countVal()}&sex=${encodeURIComponent(val('sex'))}&zone=${encodeURIComponent(val('zone'))}&needleAnes=${encodeURIComponent(val('needleAnes'))}`;
+  if (item.dataset.needle === '1') return `&countVio=${intOf('countVio')}&countOther=${intOf('countOther')}&sex=${encodeURIComponent(val('sex'))}&needleAnes=${encodeURIComponent(val('needleAnes'))}`;
   if (item.dataset.count === '1') return `&count=${countVal()}`;
   return '';
 }
@@ -145,9 +152,10 @@ function syncInputs() {
   }
   document.querySelector('#group-box').hidden = groups.length < 2;
   document.querySelector('#parts-box').hidden = groups.length === 0 || val('group') === '';
-  document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1');
+  // 針脱毛は VIO・VIO以外の本数を別々に入れる（ふつうの本数の欄は出さない）
+  document.querySelector('#count-box').hidden = !(item && item.dataset.count === '1' && item.dataset.needle !== '1');
   document.querySelector('#needle-box').hidden = !(item && item.dataset.needle === '1');
-  document.querySelector('#needle-box2').hidden = !(item && item.dataset.needle === '1');
+  document.querySelector('#cream-box').hidden = !(item && item.dataset.cream === '1');
   if (!(item && item.dataset.needle === '1')) document.querySelector('#needle-est').hidden = true;
   // 麻酔つきの注入：当院がはじめての方は医師の診察だけ。受診したことのある方は麻酔も（今回の治療内容は上で）
   document.querySelector('#flow-box').hidden = !(flow && val('visit') === 'repeat');
@@ -205,7 +213,8 @@ async function load() {
     duration = typeof data.duration === 'string' ? data.duration : '';
     // 針脱毛：料金の概算（税込）
     const est = document.querySelector('#needle-est');
-    est.textContent = data.estimate ? `料金の概算：${data.estimate}` : '';
+    // 1行に1つずつ（「＋」「＝」の前で改行）
+    est.textContent = data.estimate ? `料金の概算\n${data.estimate.replace(/＋/g, '\n＋').replace('＝', '\n＝').replace('（料金は', '\n（料金は')}` : '';
     est.hidden = !data.estimate;
   } catch (_) {
     slots = {};
@@ -282,7 +291,7 @@ function showErrors(list, heading = 'ご確認ください') {
 const LABELS = {
   kind: document.querySelector('input[name="kind"][value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', clinicVisit: '当院の美容皮膚科の初診・再診を選んでください', initialInfo: '保険通院歴と当日施術のご希望を選んでください', status: '今回の治療内容を選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください',
-  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', needle: '性別・部位・麻酔を選んでください', agree: '「ご来院前のお願い」から「料金規定」までを読み、了承のチェックを入れてください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
+  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', needle: '性別と局所麻酔注射の有無を選んでください', needleCount: 'VIO または VIO以外の本数を入力してください', cream: '麻酔クリームの有無を選んでください', agree: '「ご来院前のお願い」から「料金規定」までを読み、了承のチェックを入れてください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
 
 form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'part', 'agree'].includes(e.target.name)) syncInputs(); });
@@ -291,27 +300,68 @@ form.addEventListener('change', (e) => {
   if (['kind', 'visit', 'group', 'parts', 'count', 'status', 'anesthesiaType', 'clinicVisit'].includes(e.target.name)) syncInputs();
 });
 
-// LINE の中で開いたとき（LIFF）：本人の LINE を確かめ、確定の連絡を LINE へ（メールは任意）
+// LINE の中で開いたとき（LIFF）：本人の LINE を確かめ、確定の連絡を LINE へ。
+// LINE で開く設定のときは、LINE で開いて公式アカウントを友だち追加した方だけ予約の画面に進む（院長 11/20）
 let idToken = '';
+const gate = document.querySelector('#line-gate');
+const showGate = (mode) => {
+  if (!gate) return;
+  form.hidden = mode !== '';
+  gate.hidden = mode === '';
+  if (mode === 'open') {
+    document.querySelector('#gate-title').textContent = 'LINE で開いてください';
+    document.querySelector('#gate-text').textContent = 'ご予約確定のご連絡や、ご予約の変更・キャンセルを LINE で行うため、日曜日のご予約は LINE からお願いしております。下のボタンから LINE で開き、当院の LINE 公式アカウントを友だち追加してください。';
+    document.querySelector('#gate-add').hidden = true;
+    document.querySelector('#gate-again').hidden = true;
+    document.querySelector('#gate-open').hidden = false;
+    document.querySelector('#gate-note').hidden = true;
+  } else if (mode === 'friend') {
+    document.querySelector('#gate-again').hidden = false;
+  }
+};
+/** 友だち追加しているか（確かめられなければ null） */
+async function friendOk() {
+  try {
+    return (await window.liff.getFriendship()).friendFlag === true;
+  } catch (_) {
+    return null;
+  }
+}
 async function startLine() {
   const id = document.querySelector('script[data-liff]')?.dataset.liff || '';
-  if (!id || !window.liff) return;
+  if (!id) return;
+  if (!window.liff) { showGate('open'); return; }
   try {
     await window.liff.init({ liffId: id });
-    if (!window.liff.isInClient() && !window.liff.isLoggedIn()) return;
+    if (!window.liff.isInClient() && !window.liff.isLoggedIn()) { showGate('open'); return; }
     idToken = window.liff.getIDToken() || '';
   } catch (_) {
     idToken = '';
   }
-  if (idToken) {
-    document.querySelector('#line-note').hidden = false;
-    // LINE の表示名は入力してもらわず、LINE から読む（予約のメモに残す）
-    try {
-      lineName = (await window.liff.getProfile()).displayName || '';
-    } catch (_) {
-      lineName = '';
-    }
+  if (!idToken) { showGate('open'); return; }
+  document.querySelector('#line-note').hidden = false;
+  // LINE の表示名は入力してもらわず、LINE から読む（予約のメモに残す）
+  try {
+    lineName = (await window.liff.getProfile()).displayName || '';
+  } catch (_) {
+    lineName = '';
   }
+  // 友だち追加がまだなら、追加してもらってから予約の画面へ（戻ってきたら確かめ直す）
+  const friend = await friendOk();
+  // 友だちかどうかを LINE で確かめられないときは、予約の画面の上に友だち追加のお願いを小さく出す（送るときにサーバーでも確かめる）
+  if (friend === null) {
+    const note = document.querySelector('#friend-note');
+    if (note) note.hidden = false;
+  }
+  if (friend === false) {
+    showGate('friend');
+    const recheck = async () => { if ((await friendOk()) !== false) { showGate(''); syncInputs(); } };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) recheck(); });
+    window.addEventListener('focus', recheck);
+    document.querySelector('#gate-again').addEventListener('click', recheck);
+    return;
+  }
+  showGate('');
 }
 startLine();
 
@@ -354,8 +404,10 @@ form.addEventListener('submit', async (event) => {
     body.status = val('status');
     body.anesthesiaType = val('anesthesiaType');
     body.sex = val('sex');
-    body.zone = val('zone');
     body.needleAnes = val('needleAnes');
+    body.cream = val('cream');
+    body.countVio = intOf('countVio');
+    body.countOther = intOf('countOther');
     body.kind = '';
     body.anesthesia = '';
     body.color = '';
@@ -371,7 +423,7 @@ form.addEventListener('submit', async (event) => {
   else if (body.clinicVisit === 'returning' && !body.status) local.push(LABELS.status);
   else if (!body.visit) local.push(document.querySelector('#visit-note').textContent || LABELS.visit);
   if (!item && body.kind && !body.rects.length) local.push(LABELS.area);
-  if (item && !pickReady(item)) local.push(item.dataset.flow === '1' ? LABELS.flow : item.dataset.needle === '1' && countVal() > 0 ? LABELS.needle : item.dataset.count === '1' ? LABELS.count : LABELS.parts);
+  if (item && !pickReady(item)) local.push(item.dataset.flow === '1' ? LABELS.flow : item.dataset.needle === '1' ? (needleTotal() > 0 ? LABELS.needle : LABELS.needleCount) : item.dataset.cream === '1' && !val('cream') ? LABELS.cream : item.dataset.count === '1' ? LABELS.count : LABELS.parts);
   if (!body.date || !body.time) local.push(LABELS.slot);
   if (!body.name.trim()) local.push(LABELS.name);
   if (!body.kana.trim()) local.push(LABELS.kana);
@@ -418,6 +470,10 @@ form.addEventListener('submit', async (event) => {
       showErrors(['送信が続いたため、しばらく受け付けられません。時間をおいてお試しください']);
     } else if (data.error === 'contact_us') {
       showErrors(['ご予約を受け付けられませんでした。お手数ですが、当院の LINE からご連絡ください']);
+    } else if (data.error === 'friend_required') {
+      showErrors(['当院の LINE 公式アカウントの友だち追加をお願いします。追加してから、もう一度「この内容で予約する」を押してください']);
+    } else if (data.error === 'line_required') {
+      showErrors(['日曜日のご予約は LINE からお願いしております。LINE で開き直してください']);
     } else if (data.error === 'line_auth') {
       showErrors(['LINE の確認ができませんでした。お手数ですが、LINE で開き直してください']);
     } else if (data.error === 'closed') {

@@ -26,11 +26,14 @@ try {
             $it = TattooBooking::item($itemId);
             // 部位ごと：group（何番目の区分）・parts（何番目の部位をカンマ区切り）、本数：count
             $pick = ['group' => $_GET['group'] ?? null, 'parts' => array_filter(explode(',', (string) ($_GET['parts'] ?? '')), 'is_numeric'), 'count' => $_GET['count'] ?? null, 'status' => $_GET['status'] ?? null, 'anesthesia' => $_GET['anesthesia'] ?? null,
-                'sex' => $_GET['sex'] ?? null, 'zone' => $_GET['zone'] ?? null, 'needleAnes' => $_GET['needleAnes'] ?? null];
+                'sex' => $_GET['sex'] ?? null, 'needleAnes' => $_GET['needleAnes'] ?? null, 'countVio' => $_GET['countVio'] ?? null, 'countOther' => $_GET['countOther'] ?? null];
+            if ($it && !empty($it['needle'])) {
+                $pick['count'] = array_sum(TattooBooking::needleCounts($pick));
+            }
             $plan = $it ? TattooBooking::planItem($it, $first, null, $pick) : [];
             // 針脱毛：料金の概算（税込）
             $est = $it && !empty($it['needle']) ? TattooBooking::needleEstimate($pick) : null;
-            $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) array_map(fn($l) => array_map(fn($c) => $c[0], $l), $plan), 'duration' => $it && TattooBooking::accepts($it, $first) ? TattooBooking::itemDurationText($it, $first, $pick) : '', 'estimate' => $est['text'] ?? '', 'today' => now_in_clinic()['date']]);
+            $out(200, ['ok' => true, 'open' => TattooBooking::open(), 'slots' => (object) array_map(fn($l) => array_map(fn($c) => $c[0], $l), $plan), 'duration' => $it && TattooBooking::accepts($it, $first) ? TattooBooking::itemDurationText($it, $first, $pick) : '', 'estimate' => isset($est['text']) ? $est['text'] . '（' . TattooBooking::ESTIMATE_NOTE . '）' : '', 'today' => now_in_clinic()['date']]);
         }
         $open = TattooBooking::ready();
         if ($area <= 0 || $area > 20_000) {

@@ -190,6 +190,11 @@ try {
         $in = Http::readJson(8192);
         Http::json(LineLink::learnChat(is_array($in) ? $in : []));
     }
+    // 予約枠時間一覧（スプレッドシート）：シートを直すと Apps Script が送ってくる。レーザー脱毛の時間を合わせる（院長 11/20）
+    if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'time-sheet') {
+        Http::checkIntegrationAuth();
+        Http::json(TattooBooking::receiveTimeSheet(Schema::integrationTimeSheet(Http::readJson(262_144))));
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));
