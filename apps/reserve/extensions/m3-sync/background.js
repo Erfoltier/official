@@ -148,7 +148,7 @@ async function syncOne(laneId, item) {
     const time = item.reservation.preexisting || !prev ? r.time : prev.time;
     const tab = await digikarTab(receptionUrl(date));
     const res = await digikar(tab, "cancel", { patientNo: no, time, requireMemoTime: !r.preexisting });
-    if (res.result === "cancelled") return { result: "cancelled", digikar: { patientNo: no, date, time } };
+    if (res.result === "cancelled") return { result: "cancelled", note: res.note, digikar: { patientNo: no, date, time } };
     return res;
   }
 
@@ -206,7 +206,7 @@ async function run(manual) {
         return;
       }
       if (res.result === "skip") continue;
-      const body = { result: res.result, fingerprint: item.reservation.fingerprint, ...(res.reason && { reason: res.reason }), ...(res.digikar && { digikar: res.digikar }) };
+      const body = { result: res.result, fingerprint: item.reservation.fingerprint, ...((res.reason || res.note) && { reason: String(res.reason || res.note).slice(0, 480) }), ...(res.digikar && { digikar: res.digikar }) };
       await lane(lt.id, "POST", `/api/v1/m3-sync/reservations/${encodeURIComponent(item.reservation.id)}`, body);
       done++;
       if (res.result === "review") {

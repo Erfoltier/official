@@ -243,16 +243,48 @@
     if (hits.length !== 1) return review(`取り消す予約をデジカルで1件に決められません（${hits.length}件）`);
     const sbtn = hits[0].statusCell?.querySelector("button");
     if (!sbtn) return review("ステータスのボタンが見つかりません");
-    sbtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" }));
-    const item = await waitFor(() => [...document.querySelectorAll("[role=menuitem]")].find((i) => text(i) === "取消"), 5000);
-    if (!item) return review("ステータスの「取消」が見つかりません");
-    item.focus();
-    item.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }));
-    await sleep(2000);
+    const n0 = listCount();
+    const gone = () => {
+      const n = listCount();
+      return n !== null && n0 !== null && n < n0;
+    };
+    const trail = [`vis=${document.visibilityState}`];
+    // 「取消」の選び方を順に試し、一覧の件数が減ったらやめる（裏のタブでも通る方法を探すため、何をしたかを残す）
+    const ways = [
+      ["enter", (item) => {
+        item.focus();
+        item.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+      }],
+      ["click", (item) => item.click()],
+      ["pointer", (item) => {
+        const o = { bubbles: true, cancelable: true, button: 0, buttons: 1, pointerType: "mouse", isPrimary: true };
+        item.dispatchEvent(new PointerEvent("pointermove", o));
+        item.dispatchEvent(new PointerEvent("pointerdown", o));
+        item.dispatchEvent(new MouseEvent("mousedown", o));
+        item.dispatchEvent(new PointerEvent("pointerup", { ...o, buttons: 0 }));
+        item.dispatchEvent(new MouseEvent("mouseup", { ...o, buttons: 0 }));
+        item.dispatchEvent(new MouseEvent("click", { ...o, buttons: 0 }));
+      }],
+    ];
+    for (const [name, act] of ways) {
+      if (sbtn.getAttribute("aria-expanded") !== "true" && sbtn.parentElement?.getAttribute("aria-expanded") !== "true") {
+        sbtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse", isPrimary: true }));
+      }
+      const item = await waitFor(() => [...document.querySelectorAll("[role=menuitem]")].find((i) => text(i) === "取消"), 5000);
+      if (!item) {
+        trail.push(`${name}:メニューが開かない`);
+        continue;
+      }
+      act(item);
+      const ok = await waitFor(gone, 6000, 300);
+      trail.push(`${name}:${ok ? "減った" : "変わらず"}`);
+      if (ok) break;
+    }
+    await sleep(1000);
     const after = (await waitList()) || [];
     const still = after.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
-    if (still.length >= hits.length) return review("取消にしたあとも一覧に残っています");
-    return { result: "cancelled" };
+    if (still.length >= hits.length) return review(`取消にしたあとも一覧に残っています（${trail.join("、")}）`);
+    return { result: "cancelled", note: trail.join("、") };
   }
 
   /** 写したあと：その日の一覧に、患者番号・時刻・受付メモの行がちょうど1件あるか */
