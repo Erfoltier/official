@@ -23,9 +23,9 @@ describe("デジカルへの予約の写し", () => {
   it("連携トークンがなければ読めない。始める前は何も写さない。始めた時刻は変わらない", async () => {
     expect((await h.srv.client().raw("GET", "/api/v1/integration/m3-sync")).status).toBe(401);
     expect(await queue()).toEqual({ startAt: null, items: [], review: [] });
-    const s1 = (await integration("POST", "/start")).data;
+    const s1 = (await integration("POST", "/start")).data as any;
     await sleep(5);
-    const s2 = (await integration("POST", "/start")).data;
+    const s2 = (await integration("POST", "/start")).data as any;
     expect(s2.startAt).toBe(s1.startAt);
   });
 
@@ -133,6 +133,6 @@ describe("デジカルへの予約の写し", () => {
     const p = await c.post("/patients", { name: "ふつう さん" });
     await book(p.id, 700);
     expect((await queue()).items).toHaveLength(1);
-    expect((await integration("GET", `?from=${addDays(day, 1)}`)).data.items).toEqual([]);
+    expect(((await integration("GET", `?from=${addDays(day, 1)}`)).data as any).items).toEqual([]);
   });
 });
