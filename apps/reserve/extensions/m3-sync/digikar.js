@@ -215,14 +215,15 @@
     if (hits.length !== 1) return review(`変更する予約をデジカルで1件に決められません（${hits.length}件）`);
     const btns = [...hits[0].el.querySelectorAll("button")];
     btns[btns.length - 1].click(); // 行の右端（予約の画面）
+    // 予約一覧の1件は「2026/11/24(火)」と「10:00」が別々の要素で、同じ箱に 編集・削除・カルテ表示 のボタンがある
     const want = `${slashDate(oldDate)}(`;
-    const entry = await waitFor(() =>
-      [...document.querySelectorAll("*")].find((e) => e.childElementCount === 0 && visible(e) && e.textContent.includes(want) && e.textContent.includes(hhmm(oldTime))),
-    );
+    const entry = await waitFor(() => {
+      const hits = [...document.querySelectorAll("div,li")].filter((e) => visible(e) && (e.innerText || "").includes(want) && (e.innerText || "").includes(hhmm(oldTime)) && e.querySelectorAll("button").length >= 2);
+      return hits.sort((a, b) => a.innerText.length - b.innerText.length)[0] || null;
+    });
     if (!entry) return review("予約一覧に変更する予約が見つかりません");
-    let box = entry;
-    while (box && box.querySelectorAll("button").length < 2) box = box.parentElement;
-    const editBtn = box?.querySelectorAll("button")[0];
+    // 「編集」は鉛筆の印のボタン（並び順では選ばない＝「削除」を押さないため）
+    const editBtn = [...entry.querySelectorAll("button")].find((b) => (b.querySelector("path")?.getAttribute("d") || "").startsWith("M19.575 9.326"));
     if (!editBtn) return review("予約一覧の「編集」ボタンが見つかりません");
     editBtn.click();
     const titled = await waitFor(() => panelByTitle("予約編集"));
