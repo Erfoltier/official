@@ -390,6 +390,8 @@ export function CalendarApp({ initialDate }: { initialDate: string }) {
               <DatePicker
                 value={date}
                 today={now.date}
+                clinicWeekdays={bundle?.clinic.intakeWeekdays}
+                specialDates={bundle?.clinic.intakeSpecialDates}
                 onPick={(d) => {
                   setDate(d);
                   setPickerOpen(false);

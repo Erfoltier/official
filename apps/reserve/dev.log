@@ -3,10 +3,7 @@
 - Local:         http://localhost:3000
 - Network:       http://192.0.2.2:3000
 ✓ Ready in 2.1s
-✓ Running next.config.ts took 3.5s
+✓ Running next.config.ts took 3.0s
 
-○ Compiling / ...
- GET / 200 in 5.0s (next.js: 4.8s, application-code: 236ms)
- GET / 200 in 57ms (next.js: 10ms, application-code: 47ms)
- GET / 200 in 47ms (next.js: 5ms, application-code: 42ms)
- GET / 200 in 39ms (next.js: 10ms, application-code: 29ms)
+ GET / 200 in 4.0s (next.js: 3.8s, application-code: 199ms)
+ GET / 200 in 44ms (next.js: 5ms, application-code: 40ms)
