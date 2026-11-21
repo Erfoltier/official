@@ -801,6 +801,8 @@ export interface SundayMenu {
   creamAsk?: boolean;
   /** 初診は医師の診察だけ（部位・本数によらず初診の時間） */
   firstFixed?: boolean;
+  /** 初診の施術に足す土台の時間（分。説明とは別） */
+  firstBase?: number;
   /** 本数で時間が決まるとき、1分あたりの本数（針脱毛は4）。0 なら使わない */
   countPerMinute?: number;
   /** 1回の時間の上限（分）。0 なら180分 */

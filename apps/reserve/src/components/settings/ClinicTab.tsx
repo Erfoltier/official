@@ -1053,6 +1053,12 @@ function SundayMenusEditor({
                 <span>初診は医師の診察だけ（部位によらず初診の時間。部位は聞いてメモに残す）</span>
               </label>
             )}
+            {timeMode(it) === "parts" && !it.firstFixed && (
+              <label className={styles.field}>
+                <span>初診の施術に足す時間（分。説明とは別。例：黒ずみトーニングは初診の照射が1部位15分なので10）</span>
+                <input className={styles.input} type="number" min={0} max={180} step={5} value={it.firstBase ?? 0} onChange={(ev) => put(i, { firstBase: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+              </label>
+            )}
             {timeMode(it) === "parts" && (
               <div className={styles.timeRow}>
                 <label className={styles.field}>

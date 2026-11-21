@@ -578,25 +578,31 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
 });
 
 describe("体・唇の黒ずみ美白トーニング（院長 11/21）", () => {
-  it("部位を複数選べ、1部位15分・追加1部位ごとに5分。初診は医師の診察15分だけ。タトゥー・シミ取りと同じ機器なので同じ時刻に重ねない", async () => {
+  it("部位を複数選べる。初診は1番・3番で説明10分＋照射（1部位15分・追加ごとに5分）、再診は1部位10分・追加ごとに5分。タトゥー・シミ取りと同じ機器なので同じ時刻に重ねない", async () => {
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     const menu = await c.post("/menus", { name: "黒ずみトーニング", duration: { kind: "range", min: 5, max: 60, step: 5 }, defaultMinutes: 15, startStepMin: 5, laneIds: [L1, L3] });
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooMachine: "ディスカバリーピコプラス", tattooSlots: [`${day} 10:00-12:00`] });
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     const t = presets.find((x: any) => x.id === "darktoning");
-    expect(t).toMatchObject({ name: "体・唇の黒ずみ美白トーニング", category: "除去・美白・レーザー", machine: "ディスカバリーピコプラス", repeatLaneIds: [L1, L3], repeatMenuId: menu.id, firstLaneIds: [MAIN], firstFixed: true, neobo: false });
+    expect(t).toMatchObject({ name: "体・唇の黒ずみ美白トーニング", category: "除去・美白・レーザー", machine: "ディスカバリーピコプラス", firstMinutes: 10, firstBase: 10, firstLaneIds: [L1, L3], firstMenuId: menu.id, repeatMinutes: 5, repeatLaneIds: [L1, L3], repeatMenuId: menu.id, neobo: false });
     expect(t.partGroups[0].parts.map((p: any) => p.name)).toEqual(["リップ（唇・口角。アートメイク不可）", "両脇", "ニップル（乳首＋乳輪）", "デリケートゾーン（V・I）", "臀部（Oライン不可）"]);
     await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (x.id === "darktoning" ? { ...x, enabled: true } : x)) });
-    expect((await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1")).duration).toBe("約15分");
-    expect((await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1,2,3")).duration).toBe("約25分");
-    // 初診は部位によらず医師の診察15分
-    expect((await slots("item=darktoning&visit=first&group=0&parts=1,2,3")).duration).toBe("約15分");
+    // 再診：1部位10分、3部位20分
+    expect((await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1")).duration).toBe("約10分");
+    expect((await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1,2,3")).duration).toBe("約20分");
+    // 初診：説明10分＋照射（1部位15分）＝25分、3部位なら説明10分＋25分＝35分
+    expect((await slots("item=darktoning&visit=first&group=0&parts=1")).duration).toBe("約25分");
+    expect((await slots("item=darktoning&visit=first&group=0&parts=1,2,3")).duration).toBe("約35分");
     // タトゥーの照射（メイン 10:00〜10:05、同じ機器）と同じ時刻には入れない
     expect((await book({ kind: "tattoo", agree: true, visit: "repeat", rects: [[2, 2.5]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09061610000", email: "t@example.jp", date: day, time: "10:00" })).status).toBe(201);
     const r = await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1");
     expect(r.slots[day]).not.toContain("10:00");
     expect(r.slots[day][0]).toBe("10:05");
+    // 初診の予約メモには説明10分
+    expect((await book(person(day, "10:05", { item: "darktoning", visit: "first", group: "0", parts: [1] }, "09061610001"))).status).toBe(201);
+    const memo = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.memo.startsWith("体・唇の黒ずみ")).memo;
+    expect(memo).toContain("初診の説明：10分");
   });
 });
 

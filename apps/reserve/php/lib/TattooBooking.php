@@ -445,12 +445,13 @@ final class TattooBooking
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(['lane-3']), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
             'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90, 'needle' => true,
         ];
-        // 体・唇の黒ずみ美白トーニング（ホームページ「脇・VI・乳首の黒ずみ美白トーニング」：1部位約15分、追加1部位につき約5分。女性看護師が照射。
-        // 機器はディスカバリーピコプラス（タトゥー・シミ取りと同じ）。初診は医師の診察だけ（部位は聞いてメモに残す）。院長 11/21）
+        // 体・唇の黒ずみ美白トーニング（女性看護師が照射。機器はディスカバリーピコプラス：タトゥー・シミ取りと同じ。院長 11/21）
+        // 初診：脱毛と同じく1番・3番で説明10分＋照射（1部位15分、追加1部位ごとに5分）。再診：1部位10分、追加1部位ごとに5分
+        $tone = self::menuByName(self::TONING_MENU);
         $out[] = [
             'id' => 'darktoning', 'name' => '体・唇の黒ずみ美白トーニング', 'enabled' => false,
-            'firstMinutes' => 15, 'firstLaneIds' => $lane([self::M]), 'firstMenuId' => $menu(self::CONSULT), 'firstFixed' => true,
-            'repeatMinutes' => 10, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => self::menuByName(self::TONING_MENU),
+            'firstMinutes' => 10, 'firstBase' => 10, 'firstLaneIds' => $lane(self::N), 'firstMenuId' => $tone,
+            'repeatMinutes' => 5, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => $tone,
             'machine' => self::PICO, 'note' => self::TONING_NOTE,
             'partGroups' => [['name' => '部位', 'parts' => array_map(fn($n) => ['name' => $n, 'minutes' => 5], self::TONING_PARTS)]],
             'countPerMinute' => 0, 'maxMinutes' => 0, 'pickLabel' => '照射する部位',
@@ -643,7 +644,8 @@ final class TattooBooking
             $m = (int) ($it['firstMinutes'] ?? 0);
             return $m >= 5 ? $m : null;
         }
-        return self::partsMinutes($it, $pick, (int) ($it[($first ? 'first' : 'repeat') . 'Minutes'] ?? 0));
+        // 初診は説明（firstMinutes）に加えて、施術の土台の時間（firstBase。黒ずみトーニングは初診の照射が1部位15分のため10分）
+        return self::partsMinutes($it, $pick, (int) ($it[($first ? 'first' : 'repeat') . 'Minutes'] ?? 0) + ($first ? (int) ($it['firstBase'] ?? 0) : 0));
     }
 
     /** 足す時間 $min に、選んだ部位・本数の時間を足す（5分刻みに切り上げ）。選び方がおかしい・上限を超えるときは null */
@@ -1104,6 +1106,12 @@ final class TattooBooking
             $row['creamAsk'] = !empty($it['creamAsk']);
             // 初診は医師の診察だけ（部位・本数によらず初診の時間。黒ずみトーニング。院長 11/21）
             $row['firstFixed'] = !empty($it['firstFixed']);
+            // 初診の施術に足す土台の時間（説明とは別。黒ずみトーニング：初診は1部位15分＝土台10分＋部位5分）
+            $fb = (int) ($it['firstBase'] ?? 0);
+            if ($fb < 0 || $fb > self::MAX_ITEM_MINUTES || $fb % 5 !== 0) {
+                throw new StoreError('invalid', "「{$name}」の初診の施術に足す時間は0〜" . self::MAX_ITEM_MINUTES . '分（5分刻み）で入れてください');
+            }
+            $row['firstBase'] = $fb;
             $out[] = $row;
         }
         return $out;
