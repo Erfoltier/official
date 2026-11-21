@@ -188,9 +188,9 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
           keys={googleKeys}
           serverUrl={serverUrl}
           busy={busy}
-          onCreate={() =>
+          onCreate={(name) =>
             run(async () => {
-              const r = await createDeviceLink("Google連携（問診票・同意書・料金表）", "google");
+              const r = await createDeviceLink(name, "google");
               setNewGoogleKey(r.token);
             })
           }
@@ -405,12 +405,14 @@ function GoogleKeysCard(props: {
   serverUrl: string;
   busy: boolean;
   newKey: string | null;
-  onCreate: () => void;
+  onCreate: (name: string) => void;
   onRevoke: (l: DeviceLink) => void;
   onCloseKey: () => void;
   notify: (t: string) => void;
 }) {
   const { keys, serverUrl, busy, newKey, onCreate, onRevoke, onCloseKey, notify } = props;
+  // 何に使うキーかを名前で見分ける（例：デジカル写し（院内PC））。院長 11/21
+  const [name, setName] = useState("Google連携（問診票・同意書・料金表）");
   const api = `${serverUrl}/api/v1/integration`;
   return (
     <details className={`${styles.clinicCard} ${styles.fold}`}>
@@ -447,8 +449,9 @@ function GoogleKeysCard(props: {
           <p className={styles.hint}>各スクリプトの TOKEN に貼り付けてください。チャットやメールには貼り付けないでください。</p>
         </div>
       ) : (
-        <div className={styles.actions}>
-          <button className={styles.primary} disabled={busy} onClick={onCreate}>
+        <div className={styles.actions} style={{ alignItems: "center" }}>
+          <input className={styles.input} style={{ width: "auto", flex: "1 1 200px" }} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="接続キーの名前" />
+          <button className={styles.primary} disabled={busy || !name.trim()} onClick={() => onCreate(name.trim())}>
             {keys.length ? "接続キーを追加発行" : "接続キーを発行"}
           </button>
         </div>
