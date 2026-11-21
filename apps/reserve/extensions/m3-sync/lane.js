@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         method: msg.method || "GET",
         credentials: "same-origin",
         cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(msg.headers || {}) },
         body: msg.body === undefined ? undefined : JSON.stringify(msg.body),
       });
       const data = await res.json().catch(() => ({}));

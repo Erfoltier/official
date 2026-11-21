@@ -279,3 +279,25 @@ describe("デジカルへの写し：試運転", () => {
     expect((await c.get("/m3-sync")).items.map((x: any) => x.reservation.id)).toEqual([b.id]);
   });
 });
+
+describe("デジカルへの写し：試運転（カルテ番号のない患者）", () => {
+  it("試運転に LANE RESERVE の患者ID（p-）を入れると、カルテ番号のない完全初診の患者の予約も写す一覧に出る（患者の情報つき）", async () => {
+    const c = await h.srv.as("staff-admin");
+    const day = addDays(nowInClinic().date, 3);
+    const p = await c.post("/patients", { name: "初診 花子", kana: "ショシン ハナコ", sex: "female", birthDate: "1990-04-01", phone: "090-1111-2222" });
+    const other = await c.post("/patients", { name: "別の 人", kana: "ベツノ ヒト" });
+    expect((await c.put("/m3-sync/settings", { trialChartNos: `2,${p.id}` })).trialChartNos).toEqual(["2", p.id]);
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    const r = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    await c.post("/reservations", { patientId: other.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 700), endAt: toIso(day, 730) });
+    const q = await c.get("/m3-sync");
+    expect(q.items.map((x: any) => x.reservation.id)).toEqual([r.id]);
+    expect(q.items[0].patient).toMatchObject({ id: p.id, name: "初診 花子", kana: "ショシン ハナコ", sex: "female", birthDate: "1990-04-01" });
+    expect(q.items[0].patient.m3ChartNo).toBeUndefined();
+    // 番号を書き戻す（拡張機能がスタッフとして PATCH する）
+    const cur = (await c.get(`/patients/${p.id}`)).patient;
+    const u = (await c.patch(`/patients/${p.id}`, { version: cur.version, m3ChartNo: "76760" })).patient;
+    expect(u.m3ChartNo).toBe("76760");
+  });
+});

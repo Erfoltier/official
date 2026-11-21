@@ -72,8 +72,9 @@ TXT;
         if (array_key_exists('trialChartNos', $in)) {
             $nos = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\s,、，]+/u', (string) $in['trialChartNos']) ?: []), fn($x) => $x !== '')));
             foreach ($nos as $no) {
-                if (!preg_match('/^\d{1,12}$/', $no)) {
-                    throw new StoreError('invalid', '試運転の患者番号は数字で入れてください');
+                // 数字＝デジカルの患者番号（カルテ番号）。p- で始まるもの＝LANE RESERVE の患者ID（カルテ番号のない完全初診の試し用）
+                if (!preg_match('/^(\d{1,12}|p-[A-Za-z0-9_-]{3,60})$/', $no)) {
+                    throw new StoreError('invalid', '試運転の患者は、デジカルの患者番号（数字）か LANE RESERVE の患者ID（p- で始まる）で入れてください');
                 }
             }
             $goLive = self::trialChartNos() !== [] && $nos === [];

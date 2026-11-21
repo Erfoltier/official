@@ -267,6 +267,103 @@
   }
 
   // ---- 取消（ステータスを「取消」に。一覧から消え、受付編集履歴に残る） ----
+  // ---- 完全初診の新規患者登録（docs/M3-SYNC.md「完全初診の方」） ----
+
+  /** 全角カナに（ひらがな→カタカナ、半角→全角、空白は全角の空白1つ） */
+  function toZenKana(s) {
+    return (s || "")
+      .normalize("NFKC")
+      .replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60))
+      .trim()
+      .replace(/[\s　]+/g, "　");
+  }
+
+  /** 患者検索の結果の行（番号・フリガナ・生年月日） */
+  async function searchRows(keyword) {
+    const box = [...document.querySelectorAll('input[placeholder^="患者番号"]')].find(visible) || (await openSearch());
+    box.focus();
+    setValue(box, keyword);
+    box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }));
+    await sleep(2500);
+    const table = [...document.querySelectorAll("table")].find((t) => visible(t) && [...t.querySelectorAll("th")].some((th) => text(th) === "生年月日"));
+    if (!table) return [];
+    const hs = [...table.querySelectorAll("th")].map(text);
+    return [...table.querySelectorAll("tr")]
+      .filter((r) => r.querySelector("td"))
+      .map((r) => {
+        const c = [...r.querySelectorAll("td")].map(text);
+        return { no: c[hs.indexOf("患者番号")], kana: c[hs.indexOf("フリガナ")], birth: c[hs.indexOf("生年月日")], el: r };
+      });
+  }
+
+  /** "1943(S18)/04/20" → "1943-04-20" */
+  const birthKey = (s) => {
+    const m = (s || "").match(/(\d{4})\D*?\/(\d{1,2})\/(\d{1,2})/);
+    return m ? `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}` : "";
+  };
+
+  async function registerPatient({ name, kana, sex, birthDate, phone, postalCode }) {
+    const zen = toZenKana(kana);
+    const family = kanaKey(zen.split("　")[0]);
+    // 二重登録を防ぐ：同じフリガナ、または同じ生年月日で同じ姓（カナ）の方がいれば登録しない
+    await openSearch();
+    const byKana = (await searchRows(zen.replace("　", " "))).filter((r) => kanaKey(r.kana) === kanaKey(zen));
+    if (byKana.length) {
+      closeSearchPanel();
+      return review(`同じフリガナの患者がデジカルにいます（患者番号 ${byKana.map((r) => r.no).join("・")}）。同じ方ならカルテ番号を LANE RESERVE に入れてください`);
+    }
+    const [y, m, d] = birthDate.split("-");
+    const byBirth = (await searchRows(`${y}/${Number(m)}/${Number(d)}`)).filter((r) => birthKey(r.birth) === birthDate && kanaKey(r.kana).startsWith(family));
+    if (byBirth.length) {
+      closeSearchPanel();
+      return review(`同じ生年月日・同じ姓の患者がデジカルにいます（患者番号 ${byBirth.map((r) => r.no).join("・")}）`);
+    }
+    const nb = [...document.querySelectorAll("button")].find((b) => visible(b) && text(b) === "新規患者登録");
+    if (!nb) throw new Error("「新規患者登録」のボタンが見つかりません");
+    nb.click();
+    const f = await waitFor(() => {
+      const no = document.querySelector('input[name="orca-patient-id"]');
+      const kanji = document.querySelector('input[name="kanji-name"]');
+      const kanaIn = document.querySelector('input[name="kana-name"]');
+      return no && kanji && kanaIn && visible(kanji) ? { no, kanji, kanaIn } : null;
+    });
+    if (!f) throw new Error("患者情報登録の画面が開きません");
+    const newNo = f.no.value.trim();
+    if (!/^\d{1,12}$/.test(newNo)) throw new Error(`新しい患者番号を読めません（${newNo}）`);
+    setValue(f.kanji, name);
+    setValue(f.kanaIn, zen);
+    const radio = document.querySelector(`input[name="性別"][value="${sex === "male" ? "1" : "2"}"]`);
+    radio.click();
+    const inputs = [...document.querySelectorAll("input")].filter(visible);
+    const i = inputs.indexOf(document.querySelector('input[name="性別"][value="2"]'));
+    const [yi, mi, di] = inputs.slice(i + 1, i + 4);
+    for (const [el, v] of [[yi, y], [mi, String(Number(m))], [di, String(Number(d))]]) {
+      el.focus();
+      setValue(el, v);
+      el.blur();
+    }
+    if (postalCode) setValue(document.querySelector('input[name="zip-code"]'), postalCode);
+    if (phone) setValue(document.querySelector('input[name="phone-number"]'), phone);
+    await sleep(600);
+    // 入ったことを確かめる（性別は選ばれたか、生年月日の年は「1990(平成2)」の形になる）
+    const okSex = document.querySelector(`input[name="性別"][value="${sex === "male" ? "1" : "2"}"]`)?.checked;
+    if (f.kanji.value !== name || f.kanaIn.value !== zen || !okSex || !yi.value.startsWith(y) || mi.value !== String(Number(m)) || di.value !== String(Number(d))) {
+      throw new Error("患者情報の入力を確かめられません");
+    }
+    const save = [...document.querySelectorAll("button")].filter((b) => visible(b) && text(b) === "登録").pop();
+    if (!save) throw new Error("「登録」のボタンが見つかりません");
+    save.click();
+    const closed = await waitFor(() => !document.querySelector('input[name="kanji-name"]'), 10000);
+    if (!closed) throw new Error("患者情報登録の画面が閉じません（デジカルのメッセージを確かめてください）");
+    // 登録できたか：新しい番号で探し、フリガナが同じこと
+    const after = (await searchRows(newNo)).filter((r) => r.no === newNo);
+    closeSearchPanel();
+    if (after.length !== 1 || kanaKey(after[0].kana) !== kanaKey(zen)) {
+      return review(`デジカルに患者番号 ${newNo} で登録したかもしれませんが確かめられません。デジカルで確かめてください`);
+    }
+    return { result: "registered", patientNo: newNo };
+  }
+
   // ---- 取消（デバッグの仕組みで本物のクリックを送るための位置を返す。background.js の cancelByDebugger） ----
   const center = (el) => {
     el.scrollIntoView({ block: "center", inline: "center" });
@@ -394,7 +491,7 @@
       }
       if (op === "state") return { state };
       if (state !== "ok") return { result: "not-ready", state };
-      const fn = { create, edit, cancel, verify, locateCancel, locateCancelItem, checkGone }[op];
+      const fn = { create, edit, cancel, verify, locateCancel, locateCancelItem, checkGone, registerPatient }[op];
       if (!fn) return review("知らない操作です");
       return await fn(args);
     } catch (e) {

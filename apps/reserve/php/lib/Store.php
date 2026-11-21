@@ -1737,7 +1737,7 @@ final class Store
                 continue;
             }
             // 試運転：決めた患者番号の予約だけ
-            if ($trial !== [] && !in_array((string) ($patient['m3ChartNo'] ?? ''), $trial, true)) {
+            if ($trial !== [] && !in_array((string) ($patient['m3ChartNo'] ?? ''), $trial, true) && !in_array((string) ($patient['id'] ?? ''), $trial, true)) {
                 continue;
             }
             $rec = Db::i()->get(self::M3_SYNC_KIND, $r['id']);

@@ -59,8 +59,8 @@ async function send(tabId, msg, file) {
   return chrome.tabs.sendMessage(tabId, msg);
 }
 
-async function lane(tabId, method, path, body) {
-  const r = await send(tabId, { type: "lane-api", method, path, body }, "lane.js");
+async function lane(tabId, method, path, body, headers) {
+  const r = await send(tabId, { type: "lane-api", method, path, body, headers }, "lane.js");
   if (!r) throw new Error("LANE RESERVE の画面と話せません");
   return r;
 }
@@ -198,13 +198,53 @@ async function cancelByDebugger(tabId, args) {
 
 const receptionUrl = (date) =>`${DIGIKAR}/reception/${date.replace(/-/g, "")}`;
 
+/**
+ * 完全初診の方をデジカルに新規患者登録し、付いた患者番号を LANE RESERVE のカルテ番号（M3）に書き戻す。
+ * 氏名・フリガナ・性別（男性か女性）・生年月日のどれかがなければ登録しない（デジカルの性別の初期値は男性のため）
+ */
+async function registerNewPatient(laneId, item) {
+  const p = item.patient || {};
+  const missing = [
+    !p.name && "氏名",
+    !p.kana && "フリガナ",
+    !(p.sex === "male" || p.sex === "female") && "性別（男性か女性）",
+    !/^\d{4}-\d{2}-\d{2}$/.test(p.birthDate || "") && "生年月日",
+  ].filter(Boolean);
+  if (missing.length) return { result: "review", reason: `カルテ番号がなく、デジカルに新規患者登録するための ${missing.join("・")} が LANE RESERVE にありません` };
+  const tab = await digikarTab(receptionUrl(item.reservation.date));
+  const reg = await digikar(tab, "registerPatient", {
+    pageDate: item.reservation.date,
+    name: p.name,
+    kana: p.kana,
+    sex: p.sex,
+    birthDate: p.birthDate,
+    phone: (p.phone || "").replace(/[^\d-]/g, ""),
+    postalCode: (p.postalCode || "").replace(/[^\d-]/g, ""),
+  });
+  if (reg.result !== "registered") return reg;
+  // LANE RESERVE に番号を書き戻す（版をそろえてから）
+  const cur = await lane(laneId, "GET", `/api/v1/patients/${encodeURIComponent(p.id)}`);
+  const version = cur.data?.patient?.version;
+  const put = version
+    ? await lane(laneId, "POST", `/api/v1/patients/${encodeURIComponent(p.id)}`, { version, m3ChartNo: reg.patientNo }, { "X-HTTP-Method-Override": "PATCH" })
+    : { ok: false };
+  if (!put.ok) return { result: "review", reason: `デジカルに患者番号 ${reg.patientNo} で新規患者登録しましたが、LANE RESERVE にカルテ番号を書き戻せませんでした。手で ${reg.patientNo} を入れてください` };
+  return reg;
+}
+
 /** 1件を写す。返り値は LANE RESERVE に記録する結果、または not-ready（デジカルが使えない＝止める） */
 async function syncOne(laneId, item) {
   const r = item.reservation;
   const p = item.patient || {};
-  const no = p.m3ChartNo || "";
+  let no = p.m3ChartNo || "";
   const prev = item.previous?.digikar || null;
-  if (!no) return { result: "review", reason: "カルテ番号（M3）がありません（完全初診の新規患者登録は次の段階で対応）" };
+  if (!no) {
+    // 完全初診：LANE RESERVE の情報でデジカルに新規患者登録し、付いた番号を LANE RESERVE に書き戻す（院長 11/21）
+    if (item.action !== "create" && item.action !== "restore") return { result: "review", reason: "カルテ番号（M3）がありません" };
+    const reg = await registerNewPatient(laneId, item);
+    if (reg.result !== "registered") return reg;
+    no = reg.patientNo;
+  }
   if (!/^\d{1,12}$/.test(no)) return { result: "review", reason: `カルテ番号 ${no} はデジカルの患者番号の形ではありません` };
 
   if (item.action === "cancel") {

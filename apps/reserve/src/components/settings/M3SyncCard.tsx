@@ -92,7 +92,7 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
                 className={styles.input}
                 style={{ width: "auto", flex: "1 1 160px" }}
                 value={trial ?? st.claude.trialChartNos.join(",")}
-                placeholder="例：2（カンマで区切る）"
+                placeholder="例：2（カンマで区切る。カルテ番号のない患者は患者ID p-…）"
                 onChange={(e) => setTrial(e.target.value)}
                 aria-label="試運転の患者番号"
               />
