@@ -855,18 +855,19 @@ final class TattooBooking
             if ($uid !== null) {
                 Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（日曜の予約を LINE で）', self::ACTOR);
             }
-            return ['ok' => true, 'end' => self::hm($slot[2]), 'id' => $r['id'], 'segs' => $segs];
+            return ['ok' => true, 'end' => self::hm($slot[2]), 'id' => $r['id'], 'segs' => $segs, 'patientId' => $patientId];
         });
         if (!$result['ok']) {
             return $result;
         }
         $f += ['kind' => 'multi', 'jobs' => $jobs, 'segs' => $result['segs'], 'end' => $result['end']];
+        $f['askQuestionnaire'] = self::askQuestionnaire($f, (string) $result['patientId']);
         [$lined] = $uid !== null ? Reminder::pushText($uid, self::mailBody($f, 'line')) : [false];
         $sent = false;
         if (!$lined && $f['email'] !== '') {
             [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject('multi'), self::mailBody($f)) : [false];
         }
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::chainDurationText($jobs), 'lined' => (bool) $lined, 'mailed' => (bool) $sent, 'questionnaire' => self::questionnaireUrl($uid !== null ? 'line' : 'mail')];
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::chainDurationText($jobs), 'lined' => (bool) $lined, 'mailed' => (bool) $sent, 'questionnaire' => $f['askQuestionnaire'] ? self::questionnaireUrl($uid !== null ? 'line' : 'mail') : ''];
     }
 
     /** 希望施術1つの選んだ内容（部位・本数・面積・麻酔など）。予約メモ・確定の連絡に書く */
@@ -1827,6 +1828,7 @@ final class TattooBooking
         $f['clinicLines'] = array_values(array_filter($clinicLines));
         // 当院の美容皮膚科が初診の方には、確定の連絡と予約後の画面で問診票の記入をお願いする（院長 11/19）
         $f['clinicInitial'] = ($in['clinicVisit'] ?? '') === 'initial';
+        $f['clinicReturning'] = ($in['clinicVisit'] ?? '') === 'returning';
         $color = in_array($in['color'] ?? '', ['black', 'color'], true) ? $in['color'] : '';
         $anesthesia = $item === null && ($in['anesthesia'] ?? '') === 'yes';
         $area = $item === null ? self::areaOf($in['rects'] ?? null) : null;
@@ -1960,19 +1962,20 @@ final class TattooBooking
             if ($uid !== null) {
                 Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（タトゥー除去の予約を LINE で）', self::ACTOR);
             }
-            return ['ok' => true, 'end' => self::hm($start + $treat), 'id' => $r['id']];
+            return ['ok' => true, 'end' => self::hm($start + $treat), 'id' => $r['id'], 'patientId' => $patientId];
         });
         if (!$result['ok']) {
             return $result;
         }
         $f += ['kind' => $kind, 'visit' => $visit, 'area' => $area, 'anesthesia' => $anesthesia, 'end' => $result['end']];
+        $f['askQuestionnaire'] = self::askQuestionnaire($f, (string) $result['patientId']);
         // 確定の連絡：LINE で開いた人は LINE へ（送れなければメールがあればメール）。それ以外はメール
         [$lined] = $uid !== null ? Reminder::pushText($uid, self::mailBody($f, 'line')) : [false];
         $sent = false;
         if (!$lined && $f['email'] !== '') {
             [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject($kind), self::mailBody($f)) : [false];
         }
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::durationText($treat, $first), 'lined' => (bool) $lined, 'mailed' => (bool) $sent, 'questionnaire' => self::questionnaireUrl($uid !== null ? 'line' : 'mail')];
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::durationText($treat, $first), 'lined' => (bool) $lined, 'mailed' => (bool) $sent, 'questionnaire' => $f['askQuestionnaire'] ? self::questionnaireUrl($uid !== null ? 'line' : 'mail') : ''];
     }
 
     /** 日曜メニューの予約（入力は book で確かめ済み） */
@@ -2044,7 +2047,7 @@ final class TattooBooking
                 if ($uid !== null) {
                     Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（日曜の予約を LINE で）', self::ACTOR);
                 }
-                return ['ok' => true, 'end' => self::hm($treatEnd), 'id' => $r['id']];
+                return ['ok' => true, 'end' => self::hm($treatEnd), 'id' => $r['id'], 'patientId' => $patientId];
             }
             $r = Store::bookingCreate([
                 'patientId' => $patientId,
@@ -2059,18 +2062,19 @@ final class TattooBooking
             if ($uid !== null) {
                 Store::bookingLinkLine($patientId, $uid, 'LINE紐付け（日曜の予約を LINE で）', self::ACTOR);
             }
-            return ['ok' => true, 'end' => self::hm($start + $len), 'id' => $r['id']];
+            return ['ok' => true, 'end' => self::hm($start + $len), 'id' => $r['id'], 'patientId' => $patientId];
         });
         if (!$result['ok']) {
             return $result;
         }
         $f += ['kind' => 'menu', 'item' => $it, 'visit' => $first ? 'first' : 'repeat', 'end' => $result['end'], 'pick' => $pick];
+        $f['askQuestionnaire'] = self::askQuestionnaire($f, (string) $result['patientId']);
         [$lined] = $uid !== null ? Reminder::pushText($uid, self::mailBody($f, 'line')) : [false];
         $sent = false;
         if (!$lined && $f['email'] !== '') {
             [$sent] = Reminder::mailReady() ? Reminder::sendText($f['email'], self::mailSubject('menu', $it['name']), self::mailBody($f)) : [false];
         }
-        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::itemDurationText($it, $first, $pick), 'lined' => (bool) $lined, 'mailed' => (bool) $sent, 'questionnaire' => self::questionnaireUrl($uid !== null ? 'line' : 'mail')];
+        return ['ok' => true, 'date' => $f['date'], 'time' => $f['time'], 'end' => $result['end'], 'duration' => self::itemDurationText($it, $first, $pick), 'lined' => (bool) $lined, 'mailed' => (bool) $sent, 'questionnaire' => $f['askQuestionnaire'] ? self::questionnaireUrl($uid !== null ? 'line' : 'mail') : ''];
     }
 
     // ---- 複数の施術・当日施術なし（相談のみ）：続けて取る（院長 11/20） ----
@@ -2410,6 +2414,23 @@ final class TattooBooking
         return '【' . Store::publicInfo()['publicName'] . '】' . $what . '（日曜日）のご予約を承りました';
     }
 
+    /**
+     * 問診票をお願いするか：当院の初診の方、または再診でも、最後の問診票がご来院日の1年より前の方（問診票の記録がない方も）。
+     * 受診区分を送らない呼び出し（タトゥーの従来の形）は出さない（院長 11/21）
+     */
+    public static function askQuestionnaire(array $f, string $patientId): bool
+    {
+        if (!empty($f['clinicInitial'])) {
+            return true;
+        }
+        if (empty($f['clinicReturning']) || $patientId === '') {
+            return false;
+        }
+        $q = Store::latestQuestionnaireOf($patientId);
+        $at = $q === null ? '' : substr(str_replace('/', '-', (string) ($q['submittedAt'] ?? $q['receivedAt'] ?? '')), 0, 10);
+        return $at === '' || strcmp($at, add_days((string) $f['date'], -365)) <= 0;
+    }
+
     /** 予約を承ったすぐ後に出す、問診票のお願い（画面・LINE・メール） */
     public const QUESTIONNAIRE_ASK = 'アレルギーや内服など事前問診票をご回答ください。';
 
@@ -2424,8 +2445,8 @@ final class TattooBooking
     public static function mailBody(array $f, string $channel = 'mail'): string
     {
         $p = Store::publicInfo();
-        // 承りましたのすぐ後に、問診票の入口（初診・再診とも。LINE の問診票は氏名・電話番号などを入力済みで開く）
-        $q = self::questionnaireUrl($channel);
+        // 承りましたのすぐ後に、問診票の入口（askQuestionnaire の方だけ。LINE の問診票は氏名・電話番号などを入力済みで開く）
+        $q = !empty($f['askQuestionnaire']) ? self::questionnaireUrl($channel) : '';
         $qLines = $q !== '' ? [self::QUESTIONNAIRE_ASK, $q] : [];
         $c = Store::clinic();
         $phone = (string) ($c['phone'] ?? '');

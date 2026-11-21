@@ -455,7 +455,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(out.mail).toMatch(/のご予約を承りました。\nアレルギーや内服など事前問診票をご回答ください。\nhttps:\/\/liff\.line\.me\/1234567890-QuEsTiOn/);
     expect(out.mail).toContain("https://liff.line.me/1234567890-QuEsTiOn");
     expect(out.r.questionnaire).toBe("https://liff.line.me/1234567890-QuEsTiOn");
-    // 再診で継続 → 再診の時間（10分）。問診票の案内は再診にも出す（院長 11/21）
+    // 再診で継続 → 再診の時間（10分）。問診票の記録がなければ案内する
     const r2 = await h.srv.php(`
       $sent = [];
       Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
@@ -465,7 +465,23 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     `);
     expect(r2.r).toMatchObject({ ok: true, questionnaire: "https://liff.line.me/1234567890-QuEsTiOn" });
     expect(r2.r.end).toBe(addMin(r2.r.time, 10));
+    // 問診票の記録がない再診の方には案内する（院長 11/21：最後の問診票から1年たっていれば再診でも）
     expect(r2.mail).toContain("アレルギーや内服など事前問診票をご回答ください。");
+    const q = await h.srv.php(`
+      $day = '${day}';
+      $put = fn($id, $pid, $at) => Db::i()->put('questionnaire', $id, ['id' => $id, 'patientId' => $pid, 'submittedAt' => $at, 'receivedAt' => '2026-10-06T00:00:00Z']);
+      $put('q-old', 'pat-old', str_replace('-', '/', add_days($day, -400)) . ' 10:00:00');
+      $put('q-new', 'pat-new', str_replace('-', '/', add_days($day, -300)) . ' 10:00:00');
+      $ret = ['clinicReturning' => true, 'date' => $day];
+      return [
+        TattooBooking::askQuestionnaire($ret, 'pat-old'),
+        TattooBooking::askQuestionnaire($ret, 'pat-new'),
+        TattooBooking::askQuestionnaire($ret, 'pat-none'),
+        TattooBooking::askQuestionnaire(['clinicInitial' => true, 'date' => $day], 'pat-new'),
+        TattooBooking::askQuestionnaire(['date' => $day], 'pat-none'),
+      ];
+    `);
+    expect(q).toEqual([true, false, true, true, false]);
     void c;
   });
   it("ほくろ除去は個数を1つだけ選ぶ（顔1〜4個 15分・15個まで 20分・20個以上 30分）。色素レーザーは範囲（どれも10分、初診は20分）", async () => {
