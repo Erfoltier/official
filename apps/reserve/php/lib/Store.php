@@ -5622,13 +5622,20 @@ final class Store
                 $hits[$p['id']] = $p;
             }
         }
+        // 性別（日曜の予約のレーザー脱毛・針脱毛で聞いたもの）：患者情報が空のときだけ入れる。問診票で入力済みにする（院長 11/21）
+        $sex = self::sexOf((string) ($in['sex'] ?? '')) ?? '';
         if (count($hits) === 1) {
-            return ['created' => false, 'patient' => self::bookingPatientView(array_values($hits)[0])];
+            $p = array_values($hits)[0];
+            if ($sex !== '' && empty($p['sex'])) {
+                self::updatePatient($p['id'], ['sex' => $sex, 'version' => $p['version']], $by);
+                $p = self::patient($p['id']);
+            }
+            return ['created' => false, 'patient' => self::bookingPatientView($p)];
         }
         if (count($hits) > 1) {
             throw new StoreError('conflict', '同じ方が複数登録されています。スタッフに確認してもらってください');
         }
-        $p = self::createPatient(array_filter(['name' => $name, 'kana' => $kana, 'birthDate' => $birth, 'phone' => js_trim((string) ($in['phone'] ?? '')), 'email' => js_trim((string) ($in['email'] ?? ''))], fn($v) => $v !== ''), $by);
+        $p = self::createPatient(array_filter(['name' => $name, 'kana' => $kana, 'birthDate' => $birth, 'phone' => js_trim((string) ($in['phone'] ?? '')), 'email' => js_trim((string) ($in['email'] ?? '')), 'sex' => $sex], fn($v) => $v !== ''), $by);
         $p = self::patient($p['id']);
         if (self::similarPatients($p)) {
             self::putPatient([...$p, 'needsReview' => 'booking']);

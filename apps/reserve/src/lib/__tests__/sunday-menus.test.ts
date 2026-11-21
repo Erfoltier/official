@@ -161,6 +161,8 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(r.memo).toContain("部位：女性：Vライン前面・へそ周り(濃い毛のみ)");
     expect(r.memo).toContain("初診の説明：15分");
     expect(r.memo).toContain("麻酔クリーム：希望する");
+    // 予約で選んだ「女性」の部位から、患者情報の性別を入れる（問診票で入力済みにする。院長 11/21）
+    expect((await c.get(`/patients/${r.patientId}`)).patient.sex).toBe("female");
     // 針の料金（ホームページの料金表から取り込んだもの。税込）
     await h.srv.php(`
       $rows = [['一般部位（男女共通） 20本まで', 12100], ['一般部位（男女共通） 21本以上', 220], ['女性VIO 20本まで', 18150], ['女性VIO 21本以上', 330], ['男性VIO 20本まで', 24200], ['男性VIO 21本以上', 770], ['針代', 4400]];

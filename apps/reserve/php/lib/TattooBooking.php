@@ -817,7 +817,7 @@ final class TattooBooking
                 return ['ok' => false, 'error' => 'slot_taken'];
             }
             try {
-                $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email']], self::ACTOR);
+                $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email'], 'sex' => self::chainSex($jobs)], self::ACTOR);
             } catch (StoreError $e) {
                 return ['ok' => false, 'error' => 'contact_us'];
             }
@@ -896,6 +896,33 @@ final class TattooBooking
             ...self::creamLines($it, $pick),
             $pick['part'] !== '' ? '部位：' . $pick['part'] : null,
         ]));
+    }
+
+    /** 予約で聞いた性別（female／male、聞いていなければ空）：針脱毛は性別の欄、レーザー脱毛などは「女性」「男性」の部位の区分 */
+    public static function sexOfPick(?array $it, array $pick): string
+    {
+        if ($it === null) {
+            return '';
+        }
+        if (!empty($it['needle'])) {
+            return isset(self::NEEDLE_SEX[(string) ($pick['sex'] ?? '')]) ? (string) $pick['sex'] : '';
+        }
+        if (($it['partGroups'] ?? []) === [] || empty($pick['parts'])) {
+            return '';
+        }
+        return ['女性' => 'female', '男性' => 'male'][$it['partGroups'][(int) ($pick['group'] ?? 0)]['name'] ?? ''] ?? '';
+    }
+
+    /** 複数の施術のうち、性別が分かる最初のもの */
+    private static function chainSex(array $jobs): string
+    {
+        foreach ($jobs as $job) {
+            $e = $job['entry'] ?? null;
+            if ($e !== null && ($x = self::sexOfPick($e['item'] ?? null, (array) ($e['pick'] ?? []))) !== '') {
+                return $x;
+            }
+        }
+        return '';
     }
 
     /** 予約メモ・確定の連絡に書く、針脱毛の性別・部位・麻酔と料金の概算 */
@@ -1998,7 +2025,7 @@ final class TattooBooking
             [, $start, $lane] = $slot;
             $segs = $slot[3] ?? null;
             try {
-                $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email']], self::ACTOR);
+                $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email'], 'sex' => self::sexOfPick($it, $pick)], self::ACTOR);
             } catch (StoreError $e) {
                 return ['ok' => false, 'error' => 'contact_us'];
             }
