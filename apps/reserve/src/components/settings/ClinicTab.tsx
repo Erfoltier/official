@@ -1055,7 +1055,7 @@ function SundayMenusEditor({
             )}
             {timeMode(it) === "parts" && !it.firstFixed && (
               <label className={styles.field}>
-                <span>初診の施術に足す時間（分。説明とは別。例：黒ずみトーニングは初診の照射が1部位15分なので10）</span>
+                <span>初診の施術に足す時間（分。説明とは別。部位の時間の合計に足す。例：黒ずみトーニングは照射が1部位10分＝5分＋部位5分なので5）</span>
                 <input className={styles.input} type="number" min={0} max={180} step={5} value={it.firstBase ?? 0} onChange={(ev) => put(i, { firstBase: Number(ev.target.value) || 0 })} disabled={!canEdit} />
               </label>
             )}
