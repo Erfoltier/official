@@ -65,14 +65,30 @@ async function lane(tabId, method, path, body) {
   return r;
 }
 
-/** 写し専用のデジカルのタブ（なければ裏で開く） */
+// 写し専用のタブの印（アドレスの # の後ろ。デジカルの画面には影響しない）。
+// 固定（ピン留め）はしない。写す予約があるときだけ裏で開き、その回が終わったら閉じる（院長 11/21：勝手に固定しない）
+const MARK = "#lane-m3sync";
+
+/** 拡張機能が開いた写し専用のタブ（拡張機能を読み込み直すと番号を忘れるので、印で探す） */
+async function ownDigikarTabs() {
+  return (await chrome.tabs.query({ url: DIGIKAR + "/*" })).filter((t) => (t.url || t.pendingUrl || "").endsWith(MARK));
+}
+
+/** その回の終わりに閉じる */
+async function closeDigikarTabs() {
+  const tabs = await ownDigikarTabs();
+  if (tabs.length) await chrome.tabs.remove(tabs.map((t) => t.id)).catch(() => {});
+}
+
+/** 写し専用のデジカルのタブ（なければ裏で開く。固定しない） */
 async function digikarTab(url) {
-  const { digikarTabId } = await chrome.storage.session.get("digikarTabId");
-  let tab = digikarTabId ? await chrome.tabs.get(digikarTabId).catch(() => null) : null;
-  if (!tab || !tab.url?.startsWith(DIGIKAR)) {
+  url = url + MARK;
+  const [own, ...extra] = await ownDigikarTabs();
+  if (extra.length) await chrome.tabs.remove(extra.map((t) => t.id)).catch(() => {});
+  let tab = own || null;
+  if (!tab) {
     const loaded = loadedAfterStart(null);
-    tab = await chrome.tabs.create({ url, active: false, pinned: true });
-    await chrome.storage.session.set({ digikarTabId: tab.id });
+    tab = await chrome.tabs.create({ url, active: false, pinned: false });
     await loaded(tab.id);
   } else {
     // 開き直したページを必ず待つ（直後の「読み込み済み」は前のページのことがあるため、読み込みが始まってから終わるまで）
@@ -260,6 +276,7 @@ async function run(manual) {
   } catch (e) {
     await setStatus({ state: "error", message: String(e?.message || e) });
   } finally {
+    await closeDigikarTabs();
     running = false;
   }
 }
