@@ -328,7 +328,8 @@
       return no && kanji && kanaIn && visible(kanji) ? { no, kanji, kanaIn } : null;
     });
     if (!f) throw new Error("患者情報登録の画面が開きません");
-    const newNo = f.no.value.trim();
+    // 患者番号は画面が開いた少し後に入る（11/21 試運転：開いた直後は空だった）
+    const newNo = (await waitFor(() => (/^\d{1,12}$/.test(f.no.value.trim()) ? f.no.value.trim() : null), 10000)) || f.no.value.trim();
     if (!/^\d{1,12}$/.test(newNo)) throw new Error(`新しい患者番号を読めません（${newNo}）`);
     setValue(f.kanji, name);
     setValue(f.kanaIn, zen);
