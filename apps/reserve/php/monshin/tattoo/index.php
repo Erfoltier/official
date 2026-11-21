@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261121-1';
+$v = '20261121-2';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -300,17 +300,17 @@ $v = '20261121-1';
         <p class="tt-consent-lead">以下の各項目をお読みの上、ご同意いただけましたらチェックを入れてください。</p>
         <div class="tt-consent-item">
           <label class="tt-agree-head"><input type="checkbox" name="agreeBefore" value="1" data-agree><em>必須</em><b>ご来院前のお願い</b></label>
-          <p>・<?= $h(TattooBooking::NO_MAKEUP) ?></p>
-          <p>・<?= $h(TattooBooking::DELICATE_NOTICE) ?></p>
+          <p>・<?= TattooBooking::strongHtml(TattooBooking::NO_MAKEUP) ?></p>
+          <p>・<?= TattooBooking::strongHtml(TattooBooking::DELICATE_NOTICE) ?></p>
 <?php if ($tattooOn): ?>
-          <p>・<?= $items !== [] ? 'タトゥー・アートメイク除去の方：' : '' ?><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+          <p>・<?= $items !== [] ? '<strong>タトゥー・アートメイク除去の方</strong>：' : '' ?><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
 <?php endif; ?>
-          <p>・<?= $h(TattooBooking::CONSULT_NOTICE) ?></p>
+          <p>・<?= TattooBooking::strongHtml(TattooBooking::CONSULT_NOTICE) ?></p>
         </div>
         <div class="tt-consent-item">
           <label class="tt-agree-head"><input type="checkbox" name="agreeVisit" value="1" data-agree><em>必須</em><b>日曜日のご来院について</b></label>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
-          <p>・<?= $h($line) ?></p>
+          <p>・<?= TattooBooking::strongHtml($line) ?></p>
 <?php endforeach; ?>
         </div>
         <div class="tt-consent-item">

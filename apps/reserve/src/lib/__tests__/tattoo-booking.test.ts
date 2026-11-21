@@ -138,7 +138,8 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(html).toContain("お顔の診察や施術を受ける方は、当日はノーメイクでお越しください。ファンデーションを軽く拭き取っても残りがあると、レーザーの照射に悪影響があります。");
     // 同意事項：3つの項目それぞれにチェック（必須）と「すべてに同意しました」
     expect(html).toContain("同意事項");
-    expect(html).toContain("デリケートゾーンやお尻の施術を受ける方は");
+    expect(html).toContain("<strong>デリケートゾーンやお尻の施術を受ける方</strong>は");
+    expect(html).toContain("<strong>「ご来院時間のご予約」であり、診療開始時刻ではございません</strong>");
     expect((html.match(/data-agree/g) || []).length).toBe(3);
     expect(html).toContain("すべてに同意しました");
     expect(html).not.toContain("眉毛そのもの");
