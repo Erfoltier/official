@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LANE RESERVE デジカル写し",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "LANE RESERVE の予約を、デジカル（M3）の受付画面に写します。この Chrome で LANE RESERVE とデジカルにログインしているときだけ動きます。",
   "permissions": ["alarms", "storage", "tabs", "scripting"],
   "host_permissions": ["https://reserve.ishidahihuka.jp/*", "https://digikar.jp/*"],

@@ -70,29 +70,46 @@ async function digikarTab(url) {
   const { digikarTabId } = await chrome.storage.session.get("digikarTabId");
   let tab = digikarTabId ? await chrome.tabs.get(digikarTabId).catch(() => null) : null;
   if (!tab || !tab.url?.startsWith(DIGIKAR)) {
+    const loaded = loadedAfterStart(null);
     tab = await chrome.tabs.create({ url, active: false, pinned: true });
     await chrome.storage.session.set({ digikarTabId: tab.id });
+    await loaded(tab.id);
   } else {
+    // 開き直したページを必ず待つ（直後の「読み込み済み」は前のページのことがあるため、読み込みが始まってから終わるまで）
+    const loaded = loadedAfterStart(tab.id);
     await chrome.tabs.update(tab.id, { url });
+    await loaded(tab.id);
   }
-  await waitComplete(tab.id);
   await sleep(1500);
   return tab.id;
 }
 
-function waitComplete(tabId) {
-  return new Promise((resolve) => {
-    const done = () => {
-      chrome.tabs.onUpdated.removeListener(on);
-      resolve();
-    };
-    const on = (id, info) => {
-      if (id === tabId && info.status === "complete") done();
-    };
-    chrome.tabs.onUpdated.addListener(on);
-    chrome.tabs.get(tabId).then((t) => t.status === "complete" && done());
-    setTimeout(done, 20000);
-  });
+/** 読み込みが始まり（loading）、終わる（complete）のを待つ。先に待ち受けてから開く */
+function loadedAfterStart(knownId) {
+  let started = false;
+  let resolveFn = null;
+  let target = knownId;
+  let finished = false;
+  const on = (id, info) => {
+    if (target !== null && id !== target) return;
+    if (info.status === "loading") started = true;
+    if (info.status === "complete" && started) {
+      finished = true;
+      resolveFn?.();
+    }
+  };
+  chrome.tabs.onUpdated.addListener(on);
+  return (tabId) =>
+    new Promise((resolve) => {
+      target = tabId;
+      const done = () => {
+        chrome.tabs.onUpdated.removeListener(on);
+        resolve();
+      };
+      resolveFn = done;
+      if (finished) done();
+      setTimeout(done, 25000);
+    });
 }
 
 async function digikar(tabId, op, args) {
