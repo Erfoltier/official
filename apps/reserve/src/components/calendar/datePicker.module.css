@@ -292,3 +292,8 @@
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
+
+/* 左右のフリックで月を移るので、日付の面は縦のスクロールだけをブラウザに任せる */
+.grid {
+  touch-action: pan-y;
+}
