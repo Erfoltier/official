@@ -1,4 +1,6 @@
 // LANE RESERVE の画面に入り、ログイン中のスタッフとして写しの API を呼ぶ（鍵は使わない。docs/M3-SYNC.md）
+if (!globalThis.__laneM3Bridge) {
+  globalThis.__laneM3Bridge = true;
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type !== "lane-api") return false;
   (async () => {
@@ -18,3 +20,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   })();
   return true;
 });
+}

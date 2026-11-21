@@ -38,8 +38,21 @@ async function laneTab() {
   return tabs.find((t) => t.status === "complete") || null;
 }
 
+/** 拡張機能を入れる前から開いていたタブには、画面のスクリプトが入っていない。そのときは入れてから話す */
+async function send(tabId, msg, file) {
+  try {
+    const r = await chrome.tabs.sendMessage(tabId, msg);
+    if (r) return r;
+  } catch {
+    /* 下で入れ直す */
+  }
+  await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
+  await sleep(300);
+  return chrome.tabs.sendMessage(tabId, msg);
+}
+
 async function lane(tabId, method, path, body) {
-  const r = await chrome.tabs.sendMessage(tabId, { type: "lane-api", method, path, body });
+  const r = await send(tabId, { type: "lane-api", method, path, body }, "lane.js");
   if (!r) throw new Error("LANE RESERVE の画面と話せません");
   return r;
 }
@@ -76,7 +89,7 @@ function waitComplete(tabId) {
 
 async function digikar(tabId, op, args) {
   for (let i = 0; i < 3; i++) {
-    const r = await chrome.tabs.sendMessage(tabId, { type: "digikar", op, args }).catch(() => null);
+    const r = await send(tabId, { type: "digikar", op, args }, "digikar.js").catch(() => null);
     if (r) return r;
     await sleep(1500);
   }

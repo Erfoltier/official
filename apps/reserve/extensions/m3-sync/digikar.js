@@ -1,6 +1,9 @@
 // デジカルの受付画面を操作する（院内パソコンで確かめた手順。docs/M3-SYNC.md「練習用の患者で試した結果」）
 // 1件ごとに画面を読み直して確かめ、確かめられなければ review（要確認）で返す。推測で押さない。
 (() => {
+  // 2回入れられても1回分だけ動く（拡張機能を入れる前から開いていたタブに後から入れるため）
+  if (globalThis.__laneM3Digikar) return;
+  globalThis.__laneM3Digikar = true;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) => !!el && el.offsetParent !== null;
   const text = (el) => (el?.innerText ?? "").trim();
