@@ -14,7 +14,7 @@ final class LineLink
     /** 回答の key の頭。予約ごとに1つ（二重に保存しない） */
     private const KEY = 'liff-';
     /** 患者情報から使う（書かせない）質問の役割 */
-    private const PREFILL = ['name', 'kana', 'birthDate', 'phone'];
+    private const PREFILL = ['name', 'kana', 'birthDate', 'phone', 'email'];
 
     /** @var null|callable(string, string, array, ?string): array テスト用の差し替え（[状態コード, 本文] を返す） */
     public static $transport = null;
@@ -660,13 +660,16 @@ final class LineLink
     // ---- LIFF の問診票 ----
 
     /** この患者について、書かずに済む質問（質問id => 患者情報から入れる値） */
-    private static function prefill(array $questions, array $p): array
+    private static function prefill(array $questions, array $p, array $r = []): array
     {
+        // メールは、その予約で入れたもの（日曜の予約はメール必須で、予約メモに「メール：」を残す）、なければ患者情報のもの（院長 11/21：二度聞かない）
+        $mail = preg_match('/^メール：(\S+@\S+)$/mu', (string) ($r['memo'] ?? ''), $m) ? $m[1] : (string) ($p['email'] ?? '');
         $vals = [
             'name' => (string) ($p['name'] ?? ''),
             'kana' => (string) ($p['kana'] ?? ''),
             'birthDate' => !empty($p['birthDate']) ? str_replace('-', '/', (string) $p['birthDate']) : '',
             'phone' => (string) ($p['phone'] ?? ''),
+            'email' => $mail,
         ];
         $out = [];
         foreach (self::PREFILL as $role) {
@@ -690,7 +693,7 @@ final class LineLink
         $form = Monshin::form();
         $items = [];
         foreach (Store::upcomingForLine($sub) as ['reservation' => $r, 'patient' => $p]) {
-            $known = self::prefill($form['questions'], $p);
+            $known = self::prefill($form['questions'], $p, $r);
             $sent = Store::questionnaireForReservation($r['id']);
             // 下書き：送信済みならその回答、まだなら前回の問診票の回答（同じ見出しの質問に入れる。本人の LINE だけに見せる）
             $base = $sent ?? Store::latestQuestionnaireOf((string) $p['id']);
@@ -763,7 +766,7 @@ final class LineLink
         $key = self::KEY . $reservationId . ($prev !== null ? '-' . intdiv($now, 1000) : '');
         $form = Monshin::form();
         $p = $mine['patient'];
-        $known = self::prefill($form['questions'], $p);
+        $known = self::prefill($form['questions'], $p, $mine['reservation']);
         [$errors, $answers] = Monshin::validate($form['questions'], $post, $known);
         if ($errors) {
             return $errors;

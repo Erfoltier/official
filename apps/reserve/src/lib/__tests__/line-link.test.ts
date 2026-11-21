@@ -49,7 +49,7 @@ describe("LINE の問診票", () => {
     const c = await setup();
     const p = await c.post("/patients", { name: "線 花子", kana: "セン ハナコ", birthDate: "1991-02-03", phone: "090-1234-5678" });
     const day = addDays(nowInClinic().date, 2);
-    const r = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 610), requestId: RID });
+    const r = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: ["menu-s00009A18E"], startAt: toIso(day, 600), endAt: toIso(day, 610), requestId: RID, memo: "（Web予約・日曜）\nメール：sen@example.jp" });
     // 予約申請（line-webhook の保存形式）：申請した LINE の ID と、患者と合う氏名・生年月日
     const dir = path.join(h.srv.dir, "intake");
     mkdirSync(dir, { recursive: true });
@@ -59,7 +59,9 @@ describe("LINE の問診票", () => {
     const ctx = (await liff({ action: "context" })).data;
     expect(ctx.items).toHaveLength(1);
     expect(ctx.items[0]).toMatchObject({ reservationId: r.id, done: false });
-    expect(ctx.items[0].known.map((k: { label: string }) => k.label)).toEqual(["お名前", "フリガナ", "生年月日", "電話番号"]);
+    expect(ctx.items[0].known.map((k: { label: string }) => k.label)).toEqual(["お名前", "フリガナ", "生年月日", "電話番号", "メールアドレス"]);
+    // メールは予約で入れたものを入れる（二度聞かない）
+    expect(ctx.items[0].known.find((k: { label: string }) => k.label === "メールアドレス").value).toBe("sen@example.jp");
 
     const allergy = ctx.questions.find((q: { label: string }) => q.label === "アレルギー");
     // ほかの人は、この予約に送れない
