@@ -16,6 +16,7 @@ import {
   searchPatients,
 } from "@/components/calendar/api";
 import { withBase } from "@/lib/paths";
+import { M3SyncCard } from "./M3SyncCard";
 import styles from "./settings.module.css";
 
 const stamp = (iso?: string) =>
@@ -182,6 +183,8 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
         )}
         {!isAdmin && <p className={styles.muted}>連携の設定は院長・管理者のみ行えます。</p>}
       </details>
+
+      {isAdmin && <M3SyncCard notify={notify} fail={fail} />}
 
       {isAdmin && status && (
         <GoogleKeysCard

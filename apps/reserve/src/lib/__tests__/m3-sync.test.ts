@@ -250,3 +250,32 @@ describe("デジカルへの写し：拡張機能の口", () => {
     expect((await c.get("/m3-sync")).items).toEqual([]);
   });
 });
+
+describe("デジカルへの写し：試運転", () => {
+  it("試運転の間は決めた患者番号の予約だけを写す。試運転を終えると、写し始めがその時刻になり、試運転中の予約は写さない", async () => {
+    const c = await h.srv.as("staff-admin");
+    const day = addDays(nowInClinic().date, 3);
+    const book = (patientId: string, min: number) => c.post("/reservations", { patientId, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, min), endAt: toIso(day, min + 30) });
+    await expect(c.put("/m3-sync/settings", { trialChartNos: "2,abc" })).rejects.toThrow(/数字/);
+    expect((await c.put("/m3-sync/settings", { trialChartNos: "2" })).trialChartNos).toEqual(["2"]);
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    const practice = await c.post("/patients", { name: "レンシュウ ハナコ", m3ChartNo: "2" });
+    const real = await c.post("/patients", { name: "本物 さん", m3ChartNo: "5000" });
+    const a = await book(practice.id, 600);
+    await book(real.id, 630);
+    const q = await c.get("/m3-sync");
+    expect(q.trial).toEqual(["2"]);
+    expect(q.items.map((x: any) => x.reservation.id)).toEqual([a.id]);
+    // 本番にする（試運転の患者を空に）→ 写し始めが今になり、試運転中に入った本物の予約は写さない
+    const before = (await c.get("/m3-sync/status")).startAt;
+    await sleep(5);
+    expect((await c.put("/m3-sync/settings", { trialChartNos: "" })).trialChartNos).toEqual([]);
+    const after = (await c.get("/m3-sync/status")).startAt;
+    expect(after > before).toBe(true);
+    expect((await c.get("/m3-sync")).items).toEqual([]);
+    await sleep(5);
+    const b = await book(real.id, 700);
+    expect((await c.get("/m3-sync")).items.map((x: any) => x.reservation.id)).toEqual([b.id]);
+  });
+});

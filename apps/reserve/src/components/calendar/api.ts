@@ -1052,3 +1052,34 @@ export function applyM3Questionnaires(items: Omit<import("@/lib/domain/m3match")
 export function applyM3Fill(items: Omit<import("@/lib/domain/m3match").M3Fill, "before">[], backup = true): Promise<{ updated: number; skipped: number; backup: string | null }> {
   return call("/api/v1/admin/m3-fill", { method: "POST", body: JSON.stringify({ confirm: "APPLY", items, backup }) });
 }
+
+// ---- デジカルへの写し（docs/M3-SYNC.md） ----
+
+export interface M3SyncStatus {
+  startAt: string | null;
+  lock: { holder: string; until: number; since?: number } | null;
+  claude: { hasKey: boolean; model: string; updatedAt: string | null; trialChartNos: string[] };
+}
+
+export interface M3SyncReviewItem {
+  action: string;
+  reservation: { id: string; date: string; time: string; menus: { name: string }[] };
+  patient: { id: string; name?: string; m3ChartNo?: string } | null;
+  previous: { reason?: string; at?: string } | null;
+}
+
+export function fetchM3SyncStatus(): Promise<M3SyncStatus> {
+  return call(`/api/v1/m3-sync/status`);
+}
+
+export function fetchM3SyncQueue(): Promise<{ startAt: string | null; items: M3SyncReviewItem[]; review: M3SyncReviewItem[] }> {
+  return call(`/api/v1/m3-sync`);
+}
+
+export function saveM3SyncSettings(input: { apiKey?: string; model?: string; trialChartNos?: string }): Promise<M3SyncStatus["claude"]> {
+  return call(`/api/v1/m3-sync/settings`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export function startM3Sync(): Promise<{ startAt: string }> {
+  return call(`/api/v1/m3-sync/start`, { method: "POST", body: "{}" });
+}

@@ -1681,6 +1681,15 @@ final class Store
         return ['startAt' => $at];
     }
 
+    /** 試運転を終えて本番にするとき：写し始めを今にする（試運転の間に入った予約は「前からある予約」として扱う） */
+    public static function restartM3Sync(array $by): array
+    {
+        $at = now_iso();
+        Db::i()->setMeta(self::M3_SYNC_META, ['at' => $at]);
+        Auth::audit($by, 'デジカルへの予約の写しを本番で開始（試運転を終了）');
+        return ['startAt' => $at];
+    }
+
     /** 予約のうち、デジカルに写す中身（患者・日時・レーン・メニュー・メモ・有効か）。これが変われば写し直す */
     public static function m3Fingerprint(array $r): string
     {
@@ -1714,6 +1723,7 @@ final class Store
             return ['startAt' => null, 'items' => [], 'review' => []];
         }
         $startMs = parse_ms($start);
+        $trial = M3Memo::trialChartNos();
         $items = [];
         $review = [];
         $rows = Db::i()->between('reservation', 'k1', $from, '9999-12-31');
@@ -1724,6 +1734,10 @@ final class Store
             }
             $patient = self::patients()[$r['patientId']] ?? null;
             if (self::m3IsBlock($r, $patient)) {
+                continue;
+            }
+            // 試運転：決めた患者番号の予約だけ
+            if ($trial !== [] && !in_array((string) ($patient['m3ChartNo'] ?? ''), $trial, true)) {
                 continue;
             }
             $rec = Db::i()->get(self::M3_SYNC_KIND, $r['id']);
@@ -1760,7 +1774,7 @@ final class Store
                 $items[] = self::m3Item($action, $r, $patient, $fp, is_array($rec) ? $rec : null, $startMs);
             }
         }
-        return ['startAt' => $start, 'items' => $items, 'review' => $review];
+        return ['startAt' => $start, 'trial' => $trial, 'items' => $items, 'review' => $review];
     }
 
     private static function m3Item(string $action, array $r, ?array $patient, string $fp, ?array $rec, int $startMs): array

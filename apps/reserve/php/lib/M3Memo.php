@@ -40,7 +40,14 @@ TXT;
     public static function settings(): array
     {
         $s = self::raw();
-        return ['hasKey' => ($s['apiKey'] ?? '') !== '', 'model' => $s['model'] ?? self::DEFAULT_MODEL, 'updatedAt' => $s['updatedAt'] ?? null];
+        return ['hasKey' => ($s['apiKey'] ?? '') !== '', 'model' => $s['model'] ?? self::DEFAULT_MODEL, 'updatedAt' => $s['updatedAt'] ?? null, 'trialChartNos' => self::trialChartNos()];
+    }
+
+    /** 試運転：この患者番号（M3）の予約だけを写す。空なら本番（すべて） */
+    public static function trialChartNos(): array
+    {
+        $t = self::raw()['trialChartNos'] ?? [];
+        return is_array($t) ? array_values(array_filter($t, 'is_string')) : [];
     }
 
     /** 院長が利用キー・モデルを入れる。apiKey が空文字ならキーを消す */
@@ -61,9 +68,24 @@ TXT;
             }
             $s['model'] = $m;
         }
+        $goLive = false;
+        if (array_key_exists('trialChartNos', $in)) {
+            $nos = array_values(array_unique(array_filter(array_map('trim', preg_split('/[\s,、，]+/u', (string) $in['trialChartNos']) ?: []), fn($x) => $x !== '')));
+            foreach ($nos as $no) {
+                if (!preg_match('/^\d{1,12}$/', $no)) {
+                    throw new StoreError('invalid', '試運転の患者番号は数字で入れてください');
+                }
+            }
+            $goLive = self::trialChartNos() !== [] && $nos === [];
+            $s['trialChartNos'] = $nos;
+        }
         $s['updatedAt'] = now_iso();
         Db::i()->setMeta(self::META, $s);
-        Auth::audit($by, 'デジカルへの写し：Claude の設定を変更' . (array_key_exists('apiKey', $in) ? '（利用キー）' : ''));
+        Auth::audit($by, 'デジカルへの写し：設定を変更' . (array_key_exists('apiKey', $in) ? '（Claude の利用キー）' : '') . (array_key_exists('trialChartNos', $in) ? '（試運転の患者：' . (implode('・', $s['trialChartNos']) ?: 'なし＝本番') . '）' : ''));
+        // 試運転を終えて本番にしたら、写し始めをこの時刻にする（試運転の間に入った予約はスタッフが手で入れているため写さない）
+        if ($goLive) {
+            Store::restartM3Sync($by);
+        }
         return self::settings();
     }
 
