@@ -1656,6 +1656,207 @@ final class Store
         return self::updatePatient($id, ['version' => $cur['version'], 'm3ChartNo' => $m3ChartNo], self::INTEGRATION_ACTOR);
     }
 
+    // ---- デジカル（M3）の受付画面への予約の写し（docs/M3-SYNC.md、院長 11/21） ----
+    // 写すのは院内パソコンの Claude（予約メモの要約）とブラウザの操作。ここは「何を写すか」と「写した結果」の記録だけ。
+
+    private const M3_SYNC_META = 'm3SyncStart';
+    private const M3_SYNC_KIND = 'm3sync';
+
+    /** 写し始めた時刻（この時刻より後に作られた予約を写す）。まだ始めていなければ null */
+    public static function m3SyncStart(): ?string
+    {
+        $m = Db::i()->meta(self::M3_SYNC_META);
+        return is_array($m) && is_string($m['at'] ?? null) ? $m['at'] : null;
+    }
+
+    /** 写しを始める。始めた時刻は一度決めたら変えない（今ある予約に触らないための境目） */
+    public static function startM3Sync(): array
+    {
+        $at = self::m3SyncStart();
+        if ($at === null) {
+            $at = now_iso();
+            Db::i()->setMeta(self::M3_SYNC_META, ['at' => $at]);
+            Auth::audit(self::INTEGRATION_ACTOR, 'デジカルへの予約の写しを開始');
+        }
+        return ['startAt' => $at];
+    }
+
+    /** 予約のうち、デジカルに写す中身（患者・日時・レーン・メニュー・メモ・有効か）。これが変われば写し直す */
+    public static function m3Fingerprint(array $r): string
+    {
+        $v = [$r['patientId'], normalize_iso($r['startAt']), normalize_iso($r['endAt']), $r['laneId'], array_values($r['menuIds'] ?? []), (string) ($r['memo'] ?? ''), self::inactive($r) ? $r['status'] : 'active'];
+        return substr(hash('sha256', json_encode($v, JSON_UNESCAPED_UNICODE)), 0, 20);
+    }
+
+    /** 予約不可の枠（メニューか患者の名前に「予約不可」）は写さない */
+    private static function m3IsBlock(array $r, ?array $patient): bool
+    {
+        foreach ($r['menuIds'] ?? [] as $mid) {
+            if (str_contains((string) (self::menus()[$mid]['name'] ?? ''), '予約不可')) {
+                return true;
+            }
+        }
+        return $patient !== null && str_contains((string) ($patient['name'] ?? ''), '予約不可');
+    }
+
+    /**
+     * デジカルへ写す予約の一覧（$from の日以降）。
+     * - create：写し始めた後に作られた予約で、まだ写していないもの
+     * - update：写した後に日時・レーン・メニュー・メモ・患者が変わったもの
+     * - cancel：写した予約の取消。写し始める前からある予約（スタッフの手入力）も、写し始めた後に取り消されたら（院長 11/21）
+     * - restore：取消を写した後に予約へ戻されたもの
+     * review は「要確認」にしたままで、その後中身が変わっていないもの（スタッフが確かめる）
+     */
+    public static function m3SyncQueue(string $from): array
+    {
+        $start = self::m3SyncStart();
+        if ($start === null) {
+            return ['startAt' => null, 'items' => [], 'review' => []];
+        }
+        $startMs = parse_ms($start);
+        $items = [];
+        $review = [];
+        $rows = Db::i()->between('reservation', 'k1', $from, '9999-12-31');
+        uasort($rows, fn($a, $b) => strcmp(normalize_iso($a['startAt']), normalize_iso($b['startAt'])) ?: strcmp($a['id'], $b['id']));
+        foreach ($rows as $r) {
+            if (clinic_date_of($r['startAt']) < $from) {
+                continue;
+            }
+            $patient = self::patients()[$r['patientId']] ?? null;
+            if (self::m3IsBlock($r, $patient)) {
+                continue;
+            }
+            $rec = Db::i()->get(self::M3_SYNC_KIND, $r['id']);
+            $fp = self::m3Fingerprint($r);
+            $cancelled = $r['status'] === 'cancelled';
+            $active = !self::inactive($r);
+            $action = null;
+            $state = is_array($rec) ? $rec['state'] : null;
+            if ($state === 'review' && $rec['fingerprint'] === $fp) {
+                $review[] = self::m3Item('review', $r, $patient, $fp, $rec, $startMs);
+                continue;
+            }
+            // 要確認の後に中身が変わったら、前に写せていたかどうかで考え直す
+            $written = is_array($rec) ? ($rec['written'] ?? null) : null;
+            if ($state === 'synced' || ($state === 'review' && $written === 'synced')) {
+                if ($cancelled) {
+                    $action = 'cancel';
+                } elseif ($active && ($rec['fingerprint'] !== $fp || $state === 'review')) {
+                    $action = 'update';
+                }
+            } elseif ($state === 'cancelled' || ($state === 'review' && $written === 'cancelled')) {
+                if ($active) {
+                    $action = 'restore';
+                }
+            } else {
+                $createdAfter = parse_ms($r['createdAt']) >= $startMs;
+                if ($createdAfter && $active) {
+                    $action = 'create';
+                } elseif (!$createdAfter && $cancelled && isset($r['cancelledAt']) && parse_ms($r['cancelledAt']) >= $startMs) {
+                    $action = 'cancel';
+                }
+            }
+            if ($action !== null) {
+                $items[] = self::m3Item($action, $r, $patient, $fp, is_array($rec) ? $rec : null, $startMs);
+            }
+        }
+        return ['startAt' => $start, 'items' => $items, 'review' => $review];
+    }
+
+    private static function m3Item(string $action, array $r, ?array $patient, string $fp, ?array $rec, int $startMs): array
+    {
+        $lane = self::lanes()[$r['laneId']] ?? null;
+        $menus = array_map(fn($id) => ['id' => $id, 'name' => self::menus()[$id]['name'] ?? '', 'abbr' => self::menus()[$id]['abbr'] ?? ''], $r['menuIds'] ?? []);
+        $startMin = minutes_of_day($r['startAt']);
+        $res = [
+            'id' => $r['id'],
+            'version' => $r['version'],
+            'fingerprint' => $fp,
+            'status' => $r['status'],
+            'date' => clinic_date_of($r['startAt']),
+            // デジカルの受付メモの先頭に書く形（半角4桁）
+            'time' => sprintf('%02d%02d', intdiv($startMin, 60), $startMin % 60),
+            'startAt' => normalize_iso($r['startAt']),
+            'endAt' => normalize_iso($r['endAt']),
+            'minutes' => intdiv(parse_ms($r['endAt']) - parse_ms($r['startAt']), 60000),
+            'lane' => $lane ? ['id' => $lane['id'], 'name' => $lane['name'], 'shortName' => $lane['shortName'] ?? $lane['name']] : null,
+            'menus' => $menus,
+            'memo' => (string) ($r['memo'] ?? ''),
+            // 写し始める前からある予約（スタッフがデジカルに手で入れたもの）
+            'preexisting' => parse_ms($r['createdAt']) < $startMs,
+        ];
+        foreach (['cancelledAt', 'cancelReason', 'visitId'] as $k) {
+            if (isset($r[$k])) {
+                $res[$k] = $r[$k];
+            }
+        }
+        $pt = null;
+        if ($patient) {
+            $pt = ['id' => $patient['id']];
+            foreach (['m3ChartNo', 'chartNo', 'name', 'kana', 'sex', 'birthDate', 'phone', 'postalCode', 'address'] as $k) {
+                if (isset($patient[$k]) && $patient[$k] !== '') {
+                    $pt[$k] = $patient[$k];
+                }
+            }
+        }
+        return ['action' => $action, 'reservation' => $res, 'patient' => $pt, 'previous' => $rec];
+    }
+
+    /**
+     * 写した結果を記録する。fingerprint は一覧で受け取ったもの（写している間に予約が変わっていたら断る＝次の一覧でやり直す）。
+     * result：synced（登録・変更を写した）／cancelled（デジカルで取消にした）／review（要確認、reason 必須）
+     */
+    public static function recordM3Sync(string $id, array $in): array
+    {
+        if (self::m3SyncStart() === null) {
+            throw new StoreError('invalid', 'デジカルへの写しはまだ始めていません');
+        }
+        return Db::i()->transaction(function () use ($id, $in) {
+            $r = self::reservation($id);
+            $fp = self::m3Fingerprint($r);
+            if ($in['fingerprint'] !== $fp) {
+                throw new StoreError('version_conflict', '写している間に予約が変わりました。一覧を読み直してください');
+            }
+            $result = $in['result'];
+            $reason = trim((string) ($in['reason'] ?? ''));
+            if ($result === 'review' && $reason === '') {
+                throw new StoreError('invalid', '要確認の理由を入れてください');
+            }
+            if ($result === 'cancelled' && $r['status'] !== 'cancelled') {
+                throw new StoreError('invalid', 'この予約は取り消されていません');
+            }
+            if ($result === 'synced' && self::inactive($r)) {
+                throw new StoreError('invalid', 'この予約は取り消されています');
+            }
+            $cur = Db::i()->get(self::M3_SYNC_KIND, $id);
+            $prev = is_array($cur) ? $cur : null;
+            $at = now_iso();
+            $rec = [
+                'reservationId' => $id,
+                'state' => $result,
+                // デジカルに今どう入っているか（要確認でも前の状態を覚えておく）
+                'written' => $result === 'review' ? ($prev['written'] ?? null) : $result,
+                'fingerprint' => $fp,
+                'version' => $r['version'],
+                'at' => $at,
+            ];
+            $digikar = $in['digikar'] ?? ($prev['digikar'] ?? null);
+            if ($digikar !== null) {
+                $rec['digikar'] = $digikar;
+            }
+            if ($reason !== '') {
+                $rec['reason'] = $reason;
+            }
+            $log = $prev['log'] ?? [];
+            $log[] = array_filter(['at' => $at, 'state' => $result, 'version' => $r['version'], 'reason' => $reason ?: null], fn($x) => $x !== null);
+            $rec['log'] = array_slice($log, -10);
+            Db::i()->put(self::M3_SYNC_KIND, $id, $rec);
+            $label = ['synced' => '写し済み', 'cancelled' => '取消を写した', 'review' => '要確認'][$result];
+            Auth::audit(self::INTEGRATION_ACTOR, "デジカルへの写し（{$label}）", $id);
+            return $rec;
+        });
+    }
+
     // ---- 入力の検査 ----
 
     private static function checkText(string $label, string $value, int $max, bool $required): string

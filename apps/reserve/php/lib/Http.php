@@ -392,6 +392,41 @@ final class Schema
         return V::shape($v, ['m3ChartNo' => fn($x) => V::str($x, 30)])['m3ChartNo'];
     }
 
+    /** デジカルへの写しの結果（docs/M3-SYNC.md） */
+    public static function integrationM3Sync(mixed $v): array
+    {
+        $in = V::shape($v, [
+            'result' => fn($x) => V::enum($x, ['synced', 'cancelled', 'review']),
+            'fingerprint' => function ($x) {
+                $s = V::str($x, 40);
+                if (!preg_match('/^[0-9a-f]{20}$/', $s)) {
+                    throw new InputError();
+                }
+                return $s;
+            },
+            'reason?' => fn($x) => V::str($x, 500),
+            'digikar?' => fn($x) => V::shape($x, [
+                'patientNo' => function ($y) {
+                    $s = V::str($y, 30);
+                    if (!preg_match('/^[0-9]{1,12}$/', $s)) {
+                        throw new InputError();
+                    }
+                    return $s;
+                },
+                'date' => [V::class, 'date'],
+                'time' => function ($y) {
+                    $s = V::str($y, 4);
+                    if (!preg_match('/^([01][0-9]|2[0-3])[0-5][0-9]$/', $s)) {
+                        throw new InputError();
+                    }
+                    return $s;
+                },
+                'memoLine?' => fn($y) => V::str($y, 500),
+            ]),
+        ]);
+        return $in;
+    }
+
     private static function patientFields(): array
     {
         $s = fn(int $max) => fn($x) => V::str($x, $max);

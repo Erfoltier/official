@@ -205,6 +205,20 @@ try {
         $pt = Store::setPatientM3ChartNo(V::id($p[2]), Schema::integrationM3(Http::readJson()));
         Http::json(['patientId' => $pt['id'], 'm3ChartNo' => $pt['m3ChartNo'] ?? null, 'version' => $pt['version']]);
     }
+    // デジカル（M3）の受付画面への予約の写し（院内パソコンの Claude が読む・結果を返す。docs/M3-SYNC.md）
+    if ($p[0] === 'integration' && ($p[1] ?? '') === 'm3-sync') {
+        Http::checkIntegrationAuth();
+        if ($method === 'GET' && $n === 2) {
+            $from = $q('from');
+            Http::json(Store::m3SyncQueue($from === null ? now_in_clinic()['date'] : V::date($from)));
+        }
+        if ($method === 'POST' && $n === 3 && $p[2] === 'start') {
+            Http::json(Store::startM3Sync());
+        }
+        if ($method === 'POST' && $n === 4 && $p[2] === 'reservations') {
+            Http::json(Store::recordM3Sync(V::id($p[3]), Schema::integrationM3Sync(Http::readJson())));
+        }
+    }
 
     // 自動予約プログラム（ChatGPT など）。鍵は 設定 → 外部機器の連携 →「自動予約」で発行。手順は public/integrations/booking-api.html
     if ($p[0] === 'integration' && ($p[1] ?? '') === 'booking') {
