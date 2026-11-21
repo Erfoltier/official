@@ -32,10 +32,18 @@ async function setStatus(st) {
   await chrome.storage.local.set({ status: { ...st, at: new Date().toISOString() } });
 }
 
-/** LANE RESERVE の開いているタブ（ログイン中のスタッフとして API を呼ぶ） */
+/**
+ * LANE RESERVE の開いているタブ（ログイン中のスタッフとして API を呼ぶ）。
+ * 眠っているタブ（メモリの節約で止められたもの）は話せないので飛ばし、答えたタブを使う
+ */
 async function laneTab() {
-  const tabs = await chrome.tabs.query({ url: LANE + "/*" });
-  return tabs.find((t) => t.status === "complete") || null;
+  const tabs = (await chrome.tabs.query({ url: LANE + "/*" })).filter((t) => !t.discarded && t.status === "complete");
+  tabs.sort((a, b) => Number(b.active) - Number(a.active) || (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
+  for (const t of tabs) {
+    const r = await lane(t.id, "GET", "/api/v1/auth/me").catch(() => null);
+    if (r && r.status !== 0) return t;
+  }
+  return null;
 }
 
 /** 拡張機能を入れる前から開いていたタブには、画面のスクリプトが入っていない。そのときは入れてから話す */
