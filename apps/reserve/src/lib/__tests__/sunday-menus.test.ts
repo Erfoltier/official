@@ -161,6 +161,8 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(r.memo).toContain("部位：女性：Vライン前面・へそ周り(濃い毛のみ)");
     expect(r.memo).toContain("初診の説明：15分");
     expect(r.memo).toContain("麻酔クリーム：希望する");
+    // 予約で選んだ「女性」の部位から、患者情報の性別を入れる（問診票で入力済みにする。院長 11/21）
+    expect((await c.get(`/patients/${r.patientId}`)).patient.sex).toBe("female");
     // 針の料金（ホームページの料金表から取り込んだもの。税込）
     await h.srv.php(`
       $rows = [['一般部位（男女共通） 20本まで', 12100], ['一般部位（男女共通） 21本以上', 220], ['女性VIO 20本まで', 18150], ['女性VIO 21本以上', 330], ['男性VIO 20本まで', 24200], ['男性VIO 21本以上', 770], ['針代', 4400]];
@@ -291,8 +293,8 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     await open(day, { tattooMachine: "ピコ", sundayMenus: [botox, { ...peel, machine: "ピコ" }] });
     const tattoo = { kind: "tattoo", agree: true, visit: "repeat", rects: [[2, 2.5]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09044445555", email: "t@example.jp", date: day, time: "10:00" };
     expect((await book(tattoo)).status).toBe(201); // メイン 10:00〜10:05
-    // ピールは 1番・3番とも 10:00 は機器が使用中。空きの最初しか出さないので、この日は時刻なし
-    expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({});
+    // ピールは 1番・3番とも 10:00 は機器が使用中。機器が空いたすぐ後（10:05）からなら入る（院長 11/21）
+    expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({ [day]: ["10:05"] });
     // 機器の名前がなければ入れる
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooMachine: "" });
@@ -317,14 +319,16 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     `);
     expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20", duration: "約20分" });
     const body = out.sent[0][1];
-    expect(body).toContain("マッサージピール（日曜日）のご予約を承りました");
-    expect(body).toContain("所要時間：約20分");
-    expect(body).toContain("【ご来院前のお願い】\n診察希望部位・施術希望部位は、ノーメイクでお越しください。\n当日はメイクを落としやすい状態でお越しください。");
+    expect(body).toContain("マッサージピールのご予約を承りました");
+    expect(body).not.toContain("（日曜日）");
+    expect(body).not.toContain("所要時間：");
+    expect(body).not.toContain("までにお願いします");
+    expect(body).toContain("【ご来院前のお願い】\nお顔の診察や施術を受ける方は、当日はノーメイクでお越しください。ファンデーションを軽く拭き取っても残りがあると、レーザーの照射に悪影響があります。\n当日はメイクを落としやすい状態でお越しください。");
     expect(body).toContain("美容皮膚科予約済の方専用入口");
     expect(body).toContain("【キャンセル・日程変更にかかる料金規定】");
     expect(body).toContain("アクセス：https://example.jp/clinic/access/");
     expect(body).not.toContain("産毛");
-    expect(body).not.toContain("照射");
+    expect(body).not.toContain("照射する部分");
   });
 
   it("リマインドの日曜の案内は、日曜メニューの予約なら日曜の来院のときだけ足す（同じメニューを平日にも使うため）", async () => {
@@ -396,12 +400,12 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       $n = TattooBooking::normalizeItems($p, $lanes, $menus);
       return ['count' => count($n), 'on' => count(array_filter($n, fn($x) => $x['enabled'])), 'noCat' => array_values(array_map(fn($x) => $x['id'], array_filter($n, fn($x) => $x['category'] === ''))), 'cats' => array_values(array_unique(array_column($n, 'category'))), 'oral' => in_array('oral', array_column($n, 'id'), true), 'qruby' => in_array('qruby', array_column($n, 'id'), true)];
     `);
-    expect(out.count).toBe(38);
+    expect(out.count).toBe(39);
     expect(out.on).toBe(0);
     expect(out.noCat).toEqual([]);
     expect(out.oral).toBe(false);
     expect(out.qruby).toBe(false);
-    expect(out.cats).toEqual(expect.arrayContaining(["注射・注入", "除去・レーザー", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服"]));
+    expect(out.cats).toEqual(expect.arrayContaining(["注射・注入", "除去・美白・レーザー", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服"]));
   });
   it("プレビュー：設定を読めるスタッフに渡す印で、受け付けがオフでも患者の画面を開ける。オフのメニューも出せる。予約は送れない", async () => {
     const day = nextSunday();
@@ -450,10 +454,10 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(out.r).toMatchObject({ ok: true, time: "10:00", end: "10:20" });
     expect(out.memo).toContain("当院の美容皮膚科：初診（保険通院歴：無、当日施術の希望：有）");
     expect(out.memo).toContain("紹介者：山田さん");
-    expect(out.mail).toContain("【問診票のご記入のお願い】");
+    expect(out.mail).toMatch(/のご予約を承りました。\nアレルギーや内服など事前問診票をご回答ください。\nhttps:\/\/liff\.line\.me\/1234567890-QuEsTiOn/);
     expect(out.mail).toContain("https://liff.line.me/1234567890-QuEsTiOn");
     expect(out.r.questionnaire).toBe("https://liff.line.me/1234567890-QuEsTiOn");
-    // 再診で継続 → 再診の時間（10分）。問診票の案内は出さない
+    // 再診で継続 → 再診の時間（10分）。問診票の記録がなければ案内する
     const r2 = await h.srv.php(`
       $sent = [];
       Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
@@ -461,9 +465,25 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       $r = TattooBooking::book(json_decode('${JSON.stringify({ ...base, time: "10:20", phone: "09088887777", name: "再診 太郎", kana: "サイシン タロウ", clinicVisit: "returning", status: "continue" })}', true), '127.0.0.32');
       return ['r' => $r, 'mail' => $sent[0] ?? ''];
     `);
-    expect(r2.r).toMatchObject({ ok: true, questionnaire: "" });
+    expect(r2.r).toMatchObject({ ok: true, questionnaire: "https://liff.line.me/1234567890-QuEsTiOn" });
     expect(r2.r.end).toBe(addMin(r2.r.time, 10));
-    expect(r2.mail).not.toContain("問診票");
+    // 問診票の記録がない再診の方には案内する（院長 11/21：最後の問診票から1年たっていれば再診でも）
+    expect(r2.mail).toContain("アレルギーや内服など事前問診票をご回答ください。");
+    const q = await h.srv.php(`
+      $day = '${day}';
+      $put = fn($id, $pid, $at) => Db::i()->put('questionnaire', $id, ['id' => $id, 'patientId' => $pid, 'submittedAt' => $at, 'receivedAt' => '2026-10-06T00:00:00Z']);
+      $put('q-old', 'pat-old', str_replace('-', '/', add_days($day, -400)) . ' 10:00:00');
+      $put('q-new', 'pat-new', str_replace('-', '/', add_days($day, -300)) . ' 10:00:00');
+      $ret = ['clinicReturning' => true, 'date' => $day];
+      return [
+        TattooBooking::askQuestionnaire($ret, 'pat-old'),
+        TattooBooking::askQuestionnaire($ret, 'pat-new'),
+        TattooBooking::askQuestionnaire($ret, 'pat-none'),
+        TattooBooking::askQuestionnaire(['clinicInitial' => true, 'date' => $day], 'pat-new'),
+        TattooBooking::askQuestionnaire(['date' => $day], 'pat-none'),
+      ];
+    `);
+    expect(q).toEqual([true, false, true, true, false]);
     void c;
   });
   it("ほくろ除去は個数を1つだけ選ぶ（顔1〜4個 15分・15個まで 20分・20個以上 30分）。色素レーザーは範囲（どれも10分、初診は20分）", async () => {
@@ -577,9 +597,38 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
   });
 });
 
+describe("体・唇の黒ずみ美白トーニング（院長 11/21）", () => {
+  it("部位を複数選べる。初診は1番・3番で説明10分＋照射（1部位10分・追加ごとに5分）、再診は1部位10分・追加ごとに5分。タトゥー・シミ取りと同じ機器なので同じ時刻に重ねない", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    const menu = await c.post("/menus", { name: "黒ずみトーニング", duration: { kind: "range", min: 5, max: 60, step: 5 }, defaultMinutes: 15, startStepMin: 5, laneIds: [L1, L3] });
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooMachine: "ディスカバリーピコプラス", tattooSlots: [`${day} 10:00-12:00`] });
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    const t = presets.find((x: any) => x.id === "darktoning");
+    expect(t).toMatchObject({ name: "体・唇の黒ずみ美白トーニング", category: "除去・美白・レーザー", machine: "ディスカバリーピコプラス", firstMinutes: 10, firstBase: 5, firstLaneIds: [L1, L3], firstMenuId: menu.id, repeatMinutes: 5, repeatLaneIds: [L1, L3], repeatMenuId: menu.id, neobo: false });
+    expect(t.partGroups[0].parts.map((p: any) => p.name)).toEqual(["リップ（唇・口角。アートメイク不可）", "両脇", "ニップル（乳首＋乳輪）", "デリケートゾーン（V・I）", "臀部（Oライン不可）"]);
+    await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (x.id === "darktoning" ? { ...x, enabled: true } : x)) });
+    // 再診：1部位10分、3部位20分
+    expect((await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1")).duration).toBe("約10分");
+    expect((await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1,2,3")).duration).toBe("約20分");
+    // 初診：説明10分＋照射（1部位10分）＝20分、3部位なら説明10分＋20分＝30分
+    expect((await slots("item=darktoning&visit=first&group=0&parts=1")).duration).toBe("約20分");
+    expect((await slots("item=darktoning&visit=first&group=0&parts=1,2,3")).duration).toBe("約30分");
+    // タトゥーの照射（メイン 10:00〜10:05、同じ機器）と同じ時刻には入れない
+    expect((await book({ kind: "tattoo", agree: true, visit: "repeat", rects: [[2, 2.5]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09061610000", email: "t@example.jp", date: day, time: "10:00" })).status).toBe(201);
+    const r = await slots("item=darktoning&visit=repeat&status=continue&group=0&parts=1");
+    expect(r.slots[day]).not.toContain("10:00");
+    expect(r.slots[day][0]).toBe("10:05");
+    // 初診の予約メモには説明10分
+    expect((await book(person(day, "10:05", { item: "darktoning", visit: "first", group: "0", parts: [1] }, "09061610001"))).status).toBe(201);
+    const memo = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.memo.startsWith("体・唇の黒ずみ")).memo;
+    expect(memo).toContain("初診の説明：10分");
+  });
+});
+
 describe("日曜の予約：希望施術を複数・当日施術なし（相談のみ）", () => {
   const PEEL_LASER = "menu-s0000A1344"; // レーザー脱毛（機器を使う施術として）
-  const laser = { id: "laser01", name: "顔のレーザー", category: "除去・レーザー", firstMinutes: 20, firstLaneIds: [MAIN], firstMenuId: CONSULT, repeatMinutes: 15, repeatLaneIds: [L1], repeatMenuId: PEEL_LASER, machine: "ジェントルマックスプロ", note: "" };
+  const laser = { id: "laser01", name: "顔のレーザー", category: "除去・美白・レーザー", firstMinutes: 20, firstLaneIds: [MAIN], firstMenuId: CONSULT, repeatMinutes: 15, repeatLaneIds: [L1], repeatMenuId: PEEL_LASER, machine: "ジェントルマックスプロ", note: "" };
   const plan = async (body: object) => (await (await fetch(`${h.srv.base}/monshin/tattoo/api.php?plan=${encodeURIComponent(JSON.stringify(body))}`)).json()) as any;
   const multi = (day: string, time: string, entries: object[], extra: object = {}, phone = "09050000001") => ({
     ...person(day, time, {}, phone), item: undefined, visit: "", clinicVisit: "returning", status: "continue", entries, ...extra,

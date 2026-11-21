@@ -72,3 +72,14 @@ fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
 .tt-consult{margin-top:6px;font-weight:600}
 /* 冒頭の説明文は横幅いっぱいに（右の余白を使う。石の写真の上でも読めるよう、文字の後ろを少し明るく。院長 11/20） */
 .clinic-header p:not(.eyebrow){max-width:none;text-shadow:0 0 6px rgba(252,247,240,.95),0 0 2px rgba(252,247,240,.95)}
+/* 同意事項（項目ごとにチェック、いちばん下の「すべてに同意しました」で全部にチェック。院長 11/21） */
+.tt-consent-title{text-align:center;margin:0 0 6px!important}
+.tt-consent-lead{text-align:center;font-size:.84rem!important;color:#6c6459;margin:0 0 14px!important}
+.tt-consent-item{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:rgba(255,255,255,.45)}
+.tt-consent-item .tt-agree-head{margin:0 0 6px;cursor:pointer}
+.tt-consent-item .tt-agree-head b{font-size:1rem}
+.tt-agree-head input{width:24px;height:24px;flex:none;margin:0}
+.tt-agree-head em{flex:none;white-space:nowrap;font-style:normal;font-size:.75rem;color:#a4473f;background:transparent;border:1px solid currentColor;border-radius:6px;padding:1px 6px;margin:0}
+.tt-agree-head b{line-height:1.4}
+.tt-agree-all{margin-top:6px}
+.tt-agree-all b{font-size:1rem}

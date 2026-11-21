@@ -25,6 +25,7 @@ final class Monshin
         'kana' => '/フリガナ|ふりがな|カナ/u',
         'birthDate' => '/生年月日/u',
         'phone' => '/電話/u',
+        'email' => '/メール|e-?mail/iu',
         'history' => '/既往|病歴|治療中の病気|かかっている病気/u',
         'medications' => '/内服|服用|飲んでいる薬|お薬/u',
         'allergies' => '/アレルギー/u',

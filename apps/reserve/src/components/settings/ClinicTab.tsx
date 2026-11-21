@@ -643,7 +643,7 @@ export function TattooCard({
           title: "タトゥー除去",
           on: tattooOn,
           setOn: setTattooOn,
-          about: `［${removalCategory.trim() || "除去・レーザー"}］時間は面積で自動（初診は説明10分を足す）`,
+          about: `［${removalCategory.trim() || "除去・美白・レーザー"}］時間は面積で自動（初診は説明10分を足す）`,
           warn: tattooOn && missing,
           detail: (
             <>
@@ -711,7 +711,7 @@ export function TattooCard({
                 </label>
                 <label className={styles.field}>
                   <span>分類（タトゥー・アートメイク除去の両方。予約ページでまず選ぶ分類）</span>
-                  <input className={styles.input} value={removalCategory} maxLength={20} list="sunday-cats" onChange={(ev) => setRemovalCategory(ev.target.value)} disabled={!canEdit} placeholder="除去・レーザー" />
+                  <input className={styles.input} value={removalCategory} maxLength={20} list="sunday-cats" onChange={(ev) => setRemovalCategory(ev.target.value)} disabled={!canEdit} placeholder="除去・美白・レーザー" />
                 </label>
             </>
           ),
@@ -721,7 +721,7 @@ export function TattooCard({
           title: "アートメイク除去",
           on: artmakeOn,
           setOn: setArtmakeOn,
-          about: `［${removalCategory.trim() || "除去・レーザー"}］時間は面積で自動（眉は左右の合計）`,
+          about: `［${removalCategory.trim() || "除去・美白・レーザー"}］時間は面積で自動（眉は左右の合計）`,
           warn: artmakeOn && missing,
           detail: <p className={styles.hint}>照射・初診説明のレーンとカレンダーでの表示名・機器は、タトゥー除去と共通です（タトゥー除去の設定で変えます）。</p>,
         },
@@ -1048,6 +1048,18 @@ function SundayMenusEditor({
               </label>
             )}
             {timeMode(it) === "parts" && (
+              <label className={styles.field} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Switch on={!!it.firstFixed} onChange={(on) => put(i, { firstFixed: on })} label="初診は診察だけ" disabled={!canEdit} />
+                <span>初診は医師の診察だけ（部位によらず初診の時間。部位は聞いてメモに残す）</span>
+              </label>
+            )}
+            {timeMode(it) === "parts" && !it.firstFixed && (
+              <label className={styles.field}>
+                <span>初診の施術に足す時間（分。説明とは別。部位の時間の合計に足す。例：黒ずみトーニングは照射が1部位10分＝5分＋部位5分なので5）</span>
+                <input className={styles.input} type="number" min={0} max={180} step={5} value={it.firstBase ?? 0} onChange={(ev) => put(i, { firstBase: Number(ev.target.value) || 0 })} disabled={!canEdit} />
+              </label>
+            )}
+            {timeMode(it) === "parts" && (
               <div className={styles.timeRow}>
                 <label className={styles.field}>
                   <span>患者に聞く見出し（例：個数。空なら「部位」）</span>
@@ -1186,7 +1198,7 @@ function SundayMenusEditor({
     [next[at], next[to]] = [next[to], next[at]];
     setOrder(next);
   };
-  const catList = Array.from(new Set(["除去・レーザー", "注射・注入", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
+  const catList = Array.from(new Set(["除去・美白・レーザー", "注射・注入", "ピーリング", "ダーマペン", "脱毛", "たるみ", "薄毛", "ゼオスキン", "内服", ...items.map((it) => it.category?.trim() ?? "").filter(Boolean)]));
   return (
     <>
       <datalist id="sunday-cats">
