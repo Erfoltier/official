@@ -112,10 +112,21 @@ function loadedAfterStart(knownId) {
     });
 }
 
+/** デジカルの操作はページ自身の世界（MAIN）で動かす（digikar.js の説明を参照） */
 async function digikar(tabId, op, args) {
   for (let i = 0; i < 3; i++) {
-    const r = await send(tabId, { type: "digikar", op, args }, "digikar.js").catch(() => null);
-    if (r) return r;
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", files: ["digikar.js"] });
+      const [res] = await chrome.scripting.executeScript({
+        target: { tabId },
+        world: "MAIN",
+        func: (o, a) => globalThis.__laneM3Run(o, a),
+        args: [op, args],
+      });
+      if (res?.result) return res.result;
+    } catch {
+      /* ページの読み込み中など。少し待ってやり直す */
+    }
     await sleep(1500);
   }
   return { result: "not-ready", state: "no-script" };

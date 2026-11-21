@@ -272,28 +272,31 @@
     return { result: "synced" };
   }
 
-  chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-    if (msg?.type !== "digikar") return false;
-    (async () => {
+  // ページ自身の世界（MAIN）で動かす。拡張機能の別世界（isolated）から送った操作では、
+  // ステータスのメニューの「取消」が選ばれなかったため（11/21 の試運転）。background.js が executeScript で呼ぶ
+  let busy = false;
+  globalThis.__laneM3Run = async (op, args) => {
+    if (busy) return review("前の操作がまだ終わっていません");
+    busy = true;
+    try {
+      const state = pageState();
+      if (op === "state") return { state };
+      if (state !== "ok") return { result: "not-ready", state };
+      const fn = { create, edit, cancel, verify }[op];
+      if (!fn) return review("知らない操作です");
+      return await fn(args);
+    } catch (e) {
       try {
-        const state = pageState();
-        if (msg.op === "state") return reply({ state });
-        if (state !== "ok") return reply({ result: "not-ready", state });
-        const fn = { create, edit, cancel, verify }[msg.op];
-        if (!fn) return reply(review("知らない操作です"));
-        reply(await fn(msg.args));
-      } catch (e) {
-        try {
-          // 途中で止まったら、保存せずに閉じる（キャンセル）
-          [...document.querySelectorAll("button")].filter((b) => visible(b) && text(b) === "キャンセル").pop()?.click();
-          await sleep(500);
-          closeSearchPanel();
-        } catch {
-          /* 閉じられなくても続けない */
-        }
-        reply(review(String(e?.message || e)));
+        // 途中で止まったら、保存せずに閉じる（キャンセル）
+        [...document.querySelectorAll("button")].filter((b) => visible(b) && text(b) === "キャンセル").pop()?.click();
+        await sleep(500);
+        closeSearchPanel();
+      } catch {
+        /* 閉じられなくても続けない */
       }
-    })();
-    return true;
-  });
+      return review(String(e?.message || e));
+    } finally {
+      busy = false;
+    }
+  };
 })();
