@@ -136,3 +136,117 @@ describe("デジカルへの予約の写し", () => {
     expect(((await integration("GET", `?from=${addDays(day, 1)}`)).data as any).items).toEqual([]);
   });
 });
+
+// ---- Chrome 拡張機能がスタッフのログインで使う口（院長 11/21：拡張機能にする、要約は LANE RESERVE のサーバーで Claude に） ----
+
+/** Claude の API の代わり（受け取った中身を覚え、決めた1行を返す） */
+async function fakeClaude(reply: () => string) {
+  const { createServer } = await import("node:http");
+  const bodies: any[] = [];
+  const srv = createServer((req, res) => {
+    let b = "";
+    req.on("data", (d) => (b += d));
+    req.on("end", () => {
+      bodies.push({ url: req.url, body: JSON.parse(b || "{}"), headers: req.headers });
+      res.writeHead(200, { "content-type": "application/json", "request-id": "req_test" });
+      res.end(
+        JSON.stringify({
+          id: "msg_test",
+          type: "message",
+          role: "assistant",
+          model: "claude-opus-5-5",
+          content: [{ type: "text", text: reply() }],
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      );
+    });
+  });
+  await new Promise<void>((r) => srv.listen(0, "127.0.0.1", () => r()));
+  const port = (srv.address() as { port: number }).port;
+  // 設定ファイルの最後に Claude の行き先を足す（リクエストごとに読み直される）
+  const { readFileSync, writeFileSync } = await import("node:fs");
+  const conf = readFileSync(h.srv.config, "utf8");
+  writeFileSync(h.srv.config, conf.replace(/\]\;\s*$/, `, 'm3_claude_base_url' => 'http://127.0.0.1:${port}'];\n`));
+  return { bodies, close: () => new Promise((r) => srv.close(r)) };
+}
+
+const KEY = "sk-ant-test-" + "a".repeat(40);
+
+describe("デジカルへの写し：拡張機能の口", () => {
+  it("写す札は1台だけが持てる。持ち主は延長でき、返すか期限が切れたら別のパソコンが取れる", async () => {
+    const c = await h.srv.as("staff-admin");
+    expect(await c.post("/m3-sync/lock", { clientId: "pc-aaaaaaaa", label: "受付PC" })).toMatchObject({ ok: true, holder: "受付PC" });
+    expect(await c.post("/m3-sync/lock", { clientId: "pc-bbbbbbbb", label: "診察室PC" })).toMatchObject({ ok: false, holder: "受付PC" });
+    expect(await c.post("/m3-sync/lock", { clientId: "pc-aaaaaaaa", label: "受付PC" })).toMatchObject({ ok: true });
+    expect((await c.get("/m3-sync/status")).lock).toMatchObject({ holder: "受付PC" });
+    await c.post("/m3-sync/unlock", { clientId: "pc-aaaaaaaa" });
+    expect(await c.post("/m3-sync/lock", { clientId: "pc-bbbbbbbb", label: "診察室PC" })).toMatchObject({ ok: true, holder: "診察室PC" });
+    // ログインしていなければ使えない
+    expect([401, 403]).toContain((await h.srv.client().raw("POST", "/api/v1/m3-sync/lock", { clientId: "pc-cccccccc" })).status);
+  });
+
+  it("Claude の利用キーは院長だけが入れられ、画面には「設定済み」しか返さない", async () => {
+    const c = await h.srv.as("staff-admin");
+    expect((await c.get("/m3-sync/settings")).hasKey).toBe(false);
+    await expect(c.put("/m3-sync/settings", { apiKey: "abc" })).rejects.toThrow(/sk-ant-/);
+    const s = await c.put("/m3-sync/settings", { apiKey: KEY });
+    expect(s).toMatchObject({ hasKey: true, model: "claude-opus-5-5" });
+    expect(JSON.stringify(s)).not.toContain(KEY);
+    expect(JSON.stringify(await c.get("/m3-sync/status"))).not.toContain(KEY);
+    // 保存したデータにもそのままは残らない（暗号化）
+    expect(h.srv.rawData().includes(Buffer.from(KEY))).toBe(false);
+  });
+
+  it("受付メモの1行を Claude に作らせる。氏名・電話は送らず、同じ中身なら作り直さない。先頭が時刻でなければ断る", async () => {
+    const c = await h.srv.as("staff-admin");
+    let reply = "1030トラネピンク3/5　局麻で　山田さん同伴";
+    const fake = await fakeClaude(() => reply);
+    try {
+      await c.post("/m3-sync/start", {});
+      await sleep(5);
+      const day = addDays(nowInClinic().date, 3);
+      const p = await c.post("/patients", { name: "要約 花子", kana: "ヨウヤク ハナコ", phone: "09011112222", m3ChartNo: "4321" });
+      const r = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 630), endAt: toIso(day, 660), memo: "トラネピンク5回コースの3回目。注射の麻酔希望。山田さんと一緒に来ます" });
+      // キーがなければ作れない
+      await expect(c.post(`/m3-sync/reservations/${r.id}/memo`, {})).rejects.toThrow(/利用キー/);
+      await c.put("/m3-sync/settings", { apiKey: KEY });
+      const m = await c.post(`/m3-sync/reservations/${r.id}/memo`, {});
+      expect(m).toMatchObject({ memoLine: "1030トラネピンク3/5　局麻で　山田さん同伴", cached: false });
+      expect(fake.bodies).toHaveLength(1);
+      const sent = JSON.stringify(fake.bodies[0].body);
+      expect(sent).toContain("時刻：1030");
+      expect(sent).toContain("注射の麻酔希望");
+      expect(sent).not.toContain("要約 花子");
+      expect(sent).not.toContain("09011112222");
+      expect(fake.bodies[0].body.model).toBe("claude-opus-5-5");
+      expect(String(fake.bodies[0].headers.authorization ?? fake.bodies[0].headers["x-api-key"])).toContain(KEY);
+      expect(String(fake.bodies[0].headers["anthropic-beta"])).toContain("server-side-fallback-2026-07-01");
+      expect(fake.bodies[0].body.fallbacks).toBe("default");
+      // 同じ中身なら Claude を呼ばない
+      expect((await c.post(`/m3-sync/reservations/${r.id}/memo`, {})).cached).toBe(true);
+      expect(fake.bodies).toHaveLength(1);
+      // 中身が変わり、Claude の答えの先頭が時刻でなければ断る（要確認にする）
+      await c.patch(`/reservations/${r.id}`, { version: r.version, memo: "変更" });
+      reply = "トラネピンク再診";
+      await expect(c.post(`/m3-sync/reservations/${r.id}/memo`, {})).rejects.toThrow(/時刻/);
+    } finally {
+      await fake.close();
+    }
+  });
+
+  it("スタッフのログインで一覧を読み、結果を記録できる（記録上は「（デジカル写し）」）", async () => {
+    const c = await h.srv.as("staff-admin");
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    const day = addDays(nowInClinic().date, 3);
+    const p = await c.post("/patients", { name: "拡張 一郎", m3ChartNo: "777" });
+    const r = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    const q = await c.get("/m3-sync");
+    expect(q.items.map((x: any) => x.reservation.id)).toEqual([r.id]);
+    const rec = await c.post(`/m3-sync/reservations/${r.id}`, { result: "synced", fingerprint: q.items[0].reservation.fingerprint, digikar: { patientNo: "777", date: day, time: "1000", memoLine: "1000シミ初診" } });
+    expect(rec.state).toBe("synced");
+    expect((await c.get("/m3-sync")).items).toEqual([]);
+  });
+});

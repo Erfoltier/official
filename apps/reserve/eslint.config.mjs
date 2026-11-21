@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // PHP の部品（composer）
+    "php/vendor/**",
   ]),
 ]);
 

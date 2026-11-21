@@ -50,3 +50,6 @@ next-env.d.ts
 /php/data/*.db*
 php/data/
 /public/integrations/line-chat-extension.zip
+
+# PHP の部品（composer install で入れる。composer.json・composer.lock はリポジトリに入れる）
+/php/vendor/

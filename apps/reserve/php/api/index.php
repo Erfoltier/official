@@ -847,6 +847,49 @@ try {
     }
 
     // ---- 機器の連携の設定（院長・管理者）と、照合待ちの写真 ----
+    // デジカルへの写し（Chrome 拡張機能が、ログイン中のスタッフとして使う。docs/M3-SYNC.md）
+    if ($p[0] === 'm3-sync') {
+        $sub = $p[1] ?? '';
+        if ($method === 'GET' && $n === 1) {
+            $me();
+            $from = $q('from');
+            Http::json(Store::m3SyncQueue($from === null ? now_in_clinic()['date'] : V::date($from)));
+        }
+        if ($method === 'GET' && $n === 2 && $sub === 'status') {
+            $me();
+            Http::json(['startAt' => Store::m3SyncStart(), 'lock' => Store::m3LockStatus(), 'claude' => M3Memo::settings()]);
+        }
+        if ($method === 'POST' && $n === 2 && ($sub === 'lock' || $sub === 'unlock')) {
+            $me();
+            $in = V::shape(Http::readJson(), ['clientId' => fn($x) => V::str($x, 64), 'label?' => fn($x) => V::str($x, 60)]);
+            if (!preg_match('/^[A-Za-z0-9_-]{8,64}$/', $in['clientId'])) {
+                throw new InputError();
+            }
+            Http::json($sub === 'lock' ? Store::claimM3Lock($in['clientId'], trim($in['label'] ?? '') ?: 'パソコン') : Store::releaseM3Lock($in['clientId']));
+        }
+        if ($method === 'POST' && $n === 2 && $sub === 'start') {
+            $me(STAFF_ADMIN);
+            Http::json(Store::startM3Sync());
+        }
+        if ($n === 2 && $sub === 'settings') {
+            $s = $me(STAFF_ADMIN);
+            if ($method === 'GET') {
+                Http::json(M3Memo::settings());
+            }
+            if ($method === 'PUT') {
+                Http::json(M3Memo::saveSettings(V::shape(Http::readJson(), ['apiKey?' => fn($x) => V::str($x, 300), 'model?' => fn($x) => V::str($x, 60)]), $actor($s)));
+            }
+        }
+        if ($method === 'POST' && $n === 4 && $sub === 'reservations' && $p[3] === 'memo') {
+            $me();
+            Http::json(Store::m3SyncMemo(V::id($p[2])));
+        }
+        if ($method === 'POST' && $n === 3 && $sub === 'reservations') {
+            $s = $me();
+            $a = $actor($s);
+            Http::json(Store::recordM3Sync(V::id($p[2]), Schema::integrationM3Sync(Http::readJson()), ['id' => $a['id'], 'name' => $a['name'] . '（デジカル写し）']));
+        }
+    }
     if ($p[0] === 'device-links') {
         if ($method === 'GET' && $n === 1) {
             $me(STAFF_ADMIN);

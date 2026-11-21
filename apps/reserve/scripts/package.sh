@@ -6,6 +6,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=${1:-dist}
 R=$(git rev-parse --short HEAD)
+# PHP の部品（Claude の公式 SDK など）。php フォルダで composer install --no-dev を済ませておく
+[ -f php/vendor/autoload.php ] || { echo "php/vendor がありません（php フォルダで composer install --no-dev）" >&2; exit 1; }
 BASE_PATH= npm run build:static >/dev/null
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

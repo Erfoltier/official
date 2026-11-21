@@ -1806,12 +1806,13 @@ final class Store
      * 写した結果を記録する。fingerprint は一覧で受け取ったもの（写している間に予約が変わっていたら断る＝次の一覧でやり直す）。
      * result：synced（登録・変更を写した）／cancelled（デジカルで取消にした）／review（要確認、reason 必須）
      */
-    public static function recordM3Sync(string $id, array $in): array
+    public static function recordM3Sync(string $id, array $in, ?array $by = null): array
     {
+        $by ??= self::INTEGRATION_ACTOR;
         if (self::m3SyncStart() === null) {
             throw new StoreError('invalid', 'デジカルへの写しはまだ始めていません');
         }
-        return Db::i()->transaction(function () use ($id, $in) {
+        return Db::i()->transaction(function () use ($id, $in, $by) {
             $r = self::reservation($id);
             $fp = self::m3Fingerprint($r);
             if ($in['fingerprint'] !== $fp) {
@@ -1852,9 +1853,73 @@ final class Store
             $rec['log'] = array_slice($log, -10);
             Db::i()->put(self::M3_SYNC_KIND, $id, $rec);
             $label = ['synced' => '写し済み', 'cancelled' => '取消を写した', 'review' => '要確認'][$result];
-            Auth::audit(self::INTEGRATION_ACTOR, "デジカルへの写し（{$label}）", $id);
+            Auth::audit($by, "デジカルへの写し（{$label}）", $id);
             return $rec;
         });
+    }
+
+    private const M3_LOCK_META = 'm3SyncLock';
+
+    /**
+     * 写す札（ロック）：拡張機能を入れたパソコンのうち1台だけが写す。持っている間は ttl 秒ごとに取り直す（延長）。
+     * 持ち主が閉じられて期限が切れたら、次に起動しているパソコンが取る
+     */
+    public static function claimM3Lock(string $clientId, string $label, int $ttlSec = 180): array
+    {
+        return Db::i()->transaction(function () use ($clientId, $label, $ttlSec) {
+            $now = (int) floor(microtime(true) * 1000);
+            $cur = Db::i()->meta(self::M3_LOCK_META);
+            if (is_array($cur) && $cur['clientId'] !== $clientId && $cur['until'] > $now) {
+                return ['ok' => false, 'holder' => $cur['label'], 'until' => $cur['until']];
+            }
+            $next = ['clientId' => $clientId, 'label' => $label, 'until' => $now + $ttlSec * 1000, 'since' => is_array($cur) && $cur['clientId'] === $clientId ? ($cur['since'] ?? $now) : $now];
+            Db::i()->setMeta(self::M3_LOCK_META, $next);
+            return ['ok' => true, 'holder' => $label, 'until' => $next['until']];
+        });
+    }
+
+    /** 札を返す（そのパソコンが持っているときだけ） */
+    public static function releaseM3Lock(string $clientId): array
+    {
+        return Db::i()->transaction(function () use ($clientId) {
+            $cur = Db::i()->meta(self::M3_LOCK_META);
+            if (is_array($cur) && $cur['clientId'] === $clientId) {
+                Db::i()->setMeta(self::M3_LOCK_META, [...$cur, 'until' => 0]);
+            }
+            return ['ok' => true];
+        });
+    }
+
+    /** 札の今の持ち主（設定の画面用） */
+    public static function m3LockStatus(): ?array
+    {
+        $cur = Db::i()->meta(self::M3_LOCK_META);
+        if (!is_array($cur) || $cur['until'] <= (int) floor(microtime(true) * 1000)) {
+            return null;
+        }
+        return ['holder' => $cur['label'], 'until' => $cur['until'], 'since' => $cur['since'] ?? null];
+    }
+
+    /**
+     * 受付メモの1行（Claude が作る。docs/M3-SYNC.md）。中身（fingerprint）が同じ間は作り直さない
+     * @return array{memoLine: string, fingerprint: string, cached: bool}
+     */
+    public static function m3SyncMemo(string $id): array
+    {
+        $start = self::m3SyncStart();
+        if ($start === null) {
+            throw new StoreError('invalid', 'デジカルへの写しはまだ始めていません');
+        }
+        $r = self::reservation($id);
+        $fp = self::m3Fingerprint($r);
+        $cache = Db::i()->get('m3memo', $id);
+        if (is_array($cache) && ($cache['fingerprint'] ?? '') === $fp && is_string($cache['memoLine'] ?? null)) {
+            return ['memoLine' => $cache['memoLine'], 'fingerprint' => $fp, 'cached' => true];
+        }
+        $item = self::m3Item('memo', $r, self::patients()[$r['patientId']] ?? null, $fp, null, parse_ms($start));
+        $line = M3Memo::generate($item);
+        Db::i()->put('m3memo', $id, ['fingerprint' => $fp, 'memoLine' => $line, 'at' => now_iso()]);
+        return ['memoLine' => $line, 'fingerprint' => $fp, 'cached' => false];
     }
 
     // ---- 入力の検査 ----

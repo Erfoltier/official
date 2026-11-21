@@ -97,3 +97,12 @@
 - デジカルの受付画面で、予約を入れる場所・入力項目（日時・担当・メモ）
 - LANE RESERVE のレーン・メニューを、デジカルのどの項目に対応させるか
 - 動かす間隔（数分ごと／手動で1回ずつ）
+
+## 拡張機能用のサーバーの口（2026-11-21 作成、未反映）
+
+- スタッフのログインで使う `/api/v1/m3-sync`（一覧）・`/status`・`/lock`・`/unlock`・`/reservations/{id}/memo`・`/reservations/{id}`（結果）・`/start`・`/settings`（院長だけ）
+- 写す札：1台が `lock`（clientId・パソコンの名前）で取り、180秒ごとに取り直す。ほかのパソコンは `ok: false` で待つ。返す（`unlock`）か期限が切れたら次のパソコンが取れる
+- 受付メモの1行：`M3Memo::generate`。Claude（既定 `claude-opus-5-5`、effort low、拒否時のフォールバックあり）に、時刻・メニュー（名前・略称）・所要時間・レーン・予約メモだけを送る（氏名・電話・住所・生年月日は送らない）。答えの先頭が予約の時刻（4桁）でなければ使わない（要確認）。同じ中身の間は作り直さない（DB の `m3memo`）
+- Claude の利用キー：院長が設定で1回だけ入れる（DB に暗号化して保存、画面には「設定済み」だけ返す）
+- PHP の部品：`php/composer.json`・`composer.lock`（anthropic-ai/sdk・guzzle）。`php/vendor` はリポジトリに入れず、一式を作る前に php フォルダで `composer install --no-dev`（`scripts/package.sh` は vendor がなければ止まる）
+- 残り：設定の画面（利用キー・写し始め・札の持ち主・拡張機能のダウンロード）、拡張機能本体（デジカルの画面の操作）

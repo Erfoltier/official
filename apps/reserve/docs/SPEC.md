@@ -168,6 +168,7 @@
 | `booking/safe-*` | 同上 | Codexの固定試験。既存の予約作成・読取に加え、`safe-mutations` の変更/取消、`safe-patients` の患者登録/読取を含む。追加2系統は標準では無効 |
 | `reservations/{id}/request-id` | 連携トークン | 予約申請IDの書き込み |
 | `patients/{id}/m3-chart-no` | 連携トークン | M3 カルテ番号の書き込み |
+| （スタッフのログイン）`/api/v1/m3-sync`（GET 一覧）・`m3-sync/status`・`m3-sync/lock`・`m3-sync/unlock`・`m3-sync/reservations/{id}/memo`（Claude が受付メモの1行を作る）・`m3-sync/reservations/{id}`（結果）・`m3-sync/start`・`m3-sync/settings`（院長：Claude の利用キー・モデル） | スタッフのログイン（Chrome 拡張機能から） | デジカルへの写しの拡張機能用。写す札は1台だけ（180秒、持ち主が延長）。受付メモは `M3Memo`（Anthropic 公式 PHP SDK、`php/vendor` は composer install）で作り、中身が同じ間は作り直さない（`m3memo`）。氏名・連絡先は Claude に送らない |
 | `m3-sync`（GET ?from=日付）・`m3-sync/start`・`m3-sync/reservations/{id}` | 連携トークン | デジカルの受付画面への予約の写し（[M3-SYNC.md](M3-SYNC.md)）。写す予約の一覧（create／update／cancel／restore と要確認）、写し始めの時刻（一度決めたら変えない）、写した結果（synced／cancelled／review＋理由）の記録。結果は写す中身の指紋（fingerprint）が一覧のときと同じでなければ 409 |
 | `consent-templates` / `prices` / `photos` | 連携トークン・機器の鍵 | 同意書のひな形・料金・写真の受け取り（Google フォームの問診票の口 `questionnaires` は 2026-11 に削除。問診票は来院前の問診票ページと LINE だけ） |
 
