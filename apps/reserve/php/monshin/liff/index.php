@@ -53,7 +53,8 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     kids.flat().forEach((k) => k && e.append(k));
     return e;
   };
-  const show = (...nodes) => { app.replaceChildren(...nodes); window.scrollTo(0, 0); };
+  // 空の部品（null）は入れない（replaceChildren は null を「null」の文字にしてしまう）
+  const show = (...nodes) => { app.replaceChildren(...nodes.filter(Boolean)); window.scrollTo(0, 0); };
   const fail = (text) => show(el('div', { class: 'alert', role: 'alert', text }));
   const api = async (body) => {
     const res = await fetch('./api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
