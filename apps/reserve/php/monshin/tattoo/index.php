@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261121-2';
+$v = '20261121-3';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -93,7 +93,7 @@ $v = '20261121-2';
       <section class="card">
         <div class="section-heading">
           <span class="step">1</span>
-          <div><h2>ご希望の内容</h2><p><?= $tattooOn ? '除去の場合は、照射する面積によってご予約いただける時間が変わります' : 'ご希望の施術を選んでください' ?></p></div>
+          <div><h2>ご希望の内容</h2><p>ご希望の内容の量と範囲によって押さえる枠の時間が異なるため、ご案内できる時刻も変わることがあります。</p></div>
         </div>
         <!-- 当院の美容皮膚科の初診・再診（水曜・祝日の LINE 予約申請フォームと同じ問い。院長 11/19）。予約の時間はここから決める -->
         <fieldset class="field">
