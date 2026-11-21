@@ -133,7 +133,47 @@ async function digikar(tabId, op, args) {
   return { result: "not-ready", state: "no-script" };
 }
 
-const receptionUrl = (date) => `${DIGIKAR}/reception/${date.replace(/-/g, "")}`;
+/**
+ * 取消：裏のタブではページの中から送った操作ではステータスのメニューが効かなかったため（11/21 試運転）、
+ * Chrome のデバッグの仕組みで本物のマウス操作を送る。写し専用のタブにだけ、取消の数秒の間だけつなぐ
+ */
+async function cancelByDebugger(tabId, args) {
+  const at = await digikar(tabId, "locateCancel", args);
+  if (at.result === "gone") return { result: "cancelled", note: "デジカルにはすでにありませんでした" };
+  if (at.result !== "at") return at;
+  const target = { tabId };
+  const trail = [`vis=${at.vis}`];
+  const click = async (p) => {
+    const base = { x: p.x, y: p.y, button: "left", clickCount: 1, pointerType: "mouse" };
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x: p.x, y: p.y, button: "none", pointerType: "mouse" });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { ...base, type: "mousePressed", buttons: 1 });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { ...base, type: "mouseReleased", buttons: 0 });
+  };
+  try {
+    await chrome.debugger.attach(target, "1.3");
+  } catch (e) {
+    return { result: "review", reason: `デバッグの仕組みにつなげません（${String(e?.message || e)}）` };
+  }
+  try {
+    // 裏のタブでも、フォーカスのあるページとして動かす
+    await chrome.debugger.sendCommand(target, "Emulation.setFocusEmulationEnabled", { enabled: true }).catch(() => trail.push("focus不可"));
+    await click(at.point);
+    const item = await digikar(tabId, "locateCancelItem", {});
+    if (item.result !== "at") {
+      trail.push("メニューが開かない");
+      return { result: "review", reason: `取消にできません（${trail.join("、")}）` };
+    }
+    await click(item.point);
+    const done = await digikar(tabId, "checkGone", { patientNo: args.patientNo, time: args.time, before: at.count });
+    trail.push(`debugger:${done.result === "cancelled" ? "減った" : "変わらず"}`);
+    if (done.result === "cancelled") return { result: "cancelled", note: trail.join("、") };
+    return { result: "review", reason: `取消にしたあとも一覧に残っています（${trail.join("、")}）` };
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+const receptionUrl = (date) =>`${DIGIKAR}/reception/${date.replace(/-/g, "")}`;
 
 /** 1件を写す。返り値は LANE RESERVE に記録する結果、または not-ready（デジカルが使えない＝止める） */
 async function syncOne(laneId, item) {
@@ -148,7 +188,7 @@ async function syncOne(laneId, item) {
     const date = item.reservation.preexisting || !prev ? r.date : prev.date;
     const time = item.reservation.preexisting || !prev ? r.time : prev.time;
     const tab = await digikarTab(receptionUrl(date));
-    const res = await digikar(tab, "cancel", { patientNo: no, time, requireMemoTime: !r.preexisting });
+    const res = await cancelByDebugger(tab, { patientNo: no, time, requireMemoTime: !r.preexisting });
     if (res.result === "cancelled") return { result: "cancelled", note: res.note, digikar: { patientNo: no, date, time } };
     return res;
   }

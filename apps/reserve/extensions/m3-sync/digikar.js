@@ -267,6 +267,44 @@
   }
 
   // ---- 取消（ステータスを「取消」に。一覧から消え、受付編集履歴に残る） ----
+  // ---- 取消（デバッグの仕組みで本物のクリックを送るための位置を返す。background.js の cancelByDebugger） ----
+  const center = (el) => {
+    el.scrollIntoView({ block: "center", inline: "center" });
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  };
+
+  /** 取り消す行のステータスのボタンの位置。なければ gone、1件に決まらなければ review */
+  async function locateCancel({ patientNo, time, requireMemoTime }) {
+    const rows = await waitList();
+    if (rows === null) return review("デジカルの受付一覧を読めません");
+    let hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
+    if (requireMemoTime) hits = hits.filter((r) => r.memo.startsWith(time));
+    if (hits.length === 0) return { result: "gone", count: listCount() };
+    if (hits.length !== 1) return review(`取り消す予約をデジカルで1件に決められません（${hits.length}件）`);
+    const sbtn = hits[0].statusCell?.querySelector("button");
+    if (!sbtn) return review("ステータスのボタンが見つかりません");
+    return { result: "at", point: center(sbtn), count: listCount(), vis: document.visibilityState };
+  }
+
+  /** 開いたメニューの「取消」の位置 */
+  async function locateCancelItem() {
+    const item = await waitFor(() => [...document.querySelectorAll("[role=menuitem]")].find((i) => text(i) === "取消"), 5000);
+    if (!item) return { result: "none" };
+    return { result: "at", point: center(item) };
+  }
+
+  /** 取消のあと：その行が消えたか */
+  async function checkGone({ patientNo, time, before }) {
+    const ok = await waitFor(() => {
+      const n = listCount();
+      return n !== null && n < before ? true : null;
+    }, 8000, 300);
+    const rows = (await waitList()) || [];
+    const still = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time)).length;
+    return { result: ok && still === 0 ? "cancelled" : "still", count: listCount() };
+  }
+
   async function cancel({ patientNo, time, requireMemoTime }) {
     const rows = await waitList();
     if (rows === null) return review("デジカルの受付一覧を読めません");
@@ -348,7 +386,7 @@
       const state = pageState();
       if (op === "state") return { state };
       if (state !== "ok") return { result: "not-ready", state };
-      const fn = { create, edit, cancel, verify }[op];
+      const fn = { create, edit, cancel, verify, locateCancel, locateCancelItem, checkGone }[op];
       if (!fn) return review("知らない操作です");
       return await fn(args);
     } catch (e) {
