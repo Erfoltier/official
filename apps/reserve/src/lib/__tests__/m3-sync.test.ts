@@ -365,3 +365,32 @@ describe("デジカルへの写し：Claude の使いすぎの歯止め（院長
     }
   });
 });
+
+describe("デジカルへの写し：もう一度写す", () => {
+  it("要確認の予約を、要確認になる前の状態から写し直す（まだ写していない→新しく入れる、写した→写し直す）。要確認でない予約は断る", async () => {
+    const c = await h.srv.as("staff-admin");
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    const day = addDays(nowInClinic().date, 3);
+    const p = await c.post("/patients", { name: "再試 花子", m3ChartNo: "9100" });
+    const a = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    const b = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 700), endAt: toIso(day, 730) });
+    const fp = async (id: string) => (await c.get("/m3-sync")).items.find((x: any) => x.reservation.id === id).reservation.fingerprint;
+    // a：まだ写していないうちに要確認
+    await c.post(`/m3-sync/reservations/${a.id}`, { result: "review", fingerprint: await fp(a.id), reason: "テスト" });
+    // b：写したあと、変更を写すときに要確認
+    await c.post(`/m3-sync/reservations/${b.id}`, { result: "synced", fingerprint: await fp(b.id), digikar: { patientNo: "9100", date: day, time: "1100" } });
+    await c.patch(`/reservations/${b.id}`, { version: b.version, memo: "変更" });
+    await c.post(`/m3-sync/reservations/${b.id}`, { result: "review", fingerprint: await fp(b.id), reason: "テスト" });
+    let q = await c.get("/m3-sync");
+    expect(q.items).toEqual([]);
+    expect(q.review).toHaveLength(2);
+    await expect(c.post(`/m3-sync/reservations/${a.id}/retry`, {})).resolves.toMatchObject({ ok: true });
+    await c.post(`/m3-sync/reservations/${b.id}/retry`, {});
+    q = await c.get("/m3-sync");
+    expect(q.review).toEqual([]);
+    expect(Object.fromEntries(q.items.map((x: any) => [x.reservation.id, x.action]))).toEqual({ [a.id]: "create", [b.id]: "update" });
+    // 要確認でない予約は断る
+    await expect(c.post(`/m3-sync/reservations/${a.id}/retry`, {})).rejects.toThrow(/要確認ではありません/);
+  });
+});

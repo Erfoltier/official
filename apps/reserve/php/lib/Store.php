@@ -1872,6 +1872,32 @@ final class Store
         });
     }
 
+    /**
+     * 要確認の予約を「もう一度写す」：要確認になる前の状態に戻し、次の写しで考え直させる。
+     * まだ写していなかった予約は記録を消す（新しく入れる／前からある予約の取消）。写した予約は写し直す（変更・取消・戻す）
+     */
+    public static function retryM3Sync(string $id, array $by): array
+    {
+        return Db::i()->transaction(function () use ($id, $by) {
+            self::reservation($id);
+            $rec = Db::i()->get(self::M3_SYNC_KIND, $id);
+            if (!is_array($rec) || $rec['state'] !== 'review') {
+                throw new StoreError('invalid', 'この予約は要確認ではありません');
+            }
+            $written = $rec['written'] ?? null;
+            if ($written === null) {
+                Db::i()->delete(self::M3_SYNC_KIND, $id);
+            } else {
+                $log = $rec['log'] ?? [];
+                $log[] = ['at' => now_iso(), 'state' => 'retry'];
+                // 指紋を空にして、今の予約の中身で写し直させる
+                Db::i()->put(self::M3_SYNC_KIND, $id, [...$rec, 'state' => $written, 'fingerprint' => '', 'reason' => null, 'log' => array_slice($log, -10)]);
+            }
+            Auth::audit($by, 'デジカルへの写し（もう一度写す）', $id);
+            return ['ok' => true];
+        });
+    }
+
     private const M3_LOCK_META = 'm3SyncLock';
 
     /**

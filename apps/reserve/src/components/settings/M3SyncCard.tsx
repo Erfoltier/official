@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchM3SyncQueue, fetchM3SyncStatus, saveM3SyncSettings, startM3Sync, type M3SyncReviewItem, type M3SyncStatus } from "@/components/calendar/api";
+import { fetchM3SyncQueue, fetchM3SyncStatus, retryM3Sync, saveM3SyncSettings, startM3Sync, type M3SyncReviewItem, type M3SyncStatus } from "@/components/calendar/api";
 import { withBase } from "@/lib/paths";
 import styles from "./settings.module.css";
 
@@ -170,11 +170,20 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
               <ul className={styles.steps}>
                 {review.map((r) => (
                   <li key={r.reservation.id}>
-                    {r.reservation.date} {r.reservation.time.slice(0, 2)}:{r.reservation.time.slice(2)} {r.patient?.name ?? ""}（{r.reservation.menus.map((m) => m.name).join("・")}）：{r.previous?.reason}
+                    {r.reservation.date} {r.reservation.time.slice(0, 2)}:{r.reservation.time.slice(2)} {r.patient?.name ?? ""}（{r.reservation.menus.map((m) => m.name).join("・")}）：{r.previous?.reason}{" "}
+                    <button
+                      className={styles.btn}
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm("デジカルの画面を確かめましたか？ この予約を、次の写しでもう一度写します。")) void run(() => retryM3Sync(r.reservation.id), "もう一度写すようにしました");
+                      }}
+                    >
+                      もう一度写す
+                    </button>
                   </li>
                 ))}
               </ul>
-              <small>デジカルを確かめて手で直すか、LANE RESERVE の予約を直すと、もう一度写します。</small>
+              <small>原因を直したら「もう一度写す」を押してください（LANE RESERVE の予約を直したときは押さなくても写し直します）。デジカルで手で直した場合は、そのままで構いません。</small>
             </div>
           )}
         </>

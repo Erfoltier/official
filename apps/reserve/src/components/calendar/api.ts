@@ -1090,3 +1090,8 @@ export function saveM3SyncSettings(input: { apiKey?: string; model?: string; tri
 export function startM3Sync(): Promise<{ startAt: string }> {
   return call(`/api/v1/m3-sync/start`, { method: "POST", body: "{}" });
 }
+
+/** 要確認の予約を、もう一度写す（次の写しで考え直す） */
+export function retryM3Sync(reservationId: string): Promise<{ ok: boolean }> {
+  return call(`/api/v1/m3-sync/reservations/${encodeURIComponent(reservationId)}/retry`, { method: "POST", body: "{}" });
+}
