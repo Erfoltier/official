@@ -261,6 +261,8 @@ async function syncOne(laneId, item) {
   if (!m.ok) return { result: "review", reason: m.data?.message || "受付メモを作れませんでした" };
   if (m.data.fingerprint !== r.fingerprint) return { result: "skip" }; // 途中で予約が変わった（次の回に写す）
   const memoLine = m.data.memoLine;
+  // 今月の Claude の利用（見積もり）。1,000円ごとの警告はポップアップに出す
+  if (m.data.usage) await chrome.storage.local.set({ usage: m.data.usage });
   const target = { patientNo: no, date: r.date, time: r.time, memoLine };
 
   let res;

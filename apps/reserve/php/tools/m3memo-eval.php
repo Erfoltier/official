@@ -22,7 +22,7 @@ $cases = [
 ];
 foreach ($cases as $i => [$time, $menu, $memo, $want]) {
     $item = ['reservation' => [
-        'time' => $time, 'minutes' => 20, 'memo' => $memo,
+        'id' => 'eval-' . ($i + 1), 'time' => $time, 'minutes' => 20, 'memo' => $memo,
         'menus' => [['id' => 'x', 'name' => $menu, 'abbr' => '']],
         'lane' => ['name' => 'メインレーン（医師）'],
     ]];
@@ -33,3 +33,5 @@ foreach ($cases as $i => [$time, $menu, $memo, $want]) {
     }
     echo ($i + 1) . "\t期待 {$want}\n\tClaude {$got}\n";
 }
+$u = M3Memo::usage();
+echo "今月の見積もり：約{$u['yen']}円（{$u['calls']}回）\n";

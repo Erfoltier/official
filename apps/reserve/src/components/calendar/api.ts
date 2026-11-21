@@ -1058,7 +1058,14 @@ export function applyM3Fill(items: Omit<import("@/lib/domain/m3match").M3Fill, "
 export interface M3SyncStatus {
   startAt: string | null;
   lock: { holder: string; until: number; since?: number } | null;
-  claude: { hasKey: boolean; model: string; updatedAt: string | null; trialChartNos: string[] };
+  claude: {
+    hasKey: boolean;
+    model: string;
+    updatedAt: string | null;
+    trialChartNos: string[];
+    capYen: number;
+    usage: { month: string; calls: number; yen: number; warnings: { yen: number; at: string }[]; paused: boolean; capYen: number };
+  };
 }
 
 export interface M3SyncReviewItem {
@@ -1076,7 +1083,7 @@ export function fetchM3SyncQueue(): Promise<{ startAt: string | null; items: M3S
   return call(`/api/v1/m3-sync`);
 }
 
-export function saveM3SyncSettings(input: { apiKey?: string; model?: string; trialChartNos?: string }): Promise<M3SyncStatus["claude"]> {
+export function saveM3SyncSettings(input: { apiKey?: string; model?: string; trialChartNos?: string; capYen?: number }): Promise<M3SyncStatus["claude"]> {
   return call(`/api/v1/m3-sync/settings`, { method: "PUT", body: JSON.stringify(input) });
 }
 

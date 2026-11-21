@@ -59,11 +59,115 @@ final class M3Memo
 出力は受付メモの1行だけ（説明・引用符・改行なし、全体で120文字以内）。
 TXT;
 
+    // ---- 使いすぎを防ぐ（院長 11/21：ループで止まらず課金が膨らむのを防ぐ・月の上限・1,000円ごとの警告） ----
+    private const USAGE_META = 'm3ClaudeUsage';
+    /** 月の上限（円）。ここに達したら Claude を呼ばない（設定で変えられる） */
+    public const DEFAULT_CAP_YEN = 3000;
+    /** 警告を出す刻み（円） */
+    public const WARN_STEP_YEN = 1000;
+    /** 1時間・1日に呼べる回数（これを超えたら止める＝ループや二重起動の歯止め） */
+    public const MAX_PER_HOUR = 30;
+    public const MAX_PER_DAY = 200;
+    /** 同じ予約で1日に呼べる回数 */
+    public const MAX_PER_RESERVATION_DAY = 5;
+    /** 1ドルの円（見積もり用。実際の請求は Anthropic の管理画面で確かめる） */
+    public const YEN_PER_USD = 155;
+    /** 100万トークンあたりのドル（入力・出力）。知らないモデルは高い方で見積もる */
+    private const PRICES = [
+        'claude-opus-5-5' => [4.0, 20.0],
+        'claude-sonnet-5-5' => [2.0, 10.0],
+        'claude-haiku-5-5' => [0.10, 0.50],
+    ];
+
     /** 設定（画面用）：キーそのものは返さない */
     public static function settings(): array
     {
         $s = self::raw();
-        return ['hasKey' => ($s['apiKey'] ?? '') !== '', 'model' => $s['model'] ?? self::DEFAULT_MODEL, 'updatedAt' => $s['updatedAt'] ?? null, 'trialChartNos' => self::trialChartNos()];
+        return [
+            'hasKey' => ($s['apiKey'] ?? '') !== '',
+            'model' => $s['model'] ?? self::DEFAULT_MODEL,
+            'updatedAt' => $s['updatedAt'] ?? null,
+            'trialChartNos' => self::trialChartNos(),
+            'capYen' => self::capYen(),
+            'usage' => self::usage(),
+        ];
+    }
+
+    private static function capYen(): int
+    {
+        $c = self::raw()['capYen'] ?? null;
+        return is_int($c) && $c >= 0 ? $c : self::DEFAULT_CAP_YEN;
+    }
+
+    /** 今月の使った額（見積もり）・回数・警告 */
+    public static function usage(): array
+    {
+        $u = Db::i()->meta(self::USAGE_META);
+        $month = substr(now_in_clinic()['date'], 0, 7);
+        if (!is_array($u) || ($u['month'] ?? '') !== $month) {
+            return ['month' => $month, 'calls' => 0, 'yen' => 0.0, 'warnings' => [], 'paused' => self::capYen() <= 0, 'capYen' => self::capYen()];
+        }
+        $yen = (float) ($u['yen'] ?? 0);
+        return ['month' => $month, 'calls' => (int) ($u['calls'] ?? 0), 'yen' => round($yen, 1), 'warnings' => $u['warnings'] ?? [], 'paused' => $yen >= self::capYen(), 'capYen' => self::capYen()];
+    }
+
+    /**
+     * Claude を呼ぶ前の歯止め。月の上限・1時間／1日の回数・同じ予約の回数を確かめ、呼ぶ分を先に数える。
+     * 止めるときは StoreError（拡張機能はその予約を要確認にして、その回を止める）
+     */
+    private static function reserveCall(string $reservationId): void
+    {
+        Db::i()->transaction(function () use ($reservationId) {
+            $now = now_in_clinic();
+            $month = substr($now['date'], 0, 7);
+            $hour = $now['date'] . sprintf('T%02d', intdiv($now['minutes'], 60));
+            $u = Db::i()->meta(self::USAGE_META);
+            if (!is_array($u) || ($u['month'] ?? '') !== $month) {
+                $u = ['month' => $month, 'calls' => 0, 'yen' => 0.0, 'warnings' => [], 'perHour' => [], 'perDay' => [], 'perRes' => []];
+            }
+            $cap = self::capYen();
+            if ((float) $u['yen'] >= $cap) {
+                throw new StoreError('invalid', 'Claude の今月の上限（' . number_format($cap) . '円）に達したため、受付メモを作るのを止めています。設定で上限を上げるか、来月まで手で入れてください');
+            }
+            $hourN = (int) ($u['perHour'][$hour] ?? 0);
+            $dayN = (int) ($u['perDay'][$now['date']] ?? 0);
+            $resKey = $now['date'] . ':' . $reservationId;
+            $resN = (int) ($u['perRes'][$resKey] ?? 0);
+            if ($resN >= self::MAX_PER_RESERVATION_DAY) {
+                throw new StoreError('invalid', '同じ予約で今日 Claude を' . self::MAX_PER_RESERVATION_DAY . '回呼んだため止めています（くり返しの歯止め）');
+            }
+            if ($hourN >= self::MAX_PER_HOUR || $dayN >= self::MAX_PER_DAY) {
+                throw new StoreError('invalid', 'Claude を呼ぶ回数が多すぎるため止めています（1時間' . self::MAX_PER_HOUR . '回・1日' . self::MAX_PER_DAY . '回まで。くり返しの歯止め）');
+            }
+            // 古い数えは捨てる（今日・今の時間・今日の予約だけ残す）
+            $u['perHour'] = [$hour => $hourN + 1];
+            $u['perDay'] = [$now['date'] => $dayN + 1];
+            $u['perRes'] = array_filter($u['perRes'] ?? [], fn($k) => str_starts_with((string) $k, $now['date'] . ':'), ARRAY_FILTER_USE_KEY);
+            $u['perRes'][$resKey] = $resN + 1;
+            $u['calls'] = (int) $u['calls'] + 1;
+            Db::i()->setMeta(self::USAGE_META, $u);
+        });
+    }
+
+    /** 呼んだあと：実際に使ったトークンから円を見積もって足し、1,000円をまたいだら警告を残す */
+    private static function addCost(string $model, int $in, int $out): void
+    {
+        [$pin, $pout] = self::PRICES[$model] ?? [20.0, 100.0];
+        $yen = ($in * $pin + $out * $pout) / 1_000_000 * self::YEN_PER_USD;
+        Db::i()->transaction(function () use ($yen) {
+            $u = Db::i()->meta(self::USAGE_META);
+            if (!is_array($u)) {
+                return;
+            }
+            $before = (float) $u['yen'];
+            $u['yen'] = $before + $yen;
+            $step = self::WARN_STEP_YEN;
+            for ($t = (intdiv((int) floor($before), $step) + 1) * $step; $t <= $u['yen']; $t += $step) {
+                $u['warnings'][] = ['yen' => $t, 'at' => now_iso()];
+                Auth::audit(['id' => 'system', 'name' => 'デジカル写し'], 'Claude の今月の利用が約' . number_format($t) . '円を超えました（上限 ' . number_format(self::capYen()) . '円）');
+            }
+            Db::i()->setMeta(self::USAGE_META, $u);
+        });
     }
 
     /** 試運転：この患者番号（M3）の予約だけを写す。空なら本番（すべて） */
@@ -83,6 +187,13 @@ TXT;
                 throw new StoreError('invalid', 'Claude の利用キーの形が違います（sk-ant- で始まるキーを貼り付けてください）');
             }
             $s['apiKey'] = $k;
+        }
+        if (isset($in['capYen'])) {
+            $c = (int) $in['capYen'];
+            if ($c < 0 || $c > 100000) {
+                throw new StoreError('invalid', '月の上限は 0〜100,000円で入れてください');
+            }
+            $s['capYen'] = $c;
         }
         if (isset($in['model'])) {
             $m = trim((string) $in['model']);
@@ -105,7 +216,7 @@ TXT;
         }
         $s['updatedAt'] = now_iso();
         Db::i()->setMeta(self::META, $s);
-        Auth::audit($by, 'デジカルへの写し：設定を変更' . (array_key_exists('apiKey', $in) ? '（Claude の利用キー）' : '') . (array_key_exists('trialChartNos', $in) ? '（試運転の患者：' . (implode('・', $s['trialChartNos']) ?: 'なし＝本番') . '）' : ''));
+        Auth::audit($by, 'デジカルへの写し：設定を変更' . (array_key_exists('apiKey', $in) ? '（Claude の利用キー）' : '') . (array_key_exists('trialChartNos', $in) ? '（試運転の患者：' . (implode('・', $s['trialChartNos']) ?: 'なし＝本番') . '）' : '') . (isset($in['capYen']) ? '（月の上限：' . number_format($s['capYen']) . '円）' : ''));
         // 試運転を終えて本番にしたら、写し始めをこの時刻にする（試運転の間に入った予約はスタッフが手で入れているため写さない）
         if ($goLive) {
             Store::restartM3Sync($by);
@@ -159,15 +270,20 @@ TXT;
         if ($key === '') {
             throw new StoreError('invalid', 'Claude の利用キーが設定されていません（設定 → 外部機器の連携 → デジカルへの写し）');
         }
+        // 使いすぎの歯止め（月の上限・回数）。止めるときはここで StoreError
+        self::reserveCall((string) ($item['reservation']['id'] ?? 'check'));
         require_once RESERVE_ROOT . '/vendor/autoload.php';
         $cfg = config();
-        $client = new Client(apiKey: $key, baseUrl: is_string($cfg['m3_claude_base_url'] ?? null) ? $cfg['m3_claude_base_url'] : null, openTelemetry: false);
+        // 失敗しても SDK が何度も呼び直さないように（1回だけやり直す・30秒で打ち切る）
+        $client = new Client(apiKey: $key, baseUrl: is_string($cfg['m3_claude_base_url'] ?? null) ? $cfg['m3_claude_base_url'] : null, requestOptions: ['maxRetries' => 1, 'timeout' => 30.0], openTelemetry: false);
         $time = (string) $item['reservation']['time'];
+        $model = $s['model'] ?? self::DEFAULT_MODEL;
         try {
             $msg = $client->beta->messages->create(
-                maxTokens: 2048,
+                // 受付メモは1行。考える分を含めても 1,024 トークンで足りる（多く書き続けて料金が膨らむのを防ぐ）
+                maxTokens: 1024,
                 messages: [['role' => 'user', 'content' => self::promptFor($item)]],
-                model: $s['model'] ?? self::DEFAULT_MODEL,
+                model: $model,
                 system: self::SYSTEM,
                 outputConfig: ['effort' => 'low'],
                 betas: ['server-side-fallback-2026-07-01'],
@@ -180,6 +296,7 @@ TXT;
         } catch (AnthropicException $e) {
             throw new StoreError('invalid', 'Claude に受付メモを作らせられませんでした（' . (new ReflectionClass($e))->getShortName() . '）');
         }
+        self::addCost($model, (int) ($msg->usage->inputTokens ?? 0), (int) ($msg->usage->outputTokens ?? 0));
         if (($msg->stopReason ?? null) === 'refusal') {
             throw new StoreError('invalid', 'Claude が受付メモを作りませんでした（要確認）');
         }

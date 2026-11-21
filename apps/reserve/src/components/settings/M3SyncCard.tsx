@@ -18,6 +18,7 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
   const [pending, setPending] = useState(0);
   const [key, setKey] = useState("");
   const [trial, setTrial] = useState<string | null>(null);
+  const [cap, setCap] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -77,6 +78,31 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
               />
               <button className={styles.primary} disabled={busy || !key.trim()} onClick={() => run(async () => { await saveM3SyncSettings({ apiKey: key.trim() }); setKey(""); }, "Claude の利用キーを保存しました")}>
                 保存
+              </button>
+            </div>
+          </div>
+          <div className={styles.prefRow}>
+            <b>Claude の利用（今月・見積もり）</b>
+            <small>
+              約{Math.round(st.claude.usage.yen).toLocaleString()}円（{st.claude.usage.calls}回）／上限 {st.claude.capYen.toLocaleString()}円。上限に達すると受付メモを作るのを止め、写しは「要確認」で止まります。1,000円ごとに警告を出します。
+              同じ予約は1日5回まで、全体で1時間30回・1日200回までしか呼びません（くり返しの歯止め）。実際の請求は Anthropic の管理画面で確かめてください。
+            </small>
+            {st.claude.usage.paused && <p className={styles.hint}>⚠ 今月の上限に達したため、受付メモを作るのを止めています。</p>}
+            {!st.claude.usage.paused && st.claude.usage.warnings.length > 0 && (
+              <p className={styles.hint}>⚠ 今月の利用が約{st.claude.usage.warnings[st.claude.usage.warnings.length - 1].yen.toLocaleString()}円を超えました（{stamp(st.claude.usage.warnings[st.claude.usage.warnings.length - 1].at)}）。</p>
+            )}
+            <div className={styles.actions} style={{ alignItems: "center" }}>
+              <input
+                className={styles.input}
+                style={{ width: "auto", flex: "0 1 120px" }}
+                inputMode="numeric"
+                value={cap ?? String(st.claude.capYen)}
+                onChange={(e) => setCap(e.target.value.replace(/[^\d]/g, ""))}
+                aria-label="月の上限（円）"
+              />
+              <span>円</span>
+              <button className={styles.btn} disabled={busy || cap === null || cap === ""} onClick={() => void run(async () => { await saveM3SyncSettings({ capYen: Number(cap) }); setCap(null); }, "月の上限を保存しました")}>
+                上限を保存
               </button>
             </div>
           </div>

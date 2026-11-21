@@ -1928,12 +1928,12 @@ final class Store
         $fp = self::m3Fingerprint($r);
         $cache = Db::i()->get('m3memo', $id);
         if (is_array($cache) && ($cache['fingerprint'] ?? '') === $fp && is_string($cache['memoLine'] ?? null)) {
-            return ['memoLine' => $cache['memoLine'], 'fingerprint' => $fp, 'cached' => true];
+            return ['memoLine' => $cache['memoLine'], 'fingerprint' => $fp, 'cached' => true, 'usage' => M3Memo::usage()];
         }
         $item = self::m3Item('memo', $r, self::patients()[$r['patientId']] ?? null, $fp, null, parse_ms($start));
         $line = M3Memo::generate($item);
         Db::i()->put('m3memo', $id, ['fingerprint' => $fp, 'memoLine' => $line, 'at' => now_iso()]);
-        return ['memoLine' => $line, 'fingerprint' => $fp, 'cached' => false];
+        return ['memoLine' => $line, 'fingerprint' => $fp, 'cached' => false, 'usage' => M3Memo::usage()];
     }
 
     // ---- 入力の検査 ----

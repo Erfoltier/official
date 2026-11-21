@@ -877,7 +877,7 @@ try {
                 Http::json(M3Memo::settings());
             }
             if ($method === 'PUT') {
-                Http::json(M3Memo::saveSettings(V::shape(Http::readJson(), ['apiKey?' => fn($x) => V::str($x, 300), 'model?' => fn($x) => V::str($x, 60), 'trialChartNos?' => fn($x) => V::str($x, 200)]), $actor($s)));
+                Http::json(M3Memo::saveSettings(V::shape(Http::readJson(), ['apiKey?' => fn($x) => V::str($x, 300), 'model?' => fn($x) => V::str($x, 60), 'trialChartNos?' => fn($x) => V::str($x, 200), 'capYen?' => fn($x) => V::int($x, 0, 100000)]), $actor($s)));
             }
         }
         if ($method === 'POST' && $n === 4 && $sub === 'reservations' && $p[3] === 'memo') {

@@ -140,7 +140,7 @@ describe("デジカルへの予約の写し", () => {
 // ---- Chrome 拡張機能がスタッフのログインで使う口（院長 11/21：拡張機能にする、要約は LANE RESERVE のサーバーで Claude に） ----
 
 /** Claude の API の代わり（受け取った中身を覚え、決めた1行を返す） */
-async function fakeClaude(reply: () => string) {
+async function fakeClaude(reply: () => string, usage: () => { input_tokens: number; output_tokens: number } = () => ({ input_tokens: 10, output_tokens: 5 })) {
   const { createServer } = await import("node:http");
   const bodies: any[] = [];
   const srv = createServer((req, res) => {
@@ -158,7 +158,7 @@ async function fakeClaude(reply: () => string) {
           content: [{ type: "text", text: reply() }],
           stop_reason: "end_turn",
           stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 5 },
+          usage: usage(),
         }),
       );
     });
@@ -299,5 +299,69 @@ describe("デジカルへの写し：試運転（カルテ番号のない患者�
     const cur = (await c.get(`/patients/${p.id}`)).patient;
     const u = (await c.patch(`/patients/${p.id}`, { version: cur.version, m3ChartNo: "76760" })).patient;
     expect(u.m3ChartNo).toBe("76760");
+  });
+});
+
+describe("デジカルへの写し：Claude の使いすぎの歯止め（院長 11/21）", () => {
+  async function prepared(c: any) {
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    await c.put("/m3-sync/settings", { apiKey: KEY });
+    const day = addDays(nowInClinic().date, 3);
+    const p = await c.post("/patients", { name: "歯止め 花子", m3ChartNo: "9001" });
+    return c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 630), memo: "1" });
+  }
+
+  it("月の上限に達していたら Claude を呼ばずに止める", async () => {
+    const c = await h.srv.as("staff-admin");
+    const fake = await fakeClaude(() => "1000シミ初診");
+    try {
+      const r = await prepared(c);
+      expect((await c.put("/m3-sync/settings", { capYen: 0 })).capYen).toBe(0);
+      await expect(c.post(`/m3-sync/reservations/${r.id}/memo`, {})).rejects.toThrow(/上限/);
+      expect(fake.bodies).toHaveLength(0);
+      expect((await c.get("/m3-sync/status")).claude.usage.paused).toBe(true);
+    } finally {
+      await fake.close();
+    }
+  });
+
+  it("使ったトークンから円を見積もって足し、1,000円をまたいだら警告を残す。上限を超えたら次から止める", async () => {
+    const c = await h.srv.as("staff-admin");
+    // 出力 40万トークン＝ 0.4 × 20ドル × 155円 ＝ 1,240円（作りの値）
+    const fake = await fakeClaude(() => "1000シミ初診", () => ({ input_tokens: 1000, output_tokens: 400000 }));
+    try {
+      const r = await prepared(c);
+      await c.put("/m3-sync/settings", { capYen: 1200 });
+      const m = await c.post(`/m3-sync/reservations/${r.id}/memo`, {});
+      expect(m.usage.calls).toBe(1);
+      expect(m.usage.yen).toBeGreaterThan(1200);
+      expect(m.usage.warnings.map((w: any) => w.yen)).toEqual([1000]);
+      expect(m.usage.paused).toBe(true);
+      // 次の予約の中身では呼ばない
+      const cur = (await c.get(`/day?date=${r.startAt.slice(0, 10)}`)).reservations.find((x: any) => x.id === r.id);
+      await c.patch(`/reservations/${r.id}`, { version: cur.version, memo: "2" });
+      await expect(c.post(`/m3-sync/reservations/${r.id}/memo`, {})).rejects.toThrow(/上限/);
+      expect(fake.bodies).toHaveLength(1);
+    } finally {
+      await fake.close();
+    }
+  });
+
+  it("同じ予約で1日に5回呼んだら6回目は止める（くり返しの歯止め）", async () => {
+    const c = await h.srv.as("staff-admin");
+    const fake = await fakeClaude(() => "1000シミ初診");
+    try {
+      let r = await prepared(c);
+      for (let i = 1; i <= 6; i++) {
+        if (i > 1) r = await c.patch(`/reservations/${r.id}`, { version: r.version, memo: `memo${i}` });
+        const call = c.post(`/m3-sync/reservations/${r.id}/memo`, {});
+        if (i <= 5) await call;
+        else await expect(call).rejects.toThrow(/くり返し/);
+      }
+      expect(fake.bodies).toHaveLength(5);
+    } finally {
+      await fake.close();
+    }
   });
 });
