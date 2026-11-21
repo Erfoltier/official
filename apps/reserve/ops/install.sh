@@ -179,7 +179,7 @@ cat > /etc/httpd/conf.d/20-reserve-https.conf <<APACHE
     AllowOverride All
     Require all granted
   </Directory>
-  <DirectoryMatch "^/srv/reserve/(releases/[^/]+/)?app/(tools|lib|seed|cron)">
+  <DirectoryMatch "^/srv/reserve/(releases/[^/]+/)?app/(tools|lib|seed|cron|vendor)">
     Require all denied
   </DirectoryMatch>
 $AUTH

@@ -13,7 +13,9 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/app"
 cp -a out/. "$WORK/app/"
-(cd php && tar cf - --exclude=./data --exclude=./README.md --exclude=./config.sample.php --exclude=./tools/dev-router.php .) | tar xf - -C "$WORK/app"
+(cd php && tar cf - --exclude=./data --exclude=./README.md --exclude=./config.sample.php --exclude=./tools/dev-router.php --exclude=./composer.json --exclude=./composer.lock .) | tar xf - -C "$WORK/app"
+# PHP の部品も直接開けないようにする（lib と同じ）
+cp php/lib/.htaccess "$WORK/app/vendor/.htaccess"
 php php/tools/check-fixed-trial-package.php >/dev/null
 php "$WORK/app/tools/check-fixed-trial-package.php" >/dev/null
 mkdir -p "$OUT"
