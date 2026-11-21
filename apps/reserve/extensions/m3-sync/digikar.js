@@ -61,15 +61,40 @@
       .map((r) => ({ el: r, patientNo: col(r, "患者番号"), time: col(r, "予約"), status: col(r, "ステータス"), memo: col(r, "受付メモ"), statusCell: r.querySelectorAll("td")[hs.indexOf("ステータス")] }));
   }
 
-  /** 一覧が読み終わるのを待つ（0件の日は「受付が登録されていません」） */
+  /** 見出しの「全 N 件」 */
+  function listCount() {
+    const m = text(document.body).match(/全\s*(\d+)\s*件/);
+    return m ? Number(m[1]) : null;
+  }
+
+  /** 今見えている一覧（読み込み中なら null） */
+  function snapshot() {
+    if (text(document.body).includes("loading...")) return null;
+    const rows = receptionRows() ?? [];
+    const n = listCount();
+    if (n === null) return null;
+    if (n === 0 && !text(document.body).includes("受付が登録されていません")) return null;
+    if (rows.length !== n) return null;
+    return rows;
+  }
+
+  /**
+   * 一覧が読み終わるのを待つ。開いた直後は前の日の表示や「受付が登録されていません」が先に出ることがあるので、
+   * 「全 N 件」と行の数が合い、1.5秒おいても同じになってから使う（同じ日の予約を見落とさないため）
+   */
   async function waitList() {
-    return waitFor(() => {
-      if (text(document.body).includes("loading...")) return null;
-      const rows = receptionRows();
-      if (rows && rows.length) return rows;
-      if (text(document.body).includes("受付が登録されていません")) return [];
-      return null;
-    }, 15000);
+    const end = Date.now() + 20000;
+    while (Date.now() < end) {
+      const a = snapshot();
+      if (a) {
+        await sleep(1500);
+        const b = snapshot();
+        if (b && b.length === a.length) return b;
+      } else {
+        await sleep(300);
+      }
+    }
+    return null;
   }
 
   /** 見出しの文字でパネル（患者検索・予約登録など）を探す */
@@ -231,9 +256,17 @@
 
   /** 写したあと：その日の一覧に、患者番号・時刻・受付メモの行がちょうど1件あるか */
   async function verify({ patientNo, time, memoLine }) {
-    const rows = await waitList();
-    if (rows === null) return review("デジカルの受付一覧を読めません");
-    const hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time) && r.memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, ""));
+    const match = (rows) => rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time) && r.memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, ""));
+    // 写した直後は一覧の更新が遅れることがあるので、15秒まで見直す
+    const end = Date.now() + 15000;
+    let hits = [];
+    while (Date.now() < end) {
+      const rows = await waitList();
+      if (rows === null) return review("デジカルの受付一覧を読めません");
+      hits = match(rows);
+      if (hits.length >= 1) break;
+      await sleep(1500);
+    }
     if (hits.length !== 1) return review(`写したあと一覧で確かめられません（${hits.length}件）`);
     return { result: "synced" };
   }
