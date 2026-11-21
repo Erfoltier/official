@@ -82,18 +82,19 @@ final class TattooBooking
         ];
     }
 
-    public const REMOVAL_CATEGORY = '除去・レーザー';
+    // 11/21 に「除去・レーザー」から改名（院長：体・唇の黒ずみ美白トーニングを入れるため）
+    public const REMOVAL_CATEGORY = '除去・美白・レーザー';
     /** プリセットの分類（院長 11/19：まず分類を選び、次にメニュー） */
     private const PRESET_CATEGORY = [
         'botox' => '注射・注入', 'hyperhidrosis' => '注射・注入', 'hyaluronic' => '注射・注入', 'juvelook' => '注射・注入', 'babycollagen' => '注射・注入',
         'miraclel' => '注射・注入', 'fatx' => '注射・注入', 'sunekos' => '注射・注入', 'fillroad' => '注射・注入', 'tapink' => '注射・注入',
         'pinkglow' => '注射・注入', 'tranestamp' => '注射・注入', 'juveacell' => '注射・注入', 're2o' => '注射・注入',
-        'hokuro' => '除去・レーザー', 'spot' => '除去・レーザー', 'dyelaser' => '除去・レーザー', 'isotretinoin' => '内服', 'zoskin' => 'ゼオスキン',
+        'hokuro' => '除去・美白・レーザー', 'spot' => '除去・美白・レーザー', 'dyelaser' => '除去・美白・レーザー', 'isotretinoin' => '内服', 'zoskin' => 'ゼオスキン',
         'tcapeel' => 'ピーリング', 'amalfi' => 'ピーリング', 'massagepeel' => 'ピーリング', 'milano' => 'ピーリング', 'salicylic' => 'ピーリング',
         'laserhair' => '脱毛', 'needlehair' => '脱毛',
         // 11/19 追加（院長「全部日曜に入れて。オンオフはこっちで」。すべてオフ）
         'dermapen' => 'ダーマペン', 'velvet' => 'ダーマペン', 'supervelvet' => 'ダーマペン',
-        'co2frac' => '除去・レーザー', 'tightening' => '除去・レーザー', 'spotmonitor' => '除去・レーザー',
+        'co2frac' => '除去・美白・レーザー', 'darktoning' => '除去・美白・レーザー', 'tightening' => '除去・美白・レーザー', 'spotmonitor' => '除去・美白・レーザー',
         'hifu' => 'たるみ', 'mouthsag' => 'たるみ', 'sagging' => 'たるみ', 'marionette' => 'たるみ', 'neckwrinkle' => 'たるみ', 'ponyorin' => 'たるみ',
         'scalp' => '薄毛', 'agafaga' => '薄毛',
     ];
@@ -103,6 +104,21 @@ final class TattooBooking
     /** 機器（各1台。同じ機器は同じ時刻に重ねない。院長 11/20）。ジェントルマックスプロ：レーザー脱毛・レーザーシャワー・タイトニング（1番レーンだけ）。ピコ：タトゥー・アートメイク・シミ取り・黒ずみトーニング */
     public const GENTLEMAX = 'ジェントルマックスプロ';
     public const PICO = 'ディスカバリーピコプラス';
+    /** 黒ずみ美白トーニング（院長 11/21） */
+    public const TONING_MENU = '黒ずみトーニング';
+    private const TONING_PARTS = ['リップ（唇・口角。アートメイク不可）', '両脇', 'ニップル（乳首＋乳輪）', 'デリケートゾーン（V・I）', '臀部（Oライン不可）'];
+    private const TONING_NOTE = 'リップは口紅、脇は制汗剤を落としてお越しください。VI・お尻は受診前に拭き取りまたは洗浄をお願いします。毛の自己処理は前日までに済ませてください。';
+
+    /** 名前で予約のメニューを探す（なければ空） */
+    private static function menuByName(string $name): string
+    {
+        foreach (Db::i()->all('menu') as $m) {
+            if (($m['name'] ?? '') === $name && !empty($m['active']) && empty($m['deleted'])) {
+                return $m['id'];
+            }
+        }
+        return '';
+    }
     private const CONSULT = 'menu-s0000BB7B7'; // 完全初診
     /**
      * 日曜メニューのプリセット（11/19、スプレッドシート「予約枠時間一覧」のシート1・公開治療メニュー照合_20260820・予約エンジンルールから）。すべてオフ。
@@ -429,6 +445,16 @@ final class TattooBooking
             'repeatMinutes' => 0, 'repeatLaneIds' => $lane(['lane-3']), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
             'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90, 'needle' => true,
         ];
+        // 体・唇の黒ずみ美白トーニング（ホームページ「脇・VI・乳首の黒ずみ美白トーニング」：1部位約15分、追加1部位につき約5分。女性看護師が照射。
+        // 機器はディスカバリーピコプラス（タトゥー・シミ取りと同じ）。初診は医師の診察だけ（部位は聞いてメモに残す）。院長 11/21）
+        $out[] = [
+            'id' => 'darktoning', 'name' => '体・唇の黒ずみ美白トーニング', 'enabled' => false,
+            'firstMinutes' => 15, 'firstLaneIds' => $lane([self::M]), 'firstMenuId' => $menu(self::CONSULT), 'firstFixed' => true,
+            'repeatMinutes' => 10, 'repeatLaneIds' => $lane(self::N), 'repeatMenuId' => self::menuByName(self::TONING_MENU),
+            'machine' => self::PICO, 'note' => self::TONING_NOTE,
+            'partGroups' => [['name' => '部位', 'parts' => array_map(fn($n) => ['name' => $n, 'minutes' => 5], self::TONING_PARTS)]],
+            'countPerMinute' => 0, 'maxMinutes' => 0, 'pickLabel' => '照射する部位',
+        ];
         // ほくろ除去は個数を1つ選ぶ（院長 11/19）。ネオボは顔だけなので、顔以外のメニューはモニターでも撮影の枠を取らない（院長 11/20）
         foreach ($out as &$it) {
             $it['neobo'] = !in_array($it['id'], self::NOT_FACE, true);
@@ -572,7 +598,7 @@ final class TattooBooking
     private const FOUR_LANES = ['lane-4', 'lane-1', 'lane-3'];
     private const NEOBO_MENU = 'menu-s0000B6B52';
     /** 顔以外のメニュー（モニターでもネオボ撮影の枠を取らない。院長 11/20） */
-    public const NOT_FACE = ['hyperhidrosis', 'isotretinoin', 'zoskin', 'laserhair', 'needlehair', 'scalp', 'agafaga', 'neckwrinkle'];
+    public const NOT_FACE = ['hyperhidrosis', 'isotretinoin', 'zoskin', 'laserhair', 'needlehair', 'scalp', 'agafaga', 'neckwrinkle', 'darktoning'];
     private const DOCTOR_SLOT = 10;
     /** 麻酔の後、施術までの待ち（分）。試す順 */
     private const WAITS = [45, 40, 50, 55, 60];
@@ -611,6 +637,11 @@ final class TattooBooking
                 return self::partsMinutes($it, $pick, 0);
             }
             return (int) ($fp[1] === 'injection' ? $it['injectionMinutes'] : $it['creamMinutes']);
+        }
+        // 初診は医師の診察だけのもの（黒ずみトーニング）：部位によらず初診の時間
+        if ($first && !empty($it['firstFixed'])) {
+            $m = (int) ($it['firstMinutes'] ?? 0);
+            return $m >= 5 ? $m : null;
         }
         return self::partsMinutes($it, $pick, (int) ($it[($first ? 'first' : 'repeat') . 'Minutes'] ?? 0));
     }
@@ -1071,6 +1102,8 @@ final class TattooBooking
             $row['needle'] = $cpm > 0 && !empty($it['needle']);
             // 麻酔クリームの有無を聞くか（レーザー脱毛。院長 11/20）
             $row['creamAsk'] = !empty($it['creamAsk']);
+            // 初診は医師の診察だけ（部位・本数によらず初診の時間。黒ずみトーニング。院長 11/21）
+            $row['firstFixed'] = !empty($it['firstFixed']);
             $out[] = $row;
         }
         return $out;
@@ -1089,7 +1122,7 @@ final class TattooBooking
         foreach ($s['items'] as $it) {
             if (($it['enabled'] ?? true) !== false && ($it['machine'] ?? '') === $machine) {
                 // 初診で機器を使うのは、部位・本数で時間が決まるもの（脱毛など：説明に続けて照射）だけ。ほかの初診は医師の診察
-                if (!self::isFlow($it) && self::variable($it)) {
+                if (!self::isFlow($it) && self::variable($it) && empty($it['firstFixed'])) {
                     $ids[] = $it['firstMenuId'];
                 }
                 $ids[] = $it['repeatMenuId'];
@@ -1539,6 +1572,12 @@ final class TattooBooking
                     if ($monitor) {
                         $starts[] = max($gs, $ws + self::NEOBO_SLOT);
                     }
+                    // 同じ機器をほかのレーンで使っている間は入れないので、その機器が空いたすぐ後も候補に（院長 11/21：ピコはタトゥー・シミ取り・トーニングで共用）
+                    foreach ($machineBusy as [, $be]) {
+                        if ($be > $gs && $be + $len <= $ge) {
+                            $starts[] = $be;
+                        }
+                    }
                     foreach (array_unique($starts) as $start) {
                         if ($start + $len > $ge || self::overlaps($machineBusy, $start, $start + $len)) {
                             continue;
@@ -1942,7 +1981,7 @@ final class TattooBooking
                 $what !== '' ? (($it['countPerMinute'] ?? 0) > 0 ? '本数：' : self::pickLabel($it) . '：') . $what : null,
                 ...self::needleLines($it, $pick),
                 ...self::creamLines($it, $pick),
-                $first && self::variable($it) && (int) $it['firstMinutes'] > 0 ? "初診の説明：{$it['firstMinutes']}分（この予約の最初）" : null,
+                $first && self::variable($it) && empty($it['firstFixed']) && (int) $it['firstMinutes'] > 0 ? "初診の説明：{$it['firstMinutes']}分（この予約の最初）" : null,
                 $f['part'] !== '' ? '部位（患者の記入）：' . $f['part'] : null,
                 $f['email'] !== '' ? 'メール：' . $f['email'] : null,
                 $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
@@ -1987,7 +2026,7 @@ final class TattooBooking
                 'patientId' => $patientId,
                 'laneId' => $lane,
                 // 時間が変わるメニューの初診は、説明と施術を続けて取るので、再診（施術）のメニューも付ける（機器の重なりを見分けるため）
-                'menuIds' => array_values(array_unique(array_filter([$it[$k . 'MenuId'], $first && self::variable($it) ? $it['repeatMenuId'] : '']))),
+                'menuIds' => array_values(array_unique(array_filter([$it[$k . 'MenuId'], $first && self::variable($it) && empty($it['firstFixed']) ? $it['repeatMenuId'] : '']))),
                 'startAt' => to_iso($f['date'], $start),
                 'endAt' => to_iso($f['date'], $start + $len),
                 'memo' => $memo,
@@ -2030,7 +2069,7 @@ final class TattooBooking
         if ($it === null) {
             return in_array($kind, ['tattoo', 'artmake'], true);
         }
-        return ($it['category'] ?? '') === '除去・レーザー' || in_array($it['id'] ?? '', ['laserhair', 'tightening'], true);
+        return in_array($it['category'] ?? '', ['除去・美白・レーザー', '除去・レーザー'], true) || in_array($it['id'] ?? '', ['laserhair', 'tightening', 'darktoning'], true);
     }
 
     /**
@@ -2188,7 +2227,7 @@ final class TattooBooking
                 if (self::isMonitor($first, $e['pick']) && self::face($it)) {
                     $steps[] = ['lanes' => $four, 'menus' => [$neobo], 'len' => self::NEOBO_SLOT, 'role' => 'ネオボ撮影（＋麻酔クリーム）', 'machine' => '', 'waits' => [0], 'with' => null];
                 }
-                $uses = $first && self::variable($it);
+                $uses = $first && self::variable($it) && empty($it['firstFixed']);
                 $steps[] = ['lanes' => $it[$k . 'LaneIds'], 'menus' => array_values(array_unique(array_filter([$it[$k . 'MenuId'], $uses ? $it['repeatMenuId'] : '']))), 'len' => $len, 'role' => $first ? '初診' : '施術', 'machine' => !$first || $uses ? (string) ($it['machine'] ?? '') : '', 'waits' => [0], 'with' => null];
             }
             $jobs[] = ['label' => $e['label'], 'entry' => $e, 'consult' => false, 'steps' => $steps, 'note' => $jobs === [] ? $consultNote : ''];
@@ -2285,6 +2324,14 @@ final class TattooBooking
                     $starts[] = $gs;
                     if ($ge < $we && $ge - $first['len'] >= $gs) {
                         $starts[] = $ge - $first['len'];
+                    }
+                    // 最初の施術の機器が空いたすぐ後も候補に
+                    if ($first['machine'] !== '') {
+                        foreach ($machineBusy($first['machine']) as [, $be]) {
+                            if ($be > $gs && $be + $first['len'] <= $ge) {
+                                $starts[] = $be;
+                            }
+                        }
                     }
                 }
             }
