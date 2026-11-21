@@ -113,7 +113,9 @@ $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
       el('dl', { class: 'known' }, ...it.known.flatMap((k) => [el('dt', { text: k.label }), el('dd', { text: k.value })])),
     ) : null;
     const submit = el('button', { type: 'submit', text: '送信する' });
-    f.append(...fields, submit);
+    // 申告のお願い（院長 11/21：小さく入れる）
+    const declare = el('p', { class: 'muted', style: 'font-size:.78rem', text: '正確にご申告ください。ご申告されなかった内容がある場合にはそれによって生じた副作用や弊害にかかる補償は致しかねます。' });
+    f.append(...fields, declare, submit);
     f.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(f), answers = {};

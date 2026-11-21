@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261121-3';
+$v = '20261121-4';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -329,9 +329,9 @@ $v = '20261121-3';
     <section class="card centered" id="done" hidden>
       <div class="complete-mark">✓</div>
       <h2>ご予約を承りました</h2>
+      <p class="tt-q" id="done-q" hidden><?= $h(TattooBooking::QUESTIONNAIRE_ASK) ?><a class="submit-button" id="done-q-link" href="#" target="_blank" rel="noopener">問診票を回答する</a></p>
       <p id="done-when"></p>
       <p id="done-mail"></p>
-      <p class="tt-q" id="done-q" hidden>初めての方は、ご来院前に問診票のご記入をお願いいたします。<a class="submit-button" id="done-q-link" href="#" target="_blank" rel="noopener">問診票を記入する</a></p>
       <div class="tt-visit">
         <div class="shave-notice">
           <h3>ご来院前のお願い</h3>

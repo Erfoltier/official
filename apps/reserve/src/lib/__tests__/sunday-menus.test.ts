@@ -317,8 +317,10 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     `);
     expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20", duration: "約20分" });
     const body = out.sent[0][1];
-    expect(body).toContain("マッサージピール（日曜日）のご予約を承りました");
-    expect(body).toContain("所要時間：約20分");
+    expect(body).toContain("マッサージピールのご予約を承りました");
+    expect(body).not.toContain("（日曜日）");
+    expect(body).not.toContain("所要時間：");
+    expect(body).not.toContain("までにお願いします");
     expect(body).toContain("【ご来院前のお願い】\nお顔の診察や施術を受ける方は、当日はノーメイクでお越しください。ファンデーションを軽く拭き取っても残りがあると、レーザーの照射に悪影響があります。\n当日はメイクを落としやすい状態でお越しください。");
     expect(body).toContain("美容皮膚科予約済の方専用入口");
     expect(body).toContain("【キャンセル・日程変更にかかる料金規定】");
@@ -450,10 +452,10 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(out.r).toMatchObject({ ok: true, time: "10:00", end: "10:20" });
     expect(out.memo).toContain("当院の美容皮膚科：初診（保険通院歴：無、当日施術の希望：有）");
     expect(out.memo).toContain("紹介者：山田さん");
-    expect(out.mail).toContain("【問診票のご記入のお願い】");
+    expect(out.mail).toMatch(/のご予約を承りました。\nアレルギーや内服など事前問診票をご回答ください。\nhttps:\/\/liff\.line\.me\/1234567890-QuEsTiOn/);
     expect(out.mail).toContain("https://liff.line.me/1234567890-QuEsTiOn");
     expect(out.r.questionnaire).toBe("https://liff.line.me/1234567890-QuEsTiOn");
-    // 再診で継続 → 再診の時間（10分）。問診票の案内は出さない
+    // 再診で継続 → 再診の時間（10分）。問診票の案内は再診にも出す（院長 11/21）
     const r2 = await h.srv.php(`
       $sent = [];
       Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
@@ -461,9 +463,9 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       $r = TattooBooking::book(json_decode('${JSON.stringify({ ...base, time: "10:20", phone: "09088887777", name: "再診 太郎", kana: "サイシン タロウ", clinicVisit: "returning", status: "continue" })}', true), '127.0.0.32');
       return ['r' => $r, 'mail' => $sent[0] ?? ''];
     `);
-    expect(r2.r).toMatchObject({ ok: true, questionnaire: "" });
+    expect(r2.r).toMatchObject({ ok: true, questionnaire: "https://liff.line.me/1234567890-QuEsTiOn" });
     expect(r2.r.end).toBe(addMin(r2.r.time, 10));
-    expect(r2.mail).not.toContain("問診票");
+    expect(r2.mail).toContain("アレルギーや内服など事前問診票をご回答ください。");
     void c;
   });
   it("ほくろ除去は個数を1つだけ選ぶ（顔1〜4個 15分・15個まで 20分・20個以上 30分）。色素レーザーは範囲（どれも10分、初診は20分）", async () => {

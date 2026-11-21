@@ -157,8 +157,9 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
       return ['r' => $r, 'sent' => $sent];
     `);
     expect(out.r).toMatchObject({ ok: true, mailed: true, time: "10:00", end: "10:20", duration: "約20分（ご説明10分・照射10分）" });
-    expect(out.sent[0][1]).toContain("10:00〜10:20");
-    expect(out.sent[0][1]).toContain("所要時間：約20分（ご説明10分・照射10分）");
+    expect(out.sent[0][1]).toContain("10:00\n");
+    expect(out.sent[0][1]).not.toContain("10:00〜10:20");
+    expect(out.sent[0][1]).not.toContain("所要時間：");
     expect(out.sent[0][1]).toContain("アートメイク除去のご予約を承りました");
     expect(out.sent[0][1]).toContain("希望照射面積：18cm²");
     expect(out.sent[0][1]).toContain("49,500円");
