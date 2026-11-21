@@ -402,10 +402,10 @@ function showErrors(list, heading = 'ご確認ください') {
 const LABELS = {
   kind: document.querySelector('#entry-tpl').content.querySelector('input[value^="m:"]') ? 'ご希望の施術を選んでください' : '除去したいものを選んでください', visit: 'はじめてか2回目以降かを選んでください', clinicVisit: '当院の美容皮膚科の初診・再診を選んでください', initialInfo: '保険通院歴を選んでください', status: '今回の治療内容を選んでください', area: '希望照射面積（長い辺・短い辺）を入力してください',
   name: 'お名前を入力してください', kana: 'フリガナを入力してください', birthDate: '生年月日を正しく入力してください', sameDay: '施術ごとに当日施術のご希望（有・無）を選んでください', entries: 'ご希望の施術を選び直してください',
-  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', needle: '性別と局所麻酔注射の有無を選んでください', needleCount: 'VIO または VIO以外の本数を入力してください', cream: '麻酔クリームの有無を選んでください', agree: '「ご来院前のお願い」から「料金規定」までを読み、了承のチェックを入れてください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
+  phone: '電話番号を半角数字で入力してください', parts: 'ご希望の部位を選んでください', flow: '今回の治療内容と麻酔を選んでください', count: '本数を入力してください', needle: '性別と局所麻酔注射の有無を選んでください', needleCount: 'VIO または VIO以外の本数を入力してください', cream: '麻酔クリームの有無を選んでください', agree: '同意事項（ご来院前のお願い・日曜日のご来院について・料金規定）のすべてにチェックを入れてください', email: 'メールアドレスを正しく入力してください', slot: 'ご希望の日時を選んでください',
 };
 
-form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'agree'].includes(e.target.name)) syncInputs(); });
+form.addEventListener('input', (e) => { if (!['time', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'agreeBefore', 'agreeVisit', 'agreeCancel', 'agreeAll'].includes(e.target.name)) syncInputs(); });
 form.addEventListener('change', (e) => {
   const en = e.target.closest('.tt-entry');
   const base = String(e.target.name || '').split('__')[0];
@@ -413,6 +413,11 @@ form.addEventListener('change', (e) => {
   if (en && base === 'cat') syncCats(en);
   syncInputs();
 });
+// 「すべてに同意しました」を入れると各項目にもチェック。各項目がそろえば「すべて」にもチェック
+const agreeAll = form.querySelector('[name="agreeAll"]');
+const agreeItems = [...form.querySelectorAll('[data-agree]')];
+agreeAll.addEventListener('change', () => { agreeItems.forEach((x) => { x.checked = agreeAll.checked; }); });
+agreeItems.forEach((x) => x.addEventListener('change', () => { agreeAll.checked = agreeItems.every((y) => y.checked); }));
 addButton.addEventListener('click', () => {
   const node = addEntry();
   node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -512,7 +517,8 @@ form.addEventListener('submit', async (event) => {
   const fd = new FormData(form);
   const body = Object.fromEntries(['clinicVisit', 'insuranceHistory', 'referrer', 'name', 'kana', 'birthDate', 'phone', 'email', 'notes', 'website'].map((k) => [k, String(fd.get(k) || '')]));
   body.lineName = lineName;
-  body.agree = !!fd.get('agree');
+  // 同意事項：3つの項目すべてにチェック（院長 11/21）
+  body.agree = [...form.querySelectorAll('[data-agree]')].every((x) => x.checked);
   const list = entries();
   // 初診の方の「当日施術の希望」は、施術ごとの希望から（1つでも有なら有）
   body.sameDayTreatment = list.some((en) => sameDay(en) === '有') ? '有' : '無';

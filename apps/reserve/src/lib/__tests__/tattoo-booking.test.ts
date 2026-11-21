@@ -135,7 +135,12 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
     expect(html).toContain("タトゥー・アートメイク除去のご予約");
     expect(html).toContain("照射する部分の毛は、ご来院前にご自身で剃ってきてください（眉のアートメイクの方は、照射する部分の眉毛も剃ってください）。");
-    expect(html).toContain("診察希望部位・施術希望部位は、ノーメイクでお越しください。");
+    expect(html).toContain("お顔の診察や施術を受ける方は、当日はノーメイクでお越しください。ファンデーションを軽く拭き取っても残りがあると、レーザーの照射に悪影響があります。");
+    // 同意事項：3つの項目それぞれにチェック（必須）と「すべてに同意しました」
+    expect(html).toContain("同意事項");
+    expect(html).toContain("デリケートゾーンやお尻の施術を受ける方は");
+    expect((html.match(/data-agree/g) || []).length).toBe(3);
+    expect(html).toContain("すべてに同意しました");
     expect(html).not.toContain("眉毛そのもの");
     expect(html).not.toMatch(/詰め|空きの最初|最後だけ/);
     expect(html).toContain("美容皮膚科予約済の方専用入口");
@@ -157,7 +162,7 @@ describe("タトゥー除去（日曜）の Web 予約", () => {
     expect(out.sent[0][1]).toContain("希望照射面積：18cm²");
     expect(out.sent[0][1]).toContain("49,500円");
     expect(out.sent[0][1]).toContain("日曜日の診療");
-    expect(out.sent[0][1]).toContain("【ご来院前のお願い】\n診察希望部位・施術希望部位は、ノーメイクでお越しください。\n照射する部分は、眉毛も含めて、ご来院前にご自身で剃ってきてください。");
+    expect(out.sent[0][1]).toContain("【ご来院前のお願い】\nお顔の診察や施術を受ける方は、当日はノーメイクでお越しください。ファンデーションを軽く拭き取っても残りがあると、レーザーの照射に悪影響があります。\n照射する部分は、眉毛も含めて、ご来院前にご自身で剃ってきてください。");
     expect(out.sent[0][1]).not.toMatch(/詰め/);
     expect(out.sent[0][1]).toContain("美容皮膚科予約済の方専用入口");
     expect(out.sent[0][1]).toContain("「到着済」");

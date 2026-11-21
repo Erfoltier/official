@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261120-12';
+$v = '20261121-1';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -295,24 +295,31 @@ $v = '20261120-12';
 <?php endif; ?>
       </section>
 
-      <section class="card tt-visit">
-        <div class="shave-notice">
-          <h2>ご来院前のお願い</h2>
-          <p><?= $h(TattooBooking::NO_MAKEUP) ?></p>
-          <p><?= $h(TattooBooking::CONSULT_NOTICE) ?></p>
+      <section class="card tt-visit tt-consent">
+        <h2 class="tt-consent-title">同意事項</h2>
+        <p class="tt-consent-lead">以下の各項目をお読みの上、ご同意いただけましたらチェックを入れてください。</p>
+        <div class="tt-consent-item">
+          <label class="tt-agree-head"><input type="checkbox" name="agreeBefore" value="1" data-agree><em>必須</em><b>ご来院前のお願い</b></label>
+          <p>・<?= $h(TattooBooking::NO_MAKEUP) ?></p>
+          <p>・<?= $h(TattooBooking::DELICATE_NOTICE) ?></p>
 <?php if ($tattooOn): ?>
-          <p><?= $items !== [] ? 'タトゥー・アートメイク除去の方：' : '' ?><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
+          <p>・<?= $items !== [] ? 'タトゥー・アートメイク除去の方：' : '' ?><?= $h(TattooBooking::SHAVE_NOTICE_PAGE) ?></p>
 <?php endif; ?>
+          <p>・<?= $h(TattooBooking::CONSULT_NOTICE) ?></p>
         </div>
-        <h2>日曜日のご来院について</h2>
+        <div class="tt-consent-item">
+          <label class="tt-agree-head"><input type="checkbox" name="agreeVisit" value="1" data-agree><em>必須</em><b>日曜日のご来院について</b></label>
 <?php foreach (TattooBooking::VISIT_NOTICE as $line): ?>
-        <p><?= $h($line) ?></p>
+          <p>・<?= $h($line) ?></p>
 <?php endforeach; ?>
-        <h2>キャンセル・日程変更にかかる料金規定</h2>
+        </div>
+        <div class="tt-consent-item">
+          <label class="tt-agree-head"><input type="checkbox" name="agreeCancel" value="1" data-agree><em>必須</em><b>キャンセル・日程変更にかかる料金規定</b></label>
 <?php foreach (TattooBooking::CANCEL_POLICY as $line): ?>
-        <p><?= $h($line) ?></p>
+          <p>・<?= $h($line) ?></p>
 <?php endforeach; ?>
-        <label class="tt-agree"><span class="tt-agree-head"><input type="checkbox" name="agree" value="1"><em>必須</em></span><span>上の「ご来院前のお願い」から「キャンセル・日程変更にかかる料金規定」までの各項目を読み、了承しました</span></label>
+        </div>
+        <label class="tt-agree tt-agree-all"><span class="tt-agree-head"><input type="checkbox" name="agreeAll" value="1"><b>すべてに同意しました</b></span></label>
       </section>
 
       <div class="error-summary" id="error-summary" role="alert" hidden></div>

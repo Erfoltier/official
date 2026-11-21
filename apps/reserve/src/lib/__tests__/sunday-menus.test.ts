@@ -319,12 +319,12 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const body = out.sent[0][1];
     expect(body).toContain("マッサージピール（日曜日）のご予約を承りました");
     expect(body).toContain("所要時間：約20分");
-    expect(body).toContain("【ご来院前のお願い】\n診察希望部位・施術希望部位は、ノーメイクでお越しください。\n当日はメイクを落としやすい状態でお越しください。");
+    expect(body).toContain("【ご来院前のお願い】\nお顔の診察や施術を受ける方は、当日はノーメイクでお越しください。ファンデーションを軽く拭き取っても残りがあると、レーザーの照射に悪影響があります。\n当日はメイクを落としやすい状態でお越しください。");
     expect(body).toContain("美容皮膚科予約済の方専用入口");
     expect(body).toContain("【キャンセル・日程変更にかかる料金規定】");
     expect(body).toContain("アクセス：https://example.jp/clinic/access/");
     expect(body).not.toContain("産毛");
-    expect(body).not.toContain("照射");
+    expect(body).not.toContain("照射する部分");
   });
 
   it("リマインドの日曜の案内は、日曜メニューの予約なら日曜の来院のときだけ足す（同じメニューを平日にも使うため）", async () => {
