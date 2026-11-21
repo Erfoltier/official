@@ -1,0 +1,9 @@
+== API（PHP）: http://127.0.0.1:3401  ログ: .data/php/php.log
+▲ Next.js 16.3.8 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.0.2.2:3000
+✓ Ready in 2.1s
+✓ Running next.config.ts took 3.0s
+
+ GET / 200 in 4.0s (next.js: 3.8s, application-code: 199ms)
+ GET / 200 in 44ms (next.js: 5ms, application-code: 40ms)

@@ -1,0 +1,85 @@
+.tt-line{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#eaf7ee;color:#1b5e2a;font-size:.88rem}
+.tt-trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.tt-empty{text-align:center;font-size:.86rem;color:var(--muted);margin:10px 0 0}
+#times .pill span{cursor:pointer}
+#done h2{margin:0 0 10px}
+#done p{margin:6px 0;font-size:.9rem}
+.field-note{display:block;margin-top:4px;font-size:12px;color:#7a6f68}
+.field-note a{color:inherit}
+.clinic-header h1{white-space:normal!important;max-width:none}
+fieldset.field{border:0;padding:0;margin:0 0 14px}
+fieldset.field legend{font-size:.9rem;font-weight:600;margin-bottom:6px}
+.tt-area{margin:4px 0 16px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
+.tt-area-title{margin:0;font-size:.9rem;font-weight:600}
+.tt-rect{display:flex;flex-wrap:nowrap;align-items:center;gap:6px 10px;margin-top:10px}
+.tt-rect-label{min-width:3.5em;font-size:.86rem;font-weight:600}
+.tt-rect label{display:flex;align-items:center;gap:4px}
+.tt-rect input{width:4.6em;min-width:0;padding:8px 10px;font-size:16px;border:1px solid #d9cfc8;border-radius:8px}
+.tt-area-result{margin:10px 0 0;font-size:.9rem;font-weight:600}
+.tt-area-result:empty{display:none}
+.tt-visit h2{margin:0 0 8px;font-size:1rem}
+.tt-visit h3{margin:14px 0 6px;font-size:.95rem}
+.tt-visit p{margin:6px 0;font-size:.88rem;line-height:1.7}
+#done .tt-visit{text-align:left;margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.03)}
+.tt-visit p + h2{margin-top:16px}
+.tt-cats{margin-bottom:10px}
+[data-r="kinds"]{margin-top:4px}
+/* 分類は丸いタブ、選んだ分類の施術は下の囲みにリストで（同じ見た目だと展開されたと分からない。院長 11/19） */
+.tt-cats{gap:7px}
+.tt-cats .pill span{border-radius:999px;padding:9px 6px;font-size:.8rem;font-weight:700}
+.tt-sub{position:relative;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,253,249,.9);box-shadow:0 6px 18px rgba(69,56,47,.08)}
+.tt-sub:before{content:"";position:absolute;top:-8px;left:var(--arrow,24px);width:14px;height:14px;background:rgba(255,253,249,1);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+.tt-sub-title{margin:0 0 9px;font-size:.8rem;font-weight:700;color:var(--muted)}
+.tt-sub-list{display:grid;gap:6px}
+.tt-sub-list .pill span{display:flex;align-items:center;gap:10px;text-align:left;padding:11px 12px;background:#fff;font-size:.86rem}
+.tt-sub-list .pill span:before{content:"";flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);background:#fff}
+.tt-sub-list .pill input:checked+span{background:#f4eee7;border-color:var(--green);color:var(--ink);font-weight:700}
+.tt-sub-list .pill input:checked+span:before{border-color:var(--green);background:radial-gradient(circle,var(--green) 0 40%,#fff 46%)}
+@media(max-width:420px){.choice-grid.two.tt-cats{grid-template-columns:1fr 1fr}}
+.tt-q{margin-top:14px}
+.tt-q .submit-button{display:block;margin-top:8px;text-align:center;text-decoration:none}
+.tt-pill-sub{display:block;font-size:.66rem;opacity:.8;margin-top:2px}
+.choice-grid.two.tt-two{grid-template-columns:1fr 1fr}
+[data-r="status-box"] .row-choice input{width:auto;flex:none;margin:0}
+[data-r="status-box"] .row-choice{cursor:pointer}
+/* 長い辺・短い辺の入力欄：ガイドの文字が欠けないよう広げ、見出しは上の行に（院長 11/19） */
+.tt-rect{flex-wrap:wrap}
+.tt-rect-label{flex-basis:100%}
+.tt-rect label{flex:1 1 0;min-width:0}
+.tt-rect input{flex:1 1 auto;width:auto;min-width:6.5em}
+.tt-rect{gap:6px 8px}
+.tt-rect label span{white-space:nowrap;font-size:.86rem}
+.tt-rect input{min-width:5em}
+/* ご来院前のお願い〜料金規定を読んだことの確認（必須。チェックの横に必須、改行して文。院長 11/20） */
+.tt-agree{display:grid;gap:8px;margin:18px 0 0;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:var(--surface,#fff);font-weight:600;line-height:1.6;cursor:pointer}
+.tt-agree-head{display:flex;align-items:center;gap:8px}
+.tt-agree input{width:24px;height:24px;flex:none;margin:0}
+.tt-agree em{font-style:normal;font-size:.75rem;color:#a4473f;border:1px solid currentColor;border-radius:6px;padding:1px 6px}
+/* LINE の友だち追加のお願い（友だち追加してから予約の画面へ。院長 11/20） */
+.tt-gate{text-align:center}
+.tt-gate h2{margin:0 0 10px}
+.tt-gate p{margin:0 0 16px;line-height:1.7;text-align:left}
+.tt-gate .submit-button{display:block;text-decoration:none;margin:0 0 10px}
+.tt-gate-again{width:100%;padding:12px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:transparent;font:inherit;font-weight:600;cursor:pointer;margin:0 0 10px}
+.tt-gate small{display:block}
+[data-r="needle-est"]{white-space:pre-line}
+/* 希望施術を複数（院長 11/20） */
+.tt-entry{margin:0 0 18px;padding:14px 0 0;border-top:1px dashed var(--line,#d8cfc6)}
+.tt-entry:first-child{border-top:0;padding-top:0}
+.tt-entry-remove{float:right;margin-left:8px;padding:2px 10px;border:1px solid var(--line,#d8cfc6);border-radius:999px;background:transparent;font:inherit;font-size:.8rem;cursor:pointer}
+.tt-add{width:100%;padding:12px;margin:4px 0 8px;border:1px dashed #a4473f;border-radius:12px;background:transparent;color:#a4473f;font:inherit;font-weight:700;cursor:pointer}
+.tt-add[disabled]{opacity:.4;cursor:default}
+.tt-consult{margin-top:6px;font-weight:600}
+/* 冒頭の説明文は横幅いっぱいに（右の余白を使う。石の写真の上でも読めるよう、文字の後ろを少し明るく。院長 11/20） */
+.clinic-header p:not(.eyebrow){max-width:none;text-shadow:0 0 6px rgba(252,247,240,.95),0 0 2px rgba(252,247,240,.95)}
+/* 同意事項（項目ごとにチェック、いちばん下の「すべてに同意しました」で全部にチェック。院長 11/21） */
+.tt-consent-title{text-align:center;margin:0 0 6px!important}
+.tt-consent-lead{text-align:center;font-size:.84rem!important;color:#6c6459;margin:0 0 14px!important}
+.tt-consent-item{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line,#d8cfc6);border-radius:12px;background:rgba(255,255,255,.45)}
+.tt-consent-item .tt-agree-head{margin:0 0 6px;cursor:pointer}
+.tt-consent-item .tt-agree-head b{font-size:1rem}
+.tt-agree-head input{width:24px;height:24px;flex:none;margin:0}
+.tt-agree-head em{flex:none;white-space:nowrap;font-style:normal;font-size:.75rem;color:#a4473f;background:transparent;border:1px solid currentColor;border-radius:6px;padding:1px 6px;margin:0}
+.tt-agree-head b{line-height:1.4}
+.tt-agree-all{margin-top:6px}
+.tt-agree-all b{font-size:1rem}
