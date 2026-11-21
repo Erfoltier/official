@@ -121,7 +121,8 @@ async function digikar(tabId, op, args) {
         target: { tabId },
         world: "MAIN",
         func: (o, a) => globalThis.__laneM3Run(o, a),
-        args: [op, args],
+        // 写し専用のタブだけ（裏で止まるアニメーションを切る。digikar.js の wakeHiddenTab）
+        args: [op, { ...args, dedicated: true }],
       });
       if (res?.result) return res.result;
     } catch {

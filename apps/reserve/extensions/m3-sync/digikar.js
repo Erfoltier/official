@@ -4,6 +4,39 @@
   // 2回入れられても1回分だけ動く（拡張機能を入れる前から開いていたタブに後から入れるため）
   if (globalThis.__laneM3Digikar) return;
   globalThis.__laneM3Digikar = true;
+
+  /**
+   * 裏のタブ（写し専用のタブ）では Chrome がアニメーションと requestAnimationFrame を止める。
+   * デジカルのステータスのメニューは閉じるアニメーションの後に動くらしく、裏では「取消」が効かなかった（11/21 試運転：
+   * vis=hidden・Enter/クリック/押して離す のどれも変わらず）。写し専用のタブの中だけ、アニメーションを切り、
+   * requestAnimationFrame をふつうのタイマーで動かす（スタッフが使うタブには入れない）
+   */
+  function wakeHiddenTab() {
+    if (document.getElementById("lane-m3-noanim")) return;
+    const st = document.createElement("style");
+    st.id = "lane-m3-noanim";
+    st.textContent = "*,*::before,*::after{animation:none!important;animation-duration:0s!important;transition:none!important}";
+    document.head.appendChild(st);
+    const raf = window.requestAnimationFrame.bind(window);
+    const caf = window.cancelAnimationFrame.bind(window);
+    const timers = new Map();
+    let n = 1e9;
+    window.requestAnimationFrame = (cb) => {
+      if (document.visibilityState !== "hidden") return raf(cb);
+      const id = ++n;
+      timers.set(id, setTimeout(() => {
+        timers.delete(id);
+        cb(performance.now());
+      }, 16));
+      return id;
+    };
+    window.cancelAnimationFrame = (id) => {
+      if (timers.has(id)) {
+        clearTimeout(timers.get(id));
+        timers.delete(id);
+      } else caf(id);
+    };
+  }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) => !!el && el.offsetParent !== null;
   const text = (el) => (el?.innerText ?? "").trim();
@@ -311,6 +344,7 @@
     if (busy) return review("前の操作がまだ終わっていません");
     busy = true;
     try {
+      if (args?.dedicated) wakeHiddenTab();
       const state = pageState();
       if (op === "state") return { state };
       if (state !== "ok") return { result: "not-ready", state };
