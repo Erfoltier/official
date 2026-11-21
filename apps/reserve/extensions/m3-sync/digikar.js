@@ -384,6 +384,14 @@
     try {
       if (args?.dedicated) wakeHiddenTab();
       const state = pageState();
+      // 開いている受付一覧の日付が、操作する日と同じか（違う日の一覧を読んで判断しないため）
+      if (state === "ok" && args?.pageDate) {
+        const shown = await waitFor(() => {
+          const b = [...document.querySelectorAll("button")].find((x) => visible(x) && /^\d{4}\/\d{2}\/\d{2}\s*\(.\)$/.test(text(x)));
+          return b ? text(b).slice(0, 10) : null;
+        }, 10000);
+        if (shown !== slashDate(args.pageDate)) return review(`デジカルの受付一覧の日付が違います（画面 ${shown ?? "不明"}・予約 ${slashDate(args.pageDate)}）`);
+      }
       if (op === "state") return { state };
       if (state !== "ok") return { result: "not-ready", state };
       const fn = { create, edit, cancel, verify, locateCancel, locateCancelItem, checkGone }[op];

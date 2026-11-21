@@ -65,30 +65,37 @@ async function lane(tabId, method, path, body) {
   return r;
 }
 
-// 写し専用のタブの印（アドレスの # の後ろ。デジカルの画面には影響しない）。
-// 固定（ピン留め）はしない。写す予約があるときだけ裏で開き、その回が終わったら閉じる（院長 11/21：勝手に固定しない）
-const MARK = "#lane-m3sync";
+// 固定（ピン留め）はしない。写す予約があるときだけ裏で開き、その回が終わったら閉じる（院長 11/21：勝手に固定しない）。
+// 開いたタブの番号は storage.local に覚える（拡張機能を読み込み直しても忘れない）。
+// ※アドレスに # の印を付けると、デジカルが日付を無視して今日の一覧を出したので使わない（11/21 確認）
 
-/** 拡張機能が開いた写し専用のタブ（拡張機能を読み込み直すと番号を忘れるので、印で探す） */
+/** 拡張機能が開いた写し専用のタブ（デジカルのページのままのものだけ） */
 async function ownDigikarTabs() {
-  return (await chrome.tabs.query({ url: DIGIKAR + "/*" })).filter((t) => (t.url || t.pendingUrl || "").endsWith(MARK));
+  const { ownTabIds = [] } = await chrome.storage.local.get("ownTabIds");
+  const tabs = [];
+  for (const id of ownTabIds) {
+    const t = await chrome.tabs.get(id).catch(() => null);
+    if (t && (t.url || t.pendingUrl || "").startsWith(DIGIKAR)) tabs.push(t);
+  }
+  return tabs;
 }
 
 /** その回の終わりに閉じる */
 async function closeDigikarTabs() {
   const tabs = await ownDigikarTabs();
   if (tabs.length) await chrome.tabs.remove(tabs.map((t) => t.id)).catch(() => {});
+  await chrome.storage.local.set({ ownTabIds: [] });
 }
 
 /** 写し専用のデジカルのタブ（なければ裏で開く。固定しない） */
 async function digikarTab(url) {
-  url = url + MARK;
   const [own, ...extra] = await ownDigikarTabs();
   if (extra.length) await chrome.tabs.remove(extra.map((t) => t.id)).catch(() => {});
   let tab = own || null;
   if (!tab) {
     const loaded = loadedAfterStart(null);
     tab = await chrome.tabs.create({ url, active: false, pinned: false });
+    await chrome.storage.local.set({ ownTabIds: [tab.id] });
     await loaded(tab.id);
   } else {
     // 開き直したページを必ず待つ（直後の「読み込み済み」は前のページのことがあるため、読み込みが始まってから終わるまで）
@@ -174,13 +181,13 @@ async function cancelByDebugger(tabId, args) {
     // 裏のタブでも、フォーカスのあるページとして動かす
     await chrome.debugger.sendCommand(target, "Emulation.setFocusEmulationEnabled", { enabled: true }).catch(() => trail.push("focus不可"));
     await click(at.point);
-    const item = await digikar(tabId, "locateCancelItem", {});
+    const item = await digikar(tabId, "locateCancelItem", { pageDate: args.pageDate });
     if (item.result !== "at") {
       trail.push("メニューが開かない");
       return { result: "review", reason: `取消にできません（${trail.join("、")}）` };
     }
     await click(item.point);
-    const done = await digikar(tabId, "checkGone", { patientNo: args.patientNo, time: args.time, before: at.count });
+    const done = await digikar(tabId, "checkGone", { patientNo: args.patientNo, time: args.time, before: at.count, pageDate: args.pageDate });
     trail.push(`debugger:${done.result === "cancelled" ? "減った" : "変わらず"}`);
     if (done.result === "cancelled") return { result: "cancelled", note: trail.join("、") };
     return { result: "review", reason: `取消にしたあとも一覧に残っています（${trail.join("、")}）` };
@@ -204,7 +211,7 @@ async function syncOne(laneId, item) {
     const date = item.reservation.preexisting || !prev ? r.date : prev.date;
     const time = item.reservation.preexisting || !prev ? r.time : prev.time;
     const tab = await digikarTab(receptionUrl(date));
-    const res = await cancelByDebugger(tab, { patientNo: no, time, requireMemoTime: !r.preexisting });
+    const res = await cancelByDebugger(tab, { pageDate: date, patientNo: no, time, requireMemoTime: !r.preexisting });
     if (res.result === "cancelled") return { result: "cancelled", note: res.note, digikar: { patientNo: no, date, time } };
     return res;
   }
@@ -220,15 +227,15 @@ async function syncOne(laneId, item) {
   if (item.action === "update") {
     if (!prev) return { result: "review", reason: "前に写した予約の記録がありません" };
     const tab = await digikarTab(receptionUrl(prev.date));
-    res = await digikar(tab, "edit", { patientNo: no, oldDate: prev.date, oldTime: prev.time, date: r.date, time: r.time, memoLine });
+    res = await digikar(tab, "edit", { pageDate: prev.date, patientNo: no, oldDate: prev.date, oldTime: prev.time, date: r.date, time: r.time, memoLine });
   } else {
     // create・restore（取消を写すと一覧から消えるので、戻すときは登録し直す）
     const tab = await digikarTab(receptionUrl(r.date));
-    res = await digikar(tab, "create", { patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine });
+    res = await digikar(tab, "create", { pageDate: r.date, patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine });
   }
   if (res.result !== "pending-verify") return res;
   const tab = await digikarTab(receptionUrl(r.date));
-  const v = await digikar(tab, "verify", target);
+  const v = await digikar(tab, "verify", { ...target, pageDate: r.date });
   if (v.result === "synced") return { result: "synced", digikar: target };
   return v;
 }
