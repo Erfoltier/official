@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchM3SyncQueue, fetchM3SyncStatus, retryM3Sync, saveM3SyncSettings, startM3Sync, type M3SyncReviewItem, type M3SyncStatus } from "@/components/calendar/api";
+import { fetchM3SyncQueue, fetchM3SyncStatus, resolveM3Sync, retryM3Sync, saveM3SyncSettings, startM3Sync, type M3SyncReviewItem, type M3SyncStatus } from "@/components/calendar/api";
 import { withBase } from "@/lib/paths";
 import styles from "./settings.module.css";
 
@@ -179,11 +179,20 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
                       }}
                     >
                       もう一度写す
+                    </button>{" "}
+                    <button
+                      className={styles.btn}
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm("デジカルで手で直しましたか？ この予約を要確認の一覧から外します（デジカルには何もしません）。")) void run(() => resolveM3Sync(r.reservation.id), "対応済みにしました");
+                      }}
+                    >
+                      対応済み
                     </button>
                   </li>
                 ))}
               </ul>
-              <small>原因を直したら「もう一度写す」を押してください（LANE RESERVE の予約を直したときは押さなくても写し直します）。デジカルで手で直した場合は、そのままで構いません。</small>
+              <small>原因を直したら「もう一度写す」を押してください（LANE RESERVE の予約を直したときは押さなくても写し直します）。デジカルで手で直した場合は「対応済み」を押すと一覧から外れます（その後に予約が変わればいつもどおり写します）。</small>
             </div>
           )}
         </>

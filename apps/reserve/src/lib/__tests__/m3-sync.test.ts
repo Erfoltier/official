@@ -394,3 +394,33 @@ describe("デジカルへの写し：もう一度写す", () => {
     await expect(c.post(`/m3-sync/reservations/${a.id}/retry`, {})).rejects.toThrow(/要確認ではありません/);
   });
 });
+
+describe("デジカルへの写し：対応済み", () => {
+  it("要確認の予約を一覧から外し、写し直さない。その後に予約が変われば写す。取り消された予約は取消済みとして扱う", async () => {
+    const c = await h.srv.as("staff-admin");
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    const day = addDays(nowInClinic().date, 4);
+    const p = await c.post("/patients", { name: "対応 太郎", m3ChartNo: "9200" });
+    const a = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    const fp = async (id: string) => (await c.get("/m3-sync")).items.find((x: any) => x.reservation.id === id).reservation.fingerprint;
+    await c.post(`/m3-sync/reservations/${a.id}`, { result: "review", fingerprint: await fp(a.id), reason: "テスト" });
+    expect((await c.get("/m3-sync")).review).toHaveLength(1);
+    await expect(c.post(`/m3-sync/reservations/${a.id}/resolve`, {})).resolves.toMatchObject({ ok: true });
+    let q = await c.get("/m3-sync");
+    expect(q.review).toEqual([]);
+    expect(q.items.filter((x: any) => x.reservation.id === a.id)).toEqual([]);
+    await expect(c.post(`/m3-sync/reservations/${a.id}/resolve`, {})).rejects.toThrow(/要確認ではありません/);
+    // その後に変われば写す
+    const a2 = await c.patch(`/reservations/${a.id}`, { version: a.version, memo: "変更" });
+    q = await c.get("/m3-sync");
+    expect(q.items.find((x: any) => x.reservation.id === a.id)?.action).toBe("update");
+    // 取り消された予約の要確認を対応済みにすると、取消済みとして扱う
+    await c.patch(`/reservations/${a.id}`, { version: a2.version, status: "cancelled" });
+    await c.post(`/m3-sync/reservations/${a.id}`, { result: "review", fingerprint: await fp(a.id), reason: "テスト" });
+    await c.post(`/m3-sync/reservations/${a.id}/resolve`, {});
+    q = await c.get("/m3-sync");
+    expect(q.review).toEqual([]);
+    expect(q.items.filter((x: any) => x.reservation.id === a.id)).toEqual([]);
+  });
+});

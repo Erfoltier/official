@@ -1898,6 +1898,27 @@ final class Store
         });
     }
 
+    /**
+     * 要確認の予約を「対応済み」：スタッフがデジカルで手で直したので、今の中身で写し済み（取り消された予約は取消済み）として一覧から外す。
+     * この後に LANE RESERVE で予約が変われば、いつもどおり写す
+     */
+    public static function resolveM3Sync(string $id, array $by): array
+    {
+        return Db::i()->transaction(function () use ($id, $by) {
+            $r = self::reservation($id);
+            $rec = Db::i()->get(self::M3_SYNC_KIND, $id);
+            if (!is_array($rec) || $rec['state'] !== 'review') {
+                throw new StoreError('invalid', 'この予約は要確認ではありません');
+            }
+            $state = self::inactive($r) ? 'cancelled' : 'synced';
+            $log = $rec['log'] ?? [];
+            $log[] = ['at' => now_iso(), 'state' => 'resolved'];
+            Db::i()->put(self::M3_SYNC_KIND, $id, [...$rec, 'state' => $state, 'written' => $state, 'fingerprint' => self::m3Fingerprint($r), 'version' => $r['version'], 'reason' => null, 'resolvedAt' => now_iso(), 'log' => array_slice($log, -10)]);
+            Auth::audit($by, 'デジカルへの写し（要確認を対応済みに）', $id);
+            return ['ok' => true];
+        });
+    }
+
     private const M3_LOCK_META = 'm3SyncLock';
 
     /**
