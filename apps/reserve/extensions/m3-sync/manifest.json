@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LANE RESERVE デジカル写し",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "LANE RESERVE の予約を、デジカル（M3）の受付画面に写します。この Chrome で LANE RESERVE とデジカルにログインしているときだけ動きます。",
   "permissions": [
     "alarms",
@@ -30,6 +30,17 @@
   ],
   "action": {
     "default_title": "LANE RESERVE デジカル写し",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "48": "icon-48.png"
+    }
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
   }
 }
