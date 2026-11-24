@@ -68,6 +68,19 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
   const lineChatKeys = status?.links.filter((l) => !l.revoked && l.source === "linechat") ?? [];
   const serverUrl = typeof window === "undefined" ? "" : `${window.location.origin}${withBase("")}`.replace(/\/$/, "");
 
+  // LINE チャット連携の説明（院長・管理者は鍵の発行つき、スタッフは説明と入れ方だけ）
+  const lineChatIntro = (
+            <>
+              予約詳細の「LINEで連絡」から、LINE 公式アカウントの管理画面のその患者のチャットを直接開けるようにする連携です。院のパソコンの Chrome に拡張機能を入れておくと、管理画面でチャットを開くたびに、そのチャットがどの患者かを自動で LANE RESERVE に覚えさせます（トークの本文は送りません）。
+              <br />
+              入れ方（パソコンごとに最初の1回）：① パソコン版 Google ドライブに院のアカウントでログインし、「LANE RESERVE LINEチャット連携（Chrome拡張）」フォルダを右クリック →「その他のオプションを確認」→「オフラインアクセス」→「オフラインで使用可能にする」 ② Chrome に院のアカウントでログイン（同期オン） ③ <code>chrome://extensions</code> で「デベロッパー モード」をオン →「パッケージ化されていない拡張機能を読み込む」でそのフォルダを選ぶ ④ 拡張機能を開いて「鍵がまだ保存されていません」と出たときだけ、この LANE RESERVE のアドレス <code>{serverUrl}</code> と下で発行した鍵を貼って保存（初めてのときは送信を許可する確認が出ます）。詳しくはマニュアル13章。ドライブが使えないときは
+              <a href={withBase("/integrations/line-chat-extension.zip")} download>
+                拡張機能（zip）
+              </a>
+              を展開したフォルダでも動きます。
+            </>
+  );
+
   return (
     <section className={`${styles.clinic} ${styles.devices}`}>
       <p className={styles.lead}>
@@ -184,7 +197,7 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
         {!isAdmin && <p className={styles.muted}>連携の設定は院長・管理者のみ行えます。</p>}
       </details>
 
-      {isAdmin && <M3SyncCard notify={notify} fail={fail} />}
+      <M3SyncCard isAdmin={isAdmin} notify={notify} fail={fail} />
 
       {isAdmin && status && (
         <GoogleKeysCard
@@ -226,20 +239,17 @@ export function DevicesTab({ isAdmin, canEdit, notify, fail }: { isAdmin: boolea
         />
       )}
 
+      {!isAdmin && (
+        <details className={`${styles.clinicCard} ${styles.fold}`}>
+          <summary className={styles.cardTitle}>LINE チャット連携（院のパソコンの Chrome）</summary>
+          <p className={styles.hint}>{lineChatIntro}</p>
+          <p className={styles.muted}>鍵の発行・無効化は院長・管理者が行います。</p>
+        </details>
+      )}
       {isAdmin && status && (
         <BookingKeysCard
           title="LINE チャット連携（院のパソコンの Chrome）"
-          intro={
-            <>
-              予約詳細の「LINEで連絡」から、LINE 公式アカウントの管理画面のその患者のチャットを直接開けるようにする連携です。院のパソコンの Chrome に拡張機能を入れておくと、管理画面でチャットを開くたびに、そのチャットがどの患者かを自動で LANE RESERVE に覚えさせます（トークの本文は送りません）。
-              <br />
-              入れ方（パソコンごとに最初の1回）：① パソコン版 Google ドライブに院のアカウントでログインし、「LANE RESERVE LINEチャット連携（Chrome拡張）」フォルダを右クリック →「その他のオプションを確認」→「オフラインアクセス」→「オフラインで使用可能にする」 ② Chrome に院のアカウントでログイン（同期オン） ③ <code>chrome://extensions</code> で「デベロッパー モード」をオン →「パッケージ化されていない拡張機能を読み込む」でそのフォルダを選ぶ ④ 拡張機能を開いて「鍵がまだ保存されていません」と出たときだけ、この LANE RESERVE のアドレス <code>{serverUrl}</code> と下で発行した鍵を貼って保存（初めてのときは送信を許可する確認が出ます）。詳しくはマニュアル13章。ドライブが使えないときは
-              <a href={withBase("/integrations/line-chat-extension.zip")} download>
-                拡張機能（zip）
-              </a>
-              を展開したフォルダでも動きます。
-            </>
-          }
+          intro={lineChatIntro}
           defaultName="LINE チャット連携（受付のパソコン）"
           pasteHint="Chrome の拡張機能（LANE RESERVE LINE チャット連携）を開き、鍵の欄に貼って「保存」を押してください。"
           keys={lineChatKeys}

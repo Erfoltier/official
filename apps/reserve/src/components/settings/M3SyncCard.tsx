@@ -9,10 +9,10 @@ const stamp = (iso?: string | number | null) =>
   iso ? new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 /**
- * デジカル（M3）の受付画面への予約の写し（Chrome 拡張機能）。院長だけ（docs/M3-SYNC.md）
+ * デジカル（M3）の受付画面への予約の写し（Chrome 拡張機能）。スタッフも状況・要確認・入れ方を見られる。キー・上限・試運転・写し始めは院長・管理者だけ（docs/M3-SYNC.md）
  * Claude の利用キー（受付メモの1行を作る）・写し始め・今どのパソコンが写しているか・要確認の予約
  */
-export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail: (e: unknown) => void }) {
+export function M3SyncCard({ isAdmin, notify, fail }: { isAdmin: boolean; notify: (t: string) => void; fail: (e: unknown) => void }) {
   const [st, setSt] = useState<M3SyncStatus | null>(null);
   const [review, setReview] = useState<M3SyncReviewItem[]>([]);
   const [pending, setPending] = useState(0);
@@ -62,6 +62,8 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
       </p>
       {st && (
         <>
+          {isAdmin && (
+            <>
           <div className={styles.prefRow}>
             <b>Claude の利用キー</b>
             <small>{st.claude.hasKey ? `設定済み（${stamp(st.claude.updatedAt)}・${st.claude.model}）` : "まだ入っていません"}</small>
@@ -138,6 +140,8 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
               </button>
             </div>
           </div>
+            </>
+          )}
           <div className={styles.prefRow}>
             <b>写し始め</b>
             {st.startAt ? (
@@ -145,6 +149,7 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
             ) : (
               <>
                 <small>まだ始めていません。始めると、この時刻より後に入った予約を写します（前からある予約には触りません。取消だけは写します）。始めた後はデジカルへの手入力をやめてください。</small>
+                {isAdmin && (
                 <div>
                   <button
                     className={styles.primary}
@@ -156,6 +161,7 @@ export function M3SyncCard({ notify, fail }: { notify: (t: string) => void; fail
                     写しを始める
                   </button>
                 </div>
+                )}
               </>
             )}
           </div>
