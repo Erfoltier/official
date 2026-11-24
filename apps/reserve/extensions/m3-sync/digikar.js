@@ -115,8 +115,9 @@
    * 一覧が読み終わるのを待つ。開いた直後は前の日の表示や「受付が登録されていません」が先に出ることがあるので、
    * 「全 N 件」と行の数が合い、1.5秒おいても同じになってから使う（同じ日の予約を見落とさないため）
    */
+  let lastList = "";
   async function waitList() {
-    const end = Date.now() + 20000;
+    const end = Date.now() + 40000;
     while (Date.now() < end) {
       const a = snapshot();
       if (a) {
@@ -127,8 +128,12 @@
         await sleep(300);
       }
     }
+    // 読めなかったときの様子（原因を調べるため。患者の情報は入れない）
+    const body = text(document.body);
+    lastList = `全${listCount() ?? "?"}件・行${receptionRows()?.length ?? "?"}${body.includes("loading...") ? "・読み込み中" : ""}・${document.visibilityState}`;
     return null;
   }
+  const listNotReady = () => ({ result: "not-ready", state: "list", detail: lastList });
 
   /** 見出しの文字でパネル（患者検索・予約登録など）を探す */
   function panelByTitle(title) {
@@ -215,8 +220,14 @@
   // ---- 登録（新しい予約） ----
   async function create({ patientNo, kana, date, time, memoLine }) {
     const rows = await waitList();
-    if (rows === null) return { result: "not-ready", state: "list" };
+    if (rows === null) return listNotReady();
     const same = rows.filter((r) => r.patientNo === patientNo);
+    // 同じ患者・同じ時刻の予約が1件あれば、すでに入っているものとする（前の回で確かめが間に合わなかった・手で入れた）
+    const sameTime = same.filter((r) => r.time === hhmm(time));
+    if (sameTime.length === 1) {
+      const memoSame = sameTime[0].memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, "");
+      return { result: "synced", note: memoSame ? "デジカルにすでに同じ予約がありました" : "デジカルにすでに同じ時刻の予約がありました（受付メモはデジカルのまま）" };
+    }
     if (same.length) return review(`この日にこの患者の予約がデジカルにすでにあります（${same.map((r) => r.time).join("・")}）`);
     const row = await findPatientRow(patientNo);
     if (!row) {
@@ -243,7 +254,7 @@
   // ---- 変更（前に写した予約を直す） ----
   async function edit({ patientNo, oldDate, oldTime, date, time, memoLine }) {
     const rows = await waitList();
-    if (rows === null) return { result: "not-ready", state: "list" };
+    if (rows === null) return listNotReady();
     const hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(oldTime));
     if (hits.length !== 1) return review(`変更する予約をデジカルで1件に決められません（${hits.length}件）`);
     const btns = [...hits[0].el.querySelectorAll("button")];
@@ -375,7 +386,7 @@
   /** 取り消す行のステータスのボタンの位置。なければ gone、1件に決まらなければ review */
   async function locateCancel({ patientNo, time, requireMemoTime }) {
     const rows = await waitList();
-    if (rows === null) return { result: "not-ready", state: "list" };
+    if (rows === null) return listNotReady();
     let hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
     if (requireMemoTime) hits = hits.filter((r) => r.memo.startsWith(time));
     if (hits.length === 0) return { result: "gone", count: listCount() };
@@ -405,7 +416,7 @@
 
   async function cancel({ patientNo, time, requireMemoTime }) {
     const rows = await waitList();
-    if (rows === null) return { result: "not-ready", state: "list" };
+    if (rows === null) return listNotReady();
     let hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
     if (requireMemoTime) hits = hits.filter((r) => r.memo.startsWith(time));
     if (hits.length === 0) return { result: "cancelled", note: "デジカルにはすでにありませんでした" };
@@ -456,21 +467,18 @@
     return { result: "cancelled", note: trail.join("、") };
   }
 
-  /** 写したあと：その日の一覧に、患者番号・時刻・受付メモの行がちょうど1件あるか */
+  /**
+   * 写したあと：その日の一覧に、患者番号・時刻の行がちょうど1件あるか。
+   * 0件のときは not-found を返し、background.js がページを開き直して確かめ直す（開いたままのページの一覧は新しくならないため）
+   */
   async function verify({ patientNo, time, memoLine }) {
-    const match = (rows) => rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time) && r.memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, ""));
-    // 写した直後は一覧の更新が遅れることがあるので、15秒まで見直す
-    const end = Date.now() + 15000;
-    let hits = [];
-    while (Date.now() < end) {
-      const rows = await waitList();
-      if (rows === null) return review("デジカルの受付一覧を読めません");
-      hits = match(rows);
-      if (hits.length >= 1) break;
-      await sleep(1500);
-    }
-    if (hits.length !== 1) return review(`写したあと一覧で確かめられません（${hits.length}件）`);
-    return { result: "synced" };
+    const rows = await waitList();
+    if (rows === null) return listNotReady();
+    const hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
+    if (hits.length === 0) return { result: "not-found" };
+    if (hits.length !== 1) return review(`写したあと一覧で確かめられません（同じ時刻に${hits.length}件）`);
+    const memoSame = hits[0].memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, "");
+    return { result: "synced", ...(memoSame ? {} : { note: "受付メモがデジカルの表示と違います" }) };
   }
 
   // ページ自身の世界（MAIN）で動かす。拡張機能の別世界（isolated）から送った操作では、

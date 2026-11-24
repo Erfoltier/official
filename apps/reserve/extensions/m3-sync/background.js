@@ -275,11 +275,18 @@ async function syncOne(laneId, item) {
     const tab = await digikarTab(receptionUrl(r.date));
     res = await digikar(tab, "create", { pageDate: r.date, patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine });
   }
+  // すでにデジカルに同じ患者・時刻の予約があった（create が synced を返す）
+  if (res.result === "synced") return { ...res, digikar: target };
   if (res.result !== "pending-verify") return res;
-  const tab = await digikarTab(receptionUrl(r.date));
-  const v = await digikar(tab, "verify", { ...target, pageDate: r.date });
-  if (v.result === "synced") return { result: "synced", digikar: target };
-  return v;
+  // 写した直後は一覧にまだ出ないことがある。ページを開き直して3回まで確かめる（12/30 の要確認の原因）
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) await sleep(5000);
+    const tab = await digikarTab(receptionUrl(r.date));
+    const v = await digikar(tab, "verify", { ...target, pageDate: r.date });
+    if (v.result === "synced") return { ...v, digikar: target };
+    if (v.result !== "not-found") return v;
+  }
+  return { result: "review", reason: "写したあと一覧で見つかりません（開き直して3回確かめました）" };
 }
 
 let running = false;
@@ -299,6 +306,7 @@ async function run(manual) {
     if (!q.data.startAt) return setStatus({ state: "idle", message: "写し始めの前です（LANE RESERVE の設定で始めます）" });
     const items = q.data.items.slice(0, MAX_PER_RUN);
     let done = 0;
+    const listMiss = [];
     for (const item of items) {
       await lane(lt.id, "POST", "/api/v1/m3-sync/lock", { clientId: s.clientId, label: s.label });
       let res;
@@ -307,8 +315,13 @@ async function run(manual) {
       } catch (e) {
         res = { result: "review", reason: String(e?.message || e) };
       }
+      if (res.result === "not-ready" && res.state === "list") {
+        // その日の一覧が一時的に読めないだけ：要確認にせず、この予約は次の回に回して、ほかの予約を続ける
+        listMiss.push(`${item.reservation.date}（${res.detail || "?"}）`);
+        continue;
+      }
       if (res.result === "not-ready") {
-        await setStatus({ state: "error", message: res.state === "no-cert" ? "デジカルの証明書が選ばれていません" : res.state === "login" ? "デジカルにログインしてください" : res.state === "list" ? "デジカルの受付一覧を読めません（次の回にやり直します）" : "デジカルの画面を読めません" });
+        await setStatus({ state: "error", message: res.state === "no-cert" ? "デジカルの証明書が選ばれていません" : res.state === "login" ? "デジカルにログインしてください" : "デジカルの画面を読めません" });
         return;
       }
       if (res.result === "skip") continue;
@@ -321,7 +334,8 @@ async function run(manual) {
         return;
       }
     }
-    await setStatus({ state: "ok", message: items.length ? `${done}件を写しました（残り${q.data.items.length - done}件）` : "写す予約はありません", done });
+    const miss = listMiss.length ? `\nデジカルの受付一覧を読めず次の回に回した日：${listMiss.join("・")}` : "";
+    await setStatus({ state: "ok", message: (items.length ? `${done}件を写しました（残り${q.data.items.length - done}件）` : "写す予約はありません") + miss, done });
   } catch (e) {
     await setStatus({ state: "error", message: String(e?.message || e) });
   } finally {
