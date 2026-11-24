@@ -266,9 +266,11 @@
     const btns = [...hits[0].el.querySelectorAll("button")];
     btns[btns.length - 1].click(); // 行の右端（予約の画面）
     // 予約一覧の1件は「2026/11/24(火)」と「10:00」が別々の要素で、同じ箱に 編集・削除・カルテ表示 のボタンがある
-    const want = `${slashDate(oldDate)}(`;
+    // 予約一覧の日付は月・日に0を付けない（「2026/12/9(水)」。11/24 の 12/09 で見つからなかった）。どちらの形でも探す
+    const [oy, om, od] = oldDate.split("-");
+    const wants = [`${slashDate(oldDate)}(`, `${oy}/${Number(om)}/${Number(od)}(`];
     const entry = await waitFor(() => {
-      const hits = [...document.querySelectorAll("div,li")].filter((e) => visible(e) && (e.innerText || "").includes(want) && (e.innerText || "").includes(hhmm(oldTime)) && e.querySelectorAll("button").length >= 2);
+      const hits = [...document.querySelectorAll("div,li")].filter((e) => visible(e) && wants.some((w) => (e.innerText || "").includes(w)) && (e.innerText || "").includes(hhmm(oldTime)) && e.querySelectorAll("button").length >= 2);
       return hits.sort((a, b) => a.innerText.length - b.innerText.length)[0] || null;
     });
     if (!entry) return review("予約一覧に変更する予約が見つかりません");
