@@ -422,6 +422,8 @@ final class Schema
                     return $s;
                 },
                 'memoLine?' => fn($y) => V::str($y, 500),
+                // 同じ日の同じ患者のほかの予約と、デジカルでは1件にまとめた（自分の行は持たない）
+                'merged?' => fn($y) => V::bool($y),
             ]),
         ]);
         return $in;

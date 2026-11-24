@@ -424,3 +424,28 @@ describe("デジカルへの写し：対応済み", () => {
     expect(q.items.filter((x: any) => x.reservation.id === a.id)).toEqual([]);
   });
 });
+
+describe("デジカルへの写し：同じ日の予約は1件にまとめる", () => {
+  it("同じ患者・同じ日の有効な予約の時刻（sameDay）と、その日の最初か（firstOfDay）を渡す。まとめた記録（merged）を受け取る", async () => {
+    const c = await h.srv.as("staff-admin");
+    await c.post("/m3-sync/start", {});
+    await sleep(5);
+    const day = addDays(nowInClinic().date, 5);
+    const p = await c.post("/patients", { name: "同日 次郎", m3ChartNo: "9300" });
+    const a = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 610) });
+    const b = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 660), endAt: toIso(day, 675) });
+    let q = await c.get("/m3-sync");
+    const ia = q.items.find((x: any) => x.reservation.id === a.id).reservation;
+    const ib = q.items.find((x: any) => x.reservation.id === b.id).reservation;
+    expect([ia.firstOfDay, ia.sameDay]).toEqual([true, ["1100"]]);
+    expect([ib.firstOfDay, ib.sameDay]).toEqual([false, ["1000"]]);
+    await c.post(`/m3-sync/reservations/${a.id}`, { result: "synced", fingerprint: ia.fingerprint, digikar: { patientNo: "9300", date: day, time: "1000" } });
+    await c.post(`/m3-sync/reservations/${b.id}`, { result: "synced", fingerprint: ib.fingerprint, digikar: { patientNo: "9300", date: day, time: "1000", merged: true } });
+    // 最初の予約を取り消すと、残る予約が sameDay に出る（デジカルの1件はそのままにできる）
+    await c.patch(`/reservations/${a.id}`, { version: a.version, status: "cancelled" });
+    q = await c.get("/m3-sync");
+    const ca = q.items.find((x: any) => x.reservation.id === a.id);
+    expect([ca.action, ca.reservation.sameDay]).toEqual(["cancel", ["1100"]]);
+    expect(q.items.find((x: any) => x.reservation.id === b.id)).toBeUndefined();
+  });
+});

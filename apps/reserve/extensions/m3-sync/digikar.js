@@ -218,7 +218,7 @@
   const review = (reason) => ({ result: "review", reason });
 
   // ---- 登録（新しい予約） ----
-  async function create({ patientNo, kana, date, time, memoLine }) {
+  async function create({ patientNo, kana, date, time, memoLine, sameDay = [], merge = false }) {
     const rows = await waitList();
     if (rows === null) return listNotReady();
     const same = rows.filter((r) => r.patientNo === patientNo);
@@ -228,6 +228,11 @@
       const memoSame = sameTime[0].memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, "");
       return { result: "synced", note: memoSame ? "デジカルにすでに同じ予約がありました" : "デジカルにすでに同じ時刻の予約がありました（受付メモはデジカルのまま）" };
     }
+    // デジカルは同じ患者の同じ日の予約を1件にまとめて持つ。その日のほかの予約（LANE RESERVE）の時刻の行が1件あれば、そこにまとめる
+    if (same.length === 1 && (merge || sameDay.some((t) => hhmm(t) === same[0].time))) {
+      return { result: "synced", merged: true, rowTime: same[0].time.replace(":", ""), note: `同じ日の ${same[0].time} の予約にまとめました` };
+    }
+    if (merge && same.length === 0) return { result: "skip" };
     if (same.length) return review(`この日にこの患者の予約がデジカルにすでにあります（${same.map((r) => r.time).join("・")}）`);
     const row = await findPatientRow(patientNo);
     if (!row) {

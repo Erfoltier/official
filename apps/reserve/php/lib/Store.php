@@ -1728,6 +1728,13 @@ final class Store
         $review = [];
         $rows = Db::i()->between('reservation', 'k1', $from, '9999-12-31');
         uasort($rows, fn($a, $b) => strcmp(normalize_iso($a['startAt']), normalize_iso($b['startAt'])) ?: strcmp($a['id'], $b['id']));
+        // 同じ患者・同じ日の有効な予約（デジカルでは1日1件にまとめて入っている。11/24 の 12/09 の受付一覧で確認）
+        $sameDay = [];
+        foreach ($rows as $r) {
+            if (!self::inactive($r) && !self::m3IsBlock($r, self::patients()[$r['patientId']] ?? null)) {
+                $sameDay[$r['patientId'] . '|' . clinic_date_of($r['startAt'])][] = $r;
+            }
+        }
         foreach ($rows as $r) {
             if (clinic_date_of($r['startAt']) < $from) {
                 continue;
@@ -1747,7 +1754,7 @@ final class Store
             $action = null;
             $state = is_array($rec) ? $rec['state'] : null;
             if ($state === 'review' && $rec['fingerprint'] === $fp) {
-                $review[] = self::m3Item('review', $r, $patient, $fp, $rec, $startMs);
+                $review[] = self::m3Item('review', $r, $patient, $fp, $rec, $startMs, $sameDay);
                 continue;
             }
             // 要確認の後に中身が変わったら、前に写せていたかどうかで考え直す
@@ -1771,14 +1778,22 @@ final class Store
                 }
             }
             if ($action !== null) {
-                $items[] = self::m3Item($action, $r, $patient, $fp, is_array($rec) ? $rec : null, $startMs);
+                $items[] = self::m3Item($action, $r, $patient, $fp, is_array($rec) ? $rec : null, $startMs, $sameDay);
             }
         }
         return ['startAt' => $start, 'trial' => $trial, 'items' => $items, 'review' => $review];
     }
 
-    private static function m3Item(string $action, array $r, ?array $patient, string $fp, ?array $rec, int $startMs): array
+    private static function m3Item(string $action, array $r, ?array $patient, string $fp, ?array $rec, int $startMs, array $sameDay = []): array
     {
+        // 同じ患者・同じ日のほかの有効な予約（時刻）と、この予約がその日の最初（デジカルの1件を持つ）か
+        $day = $sameDay[$r['patientId'] . '|' . clinic_date_of($r['startAt'])] ?? [];
+        $others = array_values(array_filter($day, fn($x) => $x['id'] !== $r['id']));
+        $hm = function (array $x): string {
+            $m = minutes_of_day($x['startAt']);
+            return sprintf('%02d%02d', intdiv($m, 60), $m % 60);
+        };
+        $first = $day[0] ?? null;
         $lane = self::lanes()[$r['laneId']] ?? null;
         $menus = array_map(fn($id) => ['id' => $id, 'name' => self::menus()[$id]['name'] ?? '', 'abbr' => self::menus()[$id]['abbr'] ?? ''], $r['menuIds'] ?? []);
         $startMin = minutes_of_day($r['startAt']);
@@ -1798,6 +1813,9 @@ final class Store
             'memo' => (string) ($r['memo'] ?? ''),
             // 写し始める前からある予約（スタッフがデジカルに手で入れたもの）
             'preexisting' => parse_ms($r['createdAt']) < $startMs,
+            'sameDay' => array_map($hm, $others),
+            // その日の最初の有効な予約でなければ、デジカルでは最初の予約の1件にまとめる
+            'firstOfDay' => $first === null || $first['id'] === $r['id'],
         ];
         foreach (['cancelledAt', 'cancelReason', 'visitId'] as $k) {
             if (isset($r[$k])) {

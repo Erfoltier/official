@@ -238,6 +238,8 @@ async function syncOne(laneId, item) {
   const p = item.patient || {};
   let no = p.m3ChartNo || "";
   const prev = item.previous?.digikar || null;
+  // 同じ日の2件目以降は、最初の予約が新規患者登録・書き戻しを済ませてから（患者を二重に登録しないため）
+  if (!no && r.firstOfDay === false && (item.action === "create" || item.action === "restore")) return { result: "skip" };
   if (!no) {
     // 完全初診：LANE RESERVE の情報でデジカルに新規患者登録し、付いた番号を LANE RESERVE に書き戻す（院長 11/21）
     if (item.action !== "create" && item.action !== "restore") return { result: "review", reason: "カルテ番号（M3）がありません" };
@@ -246,6 +248,25 @@ async function syncOne(laneId, item) {
     no = reg.patientNo;
   }
   if (!/^\d{1,12}$/.test(no)) return { result: "review", reason: `カルテ番号 ${no} はデジカルの患者番号の形ではありません` };
+
+  // デジカルは同じ患者の同じ日の予約を1件にまとめて持つ（11/24 院長の指摘・12/09 の受付一覧で確認）
+  const sameDay = r.sameDay || [];
+  if (item.action === "cancel" && sameDay.length) {
+    // 同じ日のほかの予約が残るので、デジカルの1件はそのまま（来院はある）
+    return { result: "cancelled", note: `同じ日のほかの予約（${sameDay.map((t) => `${t.slice(0, 2)}:${t.slice(2)}`).join("・")}）が残るため、デジカルの予約はそのまま`, ...(prev && { digikar: prev }) };
+  }
+  if (item.action === "update" && prev?.merged) {
+    // まとめた予約：デジカルの1件は最初の予約のもの。日が変わったときだけ確かめる
+    if (r.date !== prev.date) return { result: "review", reason: `同じ日の予約にまとめていた予約の日が変わりました（${prev.date} → ${r.date}）` };
+    return { result: "synced", note: "同じ日の予約にまとめているため、デジカルはそのまま", digikar: prev };
+  }
+  if ((item.action === "create" || item.action === "restore") && r.firstOfDay === false) {
+    // その日の最初の予約ではない：最初の予約のデジカルの1件にまとめる（Claude は呼ばない）
+    const tab = await digikarTab(receptionUrl(r.date));
+    const res = await digikar(tab, "create", { pageDate: r.date, patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine: "", sameDay, merge: true });
+    if (res.result === "synced") return { ...res, digikar: { patientNo: no, date: r.date, time: res.rowTime || r.time, merged: true } };
+    return res;
+  }
 
   if (item.action === "cancel") {
     const date = item.reservation.preexisting || !prev ? r.date : prev.date;
@@ -273,10 +294,10 @@ async function syncOne(laneId, item) {
   } else {
     // create・restore（取消を写すと一覧から消えるので、戻すときは登録し直す）
     const tab = await digikarTab(receptionUrl(r.date));
-    res = await digikar(tab, "create", { pageDate: r.date, patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine });
+    res = await digikar(tab, "create", { pageDate: r.date, patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine, sameDay });
   }
   // すでにデジカルに同じ患者・時刻の予約があった（create が synced を返す）
-  if (res.result === "synced") return { ...res, digikar: target };
+  if (res.result === "synced") return { ...res, digikar: res.merged ? { patientNo: no, date: r.date, time: res.rowTime, merged: true } : target };
   if (res.result !== "pending-verify") return res;
   // 写した直後は一覧にまだ出ないことがある。ページを開き直して3回まで確かめる（12/30 の要確認の原因）
   for (let i = 0; i < 3; i++) {
@@ -304,10 +325,16 @@ async function run(manual) {
     const q = await lane(lt.id, "GET", "/api/v1/m3-sync");
     if (!q.ok) return setStatus({ state: "error", message: q.data?.message || "写す予約の一覧を読めません" });
     if (!q.data.startAt) return setStatus({ state: "idle", message: "写し始めの前です（LANE RESERVE の設定で始めます）" });
-    const items = q.data.items.slice(0, MAX_PER_RUN);
+    // 同じ日の最初の予約がまだ写っていない（写す列・要確認にある）患者の2件目以降は、デジカルを開かずに次の回へ
+    const key = (x) => `${x.patient?.id || ""}|${x.reservation.date}`;
+    const firstPending = new Set([...q.data.items, ...(q.data.review || [])].filter((x) => x.reservation.firstOfDay !== false && x.action !== "cancel").map(key));
+    const items = q.data.items.filter((x) => !(x.reservation.firstOfDay === false && (x.action === "create" || x.action === "restore") && firstPending.has(key(x))));
     let done = 0;
+    let tried = 0;
     const listMiss = [];
     for (const item of items) {
+      if (tried >= MAX_PER_RUN) break;
+      tried++;
       await lane(lt.id, "POST", "/api/v1/m3-sync/lock", { clientId: s.clientId, label: s.label });
       let res;
       try {
