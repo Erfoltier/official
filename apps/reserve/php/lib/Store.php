@@ -1694,7 +1694,34 @@ final class Store
     public static function m3Fingerprint(array $r): string
     {
         $v = [$r['patientId'], normalize_iso($r['startAt']), normalize_iso($r['endAt']), $r['laneId'], array_values($r['menuIds'] ?? []), (string) ($r['memo'] ?? ''), self::inactive($r) ? $r['status'] : 'active'];
+        // 同じ日のほかの予約が変われば、デジカルの1件の受付メモ（まとめて書く）も写し直す
+        $others = self::inactive($r) ? [] : self::m3DayOthers($r);
+        if ($others !== []) {
+            $v[] = array_map(fn($x) => [normalize_iso($x['startAt']), normalize_iso($x['endAt']), $x['laneId'], array_values($x['menuIds'] ?? []), (string) ($x['memo'] ?? '')], $others);
+        }
         return substr(hash('sha256', json_encode($v, JSON_UNESCAPED_UNICODE)), 0, 20);
+    }
+
+    private static array $m3DayCache = [];
+
+    /** 同じ患者・同じ日のほかの有効な予約（予約不可の枠を除く、時刻順）。デジカルでは1人1日1件にまとめて入っている（11/24 の 12/09 の受付一覧で確認） */
+    private static function m3DayOthers(array $r): array
+    {
+        $date = clinic_date_of($r['startAt']);
+        // 1回の呼び出し（一覧づくり）の中で同じ日を何度も読まない
+        self::$m3DayCache[$date] ??= Db::i()->where('reservation', 'k1', $date);
+        $out = [];
+        foreach (self::$m3DayCache[$date] as $x) {
+            if ($x['id'] === $r['id'] || $x['patientId'] !== $r['patientId'] || clinic_date_of($x['startAt']) !== $date) {
+                continue;
+            }
+            if (self::inactive($x) || self::m3IsBlock($x, self::patients()[$x['patientId']] ?? null)) {
+                continue;
+            }
+            $out[] = $x;
+        }
+        usort($out, fn($a, $b) => strcmp(normalize_iso($a['startAt']), normalize_iso($b['startAt'])) ?: strcmp($a['id'], $b['id']));
+        return $out;
     }
 
     /** 予約不可の枠（メニューか患者の名前に「予約不可」）は写さない */
@@ -1728,13 +1755,7 @@ final class Store
         $review = [];
         $rows = Db::i()->between('reservation', 'k1', $from, '9999-12-31');
         uasort($rows, fn($a, $b) => strcmp(normalize_iso($a['startAt']), normalize_iso($b['startAt'])) ?: strcmp($a['id'], $b['id']));
-        // 同じ患者・同じ日の有効な予約（デジカルでは1日1件にまとめて入っている。11/24 の 12/09 の受付一覧で確認）
         $sameDay = [];
-        foreach ($rows as $r) {
-            if (!self::inactive($r) && !self::m3IsBlock($r, self::patients()[$r['patientId']] ?? null)) {
-                $sameDay[$r['patientId'] . '|' . clinic_date_of($r['startAt'])][] = $r;
-            }
-        }
         foreach ($rows as $r) {
             if (clinic_date_of($r['startAt']) < $from) {
                 continue;
@@ -1786,14 +1807,14 @@ final class Store
 
     private static function m3Item(string $action, array $r, ?array $patient, string $fp, ?array $rec, int $startMs, array $sameDay = []): array
     {
-        // 同じ患者・同じ日のほかの有効な予約（時刻）と、この予約がその日の最初（デジカルの1件を持つ）か
-        $day = $sameDay[$r['patientId'] . '|' . clinic_date_of($r['startAt'])] ?? [];
-        $others = array_values(array_filter($day, fn($x) => $x['id'] !== $r['id']));
+        // 同じ患者・同じ日のほかの有効な予約と、この予約がその日の最初（デジカルの1件を持つ）か
+        $others = self::m3DayOthers($r);
         $hm = function (array $x): string {
             $m = minutes_of_day($x['startAt']);
             return sprintf('%02d%02d', intdiv($m, 60), $m % 60);
         };
-        $first = $day[0] ?? null;
+        $key = fn(array $x) => normalize_iso($x['startAt']) . '|' . $x['id'];
+        $firstOfDay = self::inactive($r) ? $others === [] : !array_filter($others, fn($x) => strcmp($key($x), $key($r)) < 0);
         $lane = self::lanes()[$r['laneId']] ?? null;
         $menus = array_map(fn($id) => ['id' => $id, 'name' => self::menus()[$id]['name'] ?? '', 'abbr' => self::menus()[$id]['abbr'] ?? ''], $r['menuIds'] ?? []);
         $startMin = minutes_of_day($r['startAt']);
@@ -1815,7 +1836,15 @@ final class Store
             'preexisting' => parse_ms($r['createdAt']) < $startMs,
             'sameDay' => array_map($hm, $others),
             // その日の最初の有効な予約でなければ、デジカルでは最初の予約の1件にまとめる
-            'firstOfDay' => $first === null || $first['id'] === $r['id'],
+            'firstOfDay' => $firstOfDay,
+            // 同じ日のほかの予約の中身（デジカルの1件の受付メモに、2件目以降のメニューもまとめて書くため。院長 11/24）
+            'sameDayParts' => array_map(fn($x) => [
+                'time' => $hm($x),
+                'minutes' => intdiv(parse_ms($x['endAt']) - parse_ms($x['startAt']), 60000),
+                'lane' => self::lanes()[$x['laneId']]['name'] ?? '',
+                'menus' => array_map(fn($id) => ['id' => $id, 'name' => self::menus()[$id]['name'] ?? '', 'abbr' => self::menus()[$id]['abbr'] ?? ''], $x['menuIds'] ?? []),
+                'memo' => (string) ($x['memo'] ?? ''),
+            ], $others),
         ];
         foreach (['cancelledAt', 'cancelReason', 'visitId'] as $k) {
             if (isset($r[$k])) {

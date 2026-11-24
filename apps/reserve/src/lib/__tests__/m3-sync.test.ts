@@ -374,12 +374,13 @@ describe("デジカルへの写し：もう一度写す", () => {
     const day = addDays(nowInClinic().date, 3);
     const p = await c.post("/patients", { name: "再試 花子", m3ChartNo: "9100" });
     const a = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 630) });
-    const b = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 700), endAt: toIso(day, 730) });
+    // b は別の日（同じ日だと a の指紋に b の中身が入り、b を直すと a も写し直しになるため）
+    const b = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(addDays(day, 1), 700), endAt: toIso(addDays(day, 1), 730) });
     const fp = async (id: string) => (await c.get("/m3-sync")).items.find((x: any) => x.reservation.id === id).reservation.fingerprint;
     // a：まだ写していないうちに要確認
     await c.post(`/m3-sync/reservations/${a.id}`, { result: "review", fingerprint: await fp(a.id), reason: "テスト" });
     // b：写したあと、変更を写すときに要確認
-    await c.post(`/m3-sync/reservations/${b.id}`, { result: "synced", fingerprint: await fp(b.id), digikar: { patientNo: "9100", date: day, time: "1100" } });
+    await c.post(`/m3-sync/reservations/${b.id}`, { result: "synced", fingerprint: await fp(b.id), digikar: { patientNo: "9100", date: addDays(day, 1), time: "1100" } });
     await c.patch(`/reservations/${b.id}`, { version: b.version, memo: "変更" });
     await c.post(`/m3-sync/reservations/${b.id}`, { result: "review", fingerprint: await fp(b.id), reason: "テスト" });
     let q = await c.get("/m3-sync");
@@ -446,6 +447,40 @@ describe("デジカルへの写し：同じ日の予約は1件にまとめる", 
     q = await c.get("/m3-sync");
     const ca = q.items.find((x: any) => x.reservation.id === a.id);
     expect([ca.action, ca.reservation.sameDay]).toEqual(["cancel", ["1100"]]);
-    expect(q.items.find((x: any) => x.reservation.id === b.id)).toBeUndefined();
+    // 残る予約は、同じ日のほかの予約が変わったので「変更」になる（まとめた予約なので、拡張機能はデジカルに触らない）
+    expect(q.items.find((x: any) => x.reservation.id === b.id)).toMatchObject({ action: "update", previous: { digikar: { merged: true } } });
+  });
+});
+
+describe("デジカルへの写し：同じ日の2件目以降のメニューも受付メモに", () => {
+  it("最初の予約の受付メモに、同じ日のほかの予約の中身も送る。ほかの予約が増えたら最初の予約を写し直す（指紋が変わる）", async () => {
+    const c = await h.srv.as("staff-admin");
+    const fake = await fakeClaude(() => "1000モニター　ネオボ・シミまとめ初診");
+    try {
+      await c.put("/m3-sync/settings", { apiKey: KEY });
+      await c.post("/m3-sync/start", {});
+      await sleep(5);
+      const day = addDays(nowInClinic().date, 6);
+      const p = await c.post("/patients", { name: "合算 三郎", m3ChartNo: "9400" });
+      const a = await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 600), endAt: toIso(day, 615), memo: "撮影から" });
+      let q = await c.get("/m3-sync");
+      const fp1 = q.items.find((x: any) => x.reservation.id === a.id).reservation.fingerprint;
+      await c.post(`/m3-sync/reservations/${a.id}`, { result: "synced", fingerprint: fp1, digikar: { patientNo: "9400", date: day, time: "1000" } });
+      // 同じ日に2件目が入ると、最初の予約は「変更」として写し直す
+      await c.post("/reservations", { patientId: p.id, laneId: "lane-main", menuIds: [MENU], startAt: toIso(day, 630), endAt: toIso(day, 660), memo: "シミ取り相談" });
+      q = await c.get("/m3-sync");
+      const ia = q.items.find((x: any) => x.reservation.id === a.id);
+      expect(ia.action).toBe("update");
+      expect(ia.reservation.fingerprint).not.toBe(fp1);
+      expect(ia.reservation.sameDayParts).toHaveLength(1);
+      expect(ia.reservation.sameDayParts[0]).toMatchObject({ time: "1030", minutes: 30, memo: "シミ取り相談" });
+      const m = await c.post(`/m3-sync/reservations/${a.id}/memo`, {});
+      expect(m.memoLine).toBe("1000モニター　ネオボ・シミまとめ初診");
+      const sent = JSON.stringify(fake.bodies[fake.bodies.length - 1].body);
+      expect(sent).toContain("同じ日のほかの予約1：時刻 1030");
+      expect(sent).toContain("シミ取り相談");
+    } finally {
+      await fake.close();
+    }
   });
 });
