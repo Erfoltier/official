@@ -362,7 +362,14 @@
       setValue(el, v);
       el.blur();
     }
-    if (postalCode) setValue(document.querySelector('input[name="zip-code"]'), postalCode);
+    if (postalCode) {
+      // 郵便番号は半角数字7文字（ハイフンなし）。入れて欄を離れると住所（市区町村）が自動で入る
+      const zip = document.querySelector('input[name="zip-code"]');
+      zip.focus();
+      setValue(zip, postalCode.replace(/\D/g, ""));
+      zip.blur();
+      await sleep(1000);
+    }
     if (phone) setValue(document.querySelector('input[name="phone-number"]'), phone);
     await sleep(600);
     // 入ったことを確かめる（性別は選ばれたか、生年月日の年は「1990(平成2)」の形になる）

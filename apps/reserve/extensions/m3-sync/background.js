@@ -219,7 +219,8 @@ async function registerNewPatient(laneId, item) {
     sex: p.sex,
     birthDate: p.birthDate,
     phone: (p.phone || "").replace(/[^\d-]/g, ""),
-    postalCode: (p.postalCode || "").replace(/[^\d-]/g, ""),
+    // デジカルの郵便番号は半角数字7文字だけ（ハイフンがあると「郵便番号は半角数字7文字で入力して下さい」で登録できない。11/24 練習患者で確認）
+    postalCode: ((p.postalCode || "").normalize("NFKC").replace(/\D/g, "").match(/^\d{7}$/) || [""])[0],
   });
   if (reg.result !== "registered") return reg;
   // LANE RESERVE に番号を書き戻す（版をそろえてから）
