@@ -258,6 +258,10 @@ async function syncOne(laneId, item) {
     // 同じ日のほかの予約が残るので、デジカルの1件はそのまま（来院はある）
     return { result: "cancelled", note: `同じ日のほかの予約（${sameDay.map((t) => `${t.slice(0, 2)}:${t.slice(2)}`).join("・")}）が残るため、デジカルの予約はそのまま`, ...(prev && { digikar: prev }) };
   }
+  if (item.action === "update" && !prev && r.firstOfDay === false) {
+    // 同じ日の2件目以降で行の記録がない（「対応済み」など）：デジカルの1件は最初の予約のもの。動かさず、まとめた予約として記録する（Claude は呼ばない）
+    return { result: "synced", note: "同じ日の予約にまとめているため、デジカルはそのまま", digikar: { patientNo: no, date: r.date, time: [r.time, ...sameDay].sort()[0], merged: true } };
+  }
   if (item.action === "update" && prev?.merged) {
     // まとめた予約：デジカルの1件は最初の予約のもの。日が変わったときだけ確かめる
     if (r.date !== prev.date) return { result: "review", reason: `同じ日の予約にまとめていた予約の日が変わりました（${prev.date} → ${r.date}）` };
