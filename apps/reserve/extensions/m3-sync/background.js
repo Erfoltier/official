@@ -242,6 +242,8 @@ async function syncOne(laneId, item) {
   if (!no && r.firstOfDay === false && (item.action === "create" || item.action === "restore")) return { result: "skip" };
   if (!no) {
     // 完全初診：LANE RESERVE の情報でデジカルに新規患者登録し、付いた番号を LANE RESERVE に書き戻す（院長 11/21）
+    // カルテ番号のない患者の取消：デジカルにまだ患者がいない（新患）ので、デジカルには何もない（院長 11/24）
+    if (item.action === "cancel") return { result: "cancelled", note: "カルテ番号がない（デジカルに患者がいない）ため、デジカルは何もしない" };
     if (item.action !== "create" && item.action !== "restore") return { result: "review", reason: "カルテ番号（M3）がありません" };
     const reg = await registerNewPatient(laneId, item);
     if (reg.result !== "registered") return reg;
@@ -298,13 +300,21 @@ async function syncOne(laneId, item) {
   }
   // すでにデジカルに同じ患者・時刻の予約があった（create が synced を返す）
   if (res.result === "synced") return { ...res, digikar: res.merged ? { patientNo: no, date: r.date, time: res.rowTime, merged: true } : target };
+  if (res.result === "move") {
+    // デジカルの同じ患者の予約が違う時刻：LANE RESERVE の時刻・受付メモに直す（院長 11/24：時刻は LANE RESERVE 優先）
+    const from = res.rowTime;
+    const tab = await digikarTab(receptionUrl(r.date));
+    res = await digikar(tab, "edit", { pageDate: r.date, patientNo: no, oldDate: r.date, oldTime: from, date: r.date, time: r.time, memoLine });
+    if (res.result === "pending-verify") res.note = `デジカルの ${from.slice(0, 2)}:${from.slice(2)} の予約を LANE RESERVE の時刻に直しました`;
+  }
   if (res.result !== "pending-verify") return res;
+  const note = res.note;
   // 写した直後は一覧にまだ出ないことがある。ページを開き直して3回まで確かめる（12/30 の要確認の原因）
   for (let i = 0; i < 3; i++) {
     if (i > 0) await sleep(5000);
     const tab = await digikarTab(receptionUrl(r.date));
     const v = await digikar(tab, "verify", { ...target, pageDate: r.date });
-    if (v.result === "synced") return { ...v, digikar: target };
+    if (v.result === "synced") return { ...v, note: [note, v.note].filter(Boolean).join("・") || undefined, digikar: target };
     if (v.result !== "not-found") return v;
   }
   return { result: "review", reason: "写したあと一覧で見つかりません（開き直して3回確かめました）" };

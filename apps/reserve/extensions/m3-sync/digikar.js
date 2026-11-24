@@ -224,26 +224,27 @@
     const same = rows.filter((r) => r.patientNo === patientNo);
     // 同じ患者・同じ時刻の予約が1件あれば、すでに入っているものとする（前の回で確かめが間に合わなかった・手で入れた）
     const sameTime = same.filter((r) => r.time === hhmm(time));
-    if (sameTime.length === 1) {
-      const memoSame = sameTime[0].memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, "");
-      return { result: "synced", note: memoSame ? "デジカルにすでに同じ予約がありました" : "デジカルにすでに同じ時刻の予約がありました（受付メモはデジカルのまま）" };
+    // 2件以上（二重）でも、すでにあるときは LANE RESERVE からは何もしない（院長 11/24）
+    if (sameTime.length >= 1) {
+      const memoSame = sameTime.some((r) => r.memo.replace(/\s+/g, "") === memoLine.replace(/\s+/g, ""));
+      return { result: "synced", note: sameTime.length > 1 ? `デジカルにすでに同じ時刻の予約が${sameTime.length}件あります（何もしない）` : memoSame ? "デジカルにすでに同じ予約がありました" : "デジカルにすでに同じ時刻の予約がありました（受付メモはデジカルのまま）" };
     }
     // デジカルは同じ患者の同じ日の予約を1件にまとめて持つ。その日のほかの予約（LANE RESERVE）の時刻の行が1件あれば、そこにまとめる
     if (same.length === 1 && (merge || sameDay.some((t) => hhmm(t) === same[0].time))) {
       return { result: "synced", merged: true, rowTime: same[0].time.replace(":", ""), note: `同じ日の ${same[0].time} の予約にまとめました` };
     }
     if (merge && same.length === 0) return { result: "skip" };
+    // 同じ患者の予約が1件だけ違う時刻である：時刻は LANE RESERVE を優先し、その1件を LANE RESERVE の時刻・受付メモに直す（院長 11/24）
+    if (same.length === 1 && !merge) return { result: "move", rowTime: same[0].time.replace(":", "") };
     if (same.length) return review(`この日にこの患者の予約がデジカルにすでにあります（${same.map((r) => r.time).join("・")}）`);
     const row = await findPatientRow(patientNo);
     if (!row) {
       closeSearchPanel();
       return review(`デジカルに患者番号 ${patientNo} の患者が見つかりません`);
     }
+    // フリガナが違っても、デジカルを優先してそのまま写す（院長 11/24）。違ったことだけ記録に残す
     const dkKana = text(row.querySelectorAll("td")[1]);
-    if (kana && kanaKey(kana) !== kanaKey(dkKana)) {
-      closeSearchPanel();
-      return review(`患者番号 ${patientNo} のフリガナがデジカルと違います（デジカル：${dkKana}）`);
-    }
+    const kanaNote = kana && kanaKey(kana) !== kanaKey(dkKana) ? "フリガナが LANE RESERVE と違います（デジカルを優先）" : null;
     const yoyaku = [...row.querySelectorAll("button")].find((b) => text(b) === "予約");
     if (!yoyaku) {
       closeSearchPanel();
@@ -253,7 +254,7 @@
     await fillForm({ date, time, memoLine });
     await pressAndWaitClose("登録");
     closeSearchPanel();
-    return { result: "pending-verify" };
+    return { result: "pending-verify", ...(kanaNote && { note: kanaNote }) };
   }
 
   // ---- 変更（前に写した予約を直す） ----
@@ -371,7 +372,18 @@
     if (!save) throw new Error("「登録」のボタンが見つかりません");
     save.click();
     const closed = await waitFor(() => !document.querySelector('input[name="kanji-name"]'), 10000);
-    if (!closed) throw new Error("患者情報登録の画面が閉じません（デジカルのメッセージを確かめてください）");
+    if (!closed) {
+      // 閉じない理由を残す（12/02 の要確認。入力欄の段階ではデジカルは何もはじかないので、「登録」の後に出るメッセージを読む）
+      const form = document.querySelector('input[name="kanji-name"]')?.closest("[role=dialog]");
+      const msgs = [
+        ...[...document.querySelectorAll("[role=dialog],[role=alertdialog],[role=alert]")].filter((d) => visible(d) && d !== form && !d.contains(form)).map((d) => text(d)),
+        ...(form ? text(form).split("\n").filter((l) => /です|ください|できません|エラー|既に|すでに|重複|正しく/.test(l)) : []),
+      ]
+        .join("／")
+        .replace(/\s+/g, " ")
+        .slice(0, 200);
+      throw new Error(`患者情報登録の画面が閉じません（デジカル：${msgs || "メッセージなし"}）`);
+    }
     // 登録できたか：新しい番号で探し、フリガナが同じこと
     const after = (await searchRows(newNo)).filter((r) => r.no === newNo);
     closeSearchPanel();
