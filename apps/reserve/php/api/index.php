@@ -884,6 +884,10 @@ try {
             $s = $me();
             Http::json(Store::retryM3Sync(V::id($p[2]), $actor($s)));
         }
+        if ($method === 'POST' && $n === 4 && $sub === 'reservations' && $p[3] === 'resolve') {
+            $s = $me();
+            Http::json(Store::resolveM3Sync(V::id($p[2]), $actor($s)));
+        }
         if ($method === 'POST' && $n === 4 && $sub === 'reservations' && $p[3] === 'memo') {
             $me();
             Http::json(Store::m3SyncMemo(V::id($p[2])));
