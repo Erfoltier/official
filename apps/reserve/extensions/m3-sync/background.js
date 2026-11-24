@@ -324,6 +324,8 @@ async function syncOne(laneId, item) {
     if (i > 0) await sleep(5000);
     const tab = await digikarTab(receptionUrl(r.date));
     const v = await digikar(tab, "verify", { ...target, pageDate: r.date });
+    // 受付メモが違って見えるのは、開いたページの一覧がまだ古いことがある（11/25 13:30 で確認）。開き直して確かめ直す
+    if (v.result === "synced" && v.note && i < 2) continue;
     if (v.result === "synced") return { ...v, note: [note, v.note].filter(Boolean).join("・") || undefined, digikar: target };
     if (v.result !== "not-found") return v;
   }
