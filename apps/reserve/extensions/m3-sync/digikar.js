@@ -218,10 +218,13 @@
   const review = (reason) => ({ result: "review", reason });
 
   // ---- 登録（新しい予約） ----
-  async function create({ patientNo, kana, date, time, memoLine, sameDay = [], merge = false }) {
+  async function create({ patientNo, kana, date, time, memoLine, sameDay = [], merge = false, rewrite = false }) {
     const rows = await waitList();
     if (rows === null) return listNotReady();
     const same = rows.filter((r) => r.patientNo === patientNo);
+    // 変更なのに前に写した行の記録がない（スタッフが「対応済み」にした予約など）：その日のこの患者の1件を直す
+    if (rewrite && same.length === 1) return { result: "move", rowTime: same[0].time.replace(":", "") };
+    if (rewrite && same.length > 1) return review(`変更する予約をデジカルで1件に決められません（この日にこの患者の予約が${same.length}件）`);
     // 同じ患者・同じ時刻の予約が1件あれば、すでに入っているものとする（前の回で確かめが間に合わなかった・手で入れた）
     const sameTime = same.filter((r) => r.time === hhmm(time));
     // 2件以上（二重）でも、すでにあるときは LANE RESERVE からは何もしない（院長 11/24）

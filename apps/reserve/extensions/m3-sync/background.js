@@ -291,9 +291,14 @@ async function syncOne(laneId, item) {
 
   let res;
   if (item.action === "update") {
-    if (!prev) return { result: "review", reason: "前に写した予約の記録がありません" };
-    const tab = await digikarTab(receptionUrl(prev.date));
-    res = await digikar(tab, "edit", { pageDate: prev.date, patientNo: no, oldDate: prev.date, oldTime: prev.time, date: r.date, time: r.time, memoLine });
+    if (!prev) {
+      // 前に写した行の記録がない（「対応済み」にした予約など）：その日のデジカルのこの患者の1件を探して直す。なければ新しく入れる
+      const tab = await digikarTab(receptionUrl(r.date));
+      res = await digikar(tab, "create", { pageDate: r.date, patientNo: no, kana: p.kana || "", date: r.date, time: r.time, memoLine, sameDay, rewrite: true });
+    } else {
+      const tab = await digikarTab(receptionUrl(prev.date));
+      res = await digikar(tab, "edit", { pageDate: prev.date, patientNo: no, oldDate: prev.date, oldTime: prev.time, date: r.date, time: r.time, memoLine });
+    }
   } else {
     // create・restore（取消を写すと一覧から消えるので、戻すときは登録し直す）
     const tab = await digikarTab(receptionUrl(r.date));
@@ -306,7 +311,7 @@ async function syncOne(laneId, item) {
     const from = res.rowTime;
     const tab = await digikarTab(receptionUrl(r.date));
     res = await digikar(tab, "edit", { pageDate: r.date, patientNo: no, oldDate: r.date, oldTime: from, date: r.date, time: r.time, memoLine });
-    if (res.result === "pending-verify") res.note = `デジカルの ${from.slice(0, 2)}:${from.slice(2)} の予約を LANE RESERVE の時刻に直しました`;
+    if (res.result === "pending-verify") res.note = from === r.time ? "デジカルの予約の受付メモを直しました" : `デジカルの ${from.slice(0, 2)}:${from.slice(2)} の予約を LANE RESERVE の時刻に直しました`;
   }
   if (res.result !== "pending-verify") return res;
   const note = res.note;
