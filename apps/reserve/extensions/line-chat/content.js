@@ -57,14 +57,34 @@ let pendingKey = "";
 let curChat = "";
 let prev = { chatId: "", iconUrl: "", ids: [] };
 let shown = { chatId: "", iconUrl: "", ids: [] };
-setInterval(() => {
+// 拡張機能を更新・再読み込みすると、開いたままのタブに前の版のこのプログラムが残り、chrome.runtime が使えなくなる
+// （「Cannot read properties of undefined (reading 'sendMessage')」）。そうなったら黙って止まる（タブを開き直すと新しい版が動く）
+const alive = () => {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+};
+const send = (msg) => {
+  try {
+    chrome.runtime.sendMessage(msg);
+  } catch {
+    /* 拡張機能が入れ替わった後 */
+  }
+};
+const timer = setInterval(() => {
+  if (!alive()) {
+    clearInterval(timer);
+    return;
+  }
   const d = collect();
   if (!d) return;
   if (d.chatId !== curChat) {
     // 別の患者のチャットに移った：読み取り中の印を出し、前のチャットの読み取り結果を覚えておく
     if (curChat) prev = shown.chatId === curChat ? shown : { chatId: curChat, iconUrl: "", ids: [] };
     curChat = d.chatId;
-    chrome.runtime.sendMessage({ type: "switch" });
+    send({ type: "switch" });
   }
   if (prev.chatId && prev.chatId !== d.chatId) {
     if (d.iconUrl && d.iconUrl === prev.iconUrl) d.iconUrl = "";
@@ -79,6 +99,10 @@ setInterval(() => {
   if (key === lastKey) return;
   lastKey = key;
   // 何が読めたか（中身ではなく、あるかないか）を拡張機能の画面に出す
-  chrome.storage.local.set({ scan: { at: new Date().toISOString(), ids: d.requestIds.length, icon: !!d.iconUrl, name: !!d.name } });
-  chrome.runtime.sendMessage({ type: "learn", data: d });
+  try {
+    chrome.storage.local.set({ scan: { at: new Date().toISOString(), ids: d.requestIds.length, icon: !!d.iconUrl, name: !!d.name } });
+  } catch {
+    /* 拡張機能が入れ替わった後 */
+  }
+  send({ type: "learn", data: d });
 }, 1000);
