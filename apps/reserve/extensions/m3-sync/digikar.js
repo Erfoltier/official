@@ -215,7 +215,7 @@
   // ---- 登録（新しい予約） ----
   async function create({ patientNo, kana, date, time, memoLine }) {
     const rows = await waitList();
-    if (rows === null) return review("デジカルの受付一覧を読めません");
+    if (rows === null) return { result: "not-ready", state: "list" };
     const same = rows.filter((r) => r.patientNo === patientNo);
     if (same.length) return review(`この日にこの患者の予約がデジカルにすでにあります（${same.map((r) => r.time).join("・")}）`);
     const row = await findPatientRow(patientNo);
@@ -243,7 +243,7 @@
   // ---- 変更（前に写した予約を直す） ----
   async function edit({ patientNo, oldDate, oldTime, date, time, memoLine }) {
     const rows = await waitList();
-    if (rows === null) return review("デジカルの受付一覧を読めません");
+    if (rows === null) return { result: "not-ready", state: "list" };
     const hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(oldTime));
     if (hits.length !== 1) return review(`変更する予約をデジカルで1件に決められません（${hits.length}件）`);
     const btns = [...hits[0].el.querySelectorAll("button")];
@@ -375,7 +375,7 @@
   /** 取り消す行のステータスのボタンの位置。なければ gone、1件に決まらなければ review */
   async function locateCancel({ patientNo, time, requireMemoTime }) {
     const rows = await waitList();
-    if (rows === null) return review("デジカルの受付一覧を読めません");
+    if (rows === null) return { result: "not-ready", state: "list" };
     let hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
     if (requireMemoTime) hits = hits.filter((r) => r.memo.startsWith(time));
     if (hits.length === 0) return { result: "gone", count: listCount() };
@@ -405,7 +405,7 @@
 
   async function cancel({ patientNo, time, requireMemoTime }) {
     const rows = await waitList();
-    if (rows === null) return review("デジカルの受付一覧を読めません");
+    if (rows === null) return { result: "not-ready", state: "list" };
     let hits = rows.filter((r) => r.patientNo === patientNo && r.time === hhmm(time));
     if (requireMemoTime) hits = hits.filter((r) => r.memo.startsWith(time));
     if (hits.length === 0) return { result: "cancelled", note: "デジカルにはすでにありませんでした" };

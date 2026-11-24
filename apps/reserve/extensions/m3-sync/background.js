@@ -308,7 +308,7 @@ async function run(manual) {
         res = { result: "review", reason: String(e?.message || e) };
       }
       if (res.result === "not-ready") {
-        await setStatus({ state: "error", message: res.state === "no-cert" ? "デジカルの証明書が選ばれていません" : res.state === "login" ? "デジカルにログインしてください" : "デジカルの画面を読めません" });
+        await setStatus({ state: "error", message: res.state === "no-cert" ? "デジカルの証明書が選ばれていません" : res.state === "login" ? "デジカルにログインしてください" : res.state === "list" ? "デジカルの受付一覧を読めません（次の回にやり直します）" : "デジカルの画面を読めません" });
         return;
       }
       if (res.result === "skip") continue;
