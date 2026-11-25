@@ -117,6 +117,7 @@ final class Intake
         $days = max(1, min(90, $days));
         $handled = self::handled();
         $booked = self::bookedRequestIds($days + 60);
+        $cancelled = self::bookedRequestIds($days + 60, true);
         $items = [];
         $today = now_in_clinic()['date'];
         foreach (self::recent($days) as $rid => $rec) {
@@ -131,7 +132,8 @@ final class Intake
             $vt = (string) ($f['visitType'] ?? '');
             $initial = $vt === 'initial';
             $counsel = $vt === 'counseling';
-            $state = isset($booked[$rid]) ? 'booked' : ($handled[$rid]['action'] ?? 'new');
+            // 予約済み＞スタッフの印（済み・見送り）＞予約を取り消した（取消済み。キャンセルの連絡に応じたもの）＞未対応
+            $state = isset($booked[$rid]) ? 'booked' : ($handled[$rid]['action'] ?? (isset($cancelled[$rid]) ? 'cancelled' : 'new'));
             $items[] = [
                 'requestId' => $rid,
                 'receivedAt' => (string) ($rec['receivedAt'] ?? ''),
@@ -152,7 +154,7 @@ final class Intake
                 // 予約登録の画面に流し込む文面（LINE に届く文面と同じ形）。申請IDを足しておく
                 'message' => js_slice(trim((string) ($rec['message']['text'] ?? '')), 5000) . "\n予約申請ID：{$rid}",
                 'state' => $state,
-                'reservation' => $booked[$rid] ?? null,
+                'reservation' => $booked[$rid] ?? $cancelled[$rid] ?? null,
                 'handledBy' => $state === 'done' || $state === 'skip' ? ($handled[$rid]['by']['name'] ?? null) : null,
             ];
         }
@@ -251,13 +253,13 @@ final class Intake
         return is_array($h) ? $h : [];
     }
 
-    /** カレンダーの予約（取り消し以外）に入っている申請ID → その予約の日時 */
-    private static function bookedRequestIds(int $days): array
+    /** カレンダーの予約（取り消し以外）に入っている申請ID → その予約の日時。$cancelledOnly なら取り消し・来院なしの予約の方 */
+    private static function bookedRequestIds(int $days, bool $cancelledOnly = false): array
     {
         $from = (new DateTimeImmutable('now', jst()))->modify("-{$days} day")->format('Y-m-d');
         $out = [];
         foreach (Db::i()->between('reservation', 'k1', $from, '9999-12-31') as $r) {
-            if (in_array($r['status'] ?? '', Store::INACTIVE, true)) {
+            if (in_array($r['status'] ?? '', Store::INACTIVE, true) !== $cancelledOnly) {
                 continue;
             }
             $ids = [];

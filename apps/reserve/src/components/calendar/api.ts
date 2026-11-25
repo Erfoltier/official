@@ -391,7 +391,7 @@ export interface IntakeItem {
   /** 予約登録の画面に流し込む文面 */
   message: string;
   /** new＝未対応・booked＝カレンダーに予約あり・done＝済み（Airなど）・skip＝見送り */
-  state: "new" | "booked" | "done" | "skip";
+  state: "new" | "booked" | "cancelled" | "done" | "skip";
   reservation: { id: string; startAt: string } | null;
   handledBy: string | null;
   /** 申請IDのメモはないが、カナ（氏名）と電話（生年月日）が合う予約があった（推定） */

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, fetchIntake, markIntake, type IntakeItem } from "./api";
 import styles from "./calendar.module.css";
 
-const STATE_LABEL: Record<IntakeItem["state"], string> = { new: "未対応", booked: "予約済み", done: "対応済み", skip: "見送り" };
+const STATE_LABEL: Record<IntakeItem["state"], string> = { new: "未対応", booked: "予約済み", cancelled: "取消済み", done: "対応済み", skip: "見送り" };
 
 function dateJa(iso: string): string {
   if (!iso) return "";
@@ -65,11 +65,11 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
         </button>
       </div>
       <p className={styles.pickedSub} style={{ margin: "0 0 8px" }}>
-        最近30日の申請のうち、希望日が今日以降のものを表示します。「予約を登録」で予約登録の画面を開きます。Airリザーブで予約した申請は、取り込んだ予約のメモに予約申請IDがあれば自動で「予約済み」になります。予約申請IDがなくても、カナ（または氏名）と電話（または生年月日）が一致する予約があれば「予約済み（推定）」になります。電話などで対応した申請は「対応済み」にしてください。
+        最近30日の申請のうち、希望日が今日以降のものを表示します。「予約を登録」で予約登録の画面を開きます。Airリザーブで予約した申請は、取り込んだ予約のメモに予約申請IDがあれば自動で「予約済み」になります。予約申請IDがなくても、カナ（または氏名）と電話（または生年月日）が一致する予約があれば「予約済み（推定）」になります。申請から入れた予約を取り消すと「取消済み」になり、一覧から外れます。電話などで対応した申請は「対応済み」にしてください。
       </p>
       <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, marginBottom: 8 }}>
         <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-        予約済み・対応済み・見送りも表示
+        予約済み・取消済み・対応済み・見送りも表示
       </label>
       {error && <p className={styles.error}>{error}</p>}
       {!items && !error && <p>読み込み中…</p>}
@@ -85,7 +85,7 @@ export function InboxDialog(props: { onClose: () => void; onBook: (item: IntakeI
               <span style={{ marginLeft: "auto", fontSize: 12 }} className={styles.pickedSub}>
                 {STATE_LABEL[it.state]}
                 {it.guessed && "（推定）"}
-                {it.state === "booked" && it.reservation && `（${stamp(it.reservation.startAt)}）`}
+                {(it.state === "booked" || it.state === "cancelled") && it.reservation && `（${stamp(it.reservation.startAt)}）`}
                 {it.handledBy && `・${it.handledBy}`}
               </span>
             </div>
