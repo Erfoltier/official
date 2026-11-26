@@ -710,6 +710,7 @@ export function saveClinic(
       | "sundayMenus"
       | "sundayOrder"
       | "removalCategory"
+      | "sundayIntakeLink"
     >
   >,
 ): Promise<DayBundle["clinic"]> {

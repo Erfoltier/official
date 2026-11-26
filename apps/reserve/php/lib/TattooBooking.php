@@ -1228,6 +1228,19 @@ final class TattooBooking
     }
 
     /** LINE で開くアドレス（ホームページのボタン・LINE のメニューに貼る）。LIFF がなければ空 */
+    /**
+     * 予約申請フォーム（普段の LINE の予約申請）の希望日時に出す、日曜の予約ページへの案内のアドレス。
+     * 設定の「予約申請フォームに案内を出す」がオンで、日曜の Web 予約もオンのときだけ（空なら出さない）
+     */
+    public static function intakeLink(): string
+    {
+        $c = Store::clinic();
+        if (empty($c['sundayIntakeLink']) || !self::settings()['enabled']) {
+            return '';
+        }
+        return self::liffUrl() !== '' ? self::liffUrl() : self::pageUrl();
+    }
+
     public static function liffUrl(): string
     {
         $id = self::settings()['liffId'];

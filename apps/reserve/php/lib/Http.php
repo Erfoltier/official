@@ -569,6 +569,7 @@ final class Schema
             },
             'tattooMachine?' => fn($x) => V::str($x, 30),
             'tattooKindOn?' => fn($x) => V::bool($x),
+            'sundayIntakeLink?' => fn($x) => V::bool($x),
             'removalCategory?' => fn($x) => V::str($x, 20),
             'sundayOrder?' => function ($x) {
                 if (!is_array($x) || !array_is_list($x) || count($x) > 80) {

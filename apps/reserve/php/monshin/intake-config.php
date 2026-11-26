@@ -18,6 +18,8 @@ try {
         'specialDates' => array_values(array_unique([...HomepageDays::intakeDates(), ...$c['special_dates']])),
         'weekdays' => $p['intakeWeekdays'],
         'counseling' => $p['intakeCounseling'],
+        // 日曜の予約ページへの案内（設定でオンのときだけアドレス。空なら出さない）
+        'sundayLink' => TattooBooking::intakeLink(),
         'clinic' => ['name' => $p['name'], 'publicName' => $p['publicName'], 'publicNameEn' => $p['publicNameEn'], 'department' => $p['department'], 'privacyUrl' => $p['privacyUrl'], 'intakeHours' => $p['intakeHours'], 'address' => $p['address']],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {

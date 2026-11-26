@@ -550,6 +550,19 @@ export function TattooCard({
   const [machine, setMachine] = useState(clinic.tattooMachine ?? "");
   const [items, setItems] = useState<SundayMenu[]>(clinic.sundayMenus ?? []);
   const [tattooOn, setTattooOn] = useState(clinic.tattooKindOn !== false);
+  // 予約申請フォームの日曜予約の案内：押したらすぐ保存（日曜をやる・やらないで切り替えるため）
+  const [intakeLink, setIntakeLink] = useState(!!clinic.sundayIntakeLink);
+  const toggleIntakeLink = async (on: boolean) => {
+    setIntakeLink(on);
+    try {
+      await saveClinic({ sundayIntakeLink: on });
+      await onChanged();
+      notify(on ? "予約申請フォームに日曜予約の案内を出します" : "予約申請フォームの日曜予約の案内を消しました");
+    } catch (err) {
+      setIntakeLink(!on);
+      fail(err);
+    }
+  };
   const [artmakeOn, setArtmakeOn] = useState(clinic.artmakeKindOn !== false);
   const [order, setOrder] = useState<string[]>(clinic.sundayOrder ?? []);
   const [removalCategory, setRemovalCategory] = useState(clinic.removalCategory ?? "");
@@ -605,6 +618,13 @@ export function TattooCard({
         <Switch on={enabled} onChange={setEnabled} label="日曜の Web 予約" disabled={!canEdit} />
         日曜の Web 予約
       </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700 }}>
+        <Switch on={intakeLink} onChange={toggleIntakeLink} label="予約申請フォームに日曜予約の案内を出す" disabled={!canEdit || busy} />
+        予約申請フォームに日曜予約の案内を出す
+      </div>
+      <p className={styles.hint} style={{ marginTop: -8 }}>
+        オンにすると、普段の LINE の予約申請フォームの「希望日時」に「一部メニュー限定の日曜予約はこちら」のリンクが出ます（押すとすぐ切り替わります。上の「日曜の Web 予約」がオフのときは出ません）。
+      </p>
       <label className={styles.field}>
         <span>LINE で開くための LIFF ID（LINE Developers で、エンドポイントを予約ページにした LIFF アプリの ID。空なら LINE を使わずメールで確定）</span>
         <input className={styles.input} value={liffId} maxLength={80} onChange={(ev) => setLiffId(ev.target.value)} disabled={!canEdit} placeholder="例：1234567890-AbCdEfGh" />

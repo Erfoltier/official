@@ -405,7 +405,8 @@ final class Store
         }
         // 照射が使う機器の名前（同じ名前の日曜メニューと時間が重ならないようにする）
         // 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか
-        foreach (['tattooKindOn', 'artmakeKindOn'] as $k) {
+        // 予約申請フォームの希望日時に、日曜の予約ページへの案内を出すか（院長 11/26：日曜をやるときだけオン）
+        foreach (['tattooKindOn', 'artmakeKindOn', 'sundayIntakeLink'] as $k) {
             if (array_key_exists($k, $input)) {
                 $next[$k] = (bool) $input[$k];
             }

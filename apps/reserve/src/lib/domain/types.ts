@@ -752,6 +752,8 @@ export interface ClinicSettings {
   tattooLiffId?: string;
   /** 日曜メニューのうち、タトゥー除去・アートメイク除去をそれぞれ受け付けるか（省くとオン） */
   tattooKindOn?: boolean;
+  /** 予約申請フォームの希望日時に、日曜の予約ページへの案内を出す */
+  sundayIntakeLink?: boolean;
   artmakeKindOn?: boolean;
   /** タトゥーの照射に使う機器の名前。同じ名前の日曜メニューと同じ時刻に入れない */
   tattooMachine?: string;

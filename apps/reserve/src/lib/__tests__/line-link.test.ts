@@ -156,6 +156,16 @@ describe("予約申請を DB に保存する（monshin/intake-submit-v1.php）",
     expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).counseling).toBe(false);
     await c.patch("/clinic", { intakeCounseling: true });
     expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).counseling).toBe(true);
+    // 日曜予約の案内：設定でオン、かつ日曜の Web 予約がオンのときだけアドレスが出る（院長 11/26）
+    const conf = async () => (await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).sundayLink;
+    expect(await conf()).toBe("");
+    await c.patch("/clinic", { sundayIntakeLink: true, tattooLiffId: "1234567890-SuNdAy" });
+    expect(await conf()).toBe("");
+    await c.patch("/clinic", { tattooEnabled: true });
+    expect(await conf()).toBe("https://liff.line.me/1234567890-SuNdAy");
+    expect((await c.get("/settings")).clinic.sundayIntakeLink).toBe(true);
+    await c.patch("/clinic", { sundayIntakeLink: false });
+    expect(await conf()).toBe("");
     const no = await send(base);
     expect(no.status).toBe(422);
     expect(((await no.json()) as { error: string }).error).toBe("joint_use_consent_required");

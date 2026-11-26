@@ -269,6 +269,12 @@ async function initialize() {
       clinic = config.clinic || {};
       applyClinic(clinic);
       applyCounseling(config.counseling === true);
+      // 日曜の予約ページへの案内（設定でオンのときだけ）
+      const sunday = document.querySelector('#sunday-link');
+      if (sunday && typeof config.sundayLink === 'string' && /^https:\/\//.test(config.sundayLink)) {
+        sunday.href = config.sundayLink;
+        sunday.hidden = false;
+      }
     }
   } catch (_) {
     // Static fallback is loaded below.

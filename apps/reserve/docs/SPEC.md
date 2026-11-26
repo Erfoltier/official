@@ -48,6 +48,7 @@
 | サーバー | AWS EC2 `i-080e478ee9bffc889`（東京、Amazon Linux 2023、Apache、PHP 8.3、SQLite） |
 | 予約画面 | `https://reserve.ishidahihuka.jp/`（Basic認証＋スタッフPIN） |
 | 問診票 | `https://monshin.ishidahihuka.jp/`（LINE の Webhook・LIFF もここ）。LINE 以外（メールのリンクなど）からはトップの `index.php` の入力画面。送れなかったときは、上と送信ボタンのすぐ上の両方に直す所を出し、理由を Apache の error_log に `monshin-diag`（入力の中身は残さず、どの質問が空か・どこで止まったかだけ。PHP-FPM の `/var/log/php-fpm/www-error.log`）で残す。Referrer-Policy は same-origin（no-referrer だと Safari が送り元を null にして送れなくなる） |
+| 予約申請フォームの日曜予約の案内 | 設定の Web予約設定 →「予約申請フォームに日曜予約の案内を出す」（押すとすぐ保存、`clinic.sundayIntakeLink`）がオンで、日曜の Web 予約もオンのときだけ、希望日時に「一部メニュー限定の日曜予約はこちら」のリンク（日曜の予約ページの LIFF、なければ Web のアドレス。`TattooBooking::intakeLink` → `intake-config.php` の `sundayLink`） |
 | 患者向けの表示 | 院名（正式・英語）・診療科・受付日時の案内・受け付ける曜日・特別診療日・プライバシーポリシー・ホームページは `clinic` の設定（`Store::publicInfo`）。予約申請フォームは `intake-config.php` から、問診票の見出しは `theme.php` から読む。ロゴは `monshin/assets/logo.webp` と `monshin/intake/assets/clinic-mark.png`（院ごとに差し替え） |
 | プログラム | `/srv/reserve/releases/<コミット>/app`、`/srv/reserve/app` がその時の版へのリンク |
 | 設定 | `/srv/reserve/private/config.php`（暗号鍵・連携トークンなど。リポジトリに入れない） |
