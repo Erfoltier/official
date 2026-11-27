@@ -660,6 +660,26 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect((await lanesOn(c, day, MAIN)).slice(-1)).toEqual([[toIso(day, 650), toIso(day, 665)]]);
   });
 
+  it("ジェントルマックスプロのメニューは、レーンを1番・3番にしても1番だけ（機器の置き場所。院長 11/28）。ルールは ClinicRules にまとめる", async () => {
+    const day = nextSunday();
+    const shower = { ...peel, id: "shower01", name: "レーザーシャワー", machine: "ジェントルマックスプロ", repeatLaneIds: [L1, L3] };
+    const c = await open(day, { sundayMenus: [botox, shower] });
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09015151515" });
+    // 1番が 10:00〜10:30 埋まっている → 3番は空いていても 10:00 には入れない
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [CONSULT], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    expect((await slots("item=shower01&visit=repeat")).slots[day]?.[0]).toBe("10:30");
+    const out = await h.srv.php(`return [
+      ClinicRules::lanes(['lane-1', 'lane-3'], ClinicRules::GENTLEMAX),
+      ClinicRules::lanes(['lane-main'], ClinicRules::CO2),
+      ClinicRules::lanes(['lane-1', 'lane-3'], ClinicRules::PICO),
+      ClinicRules::usesMachine('レーザー脱毛（女性） VIO', ClinicRules::GENTLEMAX),
+      ClinicRules::usesMachine('針脱毛 初診説明（レーザー脱毛と両方の希望もまとめて15分）', ClinicRules::GENTLEMAX),
+      ClinicRules::usesMachine('炭酸ガスフラクショナル麻酔', ClinicRules::CO2),
+      ClinicRules::usesMachine('Qスイッチルビーレーザー（シミ）', ClinicRules::PICO),
+    ];`);
+    expect(out).toEqual([["lane-1"], ["lane-main", "lane-3"], ["lane-1", "lane-3"], true, false, false, true]);
+  });
+
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);

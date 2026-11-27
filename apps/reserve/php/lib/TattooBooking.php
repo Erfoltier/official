@@ -117,15 +117,12 @@ final class TattooBooking
     private const M = 'lane-main';
     private const N = ['lane-1', 'lane-3'];
     private const MEMO = 'menu-s000099DC1'; // 予約（メモに自由記載）
-    /** 機器（各1台。同じ機器は同じ時刻に重ねない。院長 11/20）。ジェントルマックスプロ：レーザー脱毛・レーザーシャワー・タイトニング（1番レーンだけ）。ピコ：タトゥー・アートメイク・シミ取り・黒ずみトーニング */
-    public const GENTLEMAX = 'ジェントルマックスプロ';
-    public const PICO = 'ディスカバリーピコプラス';
-    /** 炭酸ガスレーザー。ピコと同じ2番ベッド（メイン）に置いてあり、ピコを使っている間は3番へ動かして3番で施術する（院長 11/27） */
-    public const CO2 = '炭酸ガス';
-    public const BED2_LANE = 'lane-main';
-    /** 予約メニューの名前にこの言葉が入っていれば、その機器を使う（院内で入れた予約も重ねないため） */
-    public const MACHINE_WORDS = [self::PICO => ['シミ'], self::CO2 => ['ほくろ', '炭酸ガス']];
-    public const CO2_MOVE_LANE = 'lane-3';
+    /** 機器・ベッド・レーンのルールは ClinicRules にまとめてある（院長 11/28） */
+    public const GENTLEMAX = ClinicRules::GENTLEMAX;
+    public const PICO = ClinicRules::PICO;
+    public const CO2 = ClinicRules::CO2;
+    public const BED2_LANE = ClinicRules::MAIN;
+    public const CO2_MOVE_LANE = ClinicRules::MACHINES[ClinicRules::CO2]['moveTo'];
     /** 黒ずみ美白トーニング（院長 11/21） */
     public const TONING_MENU = '黒ずみトーニング';
     private const TONING_PARTS = ['リップ（唇・口角。アートメイク不可）', '両脇', 'ニップル（乳首＋乳輪）', 'デリケートゾーン（V・I）', '臀部（Oライン不可）'];
@@ -1169,8 +1166,7 @@ final class TattooBooking
         return $out;
     }
 
-    /** 出勤スタッフがいなくても予約を入れられるレーン（メインは医師のレーン。予約を受ける日は医師が必ずいる） */
-    public const STAFF_FREE_LANES = ['lane-main'];
+    public const STAFF_FREE_LANES = ClinicRules::STAFF_FREE_LANES;
 
     /**
      * レーンの埋まっている時間。メイン以外（1番・3番など）は、その日の Todaysメモに出勤スタッフの名前が入っていなければ
@@ -1179,7 +1175,7 @@ final class TattooBooking
     private static function laneBusy(string $date, string $lane): array
     {
         $busy = Store::busyMinutes($date, $lane);
-        if ($lane !== '' && !in_array($lane, self::STAFF_FREE_LANES, true) && !self::staffed($date, $lane)) {
+        if (ClinicRules::needsStaff($lane) && !self::staffed($date, $lane)) {
             $busy[] = [0, 24 * 60];
         }
         return $busy;
@@ -1212,13 +1208,10 @@ final class TattooBooking
                 $ids[] = $it['repeatMenuId'];
             }
         }
-        // 名前に「シミ」が付く予約メニューはすべてピコ（ルビーレーザーもピコで出す）、「ほくろ」「炭酸ガス」は炭酸ガスレーザー（院長 11/27）
-        foreach (self::MACHINE_WORDS[$machine] ?? [] as $word) {
-            foreach (Db::i()->all('menu') as $m) {
-                // 「…麻酔」は麻酔の時間なので機器は使わない
-                if (empty($m['deleted']) && str_contains((string) ($m['name'] ?? ''), $word) && !str_contains((string) ($m['name'] ?? ''), '麻酔')) {
-                    $ids[] = (string) $m['id'];
-                }
+        // 予約メニューの名前からも（シミ → ピコ、ほくろ・炭酸ガス → 炭酸ガス、レーザー脱毛など → ジェントルマックスプロ。ClinicRules::MACHINES）
+        foreach (Db::i()->all('menu') as $m) {
+            if (empty($m['deleted']) && ClinicRules::usesMachine((string) ($m['name'] ?? ''), $machine)) {
+                $ids[] = (string) $m['id'];
             }
         }
         return array_values(array_unique(array_filter($ids, fn($x) => $x !== '')));
@@ -1270,11 +1263,6 @@ final class TattooBooking
         return [];
     }
 
-    /** 炭酸ガスなら、メインのほかに3番も（ピコを使っている時に動かす先） */
-    private static function co2Lanes(array $lanes, string $machine): array
-    {
-        return $machine === self::CO2 && in_array(self::BED2_LANE, $lanes, true) && !in_array(self::CO2_MOVE_LANE, $lanes, true) ? [...$lanes, self::CO2_MOVE_LANE] : $lanes;
-    }
 
     /** タトゥー・アートメイクのどちらかを受け付けられるか（受け付けがオンで、照射のレーンとメニューがあり、どちらかがオン） */
     public static function ready(?array $s = null): bool
@@ -1776,7 +1764,7 @@ final class TattooBooking
             $found = [];
             $forced = [];
             $freeAt = array_column($machineBusy, 1);
-            foreach (self::co2Lanes($it[$k . 'LaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
+            foreach (ClinicRules::lanes($it[$k . 'LaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
                 foreach (self::gaps($windows, self::laneBusy($date, $lane)) as [$gs, $ge, $ws, $we]) {
                     if ($ge - $gs < $len) {
                         continue;
@@ -1862,7 +1850,7 @@ final class TattooBooking
             $co2 = ($it['machine'] ?? '') === self::CO2;
             $picoBusy = $co2 ? self::machineBusyOf($date, self::PICO, $s) : [];
             $found = [];
-            foreach (self::co2Lanes($it['repeatLaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
+            foreach (ClinicRules::lanes($it['repeatLaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
                 foreach (self::gaps($windows, $busy($lane)) as [$gs, $ge, $ws, $we]) {
                     if ($ge - $gs < $treat) {
                         continue;
@@ -2539,7 +2527,7 @@ final class TattooBooking
                 }
                 $st = $jobs[$j]['steps'][$k];
                 $end = $start + $st['len'];
-                foreach (self::co2Lanes($st['lanes'], $st['machine']) as $lane) {
+                foreach (ClinicRules::lanes($st['lanes'], $st['machine']) as $lane) {
                     if (!$free($lane, $st['machine'], $start, $end, $placed)) {
                         continue;
                     }
