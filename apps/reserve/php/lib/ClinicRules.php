@@ -14,6 +14,7 @@ final class ClinicRules
     public const GENTLEMAX = 'ジェントルマックスプロ';
     public const PICO = 'ディスカバリーピコプラス';
     public const CO2 = '炭酸ガス';
+    public const INNERFILL = 'インナーフィル';
 
     /** 出勤スタッフがいなくても予約を入れられるレーン（メインは医師。予約を受ける日は医師が必ずいる）。ほかは Todaysメモに名前がある日だけ（院長 11/27） */
     public const STAFF_FREE_LANES = [self::MAIN];
@@ -24,23 +25,29 @@ final class ClinicRules
      *   words  … 予約メニューの名前にこの言葉があれば、その機器を使う（院内で入れた予約も重ねないため）
      *   bed    … 置いてあるベッド（レーン）。同じベッドの機器は同じ時刻に使えない
      *   moveTo … 同じベッドのほかの機器を使っている間に、動かして施術するレーン
+     *   except … 名前にこの言葉があれば、words に合っても機器を使わない
+     * 機器はどれも1台（院長 11/28）。機器のない施術（ピーリングなど。薬剤がたくさんある）は、1番・3番で同じ時刻に入れてよい
      */
     public const MACHINES = [
         // 1番ベッドに設置：レーザー脱毛・レーザーシャワー・タイトニングレーザー（院長 11/20・11/28）
-        self::GENTLEMAX => ['lanes' => ['lane-1'], 'words' => ['レーザー脱毛', 'レーザーシャワー', 'タイトニング'], 'bed' => null, 'moveTo' => null],
+        self::GENTLEMAX => ['lanes' => ['lane-1'], 'words' => ['レーザー脱毛', 'レーザーシャワー', 'タイトニング'], 'bed' => null, 'moveTo' => null, 'except' => []],
         // 2番ベッドに設置：タトゥー除去・アートメイク除去・シミ（ルビーも出せる）・黒ずみトーニング（院長 11/21・11/27）
-        self::PICO => ['lanes' => null, 'words' => ['シミ'], 'bed' => self::MAIN, 'moveTo' => null],
+        self::PICO => ['lanes' => null, 'words' => ['シミ'], 'bed' => self::MAIN, 'moveTo' => null, 'except' => []],
         // 2番ベッドに設置：ほくろ除去・炭酸ガスフラクショナル。ピコを使っている間は3番へ動かす（院長 11/27）
-        self::CO2 => ['lanes' => null, 'words' => ['ほくろ', '炭酸ガス'], 'bed' => self::MAIN, 'moveTo' => 'lane-3'],
+        // 「炭酸ガスフラクショナル麻酔」は麻酔クリームの時間なので使わない
+        self::CO2 => ['lanes' => null, 'words' => ['ほくろ', '炭酸ガス'], 'bed' => self::MAIN, 'moveTo' => 'lane-3', 'except' => ['麻酔']],
+        // スタンプ注射の機械：フィルロード・トラネ+ピンク・ピンクグロー・トラネキサム酸スタンプ注射・ジュブアセル（看護師施術）・リジュラン（看護師施術、導入予定）。
+        // 手打ちは使わない。局所麻酔注射のときは麻酔のあとすぐ施術（クリームのような待ちはない。院長 11/28）
+        self::INNERFILL => ['lanes' => null, 'words' => ['フィルロード', 'トラネ注射', '機械打ち', 'ジュブアセル看護師', 'リジュラン看護師'], 'bed' => null, 'moveTo' => null, 'except' => ['手打ち']],
     ];
 
-    /** 名前にこの言葉があるメニューは機器を使わない（麻酔の時間・説明の時間） */
-    public const NOT_MACHINE_WORDS = ['麻酔', '説明'];
+    /** 名前にこの言葉があるメニューは、どの機器も使わない（説明の時間） */
+    public const NOT_MACHINE_WORDS = ['説明'];
 
     /** 予約メニューの名前から、その機器を使うか */
     public static function usesMachine(string $menuName, string $machine): bool
     {
-        foreach (self::NOT_MACHINE_WORDS as $w) {
+        foreach ([...self::NOT_MACHINE_WORDS, ...(self::MACHINES[$machine]['except'] ?? [])] as $w) {
             if (str_contains($menuName, $w)) {
                 return false;
             }

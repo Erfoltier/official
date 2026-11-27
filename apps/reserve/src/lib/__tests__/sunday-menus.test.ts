@@ -676,8 +676,14 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       ClinicRules::usesMachine('針脱毛 初診説明（レーザー脱毛と両方の希望もまとめて15分）', ClinicRules::GENTLEMAX),
       ClinicRules::usesMachine('炭酸ガスフラクショナル麻酔', ClinicRules::CO2),
       ClinicRules::usesMachine('Qスイッチルビーレーザー（シミ）', ClinicRules::PICO),
+      // インナーフィル（院長 11/28）：機械打ちは麻酔の種類によらず使う。手打ちは使わない
+      ClinicRules::usesMachine('フィル・TAピンク 機械打ち（麻酔注射）', ClinicRules::INNERFILL),
+      ClinicRules::usesMachine('フィル・TAピンク 手打ち（麻酔注射）', ClinicRules::INNERFILL),
+      ClinicRules::usesMachine('ジュブアセル看護師施術', ClinicRules::INNERFILL),
+      ClinicRules::usesMachine('ジュブアセル医師施術', ClinicRules::INNERFILL),
+      ClinicRules::usesMachine('トラネ注射', ClinicRules::INNERFILL),
     ];`);
-    expect(out).toEqual([["lane-1"], ["lane-main", "lane-3"], ["lane-1", "lane-3"], true, false, false, true]);
+    expect(out).toEqual([["lane-1"], ["lane-main", "lane-3"], ["lane-1", "lane-3"], true, false, false, true, true, false, true, false, true]);
   });
 
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {

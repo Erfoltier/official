@@ -408,11 +408,11 @@ final class TattooBooking
             'flow' => true, 'creamMinutes' => $cream, 'injectionMinutes' => $inj, 'anesLaneIds' => $lane(['lane-4']),
             'creamMenuId' => $menu(self::MEMO), 'neoboMenuId' => $menu('menu-s0000B6B52'), 'doctorMenuId' => $menu(self::MEMO), 'doctorLaneId' => in_array(self::M, $lanes, true) ? self::M : '',
         ];
-        $out[] = $flow('fillroad', 'フィルロード', self::N, 'menu-s0000B6EB7', 20, 20, 'インナーフィル');
-        $out[] = $flow('tapink', 'トラネ＋ピンク（TAピンク）', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
-        $out[] = $flow('pinkglow', 'ピンクグロー', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
-        $out[] = $flow('tranestamp', 'トラネキサム酸スタンプ注射', self::N, 'menu-s0000B6EB5', 20, 20, 'インナーフィル');
-        $out[] = $flow('juveacell', 'ジュブアセル', self::N, 'menu-s0000D0B81', 30, 30, 'インナーフィル');
+        $out[] = $flow('fillroad', 'フィルロード', self::N, 'menu-s0000B6EB7', 20, 20, ClinicRules::INNERFILL);
+        $out[] = $flow('tapink', 'トラネ＋ピンク（TAピンク）', self::N, 'menu-s0000B6EB5', 20, 20, ClinicRules::INNERFILL);
+        $out[] = $flow('pinkglow', 'ピンクグロー', self::N, 'menu-s0000B6EB5', 20, 20, ClinicRules::INNERFILL);
+        $out[] = $flow('tranestamp', 'トラネキサム酸スタンプ注射', self::N, 'menu-s0000B6EB5', 20, 20, ClinicRules::INNERFILL);
+        $out[] = $flow('juveacell', 'ジュブアセル', self::N, 'menu-s0000D0B81', 30, 30, ClinicRules::INNERFILL);
         $out[] = $flow('re2o', 'リトゥオ', [self::M], 'menu-s0000D14AA', 30, 30, '');
         // ダーマペン系・炭酸ガス（予約エンジンルール「複合/麻酔施術」：麻酔クリーム10分の40〜60分後に施術。ダーマペン系は共通機器でレーン横断の重複禁止。炭酸ガスの施術はメイン）。
         // 施術時間：ヴェルヴェット・スーパーヴェルヴェットは時間表の20分、ダーマペンは30分（自由10〜90分のため仮。オンにする前に確かめる）、炭酸ガスは全顔15分
