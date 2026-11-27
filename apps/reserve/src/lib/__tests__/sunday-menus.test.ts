@@ -623,6 +623,24 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       expect(t + 20 <= 690 || t >= 710).toBe(true);
     }
   });
+  it("ほくろ除去も炭酸ガスレーザー：ピコを使っている間は3番へ（医師の枠をメインに）。ほくろの名の予約とはピコの施術を重ねない（院長 11/27）", async () => {
+    const day = nextSunday(4);
+    const c = await h.srv.as("staff-admin");
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    const hokuro = { ...presets.find((x: any) => x.id === "hokuro"), enabled: true };
+    const co2 = { ...presets.find((x: any) => x.id === "co2frac"), enabled: true };
+    expect(hokuro.machine).toBe("炭酸ガス");
+    const toning = { ...peel, machine: "ディスカバリーピコプラス" };
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooMachine: "ディスカバリーピコプラス", tattooSlots: [`${day} 10:00-12:00`], sundayMenus: [botox, toning, hokuro, co2] });
+    await staffAll([`${day} 10:00-12:00`]);
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09013131313" });
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [PEEL], startAt: toIso(day, 600), endAt: toIso(day, 620) });
+    expect((await slots("item=hokuro&visit=first&group=0&parts=0")).slots[day]).toContain("10:00");
+    expect((await book(person(day, "10:00", { item: "hokuro", visit: "first", group: "0", parts: [0] }, "09077770002"))).status).toBe(201);
+    expect(await lanesOn(c, day, L3)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+  });
+
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);
