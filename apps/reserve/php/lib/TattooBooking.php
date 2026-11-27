@@ -123,6 +123,8 @@ final class TattooBooking
     public const CO2 = ClinicRules::CO2;
     public const BED2_LANE = ClinicRules::MAIN;
     public const CO2_MOVE_LANE = ClinicRules::MACHINES[ClinicRules::CO2]['moveTo'];
+    /** 針脱毛の確定の連絡・予約ページの「ご来院前のお願い」（院長 11/28） */
+    public const NEEDLE_NOTICE = '施術の約14日前を目安に、施術をご希望の部位の毛を一度剃り、その後は剃らずに伸ばした状態でお越しください。';
     /** 黒ずみ美白トーニング（院長 11/21） */
     public const TONING_MENU = '黒ずみトーニング';
     private const TONING_PARTS = ['リップ（唇・口角。アートメイク不可）', '両脇', 'ニップル（乳首＋乳輪）', 'デリケートゾーン（V・I）', '臀部（Oライン不可）'];
@@ -459,10 +461,10 @@ final class TattooBooking
         $out[] = [
             // 初診も受ける（院長 11/20）：説明15分に続けて本数の施術（3番レーン）
             'id' => 'needlehair', 'name' => '針脱毛', 'enabled' => false,
-            'firstMinutes' => 15, 'firstLaneIds' => $lane(['lane-3']), 'firstMenuId' => $menu('menu-s0000A43A3'),
-            // 針脱毛の機器は1台で3番レーンだけ（院長 11/20）
-            'repeatMinutes' => 0, 'repeatLaneIds' => $lane(['lane-3']), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
-            'machine' => '', 'note' => '', 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90, 'needle' => true,
+            'firstMinutes' => 15, 'firstLaneIds' => $lane(['lane-3', 'lane-1']), 'firstMenuId' => $menu('menu-s0000A43A3'),
+            // 針脱毛の機器は1台。なるべく3番、だめなら1番（院長 11/28）
+            'repeatMinutes' => 0, 'repeatLaneIds' => $lane(['lane-3', 'lane-1']), 'repeatMenuId' => $menu('menu-s0000B6B1C'),
+            'machine' => ClinicRules::NEEDLE, 'note' => self::NEEDLE_NOTICE, 'partGroups' => [], 'countPerMinute' => 4, 'maxMinutes' => 90, 'needle' => true,
         ];
         // 体・唇の黒ずみ美白トーニング（女性看護師が照射。機器はディスカバリーピコプラス：タトゥー・シミ取りと同じ。院長 11/21）
         // 初診：脱毛と同じく1番・3番で説明10分＋照射（1部位10分、追加1部位ごとに5分）。再診：1部位10分、追加1部位ごとに5分（院長 11/21）
@@ -1169,6 +1171,39 @@ final class TattooBooking
     public const STAFF_FREE_LANES = ClinicRules::STAFF_FREE_LANES;
 
     /**
+     * $lane の予約のうち、同じ時刻のまま相手のレーン（1番⇔3番）へ入れ替えられるもの [[id, 開始分, 終了分, version, 相手のレーン], ...]。
+     * 相手のレーンがその時間空いている（スタッフがいる）ものだけ
+     */
+    private static function swappable(string $date, string $lane): array
+    {
+        $to = ClinicRules::SWAP_LANES[$lane] ?? null;
+        if ($to === null) {
+            return [];
+        }
+        $toBusy = self::laneBusy($date, $to);
+        return array_values(array_filter(
+            array_map(fn($m) => [...$m, $to], Store::movableOnLane($date, $lane, $to)),
+            fn($m) => !self::overlaps($toBusy, $m[1], $m[2])
+        ));
+    }
+
+    /**
+     * その日に施術できるレーン：機器の置き場所で絞る（ClinicRules::lanes）。ただし1番・3番の片方にしか看護師がいない日は、
+     * 置き場所で決まっている機器（レーザー脱毛・針脱毛）もその看護師のレーンに入れる（看護師が1番・3番を行き来すればよい。院長 11/28）
+     */
+    private static function lanesOn(string $date, array $lanes, string $machine): array
+    {
+        if (ClinicRules::isLaneRestricted($machine)) {
+            $pair = array_keys(ClinicRules::SWAP_LANES);
+            $staffed = array_values(array_filter($pair, fn($l) => self::staffed($date, $l)));
+            if (count($staffed) === 1 && array_intersect($lanes, $pair) !== []) {
+                return [$staffed[0]];
+            }
+        }
+        return ClinicRules::lanes($lanes, $machine);
+    }
+
+    /**
      * レーンの埋まっている時間。メイン以外（1番・3番など）は、その日の Todaysメモに出勤スタッフの名前が入っていなければ
      * 一日中埋まっている扱いにして、日曜の予約を入れない（院長 11/27）
      */
@@ -1201,8 +1236,9 @@ final class TattooBooking
         foreach ($s['items'] as $it) {
             // Web で受け付けていないメニュー（シミ取りなど）も、院内で入れた予約は同じ機器を使うので含める（院長 11/27：ピコは1台）
             if (($it['machine'] ?? '') === $machine) {
-                // 初診で機器を使うのは、部位・本数で時間が決まるもの（脱毛など：説明に続けて照射）だけ。ほかの初診は医師の診察
-                if (!self::isFlow($it) && self::variable($it) && empty($it['firstFixed'])) {
+                // 初診で機器を使うのは、部位・本数で時間が決まるもの（脱毛など：説明に続けて照射）だけ。ほかの初診は医師の診察。
+                // 初診の予約には施術のメニューも入るので、施術のメニューがあれば初診（説明）のメニューは数えない（脱毛の説明はレーザー・針で共通のため）
+                if (!self::isFlow($it) && self::variable($it) && empty($it['firstFixed']) && ($it['repeatMenuId'] ?? '') === '') {
                     $ids[] = $it['firstMenuId'];
                 }
                 $ids[] = $it['repeatMenuId'];
@@ -1764,8 +1800,33 @@ final class TattooBooking
             $found = [];
             $forced = [];
             $freeAt = array_column($machineBusy, 1);
-            foreach (ClinicRules::lanes($it[$k . 'LaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
-                foreach (self::gaps($windows, self::laneBusy($date, $lane)) as [$gs, $ge, $ws, $we]) {
+            // 置き場所でレーンが決まっている機器（レーザー脱毛は1番、針脱毛はなるべく3番）は、そのレーンの予約のうち
+            // 1番・3番どちらでもよいものを相手のレーンへ入れ替えれば入る時刻も（入れ替えない時刻を優先。院長 11/28）
+            $swapOk = !$monitor && ClinicRules::isLaneRestricted((string) ($it['machine'] ?? ''));
+            $modes = [];
+            foreach (self::lanesOn($date, $it[$k . 'LaneIds'], (string) ($it['machine'] ?? '')) as $l) {
+                $modes[] = [$l, false];
+                if ($swapOk) {
+                    $modes[] = [$l, true];
+                }
+            }
+            foreach ($modes as [$lane, $swap]) {
+                $swaps = $swap ? self::swappable($date, $lane) : [];
+                if ($swap && $swaps === []) {
+                    continue;
+                }
+                $laneBusyNow = self::laneBusy($date, $lane);
+                if ($swap) {
+                    // 入れ替えられる予約の時間を外す
+                    foreach ($swaps as [, $sa, $sb]) {
+                        $i = array_search([$sa, $sb], $laneBusyNow, true);
+                        if ($i !== false) {
+                            unset($laneBusyNow[$i]);
+                        }
+                    }
+                    $laneBusyNow = array_values($laneBusyNow);
+                }
+                foreach (self::gaps($windows, $laneBusyNow) as [$gs, $ge, $ws, $we]) {
                     if ($ge - $gs < $len) {
                         continue;
                     }
@@ -1801,13 +1862,27 @@ final class TattooBooking
                         if ($date === $now['date'] && $arrive <= $now['minutes']) {
                             continue;
                         }
-                        $found[] = $segs === null ? [self::hm($arrive), $start, $lane] : [self::hm($arrive), $start, $lane, $segs];
+                        $moves = $swap ? array_values(array_filter($swaps, fn($m) => $m[1] < $start + $len && $start < $m[2])) : [];
+                        if ($swap && $moves === []) {
+                            continue;
+                        }
+                        $found[] = $swap ? [self::hm($arrive), $start, $lane, $segs, $moves] : ($segs === null ? [self::hm($arrive), $start, $lane] : [self::hm($arrive), $start, $lane, $segs]);
                         // 機器が空いたすぐ後の時刻は、隙間が残っても出す（院長 11/28）
                         if (in_array($start, $freeAt, true)) {
                             $forced[] = $arrive;
                         }
                     }
                 }
+            }
+            // 優先するレーンが決まっている機器（針脱毛：なるべく3番）は、同じ来院の時刻なら先のレーン・入れ替えのないほうだけ残す
+            if (ClinicRules::isLaneRestricted((string) ($it['machine'] ?? ''))) {
+                $seen = [];
+                $found = array_values(array_filter($found, function ($c) use (&$seen) {
+                    if (isset($seen[$c[0]])) {
+                        return false;
+                    }
+                    return $seen[$c[0]] = true;
+                }));
             }
             $found = self::tidy($date, $windows, $found, fn($c) => isset($c[3]) ? array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]) : [[$c[2], $c[1], $c[1] + $len]], $forced);
             if ($found) {
@@ -2195,6 +2270,10 @@ final class TattooBooking
             $segs = $slot[3] ?? null;
             try {
                 $pat = Store::bookingEnsurePatient(['name' => $f['name'], 'kana' => $f['kana'], 'birthDate' => $f['birthDate'], 'phone' => $f['phone'], 'email' => $f['email'], 'sex' => self::sexOfPick($it, $pick)], self::ACTOR);
+                // 1番・3番どちらでもよい予約を、同じ時刻のまま相手のレーンへ入れ替えて場所を空ける（院長 11/28）
+                foreach ($slot[4] ?? [] as [$mid, , , $mver, $mto]) {
+                    Store::bookingUpdate($mid, ['laneId' => $mto, 'version' => $mver], ['id' => 'web-tattoo', 'name' => '日曜Web予約（1番・3番の入れ替え）']);
+                }
             } catch (StoreError $e) {
                 return ['ok' => false, 'error' => 'contact_us'];
             }
@@ -2521,13 +2600,13 @@ final class TattooBooking
                 return true;
             };
             // 仕事 $j の段 $k を $start から置く。置けたら全部の枠、置けなければ null
-            $place = function (int $j, int $k, int $start, array $placed) use (&$place, $jobs, $free): ?array {
+            $place = function (int $j, int $k, int $start, array $placed) use (&$place, $jobs, $free, $date): ?array {
                 if ($j >= count($jobs)) {
                     return $placed;
                 }
                 $st = $jobs[$j]['steps'][$k];
                 $end = $start + $st['len'];
-                foreach (ClinicRules::lanes($st['lanes'], $st['machine']) as $lane) {
+                foreach (self::lanesOn($date, $st['lanes'], $st['machine']) as $lane) {
                     if (!$free($lane, $st['machine'], $start, $end, $placed)) {
                         continue;
                     }

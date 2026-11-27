@@ -1750,6 +1750,38 @@ final class Store
         return $a === null ? null : [$a, $b];
     }
 
+    /**
+     * $from レーンの予約のうち、同じ時刻のまま $to レーンへ入れ替えられるもの [[id, 開始分, 終了分, version], ...]。
+     * 予約中（来院前）で、まだ始まっていない、予約不可の枠でない、メニューがどれも $to レーンで使える予約だけ。
+     * $to が空いているかは呼ぶ側で見る（院長 11/28：1番・3番の中身を入れ替えて、針脱毛を3番・レーザー脱毛を1番に）
+     */
+    public static function movableOnLane(string $date, string $from, string $to): array
+    {
+        self::init();
+        $out = [];
+        $now = time() * 1000;
+        foreach (self::reservationsOn($date) as $r) {
+            if ($r['laneId'] !== $from || self::inactive($r) || ($r['status'] ?? 'booked') !== 'booked' || parse_ms($r['startAt']) <= $now) {
+                continue;
+            }
+            $p = !empty($r['patientId']) ? (self::patients()[$r['patientId']] ?? null) : null;
+            if (self::m3IsBlock($r, $p) || ($r['menuIds'] ?? []) === []) {
+                continue;
+            }
+            $ok = true;
+            foreach ($r['menuIds'] as $mid) {
+                $m = self::menus()[$mid] ?? null;
+                if ($m === null || !in_array($to, $m['laneIds'] ?? [], true)) {
+                    $ok = false;
+                }
+            }
+            if ($ok) {
+                $out[] = [$r['id'], minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt']), $r['version']];
+            }
+        }
+        return $out;
+    }
+
     /** 予約不可の枠（メニューか患者の名前に「予約不可」）は写さない */
     private static function m3IsBlock(array $r, ?array $patient): bool
     {

@@ -123,7 +123,9 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(laser.partGroups[1].parts.map((x: any) => x.name)).toContain("両頬");
     expect(women.some((x: string) => x.includes("+顎"))).toBe(false);
     expect(laser).toMatchObject({ neobo: false, creamAsk: true });
-    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ name: "針脱毛", countPerMinute: 4, maxMinutes: 90, firstMinutes: 15, firstLaneIds: [L3], firstMenuId: "menu-s0000A43A3", needle: true });
+    expect(presets.find((x: any) => x.id === "needlehair")).toMatchObject({ name: "針脱毛", countPerMinute: 4, maxMinutes: 90, firstMinutes: 15, firstLaneIds: [L3, L1], firstMenuId: "menu-s0000A43A3", needle: true, machine: "針脱毛の機器" });
+    // 針脱毛は確定の連絡に、約14日前に一度剃って伸ばしてくる案内（院長 11/28）
+    expect(presets.find((x: any) => x.id === "needlehair").note).toContain("約14日前");
     await c.patch("/clinic", { sundayMenus: presets.map((x: any) => (["laserhair", "needlehair"].includes(x.id) ? { ...x, enabled: true } : x)) });
     // 予約枠時間一覧（スプレッドシート）を Google 連携の鍵で受け取ると、保存済みのレーザー脱毛の時間が入れ替わる
     const rows = [["主に看護師レーン", ""], ["", ""], ["レーザー脱毛", "施術後の掃除とカルテ記載込み"], ["初診説明", "15分"], ["男", ""], ["下肢全部", "90"], ["大腿", "40"], ["下腿～足先", "40"], ["膝", "10"], ["下腿", "30"], ["両頬", "5"], ["鼻下", "10"], ["顎", "10"], ["顎下", "10"], ["鼻下+顎+顎下", "15"], ["鼻下+顎", "10"], ["眉", "10"], ["前腕", "20"], ["前腕～手先", "25"], ["へそ回り", "5"], ["V", "5"], ["IO", "20"], ["VIO", "30"], ["両ワキ", "5"], ["乳輪", "5"], ["肘上10cm", "5"], ["手＋指", "5"], ["足甲～指先", "5"], ["", ""], ["", ""], ["女", ""], ["下肢全部", "60"], ["大腿", "30"], ["下腿～足先", "30"], ["膝", "10"], ["下腿", "20"], ["", ""], ["鼻下", "5"], ["顎", "5"], ["顎下", "5"], ["鼻下+顎+顎下", "10"], ["鼻下+顎", "10"], ["眉", "10"], ["前腕", "20"], ["前腕～手先", "25"], ["へそ回り", "5"], ["V", "5"], ["IO", "15"], ["VIO", "20"], ["両ワキ", "5"], ["乳輪", "5"], ["肘上10cm", "5"], ["手＋指", "5"], ["足甲～指先", "5"]];
@@ -665,8 +667,10 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const shower = { ...peel, id: "shower01", name: "レーザーシャワー", machine: "ジェントルマックスプロ", repeatLaneIds: [L1, L3] };
     const c = await open(day, { sundayMenus: [botox, shower] });
     const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09015151515" });
-    // 1番が 10:00〜10:30 埋まっている → 3番は空いていても 10:00 には入れない
-    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [CONSULT], startAt: toIso(day, 600), endAt: toIso(day, 630) });
+    // 1番が 10:00〜10:30 埋まっている（3番へ入れ替えられないメニュー）→ 3番は空いていても 10:00 には入れない
+    const fixedMenu = await h.srv.php(`foreach (Db::i()->all('menu') as $m) if (empty($m['deleted']) && in_array('lane-1', $m['laneIds'] ?? [], true) && !in_array('lane-3', $m['laneIds'] ?? [], true)) return $m['id']; return '';`);
+    expect(fixedMenu).not.toBe("");
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [fixedMenu], startAt: toIso(day, 600), endAt: toIso(day, 630) });
     expect((await slots("item=shower01&visit=repeat")).slots[day]?.[0]).toBe("10:30");
     const out = await h.srv.php(`return [
       ClinicRules::lanes(['lane-1', 'lane-3'], ClinicRules::GENTLEMAX),
@@ -684,6 +688,52 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
       ClinicRules::usesMachine('トラネ注射', ClinicRules::INNERFILL),
     ];`);
     expect(out).toEqual([["lane-1"], ["lane-main", "lane-3"], ["lane-1", "lane-3"], true, false, false, true, true, false, true, false, true]);
+  });
+
+  it("針脱毛はなるべく3番、3番が埋まっていれば1番（1番にレーザー脱毛の余力を残す。院長 11/28）", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`], sundayMenus: presets.map((x: any) => (x.id === "needlehair" ? { ...x, enabled: true } : x)) });
+    await staffAll([`${day} 10:00-12:00`]);
+    await h.srv.php(`foreach (Db::i()->all('tattooRate') as $k => $v) Db::i()->delete('tattooRate', (string) $k); return true;`);
+    const needle = (phone: string) => person(day, "10:00", { item: "needlehair", visit: "repeat", countVio: 20, countOther: 20, sex: "female", needleAnes: "no" }, phone);
+    expect((await book(needle("09016160001"))).status).toBe(201);
+    expect((await lanesOn(c, day, L3)).length).toBe(1);
+    expect((await lanesOn(c, day, L1)).length).toBe(0);
+    // 3番が埋まった（機器も使用中）→ 同じ時刻は取れず、機器が空いたあと。3番が埋まって1番が空いていれば1番へ
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09016160009" });
+    await c.post("/reservations", { patientId: p.id, laneId: L3, menuIds: [CONSULT], startAt: toIso(day, 610), endAt: toIso(day, 720) });
+    const second = await book(person(day, "10:10", { item: "needlehair", visit: "repeat", countVio: 20, countOther: 20, sex: "female", needleAnes: "no" }, "09016160002"));
+    expect(second.status).toBe(201);
+    expect((await lanesOn(c, day, L1)).length).toBe(1);
+  });
+
+  it("1番・3番どちらでもよい予約は同じ時刻のまま入れ替えて、レーザー脱毛を1番・針脱毛を3番に入れる。看護師が片方だけの日はそのレーンに（院長 11/28）", async () => {
+    const day = nextSunday();
+    const c = await h.srv.as("staff-admin");
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`], sundayMenus: presets.map((x: any) => (["laserhair", "needlehair"].includes(x.id) ? { ...x, enabled: true } : x)) });
+    await staffAll([`${day} 10:00-12:00`]);
+    await h.srv.php(`foreach (Db::i()->all('tattooRate') as $k => $v) Db::i()->delete('tattooRate', (string) $k); return true;`);
+    const laneIdx = presets.find((x: any) => x.id === "laserhair").partGroups[0].parts.findIndex((x: any) => x.name === "Vライン前面");
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09017170009" });
+    // 1番にピール（1番・3番どちらでもよい）10:00〜10:20
+    const peelR = await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [PEEL], startAt: toIso(day, 600), endAt: toIso(day, 620) });
+    // レーザー脱毛（1番だけ）は、ピールを3番へ入れ替えれば 10:00 に入る
+    expect((await slots(`item=laserhair&visit=repeat&cream=no&group=0&parts=${laneIdx}`)).slots[day]).toContain("10:00");
+    expect((await book(person(day, "10:00", { item: "laserhair", visit: "repeat", group: "0", parts: [laneIdx], cream: "no" }, "09017170001"))).status).toBe(201);
+    const rs = (await c.get(`/day?date=${day}`)).reservations;
+    expect(rs.find((x: any) => x.id === peelR.id).laneId).toBe(L3);
+    expect(rs.find((x: any) => x.menuIds.includes("menu-s0000A1344")).laneId).toBe(L1);
+    // 看護師が3番だけの日は、レーザー脱毛も3番に
+    const day2 = nextSunday(1);
+    await c.patch("/clinic", { tattooSlots: [`${day2} 10:00-12:00`] });
+    await staffAll([`${day2} 10:00-12:00`]);
+    await h.srv.php(`Db::i()->delete('dayNote', '${day2}|lane-1'); return true;`);
+    expect((await book(person(day2, "10:00", { item: "laserhair", visit: "repeat", group: "0", parts: [laneIdx], cream: "no" }, "09017170002"))).status).toBe(201);
+    const r2 = (await c.get(`/day?date=${day2}`)).reservations.find((x: any) => x.menuIds.includes("menu-s0000A1344"));
+    expect(r2.laneId).toBe(L3);
   });
 
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {

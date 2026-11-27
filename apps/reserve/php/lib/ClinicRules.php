@@ -15,13 +15,14 @@ final class ClinicRules
     public const PICO = 'ディスカバリーピコプラス';
     public const CO2 = '炭酸ガス';
     public const INNERFILL = 'インナーフィル';
+    public const NEEDLE = '針脱毛の機器';
 
     /** 出勤スタッフがいなくても予約を入れられるレーン（メインは医師。予約を受ける日は医師が必ずいる）。ほかは Todaysメモに名前がある日だけ（院長 11/27） */
     public const STAFF_FREE_LANES = [self::MAIN];
 
     /**
      * 機器（どれも1台なので、同じ機器は同じ時刻に重ねない）。
-     *   lanes  … 置き場所の都合で施術できるレーン（null は制限なし）
+     *   lanes  … 置き場所の都合で施術できるレーン（null は制限なし）。先に書いたレーンを優先
      *   words  … 予約メニューの名前にこの言葉があれば、その機器を使う（院内で入れた予約も重ねないため）
      *   bed    … 置いてあるベッド（レーン）。同じベッドの機器は同じ時刻に使えない
      *   moveTo … 同じベッドのほかの機器を使っている間に、動かして施術するレーン
@@ -38,6 +39,8 @@ final class ClinicRules
         self::CO2 => ['lanes' => null, 'words' => ['ほくろ', '炭酸ガス'], 'bed' => self::MAIN, 'moveTo' => 'lane-3', 'except' => ['麻酔']],
         // スタンプ注射の機械：フィルロード・トラネ+ピンク・ピンクグロー・トラネキサム酸スタンプ注射・ジュブアセル（看護師施術）・リジュラン（看護師施術、導入予定）。
         // 手打ちは使わない。局所麻酔注射のときは麻酔のあとすぐ施術（クリームのような待ちはない。院長 11/28）
+        // 針脱毛：機器は1台。なるべく3番、だめなら1番（1番にあとからレーザー脱毛が入る余力を残すため。院長 11/28）
+        self::NEEDLE => ['lanes' => ['lane-3', 'lane-1'], 'words' => ['針脱毛'], 'bed' => null, 'moveTo' => null, 'except' => []],
         self::INNERFILL => ['lanes' => null, 'words' => ['フィルロード', 'トラネ注射', '機械打ち', 'ジュブアセル看護師', 'リジュラン看護師'], 'bed' => null, 'moveTo' => null, 'except' => ['手打ち']],
     ];
 
@@ -68,13 +71,23 @@ final class ClinicRules
             return $lanes;
         }
         if ($r['lanes'] !== null) {
-            $lanes = array_values(array_filter($lanes, fn($l) => in_array($l, $r['lanes'], true)));
+            // 機器のルールの順（優先する順）に、メニューのレーンにあるものだけ
+            $lanes = array_values(array_filter($r['lanes'], fn($l) => in_array($l, $lanes, true)));
         }
         if ($r['moveTo'] !== null && in_array($r['bed'], $lanes, true) && !in_array($r['moveTo'], $lanes, true)) {
             $lanes[] = $r['moveTo'];
         }
         return $lanes;
     }
+
+    /** 置き場所でレーンが決まっている機器か（同じ時刻なら先のレーンに入れる。1番・3番の入れ替えで場所を空けてよい） */
+    public static function isLaneRestricted(string $machine): bool
+    {
+        return (self::MACHINES[$machine]['lanes'] ?? null) !== null;
+    }
+
+    /** 同じ時刻のまま中身を入れ替えてよいレーンの組（1番⇔3番。どちらでもよい施術だけ。院長 11/28） */
+    public const SWAP_LANES = ['lane-1' => 'lane-3', 'lane-3' => 'lane-1'];
 
     /** そのレーンに予約を入れるには、Todaysメモに出勤スタッフの名前が要るか */
     public static function needsStaff(string $lane): bool
