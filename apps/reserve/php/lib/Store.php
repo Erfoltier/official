@@ -1725,6 +1725,31 @@ final class Store
         return $out;
     }
 
+    /**
+     * その日の、医師が院内にいる時間：予約不可の枠を除いた有効な予約の、最初の開始分〜最後の終了分。予約がなければ null。
+     * 看護師の施術の間も医師は院内にいる必要がある（医療法）ので、この間の時刻は隙間が残っても受けてよい（院長 11/28）
+     */
+    public static function presenceSpan(string $date): ?array
+    {
+        self::init();
+        $a = null;
+        $b = null;
+        foreach (self::reservationsOn($date) as $r) {
+            if (self::inactive($r)) {
+                continue;
+            }
+            $p = !empty($r['patientId']) ? (self::patients()[$r['patientId']] ?? null) : null;
+            if (self::m3IsBlock($r, $p)) {
+                continue;
+            }
+            $s = minutes_of_day($r['startAt']);
+            $e = clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt']);
+            $a = $a === null ? $s : min($a, $s);
+            $b = $b === null ? $e : max($b, $e);
+        }
+        return $a === null ? null : [$a, $b];
+    }
+
     /** 予約不可の枠（メニューか患者の名前に「予約不可」）は写さない */
     private static function m3IsBlock(array $r, ?array $patient): bool
     {

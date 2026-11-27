@@ -699,11 +699,22 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     await at(655, 670);
     // 再診10分：15分の空きは自由に（10:00・10:05）。25分の空きは前後どちらでも15分残る（10:30・10:45）
     expect((await slots("item=botox01&visit=repeat&status=continue")).slots[day]).toEqual(["10:00", "10:05", "10:30", "10:45", "11:10"]);
-    // 初診20分：25分の空きに入れると5分の半端が残る（10:30・10:35 は出さない）
-    expect((await slots("item=botox01&visit=first")).slots[day]).toEqual(["11:10"]);
-    // 11:10 からも埋まると、隙間がいちばん小さい時刻を1つだけ
-    await at(670, 720);
-    expect((await slots("item=botox01&visit=first")).slots[day]).toEqual(["10:30"]);
+    // 初診20分：25分の空きに入れると5分の半端が残るが、前後に予約があって医師がどのみち院内にいる時間（10:15〜11:10）の中なので出す（院長 11/28）
+    expect((await slots("item=botox01&visit=first")).slots[day]).toEqual(["10:30", "10:35", "11:10"]);
+    // 11:40〜12:00 も埋まると、11:10〜11:40 の空きも医師がいる時間の中：空きの最初（11:10）と最後（11:20）
+    await at(700, 720);
+    expect((await slots("item=botox01&visit=first")).slots[day]).toEqual(["10:30", "10:35", "11:10", "11:20"]);
+  });
+
+  it("医師がいる時間（最初〜最後の予約）の外に半端な隙間を残す時刻は、今までどおり出さない", async () => {
+    const day = nextSunday(3);
+    const c = await open(day);
+    const p = await c.post("/patients", { name: "院内 次郎", kana: "インナイ ジロウ", birthDate: "1980-01-01" });
+    // 10:00〜10:10 だけ予約。その後ろ（11:00 までの空き）に20分を入れて5分残す時刻（10:15）は出さない
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 600), endAt: toIso(day, 610) });
+    const got = (await slots("item=botox01&visit=first")).slots[day];
+    expect(got).toContain("10:10");
+    expect(got).not.toContain("10:15");
   });
 });
 

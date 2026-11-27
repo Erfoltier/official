@@ -1526,6 +1526,9 @@ final class TattooBooking
     {
         // 機器が空いたすぐ後の時刻（$forced：来院の分）は、隙間が残っても出す（院長 11/28：トーニングが終わる11時からタトゥーを取れるように）
         $keep = [];
+        // ほかの予約があって医師が院内にいる時間（最初の予約〜最後の予約）の中に収まる時刻も、隙間が残っても出す。
+        // どのみち医師がいる時間なので、空けておくより受けたほうが機会損失がない（院長 11/28：時間効率と機会損失の両方で見る）
+        $span = Store::presenceSpan($date);
         $busy = [];
         $best = [];
         foreach ($cands as $c) {
@@ -1561,7 +1564,11 @@ final class TattooBooking
                 }
             }
             $arrive = (int) (substr($c[0], 0, 2)) * 60 + (int) substr($c[0], 3, 2);
-            if (in_array($arrive, $forced, true)) {
+            $inside = $span !== null;
+            foreach ($segsOf($c) as [, $a, $b]) {
+                $inside = $inside && $a >= $span[0] && $b <= $span[1];
+            }
+            if (in_array($arrive, $forced, true) || $inside) {
                 $keep[$arrive] ??= $c;
                 continue;
             }
