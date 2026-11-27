@@ -1215,7 +1215,8 @@ final class TattooBooking
         // 名前に「シミ」が付く予約メニューはすべてピコ（ルビーレーザーもピコで出す）、「ほくろ」「炭酸ガス」は炭酸ガスレーザー（院長 11/27）
         foreach (self::MACHINE_WORDS[$machine] ?? [] as $word) {
             foreach (Db::i()->all('menu') as $m) {
-                if (empty($m['deleted']) && str_contains((string) ($m['name'] ?? ''), $word)) {
+                // 「…麻酔」は麻酔の時間なので機器は使わない
+                if (empty($m['deleted']) && str_contains((string) ($m['name'] ?? ''), $word) && !str_contains((string) ($m['name'] ?? ''), '麻酔')) {
                     $ids[] = (string) $m['id'];
                 }
             }
