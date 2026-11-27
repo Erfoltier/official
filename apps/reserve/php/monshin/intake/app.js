@@ -269,6 +269,14 @@ async function initialize() {
       clinic = config.clinic || {};
       applyClinic(clinic);
       applyCounseling(config.counseling === true);
+      // ご相談の記入から、保険診療などの案内をその場で出す（院長 11/28。言葉と文は php/lib/InsuranceGuard.php）
+      if (Array.isArray(config.guard) && window.insuranceGuard) {
+        const pairs = { initialNotes: ['initialTreatment', 'initialNotes'], returningNotes: ['returningTreatment', 'returningNotes'], counselingNotes: ['counselingNotes'] };
+        for (const [boxName, names] of Object.entries(pairs)) {
+          const box = document.querySelector(`[data-guard="${boxName}"]`);
+          window.insuranceGuard.attach(config.guard, () => names.map((n) => form.elements[n]), box, form);
+        }
+      }
       // 日曜の予約ページへの案内（設定でオンのときだけ）
       const sunday = document.querySelector('#sunday-link');
       if (sunday && typeof config.sundayLink === 'string' && /^https:\/\//.test(config.sundayLink)) {

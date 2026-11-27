@@ -20,6 +20,8 @@ try {
         'counseling' => $p['intakeCounseling'],
         // 日曜の予約ページへの案内（設定でオンのときだけアドレス。空なら出さない）
         'sundayLink' => TattooBooking::intakeLink(),
+        // ご相談の記入から出す保険診療などの案内（言葉と文）
+        'guard' => InsuranceGuard::forPage(),
         'clinic' => ['name' => $p['name'], 'publicName' => $p['publicName'], 'publicNameEn' => $p['publicNameEn'], 'department' => $p['department'], 'privacyUrl' => $p['privacyUrl'], 'intakeHours' => $p['intakeHours'], 'address' => $p['address']],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {

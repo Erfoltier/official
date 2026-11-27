@@ -736,6 +736,39 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(r2.laneId).toBe(L3);
   });
 
+  it("ご相談に保険診療の内容・大きなほくろ・子連れがあれば、その場と確定の連絡で案内し、予約メモに印（予約は止めない。院長 11/28）", async () => {
+    const out = await h.srv.php(`return [
+      InsuranceGuard::check('腕の湿疹がかゆいです'),
+      InsuranceGuard::check('顔の盛り上がったほくろを取りたい'),
+      InsuranceGuard::check('ほくろ除去をしたい'),
+      InsuranceGuard::check('ニキビの塗り薬がほしい'),
+      InsuranceGuard::check('ニキビ跡の治療'),
+      InsuranceGuard::check('子連れで行ってもいいですか'),
+      InsuranceGuard::check('シミが気になります'),
+    ];`);
+    expect(out).toEqual([["insurance"], ["maybe"], [], ["acne"], [], ["child"], []]);
+    const day = nextSunday();
+    await open(day);
+    // ページに言葉と文が渡り、案内の入れ物がある
+    const html = await (await fetch(`${h.srv.base}/monshin/tattoo/`)).text();
+    expect(html).toContain('id="guard-box"');
+    expect(html).toContain("insurance-guard.js");
+    expect((await (await fetch(`${h.srv.base}/monshin/assets/insurance-guard.js`)).text())).toContain("window.insuranceGuard");
+    expect((await (await fetch(`${h.srv.base}/monshin/intake-config.php`)).json()).guard.map((r: any) => r.key)).toEqual(["insurance", "acne", "maybe", "child"]);
+    const r = await h.srv.php(`
+      Db::i()->setMeta('reminderSettings', [...Reminder::defaults(), 'fromEmail' => 'info@example.jp']);
+      $sent = [];
+      Reminder::$transport = function ($m, $to, $headers, $body) use (&$sent) { $sent[] = (string) $body; return [200, '']; };
+      $r = TattooBooking::book(['agree' => true, 'item' => 'botox01', 'visit' => 'repeat', 'name' => '保険 花子', 'kana' => 'ホケン ハナコ', 'birthDate' => '1990-01-01', 'phone' => '09018180001', 'email' => 'hoken@example.jp', 'notes' => '首の湿疹がかゆいのも診てほしい', 'date' => '${day}', 'time' => '10:00'], '127.0.0.41');
+      $res = array_values(array_filter(Db::i()->all('reservation'), fn($x) => str_contains((string) ($x['memo'] ?? ''), '首の湿疹')));
+      return ['r' => $r, 'memo' => $res[0]['memo'] ?? '', 'mail' => $sent[0] ?? ''];
+    `);
+    expect(r.r).toMatchObject({ ok: true });
+    expect(r.memo).toContain("※ご相談に案内対象の記載あり：保険診療の内容");
+    expect(r.mail).toContain("【ご相談の内容について】");
+    expect(r.mail).toContain("水曜日以外の保険診療");
+  });
+
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f5ef">
   <title>予約申請</title>
-  <link rel="stylesheet" href="./styles.css?v=20261126-1">
+  <link rel="stylesheet" href="./styles.css?v=20261128-1">
 </head>
 <body>
   <main class="shell">
@@ -115,6 +115,7 @@
         <label class="field"><span>希望治療メニューまたはお悩み <em>必須</em></span><textarea name="initialTreatment" maxlength="500" placeholder="例：シミについて相談したい"></textarea></label>
         <label class="field"><span>具体的な部位・個数（任意）</span><input name="initialBodyArea" maxlength="200" placeholder="例：両頬、3か所"></label>
         <label class="field"><span>その他のご相談事項（任意）</span><textarea name="initialNotes" maxlength="1000" placeholder="ご相談や補足があればご入力ください。麻酔クリームを使用する施術の方で、麻酔クリーム不要や麻酔クリームではなく麻酔の注射をご希望の方はここにご記載ください"></textarea></label>
+        <div class="guard-box" data-guard="initialNotes" role="note" hidden></div>
         <label class="field"><span>紹介者名（任意）</span><input name="referrer" maxlength="100" placeholder="紹介者がいる場合のみ"></label>
       </section>
 
@@ -141,6 +142,7 @@
           </div>
         </fieldset>
         <label class="field"><span>その他のご相談事項（任意）</span><textarea name="returningNotes" maxlength="1000" placeholder="ご相談や補足があればご入力ください。麻酔クリームを使用する施術の方で、麻酔クリーム不要や麻酔クリームではなく麻酔の注射をご希望の方はここにご記載ください"></textarea></label>
+        <div class="guard-box" data-guard="returningNotes" role="note" hidden></div>
       </section>
 
       <section class="card counseling-form" id="counseling-details" hidden>
@@ -158,6 +160,7 @@
         <label class="field"><span>メールアドレス（任意）</span><input name="email" type="email" autocomplete="email" maxlength="200"></label>
         <label class="field"><span>シミクレールの注文番号（任意）</span><input name="orderNo" maxlength="40" placeholder="例：#1001"><small class="field-note">シミクレールでご購入済みの方は注文番号をご入力ください</small></label>
         <label class="field"><span>ご相談内容（任意）</span><textarea name="counselingNotes" maxlength="1000" placeholder="例：使い始めて赤みが出た、次に何を使えばよいか知りたい"></textarea></label>
+        <div class="guard-box" data-guard="counselingNotes" role="note" hidden></div>
         <div class="joint-use" id="joint-use-text">
           <p><b>個人情報の共同利用について</b></p>
           <p>カウンセリングのご予約と実施、ご注文内容の確認のため、ご入力いただいた個人情報を、いしだ皮フ科・美容皮膚科と株式会社エアフォルティアコンサルティング（シミクレール運営）で共同して利用します。</p>
@@ -210,6 +213,7 @@
   </dialog>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script type="module" src="./app.js?v=20261126-1"></script>
+  <script src="../assets/insurance-guard.js?v=20261128-1"></script>
+  <script type="module" src="./app.js?v=20261128-1"></script>
 </body>
 </html>

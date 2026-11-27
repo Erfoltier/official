@@ -847,6 +847,7 @@ final class TattooBooking
                     $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                     $f['lineName'] !== '' ? 'LINEの表示名：' . $f['lineName'] : null,
                     $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
+                    self::guardMemo($f),
                 ], fn($l) => $l !== null && $l !== ''));
                 $made = Store::bookingCreate([
                     'patientId' => $patientId,
@@ -2048,6 +2049,8 @@ final class TattooBooking
             'date' => $str('date', 10),
             'time' => $str('time', 5),
         ];
+        // ご相談に保険診療の内容・保険適用の可能性・子連れの質問があれば、確定の連絡に案内を足し、予約メモに印を残す（院長 11/28）
+        $f['guard'] = InsuranceGuard::check($f['notes'] . "\n" . $f['part']);
         // 日曜メニュー（タトゥー以外）を選んだとき
         $item = is_string($in['item'] ?? null) && $in['item'] !== '' ? self::item($in['item'], $s) : null;
         if (is_string($in['item'] ?? null) && $in['item'] !== '' && $item === null) {
@@ -2207,6 +2210,7 @@ final class TattooBooking
                 $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                 $f['lineName'] !== '' ? 'LINEの表示名：' . $f['lineName'] : null,
                 $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
+                    self::guardMemo($f),
             ]));
             $patientId = $pat['patient']['id'];
             $mainStart = $nurse ? $start : $start - ($first ? $x : 0);
@@ -2289,6 +2293,7 @@ final class TattooBooking
                 $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                 $f['lineName'] !== '' ? 'LINEの表示名：' . $f['lineName'] : null,
                 $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
+                    self::guardMemo($f),
             ]));
             $patientId = $pat['patient']['id'];
             // 麻酔つきの注入：麻酔・撮影・医師の診察・施術の枠をそれぞれ予約に（予約申請と同じく、モニターは必ず「モニター」と書く）
@@ -2311,6 +2316,7 @@ final class TattooBooking
                             $f['email'] !== '' ? 'メール：' . $f['email'] : null,
                             $uid !== null ? '確定の連絡：LINE（予約ページを LINE で開いて予約）' : null,
                             $f['notes'] !== '' ? 'ご相談：' . $f['notes'] : null,
+                    self::guardMemo($f),
                         ])),
                         'lineUserId' => $uid,
                     ], self::ACTOR);
@@ -2730,6 +2736,21 @@ final class TattooBooking
         return $at === '' || strcmp($at, add_days((string) $f['date'], -365)) <= 0;
     }
 
+    /** ご相談の内容に合う案内（保険診療・保険適用の可能性・子連れ）を確定の連絡に。なければ空 */
+    private static function guardLines(array $f): array
+    {
+        $t = InsuranceGuard::texts($f['guard'] ?? []);
+        return $t === [] ? [] : ['【ご相談の内容について】', ...$t, ''];
+    }
+
+    /** 予約メモの印（スタッフ向け） */
+    private static function guardMemo(array $f): ?string
+    {
+        $labels = ['insurance' => '保険診療の内容', 'acne' => '保険のニキビ薬', 'maybe' => '大きな・隆起したほくろ/いぼ（保険の可能性）', 'child' => '子連れ'];
+        $g = array_map(fn($k) => $labels[$k] ?? $k, $f['guard'] ?? []);
+        return $g === [] ? null : '※ご相談に案内対象の記載あり：' . implode('・', $g) . '（確定の連絡で案内済み）';
+    }
+
     /** 予約を承ったすぐ後に出す、問診票のお願い（画面・LINE・メール） */
     public const QUESTIONNAIRE_ASK = 'アレルギーや内服など事前問診票をご回答ください。';
 
@@ -2786,6 +2807,7 @@ final class TattooBooking
                 self::NO_MAKEUP,
                 ...$notes,
                 '',
+                ...self::guardLines($f),
                 '【日曜日のご来院について】',
                 ...self::VISIT_NOTICE,
                 '',
@@ -2817,6 +2839,7 @@ final class TattooBooking
                 self::NO_MAKEUP,
                 ($it['note'] ?? '') !== '' ? $it['note'] : null,
                 '',
+                ...self::guardLines($f),
                 '【日曜日のご来院について】',
                 ...self::VISIT_NOTICE,
                 '',
@@ -2848,6 +2871,7 @@ final class TattooBooking
             self::NO_MAKEUP,
             self::SHAVE_NOTICE[$f['kind'] === 'artmake' ? 'artmake' : 'tattoo'],
             '',
+            ...self::guardLines($f),
             '【日曜日のご来院について】',
             ...self::VISIT_NOTICE,
             '',

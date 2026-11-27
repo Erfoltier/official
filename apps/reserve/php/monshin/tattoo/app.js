@@ -1,6 +1,10 @@
 // 日曜の Web 予約ページ。希望施術（タトゥー・アートメイク除去、院が許可した日曜メニュー）を1つ以上選び、
 // 当院の初診・再診と施術ごとの当日施術のご希望から、選べる日と来院の時刻を読み、予約する（院長 11/20：複数の施術・相談のみ）
 const form = document.querySelector('#tt-form');
+// ご相談・部位の記入から、保険診療などの案内をその場で出す（院長 11/28。言葉と文は php/lib/InsuranceGuard.php）
+try {
+  window.insuranceGuard?.attach(JSON.parse(document.querySelector('#guard-rules')?.textContent || '[]'), () => [...form.querySelectorAll('textarea[name="notes"], input[name="part"], input[name^="part__"]')], document.querySelector('#guard-box'), form);
+} catch (_) { /* 案内が出せなくても予約はできる */ }
 const grid = document.querySelector('#calendar-grid');
 const title = document.querySelector('#calendar-title');
 const selectedLabel = document.querySelector('#selected-date');

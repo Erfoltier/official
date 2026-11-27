@@ -43,7 +43,7 @@ $cats = array_values(array_unique(array_column($menus, 'category')));
 // タトゥー以外のメニューもあるときは「日曜日のご予約」
 $pageTitle = $items !== [] ? '日曜日のご予約' : 'タトゥー・アートメイク除去のご予約';
 $h = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$v = '20261121-4';
+$v = '20261128-1';
 ?>
 <!doctype html>
 <html lang="ja">
@@ -289,6 +289,7 @@ $v = '20261121-4';
         <p class="tt-line" id="line-note" hidden>LINE で開いていただいたので、ご予約確定のご連絡はこの LINE にお送りします。</p>
         <label class="field"><span>メールアドレス <em>必須</em></span><input name="email" type="email" autocomplete="email" maxlength="200" placeholder="ご予約確定のメールをお送りします"></label>
         <label class="field"><span>ご相談・お伝えしたいこと（任意）</span><textarea name="notes" rows="3" maxlength="400"></textarea></label>
+        <div class="tt-guard" id="guard-box" role="note" hidden></div>
         <label class="tt-trap" aria-hidden="true">ウェブサイト<input name="website" tabindex="-1" autocomplete="off"></label>
 <?php if ($p['privacyUrl'] !== ''): ?>
         <p class="field-note">ご入力の内容は、<a href="<?= $h($p['privacyUrl']) ?>" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>に沿って取り扱います。</p>
@@ -356,6 +357,8 @@ $v = '20261121-4';
 <?php if ($liffId !== ''): ?>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
 <?php endif; ?>
+    <script type="application/json" id="guard-rules"><?= json_encode(InsuranceGuard::forPage(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <script src="../assets/insurance-guard.js?v=<?= $v ?>"></script>
     <script type="module" src="./app.js?v=<?= $v ?>" data-liff="<?= $h($liffId) ?>"></script>
 <?php endif; ?>
   </main>
