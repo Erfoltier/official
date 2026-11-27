@@ -641,6 +641,25 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
   });
 
+  it("タトゥーは、ピコが空いたすぐ後（トーニングが終わる時刻）から取れる。隙間が残ってもよい。初診の説明はピコを使っている時間に重ねてよい（院長 11/28）", async () => {
+    const day = nextSunday(2);
+    const c = await h.srv.as("staff-admin");
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooExplainLaneId: L1, tattooExplainMenuId: TATTOO, tattooMachine: "ディスカバリーピコプラス", tattooSlots: [`${day} 10:00-12:00`, `${day} 12:00-15:00`], sundayMenus: [botox, { ...peel, machine: "ディスカバリーピコプラス" }] });
+    await staffAll([`${day} 10:00-12:00`]);
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09014141414" });
+    // 12/13 と同じ：1番でピコ（トーニング）10:15〜11:00、メイン 10:20〜10:45、1番 12:00〜12:20
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [PEEL], startAt: toIso(day, 615), endAt: toIso(day, 660) });
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 620), endAt: toIso(day, 645) });
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [CONSULT], startAt: toIso(day, 720), endAt: toIso(day, 740) });
+    // 再診（照射5分）：11:00 から取れる
+    expect((await slots("area=4&visit=repeat")).slots[day]).toContain("11:00");
+    // 初診：説明 10:50〜11:00（メイン。トーニング中でよい）→ 照射 11:00 から
+    expect((await slots("area=4&visit=first")).slots[day]).toContain("10:50");
+    const tattoo = { kind: "tattoo", agree: true, visit: "first", rects: [[2, 2]], anesthesia: "no", name: "除去 花子", kana: "ジョキョ ハナコ", birthDate: "1990-01-01", phone: "09044445556", email: "t2@example.jp", date: day, time: "10:50" };
+    expect((await book(tattoo)).status).toBe(201);
+    expect((await lanesOn(c, day, MAIN)).slice(-1)).toEqual([[toIso(day, 650), toIso(day, 665)]]);
+  });
+
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);

@@ -1522,8 +1522,10 @@ final class TattooBooking
      * $segsOf：候補 → その予約で埋まる [レーン, 開始分, 終了分] の一覧
      * @param list<array> $cands
      */
-    private static function tidy(string $date, array $windows, array $cands, callable $segsOf): array
+    private static function tidy(string $date, array $windows, array $cands, callable $segsOf, array $forced = []): array
     {
+        // 機器が空いたすぐ後の時刻（$forced：来院の分）は、隙間が残っても出す（院長 11/28：トーニングが終わる11時からタトゥーを取れるように）
+        $keep = [];
         $busy = [];
         $best = [];
         foreach ($cands as $c) {
@@ -1559,22 +1561,29 @@ final class TattooBooking
                 }
             }
             $arrive = (int) (substr($c[0], 0, 2)) * 60 + (int) substr($c[0], 3, 2);
+            if (in_array($arrive, $forced, true)) {
+                $keep[$arrive] ??= $c;
+                continue;
+            }
             if (!isset($best[$arrive]) || $waste < $best[$arrive][0]) {
                 $best[$arrive] = [$waste, $c];
             }
         }
         ksort($best);
         $clean = array_values(array_map(fn($x) => $x[1], array_filter($best, fn($x) => $x[0] === 0)));
-        if ($clean !== [] || $best === []) {
-            return $clean;
-        }
-        $min = min(array_column($best, 0));
-        foreach ($best as $x) {
-            if ($x[0] === $min) {
-                return [$x[1]];
+        if ($clean === [] && $best !== []) {
+            $min = min(array_column($best, 0));
+            foreach ($best as $x) {
+                if ($x[0] === $min) {
+                    $clean = [$x[1]];
+                    break;
+                }
             }
         }
-        return [];
+        // 機器が空いたすぐ後の時刻を足して、時刻順に
+        $all = [...$clean, ...array_values(array_filter($keep, fn($c) => !in_array($c[0], array_column($clean, 0), true)))];
+        usort($all, fn($x, $y) => strcmp($x[0], $y[0]));
+        return $all;
     }
 
     /**
@@ -1631,6 +1640,7 @@ final class TattooBooking
             $nurseBusy = $s['explainLaneId'] !== '' ? self::laneBusy($date, $s['explainLaneId']) : null;
             $machineBusy = self::machineBusyOf($date, $s['machine'], $s);
             $found = [];
+            $forced = [];
             foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws, $we]) {
                 foreach ($ge < $we ? ['front', 'back'] : ['front'] as $side) {
                     $c = self::fit($side, $gs, $ge, $ws, $treat, $firstVisit, $nurseBusy, $windows);
@@ -1644,8 +1654,17 @@ final class TattooBooking
                     }
                     $found[] = [self::hm($arrive), $c[1], $c[2]];
                 }
+                // 機器（ピコ）が空いたすぐ後から照射。初診の説明はレーザーを使わないので、機器を使っている時間に重ねてよい（院長 11/28）
+                foreach ($machineBusy as [, $be]) {
+                    $c = self::fitAt($be, $gs, $ge, $ws, $treat, $firstVisit, $nurseBusy);
+                    if ($c === null || self::overlaps($machineBusy, $c[1], $c[1] + $treat) || ($date === $now['date'] && $c[0] <= $now['minutes'])) {
+                        continue;
+                    }
+                    $found[] = [self::hm($c[0]), $c[1], $c[2]];
+                    $forced[] = $c[0];
+                }
             }
-            $found = self::tidy($date, $windows, $found, fn($c) => array_filter([[$s['laneId'], $c[2] ? $c[1] : $c[1] - ($firstVisit ? self::EXPLAIN_MINUTES : 0), $c[1] + $treat], $c[2] ? [$s['explainLaneId'], $c[1] - self::EXPLAIN_MINUTES, $c[1]] : null]));
+            $found = self::tidy($date, $windows, $found, fn($c) => array_filter([[$s['laneId'], $c[2] ? $c[1] : $c[1] - ($firstVisit ? self::EXPLAIN_MINUTES : 0), $c[1] + $treat], $c[2] ? [$s['explainLaneId'], $c[1] - self::EXPLAIN_MINUTES, $c[1]] : null]), $forced);
             if ($found) {
                 $out[$date] = $found;
             }
@@ -1679,6 +1698,31 @@ final class TattooBooking
         }
         $start = $side === 'front' ? $gs : $ge - $len;
         return [$start, $start + ($first ? $x : 0), false];
+    }
+
+    /**
+     * 照射を $start（機器が空いた時刻）から始める場合の [来院の分, 照射の開始分, 説明のレーンを使うか]。空き [gs, ge) に入らなければ null。
+     * 初診の説明は、直前の10分を説明のレーンで、だめなら照射のレーンで（空きの中なら機器を使っている時間でもよい）、だめなら説明のレーンで照射の前に
+     */
+    private static function fitAt(int $start, int $gs, int $ge, int $ws, int $treat, bool $first, ?array $nurseBusy): ?array
+    {
+        $x = self::EXPLAIN_MINUTES;
+        if ($start < $gs || $start + $treat > $ge) {
+            return null;
+        }
+        if (!$first) {
+            return [$start, $start, false];
+        }
+        if ($nurseBusy !== null && $start - $x >= $ws && !self::overlaps($nurseBusy, $start - $x, $start)) {
+            return [$start - $x, $start, true];
+        }
+        if ($start - $x >= $gs) {
+            return [$start - $x, $start, false];
+        }
+        if ($nurseBusy !== null && $start + $x + $treat <= $ge && !self::overlaps($nurseBusy, $start, $start + $x)) {
+            return [$start, $start + $x, true];
+        }
+        return null;
     }
 
     /** 公開ページ用：日付 => ["10:00", ...]（来院の時刻） */
@@ -1723,6 +1767,8 @@ final class TattooBooking
             $machineBusy = self::machineBusyOf($date, (string) ($it['machine'] ?? ''), $s);
             $picoBusy = $co2 ? self::machineBusyOf($date, self::PICO, $s) : [];
             $found = [];
+            $forced = [];
+            $freeAt = array_column($machineBusy, 1);
             foreach (self::co2Lanes($it[$k . 'LaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
                 foreach (self::gaps($windows, self::laneBusy($date, $lane)) as [$gs, $ge, $ws, $we]) {
                     if ($ge - $gs < $len) {
@@ -1761,10 +1807,14 @@ final class TattooBooking
                             continue;
                         }
                         $found[] = $segs === null ? [self::hm($arrive), $start, $lane] : [self::hm($arrive), $start, $lane, $segs];
+                        // 機器が空いたすぐ後の時刻は、隙間が残っても出す（院長 11/28）
+                        if (in_array($start, $freeAt, true)) {
+                            $forced[] = $arrive;
+                        }
                     }
                 }
             }
-            $found = self::tidy($date, $windows, $found, fn($c) => isset($c[3]) ? array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]) : [[$c[2], $c[1], $c[1] + $len]]);
+            $found = self::tidy($date, $windows, $found, fn($c) => isset($c[3]) ? array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]) : [[$c[2], $c[1], $c[1] + $len]], $forced);
             if ($found) {
                 $out[$date] = $found;
             }
@@ -2386,7 +2436,11 @@ final class TattooBooking
                     $steps[] = ['lanes' => [$s['explainLaneId'], $s['laneId']], 'menus' => [$s['explainMenuId'] !== '' ? $s['explainMenuId'] : $s['menuId']], 'len' => self::EXPLAIN_MINUTES, 'role' => '初診説明', 'machine' => '', 'waits' => [0], 'with' => null];
                     $steps[] = ['lanes' => [$s['laneId']], 'menus' => $menu, 'len' => $len, 'role' => '照射', 'machine' => $s['machine'], 'waits' => [0], 'with' => null];
                 } else {
-                    $steps[] = ['lanes' => [$s['laneId']], 'menus' => $menu, 'len' => $len + ($first ? self::EXPLAIN_MINUTES : 0), 'role' => $first ? '初診説明＋照射' : '照射', 'machine' => $s['machine'], 'waits' => [0], 'with' => null];
+                    // 説明も照射のレーンで：説明はレーザーを使わないので機器は照射の間だけ（院長 11/28）
+                    if ($first) {
+                        $steps[] = ['lanes' => [$s['laneId']], 'menus' => $menu, 'len' => self::EXPLAIN_MINUTES, 'role' => '初診説明', 'machine' => '', 'waits' => [0], 'with' => null];
+                    }
+                    $steps[] = ['lanes' => [$s['laneId']], 'menus' => $menu, 'len' => $len, 'role' => '照射', 'machine' => $s['machine'], 'waits' => [0], 'with' => null];
                 }
             } elseif (!$first && self::isFlow($it)) {
                 // 麻酔つきの注入：麻酔・撮影 → 待ち → 施術（この治療が初めてなら施術の最初に医師の診察を重ねる）
@@ -2512,20 +2566,26 @@ final class TattooBooking
             };
             $first = $jobs[0]['steps'][0];
             $starts = [];
+            $forced = [];
+            // 最初の施術で機器を使う段が、機器が空いたすぐ後に始まる来院の時刻（説明などの前の段の分だけ前）。隙間が残っても出す（院長 11/28）
+            $pre = 0;
+            foreach ($jobs[0]['steps'] as $st0) {
+                if ($st0['machine'] !== '') {
+                    foreach ($machineBusy($st0['machine']) as [, $be]) {
+                        $starts[] = $be - $pre;
+                        $forced[] = $be - $pre;
+                    }
+                    break;
+                }
+                $pre += $st0['len'];
+            }
             foreach ($first['lanes'] as $lane) {
                 foreach (self::gaps($windows, $laneBusy($lane)) as [$gs, $ge, , $we]) {
                     $starts[] = $gs;
                     if ($ge < $we && $ge - $first['len'] >= $gs) {
                         $starts[] = $ge - $first['len'];
                     }
-                    // 最初の施術の機器が空いたすぐ後も候補に
-                    if ($first['machine'] !== '') {
-                        foreach ($machineBusy($first['machine']) as [, $be]) {
-                            if ($be > $gs && $be + $first['len'] <= $ge) {
-                                $starts[] = $be;
-                            }
-                        }
-                    }
+
                 }
             }
             $found = [];
@@ -2538,7 +2598,7 @@ final class TattooBooking
                     $found[] = [self::hm($t), $t, max(array_column($segs, 3)), $segs];
                 }
             }
-            $found = self::tidy($date, $windows, $found, fn($c) => array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]));
+            $found = self::tidy($date, $windows, $found, fn($c) => array_map(fn($g) => [$g[0], $g[2], $g[3]], $c[3]), $forced);
             if ($found) {
                 $out[$date] = $found;
             }
