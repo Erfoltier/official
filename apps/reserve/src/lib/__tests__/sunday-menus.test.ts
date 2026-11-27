@@ -593,6 +593,36 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [CONSULT], startAt: toIso(day, 600), endAt: toIso(day, 655) });
     expect((await slots(q)).slots[day] ?? []).toEqual([]);
   });
+  it("ピコは2番ベッド（メイン）にあるので、ピコを使っている間の炭酸ガスは3番へ（医師の枠をメインに）。メインで炭酸ガスの間はピコを使わない。シミの名のメニューもピコ（院長 11/27）", async () => {
+    const day = nextSunday(7);
+    const c = await h.srv.as("staff-admin");
+    const presets = (await c.get("/settings")).clinic.sundayMenus;
+    const co2 = { ...presets.find((x: any) => x.id === "co2frac"), enabled: true, machine: "炭酸ガス" };
+    const toning = { ...peel, machine: "ディスカバリーピコプラス" }; // 1番・3番でピコ
+    await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooMachine: "ディスカバリーピコプラス", tattooSlots: [`${day} 10:00-12:00`], sundayMenus: [botox, toning, co2] });
+    await staffAll([`${day} 10:00-12:00`]);
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09012121212" });
+    // 1番でピコ 10:00〜10:20
+    await c.post("/reservations", { patientId: p.id, laneId: L1, menuIds: [PEEL], startAt: toIso(day, 600), endAt: toIso(day, 620) });
+    const q = "item=co2frac&visit=repeat&status=continue&anesthesia=self&group=0&parts=0";
+    expect((await slots(q)).slots[day]).toContain("10:00");
+    expect((await book(person(day, "10:00", { item: "co2frac", status: "continue", anesthesiaType: "self", group: 0, parts: [0] }, "09077770001"))).status).toBe(201);
+    // 炭酸ガスは3番、医師はメイン（同じ時間）
+    expect(await lanesOn(c, day, L3)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+    expect(await lanesOn(c, day, MAIN)).toEqual([[toIso(day, 600), toIso(day, 615)]]);
+    // メインで炭酸ガス 11:00〜11:15、シミの名のメニュー 11:30〜11:50（メイン）→ ピコ（20分）はその間に重ねない
+    const spotMenu = await h.srv.php(`foreach (Db::i()->all('menu') as $m) if (empty($m['deleted']) && str_contains((string) $m['name'], 'シミ')) return $m['id']; return '';`);
+    expect(spotMenu).not.toBe("");
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [co2.repeatMenuId], startAt: toIso(day, 660), endAt: toIso(day, 675) });
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [spotMenu], startAt: toIso(day, 690), endAt: toIso(day, 710) });
+    const toMin = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3));
+    const starts = ((await slots("item=peel0001&visit=repeat")).slots[day] ?? []).map(toMin);
+    expect(starts.length).toBeGreaterThan(0);
+    for (const t of starts) {
+      expect(t + 20 <= 660 || t >= 675).toBe(true);
+      expect(t + 20 <= 690 || t >= 710).toBe(true);
+    }
+  });
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);

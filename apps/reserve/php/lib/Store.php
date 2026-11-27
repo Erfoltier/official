@@ -1031,14 +1031,14 @@ final class Store
     }
 
     /** その日の、どのレーンかを問わず、指定のメニューを含む予約の [開始分, 終了分]（同じ機器を使う予約が重ならないようにするため） */
-    public static function busyMinutesForMenus(string $date, array $menuIds): array
+    public static function busyMinutesForMenus(string $date, array $menuIds, ?string $laneId = null): array
     {
         if ($menuIds === []) {
             return [];
         }
         $out = [];
         foreach (self::reservationsOn($date) as $r) {
-            if (!self::inactive($r) && array_intersect($menuIds, $r['menuIds'] ?? []) !== []) {
+            if (!self::inactive($r) && ($laneId === null || $r['laneId'] === $laneId) && array_intersect($menuIds, $r['menuIds'] ?? []) !== []) {
                 $out[] = [minutes_of_day($r['startAt']), clinic_date_of($r['endAt']) > $date ? 24 * 60 : minutes_of_day($r['endAt'])];
             }
         }

@@ -120,6 +120,10 @@ final class TattooBooking
     /** 機器（各1台。同じ機器は同じ時刻に重ねない。院長 11/20）。ジェントルマックスプロ：レーザー脱毛・レーザーシャワー・タイトニング（1番レーンだけ）。ピコ：タトゥー・アートメイク・シミ取り・黒ずみトーニング */
     public const GENTLEMAX = 'ジェントルマックスプロ';
     public const PICO = 'ディスカバリーピコプラス';
+    /** 炭酸ガスレーザー。ピコと同じ2番ベッド（メイン）に置いてあり、ピコを使っている間は3番へ動かして3番で施術する（院長 11/27） */
+    public const CO2 = '炭酸ガス';
+    public const BED2_LANE = 'lane-main';
+    public const CO2_MOVE_LANE = 'lane-3';
     /** 黒ずみ美白トーニング（院長 11/21） */
     public const TONING_MENU = '黒ずみトーニング';
     private const TONING_PARTS = ['リップ（唇・口角。アートメイク不可）', '両脇', 'ニップル（乳首＋乳輪）', 'デリケートゾーン（V・I）', '臀部（Oライン不可）'];
@@ -1204,7 +1208,58 @@ final class TattooBooking
                 $ids[] = $it['repeatMenuId'];
             }
         }
+        // 名前に「シミ」が付く予約メニューは、すべてピコを使う（ルビーレーザーもピコで出す。院長 11/27）
+        if ($machine === self::PICO) {
+            foreach (Db::i()->all('menu') as $m) {
+                if (empty($m['deleted']) && str_contains((string) ($m['name'] ?? ''), 'シミ')) {
+                    $ids[] = (string) $m['id'];
+                }
+            }
+        }
         return array_values(array_unique(array_filter($ids, fn($x) => $x !== '')));
+    }
+
+    /**
+     * 機器が使われている時間。ピコは2番ベッド（メイン）に置いてあるので、メインで炭酸ガスをしている時間も使えない。
+     * 炭酸ガスの側（メインで入れてよいか）は co2Fits で見る
+     */
+    private static function machineBusyOf(string $date, string $machine, array $s): array
+    {
+        if ($machine === '') {
+            return [];
+        }
+        $busy = Store::busyMinutesForMenus($date, self::machineMenus($machine, $s));
+        if ($machine === self::PICO) {
+            $busy = [...$busy, ...Store::busyMinutesForMenus($date, self::machineMenus(self::CO2, $s), self::BED2_LANE)];
+        }
+        return $busy;
+    }
+
+    /**
+     * 炭酸ガスを $lane で $a〜$b に入れてよいか。メイン（2番ベッド）はピコを使っていない時だけ。
+     * ピコを使っている時は3番へ動かす：3番が空いていて、医師（メイン）も空いている時だけ（医師の枠を足す）
+     * 戻り値：入れられない → null、入れられる → 足す枠（[] か メインの医師の枠1つ）
+     */
+    private static function co2Fits(string $lane, int $a, int $b, array $picoBusy, array $mainBusy, array $it): ?array
+    {
+        $pico = self::overlaps($picoBusy, $a, $b);
+        if ($lane === self::BED2_LANE) {
+            return $pico ? null : [];
+        }
+        if ($lane === self::CO2_MOVE_LANE) {
+            if (!$pico || self::overlaps($mainBusy, $a, $b)) {
+                return null;
+            }
+            $menu = (string) (($it['doctorMenuId'] ?? '') !== '' ? $it['doctorMenuId'] : ($it['creamMenuId'] ?? ''));
+            return [[self::BED2_LANE, $menu, $a, $b, '医師（2番ベッドでピコを使うため3番で炭酸ガス）']];
+        }
+        return [];
+    }
+
+    /** 炭酸ガスなら、メインのほかに3番も（ピコを使っている時に動かす先） */
+    private static function co2Lanes(array $lanes, string $machine): array
+    {
+        return $machine === self::CO2 && in_array(self::BED2_LANE, $lanes, true) && !in_array(self::CO2_MOVE_LANE, $lanes, true) ? [...$lanes, self::CO2_MOVE_LANE] : $lanes;
     }
 
     /** タトゥー・アートメイクのどちらかを受け付けられるか（受け付けがオンで、照射のレーンとメニューがあり、どちらかがオン） */
@@ -1560,7 +1615,7 @@ final class TattooBooking
         foreach ($byDate as $date => $windows) {
             $busy = self::laneBusy($date, $s['laneId']);
             $nurseBusy = $s['explainLaneId'] !== '' ? self::laneBusy($date, $s['explainLaneId']) : null;
-            $machineBusy = Store::busyMinutesForMenus($date, $machine);
+            $machineBusy = self::machineBusyOf($date, $s['machine'], $s);
             $found = [];
             foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws, $we]) {
                 foreach ($ge < $we ? ['front', 'back'] : ['front'] as $side) {
@@ -1650,7 +1705,7 @@ final class TattooBooking
         $neobo = $monitor ? self::neoboMenu() : '';
         $out = [];
         foreach ($byDate as $date => $windows) {
-            $machineBusy = Store::busyMinutesForMenus($date, $machine);
+            $machineBusy = self::machineBusyOf($date, (string) ($it['machine'] ?? ''), $s);
             $found = [];
             foreach ($it[$k . 'LaneIds'] as $lane) {
                 foreach (self::gaps($windows, self::laneBusy($date, $lane)) as [$gs, $ge, $ws, $we]) {
@@ -1724,10 +1779,12 @@ final class TattooBooking
         $out = [];
         foreach ($byDate as $date => $windows) {
             $busy = fn(string $lane) => self::laneBusy($date, $lane);
-            $machineBusy = Store::busyMinutesForMenus($date, $machine);
+            $machineBusy = self::machineBusyOf($date, (string) ($it['machine'] ?? ''), $s);
             $doctorBusy = $doctor ? $busy($doctorLane) : [];
+            $co2 = ($it['machine'] ?? '') === self::CO2;
+            $picoBusy = $co2 ? self::machineBusyOf($date, self::PICO, $s) : [];
             $found = [];
-            foreach ($it['repeatLaneIds'] as $lane) {
+            foreach (self::co2Lanes($it['repeatLaneIds'], (string) ($it['machine'] ?? '')) as $lane) {
                 foreach (self::gaps($windows, $busy($lane)) as [$gs, $ge, $ws, $we]) {
                     if ($ge - $gs < $treat) {
                         continue;
@@ -1742,11 +1799,20 @@ final class TattooBooking
                         if ($end > $ge) {
                             continue;
                         }
-                        if (self::overlaps($machineBusy, $start, $end) || ($doctor && self::overlaps($doctorBusy, $start, $start + self::DOCTOR_SLOT))) {
+                        if (self::overlaps($machineBusy, $start, $end)) {
                             continue;
                         }
-                        $segs = [[$lane, $it['repeatMenuId'], $start, $end, '施術']];
-                        if ($doctor) {
+                        // 炭酸ガス：2番ベッドでピコを使っている時は3番へ（医師の枠をメインに足す。診察もその中）
+                        $extra = $co2 ? self::co2Fits($lane, $start, $end, $picoBusy, $busy(self::BED2_LANE), $it) : [];
+                        if ($extra === null) {
+                            continue;
+                        }
+                        $moved = $extra !== [];
+                        if ($doctor && !$moved && self::overlaps($doctorBusy, $start, $start + self::DOCTOR_SLOT)) {
+                            continue;
+                        }
+                        $segs = [[$lane, $it['repeatMenuId'], $start, $end, '施術'], ...$extra];
+                        if ($doctor && !$moved) {
                             $segs[] = [$doctorLane, $it['doctorMenuId'], $start, $start + self::DOCTOR_SLOT, '医師の診察（施術の最初に重ねる）'];
                         }
                         $arrive = $start;
@@ -2355,7 +2421,7 @@ final class TattooBooking
             };
             $mBusy = [];
             $machineBusy = function (string $m) use (&$mBusy, $date, $s) {
-                return $mBusy[$m] ??= Store::busyMinutesForMenus($date, self::machineMenus($m, $s));
+                return $mBusy[$m] ??= self::machineBusyOf($date, $m, $s);
             };
             $inWindow = function (int $a, int $b) use ($windows): bool {
                 foreach ($windows as [$ws, $we]) {
@@ -2377,6 +2443,10 @@ final class TattooBooking
                     if ($g[2] < $b && $a < $g[3] && ($g[0] === $lane || ($machine !== '' && $g[6] === $machine))) {
                         return false;
                     }
+                    // ピコと、メイン（2番ベッド）での炭酸ガスは同じ時刻に入れない
+                    if ($g[2] < $b && $a < $g[3] && $machine === self::PICO && $g[6] === self::CO2 && $g[0] === self::BED2_LANE) {
+                        return false;
+                    }
                 }
                 return true;
             };
@@ -2387,12 +2457,22 @@ final class TattooBooking
                 }
                 $st = $jobs[$j]['steps'][$k];
                 $end = $start + $st['len'];
-                foreach ($st['lanes'] as $lane) {
+                foreach (self::co2Lanes($st['lanes'], $st['machine']) as $lane) {
                     if (!$free($lane, $st['machine'], $start, $end, $placed)) {
                         continue;
                     }
-                    $segs = [...$placed, [$lane, $st['menus'], $start, $end, $st['role'], $j, $st['machine']]];
-                    if ($st['with'] !== null) {
+                    $extra = [];
+                    if ($st['machine'] === self::CO2) {
+                        // ピコを使っている時間（予約済み＋この予約で置いたもの）
+                        $picoBusy = [...$machineBusy(self::PICO), ...array_map(fn($g) => [$g[2], $g[3]], array_filter($placed, fn($g) => $g[6] === self::PICO))];
+                        $mainBusy = [...$laneBusy(self::BED2_LANE), ...array_map(fn($g) => [$g[2], $g[3]], array_filter($placed, fn($g) => $g[0] === self::BED2_LANE))];
+                        $extra = self::co2Fits($lane, $start, $end, $picoBusy, $mainBusy, $jobs[$j]['entry']['item'] ?? []);
+                        if ($extra === null) {
+                            continue;
+                        }
+                    }
+                    $segs = [...$placed, [$lane, $st['menus'], $start, $end, $st['role'], $j, $st['machine']], ...array_map(fn($x) => [$x[0], [$x[1]], $x[2], $x[3], $x[4], $j, ''], $extra)];
+                    if ($st['with'] !== null && $extra === []) {
                         [$wl, $wm, $wlen, $wrole] = $st['with'];
                         if (!$free($wl, '', $start, $start + $wlen, $segs)) {
                             continue;
