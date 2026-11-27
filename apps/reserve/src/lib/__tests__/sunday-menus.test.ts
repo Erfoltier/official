@@ -23,9 +23,19 @@ function nextSunday(offset = 0): string {
 const botox = { id: "botox01", name: "ボトックス注射", firstMinutes: 20, firstLaneIds: [MAIN], firstMenuId: CONSULT, repeatMinutes: 10, repeatLaneIds: [MAIN], repeatMenuId: BOTOX_RE, machine: "", note: "" };
 const peel = { id: "peel0001", name: "マッサージピール", firstMinutes: 0, firstLaneIds: [], firstMenuId: "", repeatMinutes: 20, repeatLaneIds: [L1, L3], repeatMenuId: PEEL, machine: "", note: "当日はメイクを落としやすい状態でお越しください。" };
 
+/** 受付日時の日の、全部のレーンの Todaysメモに出勤スタッフを入れる（メイン以外は名前がないと日曜の予約を入れないため） */
+async function staffAll(slots: string[]) {
+  const days = [...new Set(slots.map((x) => x.slice(0, 10)))];
+  await h.srv.php(`
+    foreach (${JSON.stringify(days)} as $d) foreach (Store::laneAndMenuIds()[0] as $l) Db::i()->put('dayNote', "$d|$l", ['date' => $d, 'laneId' => $l, 'text' => 'スタッフ', 'updatedAt' => now_iso()]);
+    return true;
+  `);
+}
+
 async function open(day: string, extra: object = {}) {
   const c = await h.srv.as("staff-admin");
   await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooExplainLaneId: "", tattooSlots: [`${day} 10:00-12:00`], sundayMenus: [botox, peel], ...extra });
+  await staffAll(((extra as { tattooSlots?: string[] }).tattooSlots) ?? [`${day} 10:00-12:00`]);
   return c;
 }
 const addMin = (hm: string, m: number) => { const t = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3)) + m; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
@@ -74,6 +84,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    await staffAll([`${day} 10:00-12:00`]);
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     expect(presets.length).toBeGreaterThan(10);
     expect(presets.every((x: any) => x.enabled === false)).toBe(true);
@@ -102,6 +113,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    await staffAll([`${day} 10:00-12:00`]);
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     const laser = presets.find((x: any) => x.id === "laserhair");
     expect(laser.partGroups.map((g: any) => g.name)).toEqual(["女性", "男性"]);
@@ -197,6 +209,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-13:00`] });
+    await staffAll([`${day} 10:00-13:00`]);
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     expect(presets.find((x: any) => x.id === "fillroad")).toMatchObject({ flow: true, creamMinutes: 20, injectionMinutes: 20, anesLaneIds: ["lane-4"], repeatLaneIds: [L1, L3], machine: "インナーフィル" });
     expect(presets.find((x: any) => x.id === "tranestamp")).toMatchObject({ creamMinutes: 20, injectionMinutes: 20 });
@@ -301,6 +314,34 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({ [day]: ["10:00"] });
   });
 
+  it("メイン以外のレーンは、その日の Todaysメモに出勤スタッフの名前がなければ日曜の予約を入れない。メインは名前がなくても入れる（院長 11/27）", async () => {
+    const day = nextSunday(5);
+    await open(day);
+    const note = (lane: string, text: string) => h.srv.php(`Store::setDayNote('${day}', '${lane}', '${text}'); return true;`);
+    await h.srv.php(`foreach (Store::laneAndMenuIds()[0] as $l) Db::i()->delete('dayNote', '${day}|' . $l); return true;`);
+    // 1番・3番ともに名前なし → ピール（1番・3番）は出ない。ボトックス（メイン）は出る
+    expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({});
+    expect((await slots("item=botox01&visit=repeat")).slots).toEqual({ [day]: ["10:00"] });
+    // 3番にだけ名前 → 3番に入る
+    await note(L3, "山田");
+    expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({ [day]: ["10:00"] });
+    expect((await book(person(day, "10:00", { item: "peel0001", visit: "repeat" }, "09033334444"))).status).toBe(201);
+    const c = await h.srv.as("staff-admin");
+    const r = (await c.get(`/day?date=${day}`)).reservations.find((x: any) => x.menuIds.includes(PEEL));
+    expect(r.laneId).toBe(L3);
+  });
+
+  it("同じ機器（ピコ）のメニューは、Web で受け付けていないもの（シミ取り）でも、院内で入れた予約と同じ時刻に入れない（院長 11/27）", async () => {
+    const day = nextSunday(6);
+    const spot = { ...peel, id: "spot0001", name: "シミ取り", enabled: false, repeatLaneIds: [MAIN], repeatMenuId: BOTOX_RE, machine: "ピコ", note: "" };
+    const c = await open(day, { tattooMachine: "ピコ", sundayMenus: [botox, { ...peel, machine: "ピコ" }, spot] });
+    // 院内でシミ取り（メイン 10:00〜10:20）を入れた
+    const p = await c.post("/patients", { name: "院内 花子", kana: "インナイ ハナコ", birthDate: "1980-01-01", phone: "09012120000" });
+    await c.post("/reservations", { patientId: p.id, laneId: MAIN, menuIds: [BOTOX_RE], startAt: toIso(day, 600), endAt: toIso(day, 620) });
+    // ピール（ピコ）は 10:20 から
+    expect((await slots("item=peel0001&visit=repeat")).slots).toEqual({ [day]: ["10:20"] });
+  });
+
   it("タトゥーを受け付けない設定でも、日曜メニューだけで予約ページを開ける。確定の連絡にそのメニューの案内と日曜の案内", async () => {
     const day = nextSunday();
     await open(day, { tattooMenuId: "", accessUrl: "https://example.jp/clinic/access/" });
@@ -385,6 +426,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    await staffAll([`${day} 10:00-12:00`]);
     const presets = (await c.get("/settings")).clinic.sundayMenus as any[];
     const all = [...presets].reverse().map((x: any) => ({ ...x, note: "ご来院前のお願い：".padEnd(150, "あ") }));
     expect(JSON.stringify({ sundayMenus: all }).length).toBeGreaterThan(16_384);
@@ -522,6 +564,7 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     const day = nextSunday();
     const c = await h.srv.as("staff-admin");
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooSlots: [`${day} 10:00-12:00`] });
+    await staffAll([`${day} 10:00-12:00`]);
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     const co2 = presets.find((x: any) => x.id === "co2frac");
     expect(co2).toMatchObject({ flow: true, injectionMinutes: 0, pickOne: true, pickLabel: "範囲", repeatLaneIds: [MAIN] });
@@ -603,6 +646,7 @@ describe("体・唇の黒ずみ美白トーニング（院長 11/21）", () => {
     const c = await h.srv.as("staff-admin");
     const menu = await c.post("/menus", { name: "黒ずみトーニング", duration: { kind: "range", min: 5, max: 60, step: 5 }, defaultMinutes: 15, startStepMin: 5, laneIds: [L1, L3] });
     await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: TATTOO, tattooMachine: "ディスカバリーピコプラス", tattooSlots: [`${day} 10:00-12:00`] });
+    await staffAll([`${day} 10:00-12:00`]);
     const presets = (await c.get("/settings")).clinic.sundayMenus;
     const t = presets.find((x: any) => x.id === "darktoning");
     expect(t).toMatchObject({ name: "体・唇の黒ずみ美白トーニング", category: "除去・美白・レーザー", machine: "ディスカバリーピコプラス", firstMinutes: 10, firstBase: 5, firstLaneIds: [L1, L3], firstMenuId: menu.id, repeatMinutes: 5, repeatLaneIds: [L1, L3], repeatMenuId: menu.id, neobo: false });

@@ -10,9 +10,19 @@ const MAIN = "lane-main";
 const NURSE = "lane-4";
 const MENU = "menu-s000099DC1";
 
+/** 受付日時の日の、全部のレーンの Todaysメモに出勤スタッフを入れる（メイン以外は名前がないと日曜の予約を入れないため） */
+async function staffAll(slots: string[]) {
+  const days = [...new Set(slots.map((x) => x.slice(0, 10)))];
+  await h.srv.php(`
+    foreach (${JSON.stringify(days)} as $d) foreach (Store::laneAndMenuIds()[0] as $l) Db::i()->put('dayNote', "$d|$l", ['date' => $d, 'laneId' => $l, 'text' => 'スタッフ', 'updatedAt' => now_iso()]);
+    return true;
+  `);
+}
+
 async function open(day: string, extra: object = {}) {
   const c = await h.srv.as("staff-admin");
   await c.patch("/clinic", { tattooEnabled: true, tattooLaneId: MAIN, tattooMenuId: MENU, tattooExplainLaneId: "", tattooSlots: [`${day} 10:00-12:00`], ...extra });
+  await staffAll(((extra as { tattooSlots?: string[] }).tattooSlots) ?? [`${day} 10:00-12:00`]);
   return c;
 }
 const slots = async (area: number, visit: "first" | "repeat") => (await (await fetch(`${h.srv.base}/monshin/tattoo/api.php?area=${area}&visit=${visit}`)).json()) as any;

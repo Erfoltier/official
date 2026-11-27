@@ -1161,6 +1161,29 @@ final class TattooBooking
         return $out;
     }
 
+    /** 出勤スタッフがいなくても予約を入れられるレーン（メインは医師のレーン。予約を受ける日は医師が必ずいる） */
+    public const STAFF_FREE_LANES = ['lane-main'];
+
+    /**
+     * レーンの埋まっている時間。メイン以外（1番・3番など）は、その日の Todaysメモに出勤スタッフの名前が入っていなければ
+     * 一日中埋まっている扱いにして、日曜の予約を入れない（院長 11/27）
+     */
+    private static function laneBusy(string $date, string $lane): array
+    {
+        $busy = Store::busyMinutes($date, $lane);
+        if ($lane !== '' && !in_array($lane, self::STAFF_FREE_LANES, true) && !self::staffed($date, $lane)) {
+            $busy[] = [0, 24 * 60];
+        }
+        return $busy;
+    }
+
+    /** その日のそのレーンの Todaysメモに何か書いてあるか（出勤スタッフの名前） */
+    public static function staffed(string $date, string $lane): bool
+    {
+        $notes = (array) Store::getDayNotes($date)['notes'];
+        return trim((string) ($notes[$lane] ?? '')) !== '';
+    }
+
     /** 機器の名前 → その機器を使う予約のメニュー（タトゥーの照射と日曜メニュー） */
     private static function machineMenus(string $machine, array $s): array
     {
@@ -1172,7 +1195,8 @@ final class TattooBooking
             $ids[] = $s['menuId'];
         }
         foreach ($s['items'] as $it) {
-            if (($it['enabled'] ?? true) !== false && ($it['machine'] ?? '') === $machine) {
+            // Web で受け付けていないメニュー（シミ取りなど）も、院内で入れた予約は同じ機器を使うので含める（院長 11/27：ピコは1台）
+            if (($it['machine'] ?? '') === $machine) {
                 // 初診で機器を使うのは、部位・本数で時間が決まるもの（脱毛など：説明に続けて照射）だけ。ほかの初診は医師の診察
                 if (!self::isFlow($it) && self::variable($it) && empty($it['firstFixed'])) {
                     $ids[] = $it['firstMenuId'];
@@ -1383,7 +1407,7 @@ final class TattooBooking
             return null;
         }
         foreach ($lanes as $l) {
-            if (!self::overlaps(Store::busyMinutes($date, $l), $a, $b)) {
+            if (!self::overlaps(self::laneBusy($date, $l), $a, $b)) {
                 return $l;
             }
         }
@@ -1450,7 +1474,7 @@ final class TattooBooking
                         $blocks[] = [$a, $b];
                     }
                 }
-                $busy[$l] ??= Store::busyMinutes($date, $l);
+                $busy[$l] ??= self::laneBusy($date, $l);
                 $gaps = self::gaps($windows, $busy[$l]);
                 foreach ($blocks as [$a, $b]) {
                     foreach ($gaps as [$gs, $ge]) {
@@ -1534,8 +1558,8 @@ final class TattooBooking
         $out = [];
         $machine = self::machineMenus($s['machine'], $s);
         foreach ($byDate as $date => $windows) {
-            $busy = Store::busyMinutes($date, $s['laneId']);
-            $nurseBusy = $s['explainLaneId'] !== '' ? Store::busyMinutes($date, $s['explainLaneId']) : null;
+            $busy = self::laneBusy($date, $s['laneId']);
+            $nurseBusy = $s['explainLaneId'] !== '' ? self::laneBusy($date, $s['explainLaneId']) : null;
             $machineBusy = Store::busyMinutesForMenus($date, $machine);
             $found = [];
             foreach (self::gaps($windows, $busy) as [$gs, $ge, $ws, $we]) {
@@ -1629,7 +1653,7 @@ final class TattooBooking
             $machineBusy = Store::busyMinutesForMenus($date, $machine);
             $found = [];
             foreach ($it[$k . 'LaneIds'] as $lane) {
-                foreach (self::gaps($windows, Store::busyMinutes($date, $lane)) as [$gs, $ge, $ws, $we]) {
+                foreach (self::gaps($windows, self::laneBusy($date, $lane)) as [$gs, $ge, $ws, $we]) {
                     if ($ge - $gs < $len) {
                         continue;
                     }
@@ -1699,7 +1723,7 @@ final class TattooBooking
         $four = self::fourLanes($it['anesLaneIds'] ?? []);
         $out = [];
         foreach ($byDate as $date => $windows) {
-            $busy = fn(string $lane) => Store::busyMinutes($date, $lane);
+            $busy = fn(string $lane) => self::laneBusy($date, $lane);
             $machineBusy = Store::busyMinutesForMenus($date, $machine);
             $doctorBusy = $doctor ? $busy($doctorLane) : [];
             $found = [];
@@ -2327,7 +2351,7 @@ final class TattooBooking
         foreach ($byDate as $date => $windows) {
             $busy = [];
             $laneBusy = function (string $l) use (&$busy, $date) {
-                return $busy[$l] ??= Store::busyMinutes($date, $l);
+                return $busy[$l] ??= self::laneBusy($date, $l);
             };
             $mBusy = [];
             $machineBusy = function (string $m) use (&$mBusy, $date, $s) {
