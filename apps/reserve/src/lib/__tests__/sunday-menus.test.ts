@@ -769,6 +769,21 @@ describe("日曜メニュー（タトゥー以外の日曜の Web 予約）", ()
     expect(r.mail).toContain("水曜日以外の保険診療");
   });
 
+  it("予約のルール（ClinicRules）を Google 連携の鍵でスプレッドシートへ出す。Air の言葉は入らない（院長 11/28）", async () => {
+    const c = await h.srv.as("staff-admin");
+    const { token } = await c.post("/device-links", { source: "google" });
+    expect((await h.srv.client().raw("GET", "/api/v1/integration/rules", undefined, {})).status).toBe(401);
+    const res = await h.srv.client().raw("GET", "/api/v1/integration/rules", undefined, { "X-Integration-Token": token });
+    expect(res.status).toBe(200);
+    const body = (res as any).data ?? (await (res as any).json?.());
+    const names = body.sheets.map((x: any) => x.name);
+    expect(names).toEqual(["LANE RESERVE｜予約のルール", "LANE RESERVE｜機器とレーン", "LANE RESERVE｜日曜メニュー", "LANE RESERVE｜メニュー照合", "LANE RESERVE｜LINE対応マニュアル"]);
+    const all = JSON.stringify(body.sheets);
+    expect(all).not.toMatch(/Air/);
+    expect(all).toContain("ハイフと脱毛は別の機械");
+    expect(body.sheets[4].rows.length).toBeGreaterThan(100);
+  });
+
   it("日曜メニューは、モニターの方はまず4番でネオボ撮影（＋麻酔クリーム）15分、続けて施術。4番が埋まっていれば1番・3番で。タトゥーは撮影なし", async () => {
     const day = nextSunday();
     const c = await open(day);

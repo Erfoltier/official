@@ -195,6 +195,11 @@ try {
         Http::checkIntegrationAuth();
         Http::json(TattooBooking::receiveTimeSheet(Schema::integrationTimeSheet(Http::readJson(262_144))));
     }
+    // 予約のルール（ClinicRules）を院長が見るスプレッドシートへ：Apps Script が読みに来る（院長 11/28。患者の情報は入れない）
+    if ($p[0] === 'integration' && $method === 'GET' && $n === 2 && $p[1] === 'rules') {
+        Http::checkIntegrationAuth();
+        Http::json(['at' => now_iso(), 'sheets' => ClinicRules::export()]);
+    }
     if ($p[0] === 'integration' && $method === 'POST' && $n === 2 && $p[1] === 'prices') {
         Http::checkIntegrationAuth();
         $in = Schema::integrationPrices(Http::readJson(262_144));
