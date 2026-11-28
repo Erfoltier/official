@@ -1,0 +1,238 @@
+{
+ "clinic": {
+  "name": "クリニック",
+  "timeZone": "Asia/Tokyo",
+  "dayStartMin": 540,
+  "dayEndMin": 1080,
+  "slotMin": 15
+ },
+ "lanes": [
+  {
+   "id": "lane-main",
+   "name": "診察（医師）",
+   "shortName": "診察",
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "lane-1",
+   "name": "処置室",
+   "shortName": "処置",
+   "order": 1,
+   "active": true
+  }
+ ],
+ "menus": [
+  {
+   "id": "menu-consult",
+   "name": "カウンセリング",
+   "abbr": "相談",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 30
+   },
+   "defaultMinutes": 30,
+   "startStepMin": 15,
+   "priceYen": null,
+   "capacity": 1,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#7c3aed",
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "menu-exam",
+   "name": "診察",
+   "abbr": "診察",
+   "duration": {
+    "kind": "fixed",
+    "minutes": 15
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 15,
+   "priceYen": null,
+   "capacity": 1,
+   "laneIds": [
+    "lane-main"
+   ],
+   "color": "#2563eb",
+   "order": 1,
+   "active": true
+  },
+  {
+   "id": "menu-treat",
+   "name": "施術",
+   "abbr": "施術",
+   "duration": {
+    "kind": "range",
+    "min": 15,
+    "max": 120,
+    "step": 15
+   },
+   "defaultMinutes": 30,
+   "startStepMin": 15,
+   "priceYen": null,
+   "capacity": 1,
+   "laneIds": [
+    "lane-1"
+   ],
+   "color": "#db2777",
+   "order": 2,
+   "active": true
+  },
+  {
+   "id": "menu-free",
+   "name": "予約（メモに自由記載）",
+   "abbr": "予約",
+   "duration": {
+    "kind": "range",
+    "min": 10,
+    "max": 90,
+    "step": 5
+   },
+   "defaultMinutes": 15,
+   "startStepMin": 5,
+   "priceYen": null,
+   "capacity": 2,
+   "laneIds": [
+    "lane-main",
+    "lane-1"
+   ],
+   "color": "#64748b",
+   "order": 3,
+   "active": true
+  }
+ ],
+ "skincareCatalog": [],
+ "products": [],
+ "stages": [
+  {
+   "id": "stage-booked",
+   "label": "予約",
+   "phase": "booked",
+   "color": "#94a3b8",
+   "free": false,
+   "order": 0,
+   "active": true
+  },
+  {
+   "id": "stage-arrived",
+   "label": "来院済",
+   "phase": "arrived",
+   "color": "#0ea5e9",
+   "free": false,
+   "order": 1,
+   "active": true
+  },
+  {
+   "id": "stage-wait-dr",
+   "label": "医師待ち",
+   "phase": "arrived",
+   "color": "#f59e0b",
+   "free": false,
+   "order": 2,
+   "active": true
+  },
+  {
+   "id": "stage-wait-ns",
+   "label": "看護師待ち",
+   "phase": "arrived",
+   "color": "#f97316",
+   "free": false,
+   "order": 3,
+   "active": true
+  },
+  {
+   "id": "stage-wait-photo",
+   "label": "撮影待ち",
+   "phase": "arrived",
+   "color": "#14b8a6",
+   "free": false,
+   "order": 4,
+   "active": true
+  },
+  {
+   "id": "stage-wait-anes",
+   "label": "麻酔待ち",
+   "phase": "arrived",
+   "color": "#06b6d4",
+   "free": false,
+   "order": 5,
+   "active": true
+  },
+  {
+   "id": "stage-exam",
+   "label": "診察中",
+   "phase": "in_treatment",
+   "color": "#8b5cf6",
+   "free": false,
+   "order": 6,
+   "active": true
+  },
+  {
+   "id": "stage-treat",
+   "label": "処置中",
+   "phase": "in_treatment",
+   "color": "#a855f7",
+   "free": false,
+   "order": 7,
+   "active": true
+  },
+  {
+   "id": "stage-standby",
+   "label": "待機中",
+   "phase": "arrived",
+   "color": "#64748b",
+   "free": false,
+   "order": 8,
+   "active": true
+  },
+  {
+   "id": "stage-consider",
+   "label": "検討中",
+   "phase": "arrived",
+   "color": "#eab308",
+   "free": false,
+   "order": 9,
+   "active": true
+  },
+  {
+   "id": "stage-checkout",
+   "label": "会計待ち",
+   "phase": "checkout",
+   "color": "#ec4899",
+   "free": false,
+   "order": 10,
+   "active": true
+  },
+  {
+   "id": "stage-done",
+   "label": "帰宅",
+   "phase": "done",
+   "color": "#22c55e",
+   "free": false,
+   "order": 11,
+   "active": true
+  },
+  {
+   "id": "stage-free",
+   "label": "自由入力",
+   "phase": "arrived",
+   "color": "#6366f1",
+   "free": true,
+   "order": 12,
+   "active": true
+  }
+ ],
+ "stageForStatus": {
+  "booked": "stage-booked",
+  "arrived": "stage-arrived",
+  "in_treatment": "stage-treat",
+  "checkout": "stage-checkout",
+  "done": "stage-done"
+ },
+ "priceUrls": [],
+ "slotMenus": []
+}

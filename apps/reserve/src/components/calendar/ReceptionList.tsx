@@ -1,0 +1,418 @@
+"use client";
+
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import type { DayBundle, Menu, Patient, Reservation } from "@/lib/domain/types";
+import { INACTIVE_STATUSES } from "@/lib/domain/types";
+import { formatHm, minutesOfDay } from "@/lib/domain/time";
+import { displayName } from "./names";
+import { stageOf } from "./stages";
+import { StageTimeInput, parseHm } from "./StageTime";
+import { RichText } from "@/components/richtext/RichText";
+import { RichTextEditor } from "@/components/richtext/RichTextEditor";
+import { richToPlain } from "@/lib/domain/richtext";
+import styles from "./calendar.module.css";
+
+export const ALL_LANES = "all";
+
+interface Props {
+  /** 開くときにスライドインする */
+  animate?: boolean;
+  bundle: DayBundle;
+  laneFilter: string;
+  onLaneFilter(id: string): void;
+  maskNames: boolean;
+  showCancelled: boolean;
+  selectedId: string | null;
+  /** 今日なら現在の分（過ぎた予約を薄くする） */
+  nowMinutes: number | null;
+  onSelect(id: string): void;
+  onClose(): void;
+  /** 状態を変える。min を省くと今の時刻 */
+  onStage(r: Reservation, stageId: string, min?: number): void;
+  /** 状態はそのままで、変えた時刻だけ直す */
+  onStageTime(r: Reservation, min: number): void;
+  /** 受付メモ（その日の進行状況など。患者情報のメモとは別）を保存 */
+  onReceptionNote(patient: Patient, text: string): Promise<boolean>;
+}
+
+/** M3の受付画面のような、その日の予約を時刻順に並べた一覧（現在の状態つき） */
+export function ReceptionList(props: Props) {
+  const { bundle, laneFilter, maskNames, showCancelled, selectedId, nowMinutes, animate } = props;
+  const lanes = useMemo(() => [...bundle.lanes].sort((a, b) => a.order - b.order), [bundle.lanes]);
+  const laneOf = useMemo(() => new Map(lanes.map((l) => [l.id, l])), [lanes]);
+  const patients = useMemo(() => new Map<string, Patient>(bundle.patients.map((p) => [p.id, p])), [bundle.patients]);
+  const menus = useMemo(() => new Map<string, Menu>(bundle.menus.map((m) => [m.id, m])), [bundle.menus]);
+  /** 状態を変える窓を開いている予約 */
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** 1行表示（M3 の受付一覧のように、1人1行。受付メモが縦にそろう）。一覧を出すたびに1行表示から始める */
+  const [compact, setCompact] = useState(true);
+  const toggleCompact = () => {
+    setCompact(!compact);
+    setExpanded(new Set());
+  };
+  /** 一覧の幅（右の端をつまんで変える。この端末に覚えておく）。null は標準の幅 */
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    try {
+      const w = Number(localStorage.getItem("receptionWidth"));
+      // 端末に保存した幅を、開いたあとに読む
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (w >= 260) setWidth(w);
+    } catch {
+      // 保存できない端末では標準の幅
+    }
+  }, []);
+  const saveWidth = (w: number | null) => {
+    setWidth(w);
+    try {
+      if (w === null) localStorage.removeItem("receptionWidth");
+      else localStorage.setItem("receptionWidth", String(Math.round(w)));
+    } catch {
+      // 保存できなくても幅は変える
+    }
+  };
+  const clampWidth = (w: number) => Math.max(260, Math.min(w, Math.max(320, window.innerWidth * 0.75)));
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const aside = e.currentTarget.parentElement;
+    if (!aside) return;
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = aside.getBoundingClientRect().width;
+    let last = w0;
+    const move = (ev: PointerEvent) => {
+      last = clampWidth(w0 + ev.clientX - x0);
+      setWidth(last);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      saveWidth(last);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  /** 1行表示のときに、展開して詳しく見ている行（患者ID） */
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleRow = (pid: string) =>
+    setExpanded((cur) => {
+      const n = new Set(cur);
+      if (n.has(pid)) n.delete(pid);
+      else n.add(pid);
+      return n;
+    });
+
+  const rows = useMemo(
+    () =>
+      bundle.reservations
+        .filter((r) => showCancelled || !INACTIVE_STATUSES.has(r.status))
+        .filter((r) => laneFilter === ALL_LANES || r.laneId === laneFilter)
+        .sort(
+          (a, b) =>
+            a.startAt.localeCompare(b.startAt) ||
+            (laneOf.get(a.laneId)?.order ?? 0) - (laneOf.get(b.laneId)?.order ?? 0) ||
+            a.id.localeCompare(b.id),
+        ),
+    [bundle.reservations, showCancelled, laneFilter, laneOf],
+  );
+
+  /**
+   * 1人が同じ日に複数の枠（例：ネオボ撮影→脱毛説明→脱毛→注射）にまたがるときは1行にまとめる。
+   * 行の状態は代表の枠（いま・次に行う枠）のもので、状態は全部の枠でそろえて変わる
+   */
+  const groups = useMemo(() => {
+    const byPatient = new Map<string, Reservation[]>();
+    for (const r of rows) {
+      const list = byPatient.get(r.patientId);
+      if (list) list.push(r);
+      else byPatient.set(r.patientId, [r]);
+    }
+    return [...byPatient.values()].map((list) => {
+      const active = list.filter((x) => !INACTIVE_STATUSES.has(x.status));
+      const upcoming = active.find((x) => nowMinutes === null || minutesOfDay(x.endAt) > nowMinutes);
+      return { list, main: upcoming ?? active[0] ?? list[0] };
+    });
+  }, [rows, nowMinutes]);
+
+  return (
+    <>
+      {/* スマホで一覧の外を押したら閉じる */}
+      <div className={styles.receptionBackdrop} onClick={props.onClose} aria-hidden />
+      <aside
+        className={styles.reception}
+        data-ui-zoom
+        aria-label="受付一覧"
+        data-enter={animate || undefined}
+        data-compact={compact || undefined}
+        data-resized={width !== null || undefined}
+        style={width !== null ? ({ "--rw": `${width}px` } as CSSProperties) : undefined}
+      >
+        <div
+          className={styles.receptionResize}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="受付一覧の幅"
+          tabIndex={0}
+          title="左右にドラッグして幅を変えられます（ダブルクリックで元の幅）"
+          onPointerDown={startResize}
+          onDoubleClick={() => saveWidth(null)}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const cur = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 340;
+            saveWidth(clampWidth(cur + (e.key === "ArrowRight" ? 40 : -40)));
+          }}
+        />
+        <div className={styles.receptionHead}>
+          <b>受付一覧</b>
+          <span className={styles.receptionCount}>{groups.length}人</span>
+          <select
+            className={styles.select}
+            value={laneFilter}
+            onChange={(e) => props.onLaneFilter(e.target.value)}
+            aria-label="受付一覧のレーン"
+          >
+            <option value={ALL_LANES}>全レーン</option>
+            {lanes.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.shortName}
+              </option>
+            ))}
+          </select>
+          <button
+            className={styles.iconBtn}
+            onClick={toggleCompact}
+            aria-pressed={compact}
+            aria-label={compact ? "詳しい表示に切り替え" : "1行表示に切り替え"}
+            title={compact ? "詳しい表示に切り替え（1人を2段で表示）" : "1行表示に切り替え（1人1行で、多くの患者を表示）"}
+          >
+            {compact ? "▤" : "≡"}
+          </button>
+          <button className={styles.iconBtn} onClick={props.onClose} aria-label="受付一覧を閉じる" title="閉じる">
+            «
+          </button>
+        </div>
+        {rows.length === 0 && <p className={styles.receptionEmpty}>予約はありません</p>}
+        <ol className={styles.receptionRows}>
+          {groups.map(({ list, main: r }) => {
+            const start = minutesOfDay(list[0].startAt);
+            const end = Math.max(...list.map((x) => minutesOfDay(x.endAt)));
+            const ms = r.menuIds.map((id) => menus.get(id)).filter((m): m is Menu => !!m);
+            const steps = list.flatMap((x) =>
+              (x.menuIds.length ? x.menuIds : [""]).map((id, i) => ({ key: `${x.id}:${i}`, menu: menus.get(id), off: INACTIVE_STATUSES.has(x.status) })),
+            );
+            const lane = laneOf.get(r.laneId);
+            const patient = patients.get(r.patientId);
+            const sv = stageOf(r, bundle.stages);
+            const inactive = INACTIVE_STATUSES.has(r.status);
+            const done = sv.stage?.phase === "done";
+            const past = nowMinutes !== null && end <= nowMinutes;
+            const open = pickerFor === r.id;
+            const oneLine = compact && !expanded.has(r.patientId);
+            return (
+              <li key={r.id}>
+                <div
+                  className={styles.receptionRow}
+                  data-oneline={oneLine || undefined}
+                  data-selected={list.some((x) => x.id === selectedId) || undefined}
+                  data-dim={inactive || done || undefined}
+                  data-past={past || undefined}
+                  style={{ "--c": ms[0]?.color ?? "#94a3b8" } as CSSProperties}
+                >
+                  <button type="button" className={styles.receptionHit} onClick={() => props.onSelect(r.id)}>
+                    <span className={styles.receptionTime}>
+                      {formatHm(start)}
+                      <small>{lane?.shortName}</small>
+                    </span>
+                    <span className={styles.receptionMain}>
+                      <span className={styles.receptionName}>{displayName(patient, maskNames)}</span>
+                      {r.questionnaire === "missing" && !inactive && (
+                        <span className={styles.qMissing} title="初めての来院で、問診票がまだ届いていません">
+                          問診票未
+                        </span>
+                      )}
+                      {list.length === 1 ? (
+                        <span className={styles.receptionMenu}>{ms.map((m) => m.abbr).join("+") || "—"}</span>
+                      ) : (
+                        <span className={styles.receptionSteps} title={steps.map((s) => s.menu?.name ?? "—").join(" → ")}>
+                          {steps.map((s, i) => (
+                            <span key={s.key} className={styles.stepChip} data-off={s.off || undefined} style={{ "--c": s.menu?.color ?? "#94a3b8" } as CSSProperties}>
+                              {i > 0 && <i aria-hidden>›</i>}
+                              {s.menu?.abbr ?? "—"}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  <span className={styles.receptionStage}>
+                    <button
+                      type="button"
+                      className={styles.stagePill}
+                      data-clickable
+                      data-open={open || undefined}
+                      style={{ "--sc": sv.plain ? "#94a3b8" : sv.color } as CSSProperties}
+                      onClick={() => setPickerFor(open ? null : r.id)}
+                      disabled={inactive}
+                      aria-expanded={open}
+                      title="押すと状態を変更できます"
+                    >
+                      {sv.at && !sv.plain && <b className={styles.stageAt}>{sv.at}</b>}
+                      {sv.label}
+                    </button>
+                    {sv.note && (
+                      <span className={styles.stagePill} data-note style={{ "--sc": sv.noteColor } as CSSProperties}>
+                        {sv.note}
+                      </span>
+                    )}
+                  </span>
+                  {patient && (
+                    <MemoCell
+                      key={`${patient.id}:${bundle.receptionNotes?.[patient.id] ?? ""}`}
+                      patient={patient}
+                      memo={bundle.receptionNotes?.[patient.id] ?? ""}
+                      masked={maskNames}
+                      onSave={props.onReceptionNote}
+                    />
+                  )}
+                  {compact && (
+                    <button
+                      type="button"
+                      className={styles.receptionExpand}
+                      onClick={() => toggleRow(r.patientId)}
+                      aria-expanded={!oneLine}
+                      aria-label={oneLine ? "この患者を展開" : "1行に戻す"}
+                      title={oneLine ? "展開して、メニューの流れと受付メモをすべて表示" : "1行に戻す"}
+                    >
+                      {oneLine ? "▸" : "▾"}
+                    </button>
+                  )}
+                </div>
+                {open && (
+                  <StagePicker
+                    bundle={bundle}
+                    reservation={r}
+                    currentId={sv.stage?.id}
+                    onPick={(id, min) => {
+                      props.onStage(r, id, min);
+                      setPickerFor(null);
+                    }}
+                    onTimeOnly={(min) => {
+                      props.onStageTime(r, min);
+                      setPickerFor(null);
+                    }}
+                    onClose={() => setPickerFor(null)}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </aside>
+    </>
+  );
+}
+
+/** 一覧の行の下に出す、状態を変える窓 */
+function StagePicker(props: {
+  bundle: DayBundle;
+  reservation: Reservation;
+  currentId?: string;
+  onPick(stageId: string, min?: number): void;
+  onTimeOnly(min: number): void;
+  onClose(): void;
+}) {
+  const [time, setTime] = useState("");
+  const min = parseHm(time);
+  const stages = props.bundle.stages.filter((s) => !s.free && !s.deleted && (s.active || s.id === props.currentId));
+  return (
+    <div className={styles.receptionPicker} role="group" aria-label="状態を変更">
+      <div className={styles.receptionPickerHead}>
+        <StageTimeInput className={styles.stageTime} value={time} onChange={setTime} />
+        {min !== undefined && props.currentId && props.reservation.stageAt && (
+          <button type="button" className={styles.btn} onClick={() => props.onTimeOnly(min)} title="状態はそのままで、時刻のみ修正します">
+            時刻のみ修正
+          </button>
+        )}
+        <button type="button" className={styles.iconBtn} onClick={props.onClose} aria-label="閉じる">
+          ×
+        </button>
+      </div>
+      <div className={styles.stageGrid}>
+        {stages.map((s) => {
+          const on = s.id === props.currentId;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              className={styles.stageBtn}
+              style={{ "--sc": s.color } as CSSProperties}
+              data-active={on || undefined}
+              aria-pressed={on}
+              onClick={() => props.onPick(s.id, min)}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** 患者情報のメモ（患者画面と同じもの）。押すとその場で書ける */
+function MemoCell({ patient, memo, masked, onSave }: { patient: Patient; memo: string; masked: boolean; onSave: Props["onReceptionNote"] }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (draft === null || busy) return;
+    if (draft.trim() === memo.trim()) {
+      setDraft(null);
+      return;
+    }
+    setBusy(true);
+    const ok = await onSave(patient, draft.trim());
+    setBusy(false);
+    if (ok) setDraft(null);
+  };
+
+  if (draft !== null) {
+    return (
+      <div className={styles.receptionMemo} data-editing>
+        <RichTextEditor
+          value={draft}
+          onChange={setDraft}
+          autoFocus
+          rows={3}
+          maxLength={4000}
+          disabled={busy}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setDraft(null);
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) save();
+          }}
+          ariaLabel="受付メモ"
+          placeholder="受付メモ（当日の進行状況など）"
+        />
+        <div className={styles.receptionMemoBtns}>
+          <button type="button" className={styles.btn} onMouseDown={(e) => e.preventDefault()} onClick={() => setDraft(null)} disabled={busy}>
+            キャンセル
+          </button>
+          <button type="button" className={styles.primaryBtn} onClick={save} disabled={busy}>
+            {busy ? "保存中…" : "保存"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={styles.receptionMemo}
+      data-empty={!memo || undefined}
+      onClick={() => setDraft(memo)}
+      title={masked ? "受付メモ（押すと入力できます）" : richToPlain(memo) || "押すと受付メモ（当日の進行状況など）を入力できます"}
+    >
+      {masked ? (memo ? "（メモあり）" : "") : memo ? <RichText value={memo} inline /> : "受付メモ"}
+    </button>
+  );
+}
